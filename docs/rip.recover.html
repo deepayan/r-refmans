@@ -1,0 +1,668 @@
+<!DOCTYPE html><html><head><title>Help for package rip.recover</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="/home/deepayan/Rinstall/R-devel/lib/R/doc/html/R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {rip.recover}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#make.kernel'><p>Construct a two-dimensional blur kernel</p></a></li>
+<li><a href='#rip.deconv'><p>Non-blind deconvolution and super-resolution</p></a></li>
+<li><a href='#rip.deconvlucy'><p>Richardson-Lucy Algorithm</p></a></li>
+<li><a href='#symmetric.blur'><p>Estimate symmetric blur kernel</p></a></li>
+<li><a href='#zapsmallp'><p>Set small values to zero</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>0.1-2</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2020-10-10</td>
+</tr>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Image Reconstruction Utilities</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Tools for various image recovery problems such as
+	     deconvolution, denoising and super-resolution.</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a></td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>rip.opencv, R (&ge; 3.0)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>Matrix, parallel</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Deepayan Sarkar <a href="https://orcid.org/0000-0003-4107-1553"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut, cre],
+  Kaustav Nandy [aut]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Deepayan Sarkar &lt;deepayan.sarkar@r-project.org&gt;</td>
+</tr>
+<tr>
+<td>Built:</td>
+<td>R 4.4.0; ; 2023-06-29 14:09:54 UTC; unix</td>
+</tr>
+</table>
+<hr>
+<h2 id='make.kernel'>Construct a two-dimensional blur kernel</h2><span id='topic+make.kernel'></span>
+
+<h3>Description</h3>
+
+<p>Constructs a two-dimensional blur kernel from a set of
+predetermined parametric family.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>make.kernel(h = 1,
+            kern = c("epanechnikov", "rectangular", "triangular", "biweight",
+                     "gaussian", "cosine", "optcosine"),
+            dim = 2, normalize = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="make.kernel_+3A_h">h</code></td>
+<td>
+<p>Numeric scalar giving bandwidth (in pixels).</p>
+</td></tr>
+<tr><td><code id="make.kernel_+3A_kern">kern</code></td>
+<td>
+<p>Character string giving parametric family.</p>
+</td></tr>
+<tr><td><code id="make.kernel_+3A_dim">dim</code></td>
+<td>
+<p>Integer scalar giving kernel dimension; must be 1 or 2.</p>
+</td></tr>
+<tr><td><code id="make.kernel_+3A_normalize">normalize</code></td>
+<td>
+<p>Logical flag indicating whether the kernel should be
+normalized to have total sum 1.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The parametric families supported are the same ones as in
+<code><a href="stats.html#topic+density">density</a></code>, but the interpretation of the bandwidth is
+different; it gives the distance from the origin outside which the
+kernel is 0, except for the Gaussian kernel where it is twice the
+variance parameter.
+</p>
+<p>The center pixel of the kernel spans the [-0.5, 0.5]^2 square, and
+other pixels are shifted accordingly. To compute the kernel value
+on a given pixel, the kernel function is evaluated on a roughly
+10x10 grid within the pixel and then averaged. Bandwidth values
+less than 0.5 essentially produce degenerate kernels.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>"rip"</code> object giving the kernel, or, if <code>dim = 1</code>, a
+vector.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+image(make.kernel(h = 10, kern = "gaussian"))
+image(make.kernel(h = 10, kern = "triangular"))
+  
+</code></pre>
+
+<hr>
+<h2 id='rip.deconv'>Non-blind deconvolution and super-resolution</h2><span id='topic+rip.deconv'></span><span id='topic+rip.denoise'></span><span id='topic+rip.upscale'></span>
+
+<h3>Description</h3>
+
+<p>Single-image non-blind deconvolution and super-resolution (upscaling)
+using Gaussian and hyper-Lapacian image gradient priors. Supports
+missing values (using the direct method only), as well as robust loss
+functions instead of squared error loss for image fidelity.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rip.deconv(y, k, method = c("iterative", "direct"),
+           alpha = 2, lambda = 0.01,
+           rho = list(along = 0, across = 0),
+           patch = switch(method, direct = 100, iterative = 300),
+           overlap = 20, ..., super.factor = 1)
+
+rip.upscale(y, factor = 2,
+            ksigma = 1, kbw = ksigma, k = NULL,
+            method = c("iterative", "direct"),
+            patch = round(switch(method, direct = 100, iterative = 300) / factor),
+            overlap = round(20 / factor), ...)
+
+rip.denoise(y, ksigma = 1, kbw = ksigma, k = NULL,
+            method = c("iterative", "direct"),
+            patch = switch(method, direct = 100, iterative = 300),
+            overlap = 20, ...)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="rip.deconv_+3A_y">y</code></td>
+<td>
+<p>The blurred and / or downscaled image to be reconstructed, a
+<code>"rip"</code> object or something that can be coerced into one. Color
+images are supported (as three-channel) objects, and are split into
+individual channels before processing. Missing values (NA) are
+allowed, but only for <code>method = "direct"</code>.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_k">k</code></td>
+<td>
+<p>The known blur kernel applied to the latent image, a
+single-channel <code>"rip"</code> object or matrix. Mandatory for
+<code>rip.deconv</code>, but optional for <code>rip.denoise</code> and
+<code>rip.upscale</code>. See details.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_method">method</code></td>
+<td>
+<p>Character string giving the method to be used for
+solving the linear equations derived from (weighted) least squares
+problems. The <code>"iterative"</code> method uses a memory-efficient
+conjugate-gradient approach through <code><a href="stats.html#topic+optim">optim</a></code> to
+obtain an approximate solution, using functions in the OpenCV
+library for efficient convolution and filtering operations. The
+<code>"direct"</code> method uses the <a href="https://CRAN.R-project.org/package=Matrix"><span class="pkg">Matrix</span></a> package to
+explicitly construct the coefficient matrix as a sparse matrix and
+performs its sparse Cholesky decomposition to obtain exact solutions
+of the linear equations. Depending on the sparsity of <code>k</code>, this
+may require large amounts of memory. Missing values in <code>y</code> are
+only supported for the <code>"direct"</code> method.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_alpha">alpha</code></td>
+<td>
+<p>The hyper-Laplacian parameter. <code>alpha = 2</code>
+corresponds to Gaussian, and <code>alpha = 1</code> to double exponential
+or Laplacian. <code>alpha = 0.8</code> is commonly used to model natural
+images, and often referred to as a &quot;sparse&quot; prior because it puts
+relatively more weight to 0 gradients.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_lambda">lambda</code></td>
+<td>
+<p>The regularization or tuning parameter.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_rho">rho</code></td>
+<td>
+<p>List with components <code>along</code> and <code>across</code>
+specifying local dependence of gradients as a 2-D auto-regressive
+process in terms of correlation along and across the gradient
+direction. <code>along = 0.3</code> and <code>across = 0.6</code> are good
+values to try.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_patch">patch</code></td>
+<td>
+<p>Integer vector, replicated to be of length 2, giving the
+size of patches into which the input image is split to avoid
+processing large images.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_overlap">overlap</code></td>
+<td>
+<p>Integer vector, replicated to be of length 2, giving
+the amount of overlap between contiguous images.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_...">...</code></td>
+<td>
+<p>Further arguments, to be passed on to the underlying
+(unexported) workhorse functions. Useful arguments are:
+</p>
+
+<dl>
+<dt><code>cache.dir</code>:</dt><dd><p> The name of a directory to store cached
+sparse matrices. Used to store downscaling operators if
+specified; by default they are computed as necessary (the
+penalty is relatively small). </p>
+</dd>
+<dt><code>yerror</code>:</dt><dd><p> Character string giving loss function used
+to measure image fidelity. Possible values are <code>"normal"</code>
+for squared error loss, <code>"huber"</code> for Huber loss,
+<code>"bisquare"</code> for Tukey bisquare loss, and <code>"poisson"</code>
+for squared error loss with variance proportional to mean. The
+last option is not really useful, as there is an arbitrary scale
+factor has no natural estimate. </p>
+</dd>
+<dt><code>huber.k = 1.345</code>:</dt><dd><p> Parameter for Huber loss. The
+scale parameter is estimated using the MAD in each iteration. </p>
+</dd>
+<dt><code>bisquare.c = 4.685</code>:</dt><dd><p> Parameter for bisquare
+loss. The scale parameter is estimated using the MAD in each
+iteration.  </p>
+</dd>
+<dt><code>wt.thres = 0.01</code>:</dt><dd><p> IRLS weights are restricted to be
+no smaller than this, both for image error and hyper-Lapacian
+prior weights.</p>
+</dd>
+<dt><code>niter.irls = 5</code>:</dt><dd><p> Number of IRLS iterations.  </p>
+</dd>
+<dt><code>verbose = FALSE</code>:</dt><dd><p> Logical flag; whether progress
+should be indicated. Useful for long-running computations. </p>
+</dd>
+<dt><code>cg.update</code>:</dt><dd><p> Character string giving type of
+conjugate-gradient update (passed on to <code>optim</code>). Possible
+values are <code>"FR"</code> for Fletcher-Reeves (the default),
+<code>"PR"</code> for Polak-Ribiere, and <code>"BS"</code> for
+Beale-Sorenson. Polak-Ribiere is slightly slower than
+Fletcher-Reeves but sometimes gives better results. </p>
+</dd>
+<dt><code>maxit</code>:</dt><dd><p> The maximum number of conjugate-gradient
+iterations in <code>optim</code>. In fact, other components of the
+<code>control</code> argument of <code>optim</code> can also be specified. </p>
+</dd>
+</dl>
+
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_super.factor">super.factor</code>, <code id="rip.deconv_+3A_factor">factor</code></td>
+<td>
+<p>Integer, factor by which input image is to
+be upscaled.</p>
+</td></tr>
+<tr><td><code id="rip.deconv_+3A_kbw">kbw</code>, <code id="rip.deconv_+3A_ksigma">ksigma</code></td>
+<td>
+<p>For <code>rip.denoise</code> and <code>rip.upscale</code>, a
+numeric value giving the bandwidth (in units of pixels in the input
+image) for an Epanechnikov kernel as constructed using
+<code><a href="rip.recover.html#topic+symmetric.blur">symmetric.blur</a></code>. For <code>rip.upscale</code>, the kernel
+that applies on the latent image has bandwidth <code>kbw * factor</code>.
+Two special values are <code>0</code> to indicate no blurring and a
+negative value to estimate the kernel from the image itself assuming
+a correlated gradient prior. For the last case, explicitly using
+<code><a href="rip.recover.html#topic+symmetric.blur">symmetric.blur</a></code> allows more control, especially on the
+size of the kernel.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>These are the main functions of this package, supporting single-image
+non-blind (known blur kernel) deconvolution and super-resolution using
+a Bayesian regularization approach. <code>rip.upscale</code> and
+<code>rip.denoise</code> are simple wrappers for <code>rip.deconv</code> with
+additional ways to specify the blur kernel, and pass along additional
+arguments to it.
+</p>
+<p>As blurring and downsampling are linear operations, the blurred image
+<code>y</code> can be expressed in terms of the latent image <code>x</code> as
+<code>y = T x + error</code>, where <code>T</code> is a sparse matrix determined
+by <code>k</code>. However, the problem is generally under-constrained, so
+requires regularization to solve. These funtions assume the following
+prior on <code>x</code>: horizontal and vertical lag-1 gradients are
+independent, marginally either mean-zero Gaussian or hyper-Laplacian
+(density proportional to <code>exp(abs(x)^alpha)</code>), and possibly
+correlated according to a simple 2-D lag-1 auto-regressive model.
+</p>
+<p>The estimate of <code>x</code> is the posterior mode, equivalent to a
+generalized form of Ridge-type regularization in the Gaussian
+case. The general case is solved using IRLS. The error term is
+generally assumed to be Gaussian, but robust loss functions can also
+be used via IRLS.
+</p>
+<p>Estimation involves solving a sparse linear problem. The size of the
+problem is large, and is solved (usually after dividing large images
+into smaller patches to keep individual problems manageable) either
+using an approximate conjugate-gradient method or a direct sparse
+Cholesky decomposition. The latter approach is potentially memory
+intensive (depending on the sparsity of <code>k</code>) and should be used
+with caution when <code>k</code> is being estimated.
+</p>
+<p>Missing values in <code>y</code> are allowed, but only with the
+<code>"direct"</code> method. This allows imputation or inpainting, with
+missing pixels restored by their posterior modes. However,
+</p>
+<p>Although <code>k</code> is assumed to be known, this is rarely true in
+practice. Estimating complicated blur kernels is a difficult problem
+not yet handled by this package, but external methods are available. A
+simple Fourier-domain method, assuming a symmetric kernel and Gaussian
+gradient prior, is implemented in <code><a href="rip.recover.html#topic+symmetric.blur">symmetric.blur</a></code>, and
+used when <code>kbw &lt; 1</code>. Kernels in parametric form can be generated
+using <code><a href="rip.recover.html#topic+make.kernel">make.kernel</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>"rip"</code> object representing the estimate of the latent image.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+k &lt;- make.kernel(h = 3)
+y &lt;- rip.conv(sample.images[[3]], k, type = "valid") / 255
+image(y)
+
+x1 &lt;- rip.deconv(y, k, lambda = 0.001, patch = 100, method = "direct")
+x2 &lt;- rip.denoise(y, kbw = 3, lambda = 0.001,
+                  patch = 300, method = "iterative")
+x3 &lt;- rip.denoise(y, kbw = -1, lambda = 0.001)
+
+par(mfrow = c(2, 2))
+image(y)
+image(x1)
+image(x2)
+image(x3)
+
+</code></pre>
+
+<hr>
+<h2 id='rip.deconvlucy'>Richardson-Lucy Algorithm</h2><span id='topic+rip.deconvlucy'></span>
+
+<h3>Description</h3>
+
+<p>Image deconvoltion using the Richardson-Lucy algorithm
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rip.deconvlucy(y, k, niter = 10, x.init = NULL, keep.intermediate = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="rip.deconvlucy_+3A_y">y</code></td>
+<td>
+<p>The blurred image, a <code>"rip"</code> object or something that
+can be coerced into one. Multi-channel (color) images are
+supported.</p>
+</td></tr>
+<tr><td><code id="rip.deconvlucy_+3A_k">k</code></td>
+<td>
+<p>The known blur kernel, a single-channel <code>"rip"</code> object
+or matrix.</p>
+</td></tr>
+<tr><td><code id="rip.deconvlucy_+3A_niter">niter</code></td>
+<td>
+<p>The number of Richardson-Lucy (EM) iterations to
+perform.</p>
+</td></tr>
+<tr><td><code id="rip.deconvlucy_+3A_x.init">x.init</code></td>
+<td>
+<p>Initial estimate of the latent image, in the same form
+as <code>y</code>. There is usually no benefit to providing this (by
+default the initial estimate is flat image filled with the average
+of <code>y</code>), and the option is only provided for experimentation.</p>
+</td></tr>
+<tr><td><code id="rip.deconvlucy_+3A_keep.intermediate">keep.intermediate</code></td>
+<td>
+<p>A logical flag to indicate whether
+intermediate estimates should be saved. This is useful to track
+performance; increasing the number of iterations does not always
+improve quality.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The Richardson-Lucy algorithm is used to recover the underlying latent
+image given a blurred image and the blur kernel as input, using a
+Poisson noise model. The algorithm here uses an efficient
+implementation of correlation filters from the OpenCV library. To
+minimize boundary artifacts, the REPLICATE boundary type is used for
+filtering.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>"rip"</code> object representing the estimate of the latent
+image. If <code>keep.intermediate = TRUE</code>, the return value
+additionally has an attribute named <code>"history"</code>, which is a list
+containing the result of each iteration.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+k &lt;- sample.kernels[[2]]
+y &lt;- rip.conv(sample.images[[3]], k, type = "valid") / 255
+image(y)
+x &lt;- rip.deconvlucy(y, k, niter = 100)
+image(x)
+
+</code></pre>
+
+<hr>
+<h2 id='symmetric.blur'>Estimate symmetric blur kernel</h2><span id='topic+symmetric.blur'></span>
+
+<h3>Description</h3>
+
+<p>Estimate symmetric blur kernel assuming Gaussian image gradient prior
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>symmetric.blur(y, kdim = round(dim(y)/3), resize = 1,
+               g.method = c("autoreg", "nonpar", "none"), g = NULL,
+               rho.along = 0.3, rho.across = 0.6, eta.sq = 0.005^2,
+               corr.grad = TRUE, np.span = 2/3, trim = TRUE,
+               zap.digits = 1.5, edgetaper = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="symmetric.blur_+3A_y">y</code></td>
+<td>
+<p>Input blurred image, a <code>"rip"</code> object or something that
+can be coerced to one. Color images are handled by first converting
+to grayscale using <code><a href="rip.opencv.html#topic+rip.desaturate">rip.desaturate</a></code>.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_kdim">kdim</code></td>
+<td>
+<p>Extent of the kernel. The actual size of the estimated
+kernel is <code>2 * kdim + 1</code>, before being trimmed if requested.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_resize">resize</code></td>
+<td>
+<p>Factor by which the estimate is to be resized before
+being returned.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_g.method">g.method</code></td>
+<td>
+<p>Method used to compute variance of Fourier
+coefficients. Ignored if <code>g</code> is explicitly specified. The
+<code>"none"</code> method assumes constant variance, corresponding to a
+prior that assumed uncorrelated gradients. The <code>"autoreg"</code>
+method uses a variance model corresponding to a prior with gradients
+having a lag-1 auto-regressive structure. The <code>"nonpar"</code> method
+estimates the variance by smoothing the absolute DFT coefficients;
+this is of dubious usefulness but included to allow
+experimentation.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_g">g</code></td>
+<td>
+<p>Optional list with components named <code>h</code> and <code>v</code>,
+giving the variances of DFT coefficients for horizontal and vertical
+gradients respectively. Should be of same size as <code>y</code>.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_rho.along">rho.along</code></td>
+<td>
+<p>Correlation coefficient defining auto-regressive
+gradient prior model along the direction of the gradient.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_rho.across">rho.across</code></td>
+<td>
+<p>Correlation coefficient defining auto-regressive
+gradient prior model across the direction of the gradient.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_eta.sq">eta.sq</code></td>
+<td>
+<p>Variance of the error terms (after taking gradients)</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_corr.grad">corr.grad</code></td>
+<td>
+<p>Whether the error terms should be assumed to be
+correlated after taking gradients. If <code>FALSE</code>, the error
+gradients are assumed to be independent; if <code>TRUE</code>, the errors
+in <code>y</code> are assumed to be independent, and correlation in
+gradient errors computed accordingly. In practice, there is not much
+difference for reasonable values of <code>eta.sq</code>.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_np.span">np.span</code></td>
+<td>
+<p>Passed to <code>g.nonpar</code> when <code>g.method="nonpar"</code>.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_trim">trim</code></td>
+<td>
+<p>Logical flag; whether the estimated kernel should be
+&quot;trimmed&quot; by setting small elements to zero and removing all-zero
+boundary rows.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_zap.digits">zap.digits</code></td>
+<td>
+<p>The <code>digits</code> argument to
+<code><a href="rip.recover.html#topic+zapsmallp">zapsmallp</a></code> to use when <code>trim=TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="symmetric.blur_+3A_edgetaper">edgetaper</code></td>
+<td>
+<p>Logical, whether <code>rip.edgetaper</code> should
+be applied on the gradients before further processing.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p> Estimates the blur kernel from a blurred image assuming that
+the kernel is symmetric and that image gradients follow a Gaussian
+prior.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>"rip"</code> object giving the estimated blur kernel.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+k &lt;- sample.kernels[[3]]
+y &lt;- rip.conv(sample.images[[4]], k, type = "valid") / 255
+image(y)
+
+k1 &lt;- symmetric.blur(y, kdim = c(7, 7), g.method = "none", trim = FALSE)
+k2 &lt;- symmetric.blur(y, kdim = c(7, 7), g.method = "autoreg", trim = FALSE)
+k3 &lt;- symmetric.blur(y, kdim = c(7, 7), g.method = "autoreg", trim = FALSE,
+                     eta.sq = 0.01^2, corr.grad = FALSE)
+
+par(mfrow = c(2, 2))
+image(-k, main = "true kernel")
+image(-k1, main = "IID prior")
+image(-k2, main = "AR prior")
+image(-k3, main = "AR prior (eta = 0.01)")
+
+</code></pre>
+
+<hr>
+<h2 id='zapsmallp'>Set small values to zero</h2><span id='topic+zapsmallp'></span>
+
+<h3>Description</h3>
+
+<p>Set small values in a numeric vector to zero, similar to
+<code><a href="base.html#topic+zapsmall">zapsmall</a></code>, except that non-zero elements are retained
+as is instead of being rounded.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>zapsmallp(x, digits = 2, prop = 10^(-digits), threshold = max(abs(x)) * prop)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="zapsmallp_+3A_x">x</code></td>
+<td>
+<p>Usually a numeric vector, matrix, or array.</p>
+</td></tr>
+<tr><td><code id="zapsmallp_+3A_digits">digits</code></td>
+<td>
+<p>Numeric giving &quot;number&quot; of decimal digits to retain</p>
+</td></tr>
+<tr><td><code id="zapsmallp_+3A_prop">prop</code></td>
+<td>
+<p>Proportion (fraction) of maximum below which elements are
+to be set to zero. Overrides <code>digits</code>.</p>
+</td></tr>
+<tr><td><code id="zapsmallp_+3A_threshold">threshold</code></td>
+<td>
+<p>Threshold absolute value below which elements
+are to be set to zero. Overrides <code>prop</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Modified version of <code>x</code>, retaining attributes, with small
+elements set to zero.
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>
