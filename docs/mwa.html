@@ -1,0 +1,911 @@
+<!DOCTYPE html><html><head><title>Help for package mwa</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {mwa}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#matchedwake'>
+<p>Estimate Treatment Effect for Sliding Spatiotemporal Windows</p></a></li>
+<li><a href='#mwa_data'><p>Data to Illustrate the Functionality of mwa</p></a></li>
+<li><a href='#mwa-package'>
+<p>Matched Wake Analysis (mwa): Analyzing causal relationships in spatiotemporal event data</p></a></li>
+<li><a href='#plot.matchedwake'>
+<p>Plot Function for Objects of Class <code>matchedwake</code></p></a></li>
+<li><a href='#print.matchedwake'>
+<p>Print Function for Objects of Class <code>matchedwake</code></p></a></li>
+<li><a href='#slideWakeMatch'>
+<p>Auxiliary Function to Match Data and Estimate Treatment Effects</p></a></li>
+<li><a href='#slidingWake'>
+<p>Auxiliary Function to Iterate Through Sliding Spatiotemporal Windows</p></a></li>
+<li><a href='#summary.matchedwake'>
+<p>Summary Function for Objects of Class <code>matchedwake</code></p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Causal Inference in Spatiotemporal Event Data</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.4.4</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2022-04-26</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Sebastian Schutte and Karsten Donnay</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Sebastian Schutte &lt;schuttesebastian@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implementation of Matched Wake Analysis (mwa) for studying causal relationships in spatiotemporal event data, introduced by Schutte and Donnay (2014) &lt;<a href="https://doi.org/10.1016%2Fj.polgeo.2014.03.001">doi:10.1016/j.polgeo.2014.03.001</a>&gt;. </td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/LGPL-3">LGPL-3</a></td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 2.6), cem (&ge; 1.1), rJava (&ge; 0.9), MASS (&ge; 7.0)</td>
+</tr>
+<tr>
+<td>SystemRequirements:</td>
+<td>Java (&gt;= 6.0)</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2022-04-26 11:38:31 UTC; donnay</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2022-04-26 15:50:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='matchedwake'>
+Estimate Treatment Effect for Sliding Spatiotemporal Windows
+</h2><span id='topic+matchedwake'></span>
+
+<h3>Description</h3>
+
+<p>This function performs the Matched Wake Analysis (mwa), which consists of two steps: counts for previous and posterior events are established for different spatial and temporal offsets from treatment and control events. After that, the treatment effect is estimated in a difference-in-differences regression design. For performance reasons, the iterative counting is done in Java using the <span class="pkg">rJava</span> interface.
+</p>
+<p><b>IMPORTANT</b>: The size of the Java heap space has to be set before <b>first</b> calling the package via <code>library(mwa)</code> since JVM size cannot change once it has been initialized. This also implies that R has to be restarted if another library was already using a JVM in order for the heap space option to have any effect. To set the heap space to 1 GB, for example, use <code>options(java.parameters = "-Xmx1g")</code> (512 MB is the default size).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>matchedwake(data, t_window, spat_window, treatment, control,
+            dependent, matchColumns, t_unit = "days", estimation = "lm",
+	    formula = "dependent_post ~ dependent_pre + treatment",
+            weighted = FALSE, estimationControls = c(), TCM = FALSE,
+            deleteSUTVA = FALSE, alpha1 = 0.05, alpha2 = 0.1,
+            match.default = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="matchedwake_+3A_data">data</code></td>
+<td>
+
+<p><code>data.frame</code> containing the observations. See Details.  
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_t_window">t_window</code></td>
+<td>
+
+<p>specification of temporal windows in <code>t_units</code>. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_spat_window">spat_window</code></td>
+<td>
+
+<p>specification of spatial windows in kilometers. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_treatment">treatment</code></td>
+<td>
+
+<p>vector of Strings identifying which type of events serve as treatments. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_control">control</code></td>
+<td>
+
+<p>vector of Strings identifying which type of events serve as controls. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_dependent">dependent</code></td>
+<td>
+
+<p>vector of Strings identifying which type of events are affected by treatment. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_matchcolumns">matchColumns</code></td>
+<td>
+
+<p>vector of Strings indicating the columns to match on. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_t_unit">t_unit</code></td>
+<td>
+
+<p>String specifying the temporal units to be used, either <kbd>"days"</kbd>, <kbd>"hours"</kbd>, <kbd>"mins"</kbd> or <kbd>"secs"</kbd>. Default = <kbd>"days"</kbd>. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_estimation">estimation</code></td>
+<td>
+
+<p>String specifying method used for estimation, <kbd>"lm"</kbd>, <kbd>"att"</kbd> or <kbd>"nb"</kbd>. Default = <kbd>"lm"</kbd>. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_formula">formula</code></td>
+<td>
+
+<p>String specifying the model used for estimation. Default = <kbd>"dependent_post ~ dependent_pre + treatment"</kbd>. See Details.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_weighted">weighted</code></td>
+<td>
+
+<p>Boolean specifying whether regression is weighted (only affects estimations using <kbd>"lm"</kbd> or <kbd>"att"</kbd>). Default = <kbd>FALSE</kbd>.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_estimationcontrols">estimationControls</code></td>
+<td>
+
+<p>vector of Strings indicating additional control dimensions to be included in the estimation. See Details.
+</p>
+</td></tr>    
+<tr><td><code id="matchedwake_+3A_tcm">TCM</code></td>
+<td>
+
+<p>Boolean to select whether the method should match on counts of previous treatment and control instances. Default = <kbd>FALSE</kbd>.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_deletesutva">deleteSUTVA</code></td>
+<td>
+
+<p>Boolean to select whether overlapping treatment and control episodes are deleted. Default = <kbd>FALSE</kbd>.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_alpha1">alpha1</code></td>
+<td>
+
+<p>first significance level used for the analysis and plots. Default = <kbd>0.05</kbd>.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_alpha2">alpha2</code></td>
+<td>
+
+<p>second significance level used for the analysis and plots. Default = <kbd>0.1</kbd>.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_match.default">match.default</code></td>
+<td>
+
+<p>Boolean to select whether observations are matched using <code>cem</code>. Default = <kbd>TRUE</kbd>.
+</p>
+</td></tr>
+<tr><td><code id="matchedwake_+3A_...">...</code></td>
+<td>
+
+<p>optional parameters that can be passed to the methods used for matching and estimation. See Details.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The method expects <code>data</code> to be a <code>data.frame</code>. Dates must be given in column <kbd>timestamp</kbd> and formatted as a date string with format <kbd>"YYYY-MM-DD hh:mm:ss"</kbd>. Alternatively, a POSIX Date can be specified using the same format. <code>data</code> must also contain two entries called <code>lat</code> and <code>lon</code> for the geo location of each entry.
+</p>
+<p><code>t_window</code> specifies the minimal and maximal temporal window sizes and corresponding steps used in the iteration. Required syntax is <kbd>c(min_window, max_window, step_size)</kbd> with <code>step_size</code> in units of <code>t_unit</code>. The spatial window <code>spat_window</code> is specified in the same way with kilometers as units.
+</p>
+<p><code>treatment</code>, <code>control</code> and <code>dependent</code> define which category of events is considered to be treatment, control and dependent cases respectively. The required syntax is <kbd>c(column_name, value)</kbd> where <code>column_name</code> must be entered as String and <code>value</code> can be Numeric, Boolean, or a String. 
+</p>
+<p><code>matchColumns</code> selects the columns in <code>data</code> used for matching. Matching variables are expected to be coded together with every treatment and control type event and are assumed to reflect a set of suitable matching variables (what is suitable will, of course, vary from case to case).
+</p>
+<p>The optional argument <code>t_unit</code> specifies the temporal resolution for which the analysis is to be conducted, one of either <kbd>"days"</kbd>, <kbd>"hours"</kbd>, <kbd>"mins"</kbd> or <kbd>"secs"</kbd>. If the time stamps provided in <code>data</code> are more precise than the resolution they are truncated accordingly. 
+</p>
+<p><span class="pkg">mwa</span> estimates treatment effects using a diff-in-diffs regression design. By default this is specified as <kbd>"dependent_post ~ dependent_pre + treatment"</kbd> (where &ldquo;pre&rdquo; and &ldquo;post&rdquo; refer to pre and post intervention). Alternatively, <kbd>"dependent_post - dependent_pre ~ treatment"</kbd> is accepted. Only those two input specifications are allowed, any other input will result in an error.
+</p>
+<p>Three different estimation approaches can be chosen using <code>estimation</code>: a linear model (<kbd>"lm"</kbd>, <span class="pkg">stats</span>), all models available through (<kbd>"att"</kbd>, <span class="pkg">cem</span>) or a count dependent model (<kbd>"glm.nb"</kbd>, <span class="pkg">MASS</span>). For regressions using <kbd>"lm"</kbd> or <kbd>"att"</kbd> <code>weighted</code> sets whether or not the regression is weighted by the number of treatment vs. control cases. Additional control variables can be specified via <code>estimationControls</code>. For example, if <kbd>estimationControls = c("covariate1")</kbd>, the package automatically modifies the default estimation formula to <kbd>"dependent_post ~ dependent_pre + covariate1 + treatment"</kbd> (analogously for the other specification). In this case the output then also not only returns the estimate and p value for <kbd>treatment</kbd> but further returns the coefficients and p values for all additional control variables. 
+</p>
+<p>The package supports full inheritance for optional arguments of the following methods: <code>cem</code> and <code>att</code> (<span class="pkg">cem</span>), <code><a href="stats.html#topic+lm">lm</a></code> (<span class="pkg">stats</span>), <code><a href="MASS.html#topic+glm.nb">glm.nb</a></code> (<span class="pkg">MASS</span>). To guarantee unique inputs for each method, options have to entered into <code>matchedwake()</code> using a prefix that consists of the method name separated by &ldquo;.&rdquo;. For example, in order for <code>cem</code> to return an exactly balanced dataset simply add <code>cem.k2k = TRUE</code> as optional argument.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of class <code>matchedwake</code>, which is a list of objects with the following slots:
+</p>
+<table>
+<tr><td><code>estimates</code></td>
+<td>
+
+<p><code>data.frame</code> with estimates and p values for all spatial and temporal windows considered. For <kbd>estimation = "lm"</kbd> it also returns a pseudo <code class="reqn">R^2</code> value. If additional control dimensions were included in the estimation, it further returns the corresponding coefficients and p values.
+</p>
+</td></tr>
+<tr><td><code>matching</code></td>
+<td>
+
+<p><code>data.frame</code> with detailed matching statistics for all spatial and temporal windows considered. Returns the number of control and treatment episodes, L1 metric, percent common support. All values are given both pre and post matching.
+</p>
+</td></tr>
+<tr><td><code>SUTVA</code></td>
+<td>
+
+<p><code>data.frame</code> with detailed statistics on the degree of overlaps of the spatiotemporal cylinders. Returns the fraction of cases in which two or more treatment (or control) episodes overlap (&ldquo;SO&rdquo;: same overlap) and the fraction of overlapping treatment and control episodes (&ldquo;MO&rdquo;: mixed overlap). All values are given pre and post matching and for the full time window.
+</p>
+</td></tr>
+<tr><td><code>wakes</code></td>
+<td>
+
+<p><code>data.frame</code> providing the information for the spatiotemporal cylinders (or <code>wakes</code>) for all spatial and temporal windows considered. Returns the <code>eventID</code> (i.e. the index of the event in the time-ordered dataset), <code>treatment</code> (1: treatment episode, 0: control episode), counts of <code>dependent</code> events, overlaps (&ldquo;SO&rdquo; and &ldquo;MO&rdquo;) pre and post intervention, and the matching variables.
+</p>
+</td></tr>
+<tr><td><code>parameters</code></td>
+<td>
+
+<p><code>list</code> of all arguments passed to the method.
+</p>
+</td></tr>
+<tr><td><code>call</code></td>
+<td>
+
+<p>the call.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Schutte and Karsten Donnay.
+</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+mwa-package">mwa-package</a></code>, <code><a href="#topic+slidingWake">slidingWake</a></code>, <code><a href="#topic+slideWakeMatch">slideWakeMatch</a></code>, <code><a href="#topic+print.matchedwake">print.matchedwake</a></code>, <code><a href="#topic+summary.matchedwake">summary.matchedwake</a></code>, <code><a href="#topic+plot.matchedwake">plot.matchedwake</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Loading sample data
+data(mwa_data)
+
+# Specify required parameters:
+# - 2 to 10 days in steps of 2
+t_window &lt;- c(2,10,2)
+# - 2 to 10 kilometers in steps of 2
+spat_window &lt;- c(2,10,2)
+# - column and entries that indicate treatment events 
+treatment &lt;- c("type","treatment")
+# - column and entries that indicate control events 
+control  &lt;- c("type","control")
+# - column and entries that indicate dependent events 
+dependent &lt;- c("type","dependent")
+# - columns to match on
+matchColumns &lt;- c("match1","match2")
+
+# Specify optional parameters:
+# - use weighted regression (default estimation method is "lm")
+weighted &lt;- TRUE
+# - temporal units
+t_unit &lt;- "days" 
+# - match on counts of previous treatment and control events
+TCM &lt;- TRUE
+
+
+# Execute method:
+results &lt;- matchedwake(mwa_data, t_window, spat_window, treatment, control, dependent,
+                       matchColumns, weighted = weighted, t_unit = t_unit, TCM = TCM)
+
+# Plot results:
+plot(results)
+
+# Return detailed summary of results:
+summary(results, detailed = TRUE)
+
+
+</code></pre>
+
+<hr>
+<h2 id='mwa_data'>Data to Illustrate the Functionality of mwa</h2><span id='topic+mwa_data'></span>
+
+<h3>Description</h3>
+
+<p>This artificial data set illustrates how <span class="pkg">mwa</span> can be used to identify causal effects. Treatment, control, and dependent events are referenced in time and space. Increased levels of dependent events following treatments can be visually and numerically analyzed using the package.  
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(mwa_data)</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A <code>data.frame</code> containing observations.</p>
+
+
+<h3>Source</h3>
+
+<p>Monte Carlo Simulations. See supplementary information of Schutte and Donnay (2014).</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+<hr>
+<h2 id='mwa-package'>
+Matched Wake Analysis (mwa): Analyzing causal relationships in spatiotemporal event data	
+</h2><span id='topic+mwa-package'></span>
+
+<h3>Description</h3>
+
+<p>The package is designed to analyze causal relationships in spatially and temporally referenced data. Specific types of events might affect subsequent levels of other events. To estimate the corresponding effect, treatment, control, and dependent events are selected from the empirical sample. Treatment effects are established through automated matching and a diff-in-diffs regression design. The analysis is repeated for various spatial and temporal offsets from the treatment events.     
+</p>
+
+
+<h3>Details</h3>
+
+<p>The full functionality of <span class="pkg">mwa</span> is given through <code><a href="#topic+matchedwake">matchedwake</a></code>, which relies on a small set of auxiliary methods. Note that <code>print()</code>, <code>summary()</code> and <code>plot()</code> commands are overloaded to return outputs specific to class <code>matchedwake</code>. For performance reasons, the iterative counting is done in Java using the <span class="pkg">rJava</span> interface.
+</p>
+<p><b>IMPORTANT</b>: The size of the Java heap space has to be set before <b>first</b> calling the package via <code>library(mwa)</code> since JVM size cannot change once it has been initialized. This also implies that R has to be restarted if another library was already using a JVM in order for the heap space option to have any effect. To set the heap space to 1 GB, for example, use <code>options(java.parameters = "-Xmx1g")</code> (512 MB is the default size).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Schutte and Karsten Donnay
+</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+matchedwake">matchedwake</a></code>, <code><a href="#topic+slidingWake">slidingWake</a></code>, <code><a href="#topic+slideWakeMatch">slideWakeMatch</a></code>, <code><a href="#topic+print.matchedwake">print.matchedwake</a></code>, <code><a href="#topic+summary.matchedwake">summary.matchedwake</a></code>, <code><a href="#topic+plot.matchedwake">plot.matchedwake</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Loading sample data
+data(mwa_data)
+
+# Specify required parameters:
+# - 2 to 10 days in steps of 2
+t_window &lt;- c(2,10,2)
+# - 2 to 10 kilometers in steps of 2
+spat_window &lt;- c(2,10,2)
+# - column and entries that indicate treatment events 
+treatment &lt;- c("type","treatment")
+# - column and entries that indicate control events 
+control  &lt;- c("type","control")
+# - column and entries that indicate dependent events 
+dependent &lt;- c("type","dependent")
+# - columns to match on
+matchColumns &lt;- c("match1","match2")
+
+# Specify optional parameters:
+# - use weighted regression (default estimation method is "lm")
+weighted &lt;- TRUE
+# - temporal units
+t_unit &lt;- "days" 
+# - match on counts of previous treatment and control events
+TCM &lt;- TRUE
+
+
+# Execute method:
+results &lt;- matchedwake(mwa_data, t_window, spat_window, treatment, control, dependent,
+                       matchColumns, weighted = weighted, t_unit = t_unit, TCM = TCM)
+
+# Plot results:
+plot(results)
+
+# Return detailed summary of results:
+summary(results, detailed = TRUE)
+
+
+</code></pre>
+
+<hr>
+<h2 id='plot.matchedwake'>
+Plot Function for Objects of Class <code>matchedwake</code>
+</h2><span id='topic+plot.matchedwake'></span>
+
+<h3>Description</h3>
+
+<p>Overloads the default <code>plot()</code> for objects of class <code>matchedwake</code>. Returns a contour plot: The lighter the color the larger the estimated treatment effect. The corresponding standard errors are indicated by shading out some of the estimates: No shading corresponds to <code class="reqn">p&lt;alpha1</code> for the treatment effect in the diff-in-diffs analysis. Dotted lines indicate p-values between <code>alpha1</code> and <code>alpha2</code> and full lines indicate <code class="reqn">p&gt;alpha2</code>. The cells indicating effect size and significance level are arranged in a table where each field corresponds to one specific combination of spatial and temporal sizes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'matchedwake'
+plot(x, zlim = NA, plotNAs = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot.matchedwake_+3A_x">x</code></td>
+<td>
+
+<p>object of class <code><a href="#topic+matchedwake">matchedwake</a></code>.
+</p>
+</td></tr>
+<tr><td><code id="plot.matchedwake_+3A_zlim">zlim</code></td>
+<td>
+
+<p>Manually sets the range of the color map of the contour plot, required format is c(MINIMUM,MAXIMUM). <code>Default = NA</code>, i.e. the range is automatically set from the MINIMUM and MAXIMUM values of the estimates.
+</p>
+</td></tr>
+<tr><td><code id="plot.matchedwake_+3A_plotnas">plotNAs</code></td>
+<td>
+
+<p>Boolean indicating whether or not to visualize NA estimates as &ldquo;no effect&rdquo; (i.e. 0). <code>Default = TRUE</code>.
+</p>
+</td></tr>
+<tr><td><code id="plot.matchedwake_+3A_...">...</code></td>
+<td>
+
+<p>further arguments passed to or from other methods.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Schutte and Karsten Donnay.
+</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+matchedwake">matchedwake</a></code>
+</p>
+
+<hr>
+<h2 id='print.matchedwake'>
+Print Function for Objects of Class <code>matchedwake</code>
+</h2><span id='topic+print.matchedwake'></span>
+
+<h3>Description</h3>
+
+<p>Overloads the default <code>print()</code> for objects of class <code>matchedwake</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'matchedwake'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="print.matchedwake_+3A_x">x</code></td>
+<td>
+
+<p>object of class <code><a href="#topic+matchedwake">matchedwake</a></code>.
+</p>
+</td></tr>
+<tr><td><code id="print.matchedwake_+3A_...">...</code></td>
+<td>
+
+<p>further arguments passed to or from other methods.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns a <code>data.frame</code> with all significant results (significance level is <kbd>alpha1</kbd> as retrieved from <code>x$parameters</code>).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Schutte and Karsten Donnay.
+</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+matchedwake">matchedwake</a></code>
+</p>
+
+<hr>
+<h2 id='slideWakeMatch'>
+Auxiliary Function to Match Data and Estimate Treatment Effects
+</h2><span id='topic+slideWakeMatch'></span>
+
+<h3>Description</h3>
+
+<p>Method takes the output of <code><a href="#topic+slidingWake">slidingWake</a></code>, matches observations using <code>cem</code> and estimates treatment effects using linear models (<code><a href="stats.html#topic+lm">lm</a></code> or <code>att</code>) or a count dependent variable model (<code><a href="MASS.html#topic+glm.nb">glm.nb</a></code>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>slideWakeMatch(wakes, alpha1, matchColumns, estimation, formula, weighted,
+               estimationControls, TCM, match.default, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="slideWakeMatch_+3A_wakes">wakes</code></td>
+<td>
+
+<p><code>data.frame</code>. See &ldquo;wakes&rdquo; in the description of <code><a href="#topic+matchedwake">matchedwake</a></code> for details.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_alpha1">alpha1</code></td>
+<td>
+
+<p>significance level used for the analysis and plots. Default = <code>0.05</code>.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_matchcolumns">matchColumns</code></td>
+<td>
+
+<p>vector of Strings indicating the columns to match on.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_estimation">estimation</code></td>
+<td>
+
+<p>String specifying method used for estimation.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_formula">formula</code></td>
+<td>
+
+<p>String specifying the model used for estimation.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_weighted">weighted</code></td>
+<td>
+
+<p>Boolean specifying whether regression is weighted.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_estimationcontrols">estimationControls</code></td>
+<td>
+
+<p>vector of Strings indicating additional control dimensions to be included in the estimation.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_tcm">TCM</code></td>
+<td>
+
+<p>Boolean to select whether the method should match on counts of previous treatment and control instances.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_match.default">match.default</code></td>
+<td>
+
+<p>Boolean to select whether observations are matched using <code>cem</code>.
+</p>
+</td></tr>
+<tr><td><code id="slideWakeMatch_+3A_...">...</code></td>
+<td>
+
+<p>optional parameters that can be passed to the methods used for matching and estimation.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>See the description of <code><a href="#topic+matchedwake">matchedwake</a></code> for details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a <code>list</code> with the following slots:
+</p>
+<table>
+<tr><td><code>estimates</code></td>
+<td>
+
+<p><code>data.frame</code> with estimates and p values for all spatial and temporal windows considered.
+</p>
+</td></tr>
+<tr><td><code>matching</code></td>
+<td>
+
+<p><code>data.frame</code> with detailed matching statistics for all spatial and temporal windows considered.
+</p>
+</td></tr>
+<tr><td><code>SUTVA</code></td>
+<td>
+
+<p><code>data.frame</code> with detailed statistics on the degree of overlaps of the spatiotemporal cylinders.
+</p>
+</td></tr>
+<tr><td><code>wakes</code></td>
+<td>
+
+<p><code>data.frame</code>.
+</p>
+</td></tr>
+</table>
+<p>See the description of <code><a href="#topic+matchedwake">matchedwake</a></code> for details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Schutte and Karsten Donnay.
+</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+matchedwake">matchedwake</a></code>, <code><a href="#topic+slidingWake">slidingWake</a></code>
+</p>
+
+<hr>
+<h2 id='slidingWake'>
+Auxiliary Function to Iterate Through Sliding Spatiotemporal Windows
+</h2><span id='topic+slidingWake'></span>
+
+<h3>Description</h3>
+
+<p>Method iterates through all spatial and temporal window sizes specified and counts dependent events with a given spatial window and for a given temporal window (symmetrically in forward and backward direction in time). For performance reasons, the iterative counting is done in Java using the <span class="pkg">rJava</span> interface.
+</p>
+<p><b>IMPORTANT</b>: The size of the Java heap space has to be set before <b>first</b> calling the package via <code>library(mwa)</code> since JVM size cannot change once it has been initialized. This also implies that R has to be restarted if another library was already using a JVM in order for the heap space option to have any effect. To set the heap space to 1 GB, for example, use <code>options(java.parameters = "-Xmx1g")</code> (512 MB is the default size).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>slidingWake(data, t_unit, t_window, spat_window, treatment, control,
+            dependent, matchColumns, estimationControls)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="slidingWake_+3A_data">data</code></td>
+<td>
+
+<p><code>data.frame</code> containing the observations.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_t_unit">t_unit</code></td>
+<td>
+
+<p>String specifying the temporal units to be used.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_t_window">t_window</code></td>
+<td>
+
+<p>specification of temporal windows in <code>t_units</code>.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_spat_window">spat_window</code></td>
+<td>
+
+<p>specification of spatial windows in kilometers.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_treatment">treatment</code></td>
+<td>
+
+<p>vector of Strings identifying which type of events serve as treatments.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_control">control</code></td>
+<td>
+
+<p>vector of Strings identifying which type of events serve as controls.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_dependent">dependent</code></td>
+<td>
+
+<p>vector of Strings identifying which type of events are affected by treatment.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_matchcolumns">matchColumns</code></td>
+<td>
+
+<p>vector of Strings indicating the columns to match on.
+</p>
+</td></tr>
+<tr><td><code id="slidingWake_+3A_estimationcontrols">estimationControls</code></td>
+<td>
+
+<p>vector of Strings indicating additional control dimensions to be included in the estimation.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>See the description of <code><a href="#topic+matchedwake">matchedwake</a></code> for details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns a <code>data.frame</code>. See &ldquo;wakes&rdquo; in the description of <code><a href="#topic+matchedwake">matchedwake</a></code> for details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Schutte and Karsten Donnay.
+</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+matchedwake">matchedwake</a></code>, <code><a href="#topic+slideWakeMatch">slideWakeMatch</a></code>
+</p>
+
+<hr>
+<h2 id='summary.matchedwake'>
+Summary Function for Objects of Class <code>matchedwake</code>
+</h2><span id='topic+summary.matchedwake'></span>
+
+<h3>Description</h3>
+
+<p>Overloads the default <code>summary()</code> for objects of class <code>matchedwake</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'matchedwake'
+summary(object, detailed = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summary.matchedwake_+3A_object">object</code></td>
+<td>
+
+<p>object of class <code><a href="#topic+matchedwake">matchedwake</a></code>.
+</p>
+</td></tr>
+<tr><td><code id="summary.matchedwake_+3A_detailed">detailed</code></td>
+<td>
+
+<p>Boolean indicating whether or not a detailed summary should be returned. <code>Default = TRUE</code>.
+</p>
+</td></tr>
+<tr><td><code id="summary.matchedwake_+3A_...">...</code></td>
+<td>
+
+<p>further arguments passed to or from other methods.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns a <code>data.frame</code> with an overview of all significant results (significance level is <kbd>alpha1</kbd> as retrieved from <code>x$parameters</code>). If <code>detailed = TRUE</code> this overview includes a number of matching statistics and statistics on overlaps of the spatiotemporal cylinders. If additional control dimensions were included in the estimation, it also provides an overview of the corresponding coefficients and p values for all significant results.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sebastian Schutte and Karsten Donnay.
+</p>
+
+
+<h3>References</h3>
+
+<p>Schutte, S., Donnay, K. (2014). &ldquo;Matched wake analysis: Finding causal relationships in spatiotemporal event data.&rdquo; <em>Political Geography</em> 41:1-10.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+matchedwake">matchedwake</a></code>
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

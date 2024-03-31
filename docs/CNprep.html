@@ -1,0 +1,994 @@
+<!DOCTYPE html><html><head><title>Help for package CNprep</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {CNprep}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#annotexample'>
+<p>Annotation table for ROMA CGH platform and human genome version 17.</p></a></li>
+<li><a href='#applyCNPmask'>
+<p>Apply a mask to a table of copy number events.</p></a></li>
+<li><a href='#cnpexample'>
+<p>Example of a boundary positions table.</p></a></li>
+<li><a href='#CNpreprocessing'>
+<p>Pre-process DNA copy number (CN) data for detection of CN events.</p></a></li>
+<li><a href='#makeCNPmask'>
+<p>Given a set of copy-number events, create a DNA copy-number mask</p></a></li>
+<li><a href='#normsegs'>
+<p>A reference set of segments</p></a></li>
+<li><a href='#ratexample'>
+<p>Example of copy number log ratio data</p></a></li>
+<li><a href='#segexample'>
+<p>Example of a segmented copy number table.</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Pre-Process DNA Copy Number (CN) Data for Detection of CN Events</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>2.2</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2022-05-23</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Alex Krasnitz, Guoli Sun</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Guoli Sun &lt;guolisun87@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>DNA copy number data evaluation using both their initial form 
+    (copy number as a noisy function of genomic position) and their 
+    approximation by a piecewise-constant function (segmentation), 
+    for the purpose of identifying genomic regions where the copy number 
+    differs from the norm.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 2.10), parallel, mclust, rlecuyer, stats</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2022-05-24 03:10:02 UTC</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2022-05-23 23:58:37 UTC; Astrid</td>
+</tr>
+</table>
+<hr>
+<h2 id='annotexample'>
+Annotation table for ROMA CGH platform and human genome version 17.
+</h2><span id='topic+annotexample'></span>
+
+<h3>Description</h3>
+
+<p>Whole genome annotation table using Representational Oligonucleotide Microarray
+Analysis (ROMA) CGH platform, human genome version 17.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(annotexample)</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 83055 observations on the following 3 variables.
+</p>
+
+<dl>
+<dt><code>PROBEID</code></dt><dd><p>a character vector</p>
+</dd>
+<dt><code>CHROM</code></dt><dd><p>a numeric vector</p>
+</dd>
+<dt><code>CHROM.POS</code></dt><dd><p>a numeric vector</p>
+</dd>
+</dl>
+
+
+
+<h3>Details</h3>
+
+<p>The values in the chromosome column are all integer, with 23 corresponding to X,
+24 to Y and 25 to a set of non-human test probes.
+</p>
+
+
+<h3>Source</h3>
+
+<p>GEO accession GPL9775, http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GPL9775
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(annotexample)
+</code></pre>
+
+<hr>
+<h2 id='applyCNPmask'>
+Apply a mask to a table of copy number events.
+</h2><span id='topic+applyCNPmask'></span>
+
+<h3>Description</h3>
+
+<p>A mask is applied to amplified or deleted segments as tabulated in 
+<code>segtable</code>. A decision whether to mask a segment is taken based on what 
+portion of the segment is covered by the mask. A position is chosen at random 
+within a segment to be masked, the flanking segments are extended to that 
+position and the segment to be masked is indicated as such in the value 
+returned.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>applyCNPmask(segtable,chrom,startPos,endPos,startProbe,endProbe,
+	eventIndex,masktable,maskchrom,maskstart,maskend,maskindex,mincover=1,
+	indexvals=c(-1,1))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="applyCNPmask_+3A_segtable">segtable</code></td>
+<td>
+
+<p>A matrix or a data frame with columns named or enumerated by the values of 
+<code>chrom, startPos, endPos, startProbe, endProbe, eventIndex</code>. 
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_chrom">chrom</code></td>
+<td>
+
+<p>A character string specifying the name for the column in <code>segtable</code>
+tabulating the (integer) chromosome number for each segment.
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_startpos">startPos</code>, <code id="applyCNPmask_+3A_endpos">endPos</code></td>
+<td>
+
+<p>Character strings or integers specifying the names or numbers of columns in 
+<code>segtable</code> that tabulate the (integer) genomic start and end coordinates 
+of each segment.
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_startprobe">startProbe</code>, <code id="applyCNPmask_+3A_endprobe">endProbe</code></td>
+<td>
+
+<p>Character strings specifying the names of columns in <code>segtable</code> that
+tabulate the (integer) start and end postions of each segment in internal
+units such as probe numbers for data of CGH microarray origin.
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_eventindex">eventIndex</code></td>
+<td>
+
+<p>A character string giving the name of a column in <code>segtable</code> where copy number variation status of the segments is tabulated. 
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_masktable">masktable</code></td>
+<td>
+
+<p>A matrix or a data frame with columns named or enumerated as given by
+<code>maskchrom, maskstart, maskend, maskindex</code> and with rows corresponding to
+genomic intervals that comprise the mask.
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_maskchrom">maskchrom</code>, <code id="applyCNPmask_+3A_maskstart">maskstart</code>, <code id="applyCNPmask_+3A_maskend">maskend</code></td>
+<td>
+
+<p>Character strings or integers specifying the names or numbers of columns 
+in <code>masktable</code> that tabulate the chromosome number and (integer) genomic 
+start and end coordinates of the intervals comprising the mask. 
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_maskindex">maskindex</code></td>
+<td>
+
+<p>A numeric vector corresponding to <code>eventIndex</code>,specifying copy number 
+events status for measuring units.
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_mincover">mincover</code></td>
+<td>
+
+<p>A numeric value specifying the minimal portion of the segment that must be 
+covered by the mask in order to trigger masking.
+</p>
+</td></tr>
+<tr><td><code id="applyCNPmask_+3A_indexvals">indexvals</code></td>
+<td>
+
+<p>A numeric vector of length 2 specifying the two values in <code>maskindex</code> to 
+be matched with values in <code>eventIndex</code> to determine the events that are to 
+be masked.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Masking is performed separately for each value in <code>indexvals</code>. Segments 
+(rows of <code>segtable</code>) with that value of <code>eventIndex</code> are examined
+for coverage by mask intervals with that value of <code>maskindex</code> in 
+<code>masktable</code>. If the coverage is at least <code>mincover</code>, the segment is
+slated for masking, while its flanking segments are extended to a random 
+point within the segment being masked.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A matrix with same number of observations/rows as <code>segtable</code> and with 
+following three columns:
+
+
+</p>
+<table>
+<tr><td><code>startProbe</code>, <code>endProbe</code></td>
+<td>
+
+<p>An integer vector for the start and end positions of the segments after masking.
+</p>
+</td></tr>
+<tr><td><code>toremove</code></td>
+<td>
+
+<p>An integer vector whose values are 1 if the segment is masked and 0 otherwise.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Alex Krasnitz
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+data(segexample)
+data(ratexample)
+data(normsegs)
+data(cnpexample)
+segtable&lt;-CNpreprocessing(segall=segexample[segexample[,"ID"]=="WZ1",],
+ratall=ratexample,"ID","start","end",chromcol="chrom",bpstartcol="chrom.pos.start",
+bpendcol="chrom.pos.end",blsize=50,minjoin=0.25,cweight=0.4,bstimes=50,
+chromrange=1:22,distrib="Rparallel",njobs=2,modelNames="E",normalength=normsegs[,1],
+normalmedian=normsegs[,2])
+#form a eventIndex vector
+eventIndex&lt;-rep(0,nrow(segtable))
+eventIndex[segtable[,"marginalprob"]&lt;1e-4&amp;segtable[,"negtail"]&gt;
+0.999&amp;segtable[,"mediandev"]&lt;0] &lt;- -1
+eventIndex[segtable[,"marginalprob"]&lt;1e-4&amp;segtable[,"negtail"]&gt;
+0.999&amp;segtable[,"mediandev"]&gt;0] &lt;- 1
+segtable&lt;-cbind(segtable,eventIndex)
+#form a cnpindex vector
+namps17&lt;-cnpexample[cnpexample[,"copy.num"]=="amp",]
+aCNPmask&lt;-makeCNPmask(imat=namps17,chromcol=2,startcol=3,endcol=4,
+nprof=1203,uthresh=0.02,dthresh=0.008)
+ndels17&lt;-cnpexample[cnpexample[,"copy.num"]=="del",]
+dCNPmask&lt;-makeCNPmask(imat=ndels17,chromcol=2,startcol=3,endcol=4,
+nprof=1203,uthresh=0.02,dthresh=0.008)
+cnptable&lt;-rbind(cbind(aCNPmask,cnpindex=1),cbind(dCNPmask,cnpindex=-1))
+#run the CNP test
+myCNPtable&lt;-applyCNPmask(segtable,"chrom",startPos="chrom.pos.start",
+endPos="chrom.pos.end","start","end","eventIndex",masktable=cnptable,"chrom",
+maskstart="start",maskend="end",maskindex="cnpindex",mincover=0.005,indexvals=c(-1,1))
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='cnpexample'>
+Example of a boundary positions table.
+</h2><span id='topic+cnpexample'></span>
+
+<h3>Description</h3>
+
+<p>A table of genomic positions for DNA copy-number changing events, collected 
+from genomes of 1203 individuals 
+using Representational Oligonucleotide Microarray Analysis (ROMA) 
+platform.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(cnpexample)</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 19188 rows and 4 columns.
+</p>
+
+<dl>
+<dt><code>copy.num</code></dt><dd><p>a character vector indicating whether an event is
+a gain (&quot;amp&quot;) or a loss (&quot;del&quot;). </p>
+</dd>
+<dt><code>chrom</code></dt><dd><p>a numeric vector indicating which chromosome the 
+event is in.</p>
+</dd>
+<dt><code>chrom.start</code></dt><dd><p>a numeric vector of event start positions.</p>
+</dd>
+<dt><code>chrom.end</code></dt><dd><p>a numeric vector of event start positions.</p>
+</dd>
+</dl>
+
+
+
+<h3>Source</h3>
+
+<p>Strong association of de novo copy number mutations with autism.
+Sebat J, Lakshmi B, Malhotra D, Troge J, Lese-Martin C, Walsh T, Yamrom B, 
+Yoon S, Krasnitz A, Kendall J, Leotta A, Pai D, Zhang R, Lee YH, Hicks J, 
+Spence SJ, Lee AT, Puura K, Lehtimaki T, Ledbetter D, Gregersen PK, Bregman J, 
+Sutcliffe JS, Jobanputra V, Chung W, Warburton D, King MC, Skuse D, 
+Geschwind DH, Gilliam TC, Ye K, Wigler M.
+Science. 2007 Apr 20;316(5823):445-9.
+
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(cnpexample)
+</code></pre>
+
+<hr>
+<h2 id='CNpreprocessing'>
+Pre-process DNA copy number (CN) data for detection of CN events.
+</h2><span id='topic+CNpreprocessing'></span>
+
+<h3>Description</h3>
+
+<p>Description: The package evaluates DNA copy number data, using both their 
+intitial form (copy number as a noisy function of genomic position) and their
+approximation by a piecewise-constant function (segmentation), for the purpose
+of identifying genomic regions where the copy number differs from the norm.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>CNpreprocessing(segall, ratall = NULL, idcol = NULL, startcol = NULL, 
+endcol = NULL, medcol = NULL, madcol = NULL, errorcol = NULL, 
+chromcol = NULL, bpstartcol = NULL, bpendcol = NULL, annot = NULL, 
+annotstartcol = NULL, annotendcol = NULL, annotchromcol = NULL, 
+useend = F, blsize = NULL, minjoin = NULL, ntrial = 10, bestbic = -1e+07, 
+modelNames = "E", cweight = NULL, bstimes = NULL, chromrange = NULL, 
+myseed = 123, distrib = c("vanilla", "Rparallel"), njobs = 1, 
+normalength = NULL, normalmedian = NULL, normalmad = NULL, 
+normalerror = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="CNpreprocessing_+3A_segall">segall</code></td>
+<td>
+
+<p>A matrix or a data frame for segmented copy number profiles. It may have a 
+character column, with a name specified by <code>idcol</code>, and/or numeric 
+columns with names specified by <code>startcol, endcol, medcol, madcol,errorcol</code>  
+<code>,chromcol, bpstartcol, bpendcol</code>. Each row of <code>segall</code> 
+corresponds to a segment belonging to one of the profiles to be pre-processed.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_ratall">ratall</code></td>
+<td>
+
+<p>A matrix whose rows correspond to genomic positions and columns to copy number
+profiles. Its matrix elements are functions of copy number, most often
+log ratios of copy number to the expected standard value, such as 2 in diploid 
+genomes.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_idcol">idcol</code></td>
+<td>
+
+<p>A character string specifying the name for the column in <code>segall</code> 
+tabulating the profile IDs.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_startcol">startcol</code>, <code id="CNpreprocessing_+3A_endcol">endcol</code></td>
+<td>
+
+<p>Character strings specifying the names of columns in <code>segall</code> that 
+tabulate the (integer) start and end postions of each segment in internal 
+units such as probe numbers for data of CGH microarray origin.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_medcol">medcol</code>, <code id="CNpreprocessing_+3A_madcol">madcol</code>, <code id="CNpreprocessing_+3A_errorcol">errorcol</code></td>
+<td>
+
+<p>Character strings specifying the names of columns in <code>segall</code> that,
+for the function of copy number used in the study (typically log ratios),
+tabulate the (numeric) values for the function (<code>medcol</code>), a measure
+of its spread (<code>madcol</code>) and its error (<code>errorcol</code>) for the segment.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_chromcol">chromcol</code></td>
+<td>
+
+<p>A character string specifying the name for the column in <code>segall</code> 
+tabulating the (integer) chromosome number for each segment.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_bpstartcol">bpstartcol</code>, <code id="CNpreprocessing_+3A_bpendcol">bpendcol</code></td>
+<td>
+
+<p>Character strings specifying the names of columns in <code>segall</code> that 
+tabulate the (integer) genomic start and end coordinates of each segment.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_annot">annot</code></td>
+<td>
+
+<p>A matrix or a data frame that contains the annotation for the copy number 
+measurement platform in the study. It is generally expected to contain columns
+with names specified by <code>annotstartcol, annotendcol, annotchromcol</code>.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_annotstartcol">annotstartcol</code>, <code id="CNpreprocessing_+3A_annotendcol">annotendcol</code>, <code id="CNpreprocessing_+3A_annotchromcol">annotchromcol</code></td>
+<td>
+
+<p>Character strings specifying the names of columns in <code>annot</code> that 
+tabulate the (integer) genomic start and end coordinates and the chromosome
+number for each copy number measuring unit, such as a probe in case of CGH
+microarrays.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_useend">useend</code></td>
+<td>
+
+<p>A single logical value specifying whether the segment end positions as given by
+the <code>bpendcol</code> of <code>segall</code> are to be looked up in the 
+<code>annotendcol</code> column of <code>annot</code> (if <code>useend=TRUE</code>) or in the
+<code>annotstartcol</code> column (default).
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_blsize">blsize</code></td>
+<td>
+
+<p>A single integer specifying the bootstrap sampling rate of segment medians to 
+generate input for model-based clustering. The number of times a segment is 
+sampled is then given by the (integer) division of the segment length in 
+internal units by <code>blsize</code>.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_minjoin">minjoin</code></td>
+<td>
+
+<p>A single numeric value between 0 and 1 specifying the degree of overlap above 
+which two clusters will be joined into one. 
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_ntrial">ntrial</code></td>
+<td>
+
+<p>A single integer specifying the number of times a model-based clustering is
+attempted for each profile in order to achieve the highest Bayesian information
+criterion (BIC).
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_bestbic">bestbic</code></td>
+<td>
+
+<p>A single numeric value for initalizing BIC maximization. A large negative value
+is recommended. The default is <code>-1e7</code>.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_modelnames">modelNames</code></td>
+<td>
+
+<p>A vector of character strings specifying the names of models to be used in
+model-based clustering (see package <code>mclust</code> for further details). The
+default is <code>"E"</code>.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_cweight">cweight</code></td>
+<td>
+
+<p>A single numeric value between 0 and 1 specifying the minimal share of the 
+central cluster in each profile.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_bstimes">bstimes</code></td>
+<td>
+
+<p>A single integer value specifying the number of time the median of each segment
+is sampled in order to predict the cluster assignment for the segment.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_chromrange">chromrange</code></td>
+<td>
+
+<p>A numeric vector enumerating chromosomes from which segments are to be used for
+initial model-based clustering.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_myseed">myseed</code></td>
+<td>
+
+<p>A single integer value to seed the random number generator.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_distrib">distrib</code></td>
+<td>
+
+<p>One of <code>"vanilla", "Rparallel"</code> to specify the distributed
+computing option for the cluster assignment step. For <code>"vanilla"</code> (default)
+no distributed computing is performed. For <code>"Rparallel"</code> the 
+<code>parallel</code> package of <code>R</code> core is used for multi-core processing.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_njobs">njobs</code></td>
+<td>
+
+<p>A single integer specifying the number of worker jobs to create in case of 
+distributed computation.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_normalength">normalength</code></td>
+<td>
+
+<p>An integer vector specifying the genomic lengths of segments in the normal 
+reference data.
+</p>
+</td></tr>
+<tr><td><code id="CNpreprocessing_+3A_normalmedian">normalmedian</code>, <code id="CNpreprocessing_+3A_normalmad">normalmad</code>, <code id="CNpreprocessing_+3A_normalerror">normalerror</code></td>
+<td>
+
+<p>Numeric vectors, of the same length as <code>normalength</code>, specifying the 
+segment values, value spreads and errors of the normal reference segments.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Depending on the availability of input, the function will perform the following
+operations for each copy number profile.
+</p>
+<p>If raw data are available in addition to segment start and end positions,
+median and MAD of each segment will be computed. For each profile, bootstrap 
+sampling of the segment median values will be performed, and the sample will be
+used to estimate the error in the median for each segment. Model-dependent
+clustering (fitting to a gaussian mixture) of the sample will be performed. 
+The central cluster (the one nearest the expected unaltered value) will be 
+identified and, if necessary, merged with adjacent clusters in order to
+comprise the minimal required fraction of the data. Deviation of each segment
+from the center, its probabilty to belong to the central cluster and its 
+marginal probability in the central cluster will be computed.
+</p>
+<p>If segment medians or median deviations are available or have been computed, 
+and, in addition, genomic lengths and average values are given for a 
+collection of segments with unaltered copy number, additional estimates will be
+performed. If median values are available for the unaltered segments, the
+marginal probability of the observed median or median deviation in the unaltered
+set will be computed for each segment. Likewise, marginal probabilities for
+median/MAD and/or median/error will be computed if these statistics are 
+available. 
+</p>
+
+
+<h3>Value</h3>
+
+<p>The input <code>segall</code> data frame to which some or all of the following columns
+may be bound, depending on the availability of input:
+
+
+</p>
+<table>
+<tr><td><code>segmedian</code></td>
+<td>
+<p>Median function of copy number</p>
+</td></tr>
+<tr><td><code>segmad</code></td>
+<td>
+<p>MAD for the function of copy number</p>
+</td></tr>
+<tr><td><code>mediandev</code></td>
+<td>
+<p>median function of copy number relative to its central value</p>
+</td></tr>
+<tr><td><code>segerr</code></td>
+<td>
+<p>error estimate for the function of copy number</p>
+</td></tr>
+<tr><td><code>segz</code></td>
+<td>
+<p>the probability that the segment is in the central cluster</p>
+</td></tr>
+<tr><td><code>marginalprob</code></td>
+<td>
+<p>marginal probability for the segment in the central cluster</p>
+</td></tr>
+<tr><td><code>negtail</code></td>
+<td>
+<p>the probability of finding the deviation as observed or larger 
+in a collection of central segments</p>
+</td></tr>
+<tr><td><code>negtailnormad</code></td>
+<td>
+<p>the probability of finding the deviation/MAD as observed 
+or larger in a collection of central segments</p>
+</td></tr>
+<tr><td><code>negtailnormerror</code></td>
+<td>
+<p>the probability of finding the deviation/error as 
+observed or larger in a collection of central segments</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Alex Krasnitz
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(segexample)
+data(ratexample)
+data(normsegs)
+#small toy example
+segtable&lt;-CNpreprocessing(segall=segexample[segexample[,"ID"]=="WZ1",],
+ratall=ratexample,"ID","start","end",chromcol="chrom",bpstartcol="chrom.pos.start",
+bpendcol="chrom.pos.end",blsize=50,minjoin=0.25,cweight=0.4,bstimes=50,
+chromrange=1:3,distrib="Rparallel",njobs=2,modelNames="E",
+normalength=normsegs[,1],normalmedian=normsegs[,2])
+## Not run: 
+#Example 1: 5 whole genome analysis, choosing the right format of arguments
+segtable&lt;-CNpreprocessing(segall=segexample,ratall=ratexample,"ID","start","end",
+chromcol="chrom",bpstartcol="chrom.pos.start",bpendcol="chrom.pos.end",blsize=50,
+minjoin=0.25,cweight=0.4,bstimes=50,chromrange=1:22,distrib="Rparallel",njobs=40,
+modelNames="E",normalength=normsegs[,1],normalmedian=normsegs[,2])
+#Example 2: how to use annotexample, when segment table does not have columns of 
+#integer postions in terms of  measuring units(probes), such as "mysegs" below
+mysegs&lt;-segexample[,c(1,5:12)]
+data(annotexample)
+segtable&lt;-CNpreprocessing(segall=mysegs,ratall=ratexample,"ID",chromcol="chrom",
+bpstartcol="chrom.pos.start",bpendcol="chrom.pos.end",annot=annotexample,
+annotstartcol="CHROM.POS",annotendcol="CHROM.POS",annotchromcol="CHROM",
+blsize=50,minjoin=0.25,cweight=0.4,bstimes=50,chromrange=1:22,distrib="Rparallel",
+njobs=40,modelNames="E",normalength=normsegs[,1],normalmedian=normsegs[,2])
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='makeCNPmask'>
+Given a set of copy-number events, create a DNA copy-number mask 
+</h2><span id='topic+makeCNPmask'></span>
+
+<h3>Description</h3>
+
+<p>The function takes as an input a set of intervals with integer-valued boundary
+positions. It then finds interval regions where the event count is above each 
+of two thresholds, upper and lower, and returns those interval regions with
+the count above the lower threshold that contain interval regions with the 
+count above the upper threshold.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>makeCNPmask(imat,chromcol=1,startcol=2,endcol=3,nprof=1,uthresh,dthresh)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="makeCNPmask_+3A_imat">imat</code></td>
+<td>
+
+<p>A matrix or a data frame tabulating the chromosome number and 
+endpoint positions of the interval events. 
+</p>
+</td></tr>
+<tr><td><code id="makeCNPmask_+3A_chromcol">chromcol</code>, <code id="makeCNPmask_+3A_startcol">startcol</code>, <code id="makeCNPmask_+3A_endcol">endcol</code></td>
+<td>
+
+<p>Character strings or integers specifying the columns of 
+<code>imat</code> containing the chromosome number and the left (right) endpoint 
+positions of the interval events.
+</p>
+</td></tr>
+<tr><td><code id="makeCNPmask_+3A_nprof">nprof</code></td>
+<td>
+
+<p>An integer specifying the number of copy number profiles from which the events
+originate.
+</p>
+</td></tr>
+<tr><td><code id="makeCNPmask_+3A_uthresh">uthresh</code>, <code id="makeCNPmask_+3A_dthresh">dthresh</code></td>
+<td>
+
+<p>Numeric, specifying the upper and lower thresholds for the event frequency or
+(if <code>nprof =1</code>) for the event count.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An integer matrix with three columns, called &quot;chrom&quot;,&quot;start&quot; and &quot;end&quot;, specifying 
+the chromosome number and boundary positions of the mask.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Alex Krasnitz, Guoli Sun
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#load a table of copy number events collected from 1203 profiles.
+data(cnpexample)
+#Create a table of gain (amplification) events only.
+amps&lt;-cnpexample[cnpexample[,"copy.num"]=="amp",]
+#Create a mask using this table.
+ampCNPmask&lt;-makeCNPmask(imat=amps,chromcol="chrom",startcol="chrom.start",
+endcol="chrom.end",nprof=1203,uthresh=0.02,dthresh=0.008)
+</code></pre>
+
+<hr>
+<h2 id='normsegs'>
+A reference set of segments
+</h2><span id='topic+normsegs'></span>
+
+<h3>Description</h3>
+
+<p>A table of segment lengths and log copy number ratios for a large set of
+human diploid genomes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(normsegs)</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data matrix with 43497 rows/segments and 2 columns/variables.
+</p>
+
+<dl>
+<dt><code>length</code></dt><dd><p>a numeric vector of segment genomic length</p>
+</dd>
+<dt><code>segmedian</code></dt><dd><p>a numeric vector of segment median computed 
+from log copy number ratio</p>
+</dd>
+</dl>
+
+
+
+<h3>Details</h3>
+
+<p>The table originates in a set of copy number profiles of over a 1000 
+individuals, obtained using  Representational Oligonucleotide Microarray 
+Analysis (ROMA) technology. To ensure ploidy of 2 segments from X and Y 
+chromosomes and segemnts shorter than 5Mb were excluded.
+</p>
+
+
+<h3>Source</h3>
+
+<p>Science. 2007 Apr 20;316(5823):445-9. Epub 2007 Mar 15.
+</p>
+<p>Strong association of de novo copy number mutations with autism.
+</p>
+<p>Sebat J, Lakshmi B, Malhotra D, Troge J, Lese-Martin C, Walsh T, Yamrom B, 
+Yoon S, Krasnitz A, Kendall J, Leotta A, Pai D, Zhang R, Lee YH, Hicks J, 
+Spence SJ, Lee AT, Puura K, Lehtimaki T, Ledbetter D, Gregersen PK, Bregman J, 
+Sutcliffe JS, Jobanputra V, Chung W, Warburton D, King MC, Skuse D, 
+Geschwind DH, Gilliam TC, Ye K, Wigler M.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(normsegs)
+</code></pre>
+
+<hr>
+<h2 id='ratexample'>
+Example of copy number log ratio data
+</h2><span id='topic+ratexample'></span>
+
+<h3>Description</h3>
+
+<p>Log ratio data for 5 breast cancer genomes, derived using Representational 
+Oligonucleotide Microarray Analysis (ROMA), an array-based hybridization 
+method that uses genomic complexity reduction based on representations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(ratexample)</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A log ratio data matrix with rows of 83055 oligonucleotide probes, and columns of 5
+breast tumors.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The values are natural log copy number ratios, consistent with data in
+<code>segexample</code> (segmented data for these tumors) and <code>normsegs</code>.
+These copy number ratios are normalized using an intensity-based lowess 
+curve fitting algorithm.
+</p>
+
+
+<h3>Source</h3>
+
+<p>Genome Res. 2006 Dec;16(12):1465-79.
+</p>
+<p>Novel patterns of genome rearrangement and their association with survival in
+breast cancer.
+</p>
+<p>Hicks J, Krasnitz A, Lakshmi B, Navin NE, Riggs M, Leibu E, Esposito D, 
+Alexander J, Troge J, Grubor V, Yoon S, Wigler M, Ye K, Borresen-Dale AL, 
+Naume B, Schlicting E, Norton L, Hagerstrom T, Skoog L, Auer G, Maner S,
+Lundin P, Zetterberg A.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(ratexample)
+#Plot the whole genome log ratio data for the first profile 
+#Note X and Y chromosomes at the far  right of the plot
+plot(ratexample[,1])
+</code></pre>
+
+<hr>
+<h2 id='segexample'>
+Example of a segmented copy number table.
+</h2><span id='topic+segexample'></span>
+
+<h3>Description</h3>
+
+<p>Segmented log ratio data for 5 breast cancer genomes, derived using Representational
+Oligonucleotide Microarray Analysis (ROMA) platform. ROMA detects genomic 
+amplifications and deletions with boundaries defined at a resolution of 50 kb.
+In this segmented table, each row represnts a segment.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(segexample)</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 479 rows/segments and 12 columns/variables.
+</p>
+
+<dl>
+<dt><code>ID</code></dt><dd><p>a character vector of profile IDs</p>
+</dd>
+<dt><code>start</code></dt><dd><p>a numeric vector (segment start probe number)</p>
+</dd>
+<dt><code>end</code></dt><dd><p>a numeric vector (segment end probe number)</p>
+</dd>
+<dt><code>num.probes</code></dt><dd><p>a numeric vector (number of probes in the segment)</p>
+</dd>
+<dt><code>seg.median</code></dt><dd><p>a numeric vector (median log ratio)</p>
+</dd>
+<dt><code>chrom</code></dt><dd><p>a numeric vector (chromosome number)</p>
+</dd>
+<dt><code>chrom.pos.start</code></dt><dd><p>a numeric vector (genomic start)</p>
+</dd>
+<dt><code>chrom.pos.end</code></dt><dd><p>a numeric vector (genomic end)</p>
+</dd>
+<dt><code>cytoband.start</code></dt><dd><p>a character vector (cytogenetic band start)</p>
+</dd>
+<dt><code>cytoband.end</code></dt><dd><p>a character vector (cytogenetic band end)</p>
+</dd>
+<dt><code>abs.pos.start</code></dt><dd><p>a numeric vector (genomic start, absolute)</p>
+</dd>
+<dt><code>abs.pos.end</code></dt><dd><p>a numeric vector (genomic end, absolute)</p>
+</dd>
+</dl>
+
+
+
+<h3>Details</h3>
+
+<p>Segment medians are computed from log copy number ratio. The corresponding raw data
+table is <code>ratexample</code> in this package.
+</p>
+
+
+<h3>Source</h3>
+
+<p>Genome Res. 2006 Dec;16(12):1465-79.
+</p>
+<p>Novel patterns of genome rearrangement and their association with survival in
+breast cancer.
+</p>
+<p>Hicks J, Krasnitz A, Lakshmi B, Navin NE, Riggs M, Leibu E, Esposito D, 
+Alexander J, Troge J, Grubor V, Yoon S, Wigler M, Ye K, Borresen-Dale AL, 
+Naume B, Schlicting E, Norton L, Hagerstrom T, Skoog L, Auer G, Maner S,
+Lundin P, Zetterberg A.
+
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(segexample)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

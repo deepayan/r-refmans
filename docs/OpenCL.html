@@ -1,0 +1,949 @@
+<!DOCTYPE html><html><head><title>Help for package OpenCL</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {OpenCL}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#clBuffer'>
+<p>Create and handle OpenCL buffers</p></a></li>
+<li><a href='#clLocal'>
+<p>Create and handle local memory arguments for OpenCL kernels</p></a></li>
+<li><a href='#oclContext'>
+<p>Create an OpenCL context for a given device.</p></a></li>
+<li><a href='#oclDevices'>
+<p>Get a list of OpenCL devices.</p></a></li>
+<li><a href='#oclInfo'>
+<p>Retrieve information about an OpenCL object.</p></a></li>
+<li><a href='#oclMemLimits'>
+<p>OpenCL Memory Management and Limits</p></a></li>
+<li><a href='#oclPlatforms'>
+<p>Retrieve available OpenCL platforms.</p></a></li>
+<li><a href='#oclRun'>
+<p>Run a kernel using OpenCL.</p></a></li>
+<li><a href='#oclSimpleKernel'>
+<p>Create and compile OpenCL kernel code.</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>0.2-10</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Interface allowing R to use OpenCL</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Simon Urbanek &lt;Simon.Urbanek@r-project.org&gt;, Aaron Puchert &lt;aaronpuchert@alice-dsl.net&gt;</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Simon Urbanek &lt;Simon.Urbanek@r-project.org&gt;</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 2.0.0)</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>This package provides an interface to OpenCL, allowing R to leverage computing power of GPUs and other HPC accelerator devices.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://opensource.org/licenses/BSD-3-Clause">BSD_3_clause</a> + file LICENSE</td>
+</tr>
+<tr>
+<td>SystemRequirements:</td>
+<td>OpenCL library, GNU make</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="http://www.rforge.net/OpenCL/">http://www.rforge.net/OpenCL/</a></td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-12-14 23:29:24 UTC; rforge</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2023-12-22 10:33:27 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='clBuffer'>
+Create and handle OpenCL buffers
+</h2><span id='topic+clBuffer'></span><span id='topic+as.clBuffer'></span><span id='topic+as.double.clBuffer'></span><span id='topic+as.integer.clBuffer'></span><span id='topic+is.clBuffer'></span><span id='topic+print.clBuffer'></span><span id='topic+length.clBuffer'></span><span id='topic++5B.clBuffer'></span><span id='topic++5B+3C-.clBuffer'></span>
+
+<h3>Description</h3>
+
+<p>OpenCL buffers are just like numeric or integer vectors that reside on the
+GPU and can directly be accessed by kernels. Both non-scalar arguments to
+<code><a href="#topic+oclRun">oclRun</a></code> and its return type are OpenCL buffers.
+</p>
+<p>Just like vectors in R, OpenCL buffers have a mode, which is (as of now) one
+of &quot;double&quot; or &quot;numeric&quot; (corresponds to <code>double</code> in OpenCL C), &quot;single&quot;
+(<code>float</code>) or &quot;integer&quot; (<code>int</code>).
+</p>
+<p>The constructor <code>clBuffer</code> takes a context as created by
+<code>oclContext</code>, a length and a mode argument.
+</p>
+<p>The conversion function <code>as.clBuffer</code> creates an OpenCL buffer of the
+same length and mode as the argument and copies the data. Conversely,
+<code>as.double</code> (= <code>as.numeric</code>) and <code>as.integer</code> read a buffer and
+coerce the result as vector the appropriate mode.
+</p>
+<p>With <code>is.clBuffer</code> one can check if an object is an OpenCL buffer.
+</p>
+<p>The methods <code>length.clBuffer</code> and <code>print.clBuffer</code> retrieve the
+length and print the contents, respectively.
+</p>
+<p>Basic access to the data is available via <code>[...]</code>. Note that
+only contiguous memory operations are supported on GPU buffers, so if
+the index does not reference a contiguous region then the
+subsetting/assignment will be performed by retrieving the entire
+buffer and perfroming the operation in R which is very expensive.
+</p>
+<p>Note that unlike regular R objects GPU buffers are by design mutable,
+i.e. the object is only a reference to the GPU memory and thus any
+modification will affect all refernces. The contents can be emerged into R
+via <code>x[]</code> at which point the result is a regular R vector and no
+longer tied to the source buffer. Analogously, <code>x[] &lt;- value</code> is
+the canonical way to replace the entire contents of the buffer where
+<code>value</code> must have the same length as the buffer (no recycling).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>clBuffer(context, length, mode = c("numeric", "single", "double", "integer"))
+as.clBuffer(vector, context, mode = class(vector))
+is.clBuffer(any)
+## S3 method for class 'clBuffer'
+as.double(x, ...)
+## S3 method for class 'clBuffer'
+as.integer(x, ...)
+## S3 method for class 'clBuffer'
+print(x, ...)
+## S3 method for class 'clBuffer'
+length(x)
+## S3 method for class 'clBuffer'
+x[i]
+## S3 replacement method for class 'clBuffer'
+x[i] &lt;- value
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="clBuffer_+3A_context">context</code></td>
+<td>
+<p>OpenCL context as created by <code><a href="#topic+oclContext">oclContext</a></code></p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_length">length</code></td>
+<td>
+<p>Length of the required buffer</p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_mode">mode</code></td>
+<td>
+<p>Mode of the buffer, can be one of &quot;numeric&quot;, &quot;single&quot;,
+&quot;double&quot; or &quot;integer&quot;</p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_vector">vector</code></td>
+<td>
+<p>Numeric or integer vector or <code>clFloat</code> object</p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_any">any</code></td>
+<td>
+<p>Arbitrary object</p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_x">x</code></td>
+<td>
+<p>OpenCL buffer object (<code>clBuffer</code>)</p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_i">i</code></td>
+<td>
+<p>index specifying elements to extract or replace</p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_value">value</code></td>
+<td>
+<p>New values</p>
+</td></tr>
+<tr><td><code id="clBuffer_+3A_...">...</code></td>
+<td>
+<p>Arguments passed to subsequent methods</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Aaron Puchert and Simon Urbanek
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+oclContext">oclContext</a></code>, <code><a href="#topic+oclRun">oclRun</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(OpenCL)
+
+## Only proceed if this machine has at least one OpenCL platform
+if (length(oclPlatforms())) {
+
+ctx&lt;-oclContext()
+
+buf&lt;-clBuffer(ctx, 16, "numeric")
+# Do not write buf&lt;-..., as this replaces buf with a vector.
+buf[]&lt;-sqrt(1:16)
+buf
+
+intbuf&lt;-as.clBuffer(1:16, ctx)
+print(intbuf)
+
+length(buf)
+as.numeric(buf)
+buf[]
+
+buf[3:5]
+buf[1:2] = 0
+buf
+
+## clBuffer is the required argument and return type of oclRun.
+## See oclRun() examples.
+}
+</code></pre>
+
+<hr>
+<h2 id='clLocal'>
+Create and handle local memory arguments for OpenCL kernels
+</h2><span id='topic+clLocal'></span><span id='topic+is.clLocal'></span><span id='topic+print.clLocal'></span><span id='topic+length.clLocal'></span>
+
+<h3>Description</h3>
+
+<p>OpenCL kernels allow the use of local memory which is shared by all
+work-items of a work-group. In most cases, such memory is allocated inside
+the kernel at compile time such as <code>__local numeric temp[GROUP_SIZE]</code>.
+However, in some rare circumstances it may be desirable to allocate
+the buffer dynamically as an argument to the kernel. In that case the
+corresponding argument of the kernel is defined with the
+<code>__local</code> keyword and the caller has to specify the size of the
+local memory buffer at run-time when calling the kernel.
+</p>
+<p>The <code>clLocal()</code> function creates a specification of the local
+memory buffer. It is the only object that may be passed to a kernel
+argument declared with <code>__local</code>. The object is merely a
+specification that <code><a href="#topic+oclRun">oclRun</a></code> knows how to interpret,
+<code>clLocal</code> doesn't actually allocate any memory.
+</p>
+<p>By default, <code>size</code> is interpreted as bytes, but for convenience
+it can also specify the number of elements of a particular type. In
+the special case of <code>"numeric"</code> the actual size of one element
+(and thus the total buffer size) will depend on the context in which
+this specification is used (single or double precision).
+</p>
+<p>With <code>is.clLocal</code> one can check if an object is a local buffer
+specification.
+</p>
+<p>The methods <code>length.clLocal</code> and <code>print.clLocal</code> retrieve
+the length (number of elements) and print the contents, respectively.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>clLocal(length, mode = c("byte", "numeric", "single", "double", "integer"))
+is.clLocal(x)
+## S3 method for class 'clLocal'
+print(x, ...)
+## S3 method for class 'clLocal'
+length(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="clLocal_+3A_length">length</code></td>
+<td>
+<p>numeric, length (number of elements) of the required
+buffer. The actual size will depend on <code>mode</code>.</p>
+</td></tr>
+<tr><td><code id="clLocal_+3A_mode">mode</code></td>
+<td>
+<p>string, mode of the buffer (only used to compute the total
+size in bytes). The default is to treat <code>length</code> as the size in
+bytes (i.e., <code>"byte"</code> is aways allowed irrespective of the type
+of the kernel argument).</p>
+</td></tr>
+<tr><td><code id="clLocal_+3A_x">x</code></td>
+<td>
+<p>object</p>
+</td></tr>
+<tr><td><code id="clLocal_+3A_...">...</code></td>
+<td>
+<p>Ignored</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>clLocal</code> returns an object of the class <code>"cLocal"</code>
+</p>
+<p><code>is.clLocal</code> return <code>TRUE</code> for <code>"clLocal"</code> objects and
+<code>FALSE</code> otherwise.
+</p>
+<p><code>print</code> method returns <code>x</code> invisibly.
+</p>
+<p><code>length</code> returns a numeric scalar with the length (number of
+elements) in the buffer specification.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The internal structure of the <code>clLocal</code> object should be
+considered private, may change and no user code should access its
+components. Similarly, <code>clLocal</code> objects are only legal when
+returned from the <code>clLocal()</code> function, they may not be created
+by other means or mutated.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Urbanek
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+oclRun">oclRun</a></code>
+</p>
+
+<hr>
+<h2 id='oclContext'>
+Create an OpenCL context for a given device.
+</h2><span id='topic+oclContext'></span>
+
+<h3>Description</h3>
+
+<p>OpenCL contexts host kernels and buffers for the device they are hosted on.
+They also have an attached command queue, which allows out-of-order execution
+of all operations. Once you have a context, you can create a kernel in the
+context with <code><a href="#topic+oclSimpleKernel">oclSimpleKernel</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>oclContext(device = "default", precision = c("best", "single", "double"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="oclContext_+3A_device">device</code></td>
+<td>
+<p>Device object as obtained from <code><a href="#topic+oclDevices">oclDevices</a></code> or a
+type as in <code><a href="#topic+oclDevices">oclDevices</a></code>. In this case, a suitable device of the
+given type will be selected automatically.</p>
+</td></tr>
+<tr><td><code id="oclContext_+3A_precision">precision</code></td>
+<td>
+<p>Default precision of the context. This is the precision that
+will be chosen by default for <code>numeric</code> buffers and kernels with
+<code>numeric</code> output mode.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An OpenCL context.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Aaron Puchert
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+oclDevices">oclDevices</a></code>, <code><a href="#topic+oclSimpleKernel">oclSimpleKernel</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(OpenCL)
+cat("== Platforms:\n")
+(platforms &lt;- oclPlatforms())
+if (length(platforms)) {
+    cat("== Devices:\n")
+    ## pick the first platform
+    print(devices &lt;- oclDevices(platforms[[1]]))
+    if (length(devices)) {
+        cat("== Context:\n")
+        ## pick the first device
+        print(ctx &lt;- oclContext(devices[[1]]))
+    }
+    cat("== Default context:\n")
+    ## Note that context can find device on its own
+    ## (may be different from above if you have multiple devices)
+    print(c2 &lt;- oclContext())
+}
+</code></pre>
+
+<hr>
+<h2 id='oclDevices'>
+Get a list of OpenCL devices.
+</h2><span id='topic+oclDevices'></span>
+
+<h3>Description</h3>
+
+<p><code>oclDevices</code> retrieves a list of OpenCL devices for the given platform.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>oclDevices(platform = oclPlatforms()[[1]],
+           type = c("all", "cpu", "gpu", "accelerator", "default"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="oclDevices_+3A_platform">platform</code></td>
+<td>
+<p>OpenCL platform (see <code><a href="#topic+oclPlatforms">oclPlatforms</a></code>)</p>
+</td></tr>
+<tr><td><code id="oclDevices_+3A_type">type</code></td>
+<td>
+<p>Desired device type, character vector of length one. Valid
+values are <code>"cpu"</code>, <code>"gpu"</code>, <code>"accelerator"</code>,
+<code>"all"</code>, <code>"default"</code>. Partial matches are allowed.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>List of devices. May be empty.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Urbanek
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+oclPlatforms">oclPlatforms</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>p &lt;- oclPlatforms()
+if (length(p))
+    print(oclDevices(p[[1]], "all"))
+</code></pre>
+
+<hr>
+<h2 id='oclInfo'>
+Retrieve information about an OpenCL object.
+</h2><span id='topic+oclInfo'></span><span id='topic+oclInfo.clDeviceID'></span><span id='topic+oclInfo.clPlatformID'></span><span id='topic+oclInfo.list'></span>
+
+<h3>Description</h3>
+
+<p>Some OpenCL obejcts have information tokens associated with them. For
+example the device obejct has a name, vendor, list of extensions etc.
+<code>oclInfo</code> returns a list of such properties for the given object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>oclInfo(item)
+## S3 method for class 'clDeviceID'
+oclInfo(item)
+## S3 method for class 'clPlatformID'
+oclInfo(item)
+## S3 method for class 'list'
+oclInfo(item)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="oclInfo_+3A_item">item</code></td>
+<td>
+<p>object to retrieve information properties from</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>List of properties. The properties vary by object type. Some common
+properties are <code>"name"</code>, <code>"vendor"</code>, <code>"version"</code>,
+<code>"profile"</code> and <code>"exts"</code>.  
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Urbanek
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>p &lt;- oclPlatforms()
+if (length(p)) {
+    cat("== Platform information:\n")
+    print(oclInfo(p[[1]]))
+    d &lt;- oclDevices(p[[1]])
+    if (length(d)) {
+        cat("== Device information:\n")
+        print(oclInfo(d))
+    }
+}
+</code></pre>
+
+<hr>
+<h2 id='oclMemLimits'>
+OpenCL Memory Management and Limits
+</h2><span id='topic+oclMemLimits'></span>
+
+<h3>Description</h3>
+
+<p><code>oclMemLimits</code> manages the memory limits used internally to
+aid with <span class="rlang"><b>R</b></span> garbage collection and reports used buffer memory.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>oclMemLimits(trigger = NULL, high = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="oclMemLimits_+3A_trigger">trigger</code></td>
+<td>
+<p>size specification for trigger limit or <code>NULL</code> to
+not change</p>
+</td></tr>
+<tr><td><code id="oclMemLimits_+3A_high">high</code></td>
+<td>
+<p>size specification for high mark limit or <code>NULL</code> to
+not change</p>
+</td></tr>  
+</table>
+
+
+<h3>Details</h3>
+
+<p>In principle the memory management is simple: as long as a reference
+to a GPU object exists in <span class="rlang"><b>R</b></span>, that object is retained. As soon as <span class="rlang"><b>R</b></span>
+removes the reference object, the corresponding GPU object is
+released. This is sounds easy execpt for one important detail: <span class="rlang"><b>R</b></span>
+only releases unused objects when a garbage collection is run (see
+<code><a href="base.html#topic+gc">gc</a></code>), but <span class="rlang"><b>R</b></span> does not know about the GPU memory so it
+may not decide that it is necessary if little <span class="rlang"><b>R</b></span> memory is used.
+</p>
+<p>As a user, you can explicitly call <code>gc()</code> to force all unused
+objects to be collected, but garbage collection is expensive so it may
+impact your computation. Therefore OpenCL tracks allocated memory
+sizes used by <code><a href="#topic+clBuffer">clBuffer</a></code> buffers and will trigger R garbage
+collection automatically if certain limits are reached.
+</p>
+<p>There are two limits: <code>trigger</code> limit and <code>high</code> limit.
+The <code>trigger</code> limit is the threshold at which OpenCL will attempt
+to run garbage collection. This limit is checked before any buffer
+allocation. Once this limit is exceeded, OpenCL will run <code>gc()</code>
+to attempt to free memory. Hoever, if the current operation actually
+does require a lot of memory, no GPU memory may be freed. In that case
+running garbage collection would be wasteful, therefore OpenCL will
+disable further GC until the <code>high</code> limit is reached. Beyond that
+limit GC is always run.
+</p>
+<p>The limit size specifications can be one of the following: a positive
+integer numeric (in bytes) or a scalar string consisting of the
+integer numeric and an optional unit suffix. The following suffixes
+are supported: <code>"k"</code>, <code>"m"</code> and <code>"g"</code> - corresponding
+powers of 1024. Note that the reported sizes are always in bytes
+represented as numerics.
+</p>
+
+
+<h3>Value</h3>
+
+<p>List with followng components:
+</p>
+<table>
+<tr><td><code>trigger</code></td>
+<td>
+<p>active trigger limit (in bytes) or 0 if not active</p>
+</td></tr>
+<tr><td><code>high</code></td>
+<td>
+<p>active trigger limit (in bytes) or 0 if not active</p>
+</td></tr>
+<tr><td><code>used</code></td>
+<td>
+<p>number of bytes currently allocated in clBuffers on the
+GPU</p>
+</td></tr>
+<tr><td><code>in.zone</code></td>
+<td>
+<p>logical, <code>TRUE</code> if garbage collection is disabled
+due to the inability to reduce usage under <code>trigger</code>, i.e.,
+the usage is between <code>trigger</code> and <code>high</code></p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>Currently the default is to not enable the automatic garbage
+collection, becasue it is experimental and best settings will cary by
+the hardware used,but that is likey to change. It can always be disabled
+with <code>oclMemLimits(0,0)</code>.
+</p>
+<p>IMPORTANT: The current tracking is global to OpenCL, so it is based on
+all the memory used across all devices.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Urbanek
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="base.html#topic+gc">gc</a></code>, <code><a href="#topic+clBuffer">clBuffer</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>oclMemLimits()
+</code></pre>
+
+<hr>
+<h2 id='oclPlatforms'>
+Retrieve available OpenCL platforms.
+</h2><span id='topic+oclPlatforms'></span>
+
+<h3>Description</h3>
+
+<p><code>oclPlatforms</code> retrieves all available OpenCL platforms.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>oclPlatforms()
+</code></pre>
+
+
+<h3>Value</h3>
+
+<p>List of available OpenCL platforms. If using OpenCL with Installable
+Client Driver (ICD) support, the result can be an empty list if no
+vendor ICD can be found. A warning is also issued in that case.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Urbanek
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+oclDevices">oclDevices</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>print(oclPlatforms())
+</code></pre>
+
+<hr>
+<h2 id='oclRun'>
+Run a kernel using OpenCL.
+</h2><span id='topic+oclRun'></span>
+
+<h3>Description</h3>
+
+<p><code>oclRun</code> is used to execute code that has been compiled for
+OpenCL.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>oclRun(kernel, size, ..., dim = size)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="oclRun_+3A_kernel">kernel</code></td>
+<td>
+<p>Kernel object as obtained from <code><a href="#topic+oclSimpleKernel">oclSimpleKernel</a></code></p>
+</td></tr>
+<tr><td><code id="oclRun_+3A_size">size</code></td>
+<td>
+<p>Length of the output vector</p>
+</td></tr>
+<tr><td><code id="oclRun_+3A_...">...</code></td>
+<td>
+<p>Additional arguments passed to the kernel</p>
+</td></tr>
+<tr><td><code id="oclRun_+3A_dim">dim</code></td>
+<td>
+<p>Numeric vector describing the global work
+dimensions, i.e., the index range that the kernel will be run
+on. The kernel can use <code>get_global_id(n)</code> to obtain the
+<code>(n + 1)</code>-th dimension index and <code>get_global_size(n)</code> to
+get the dimension. OpenCL standard supports only up to three
+dimensions, you can use use index vectors as arguments if more
+dimensions are required. Note that <code>dim</code> is not necessarily the
+dimension of the result although it can be.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>oclRun</code> pushes kernel arguments, executes the kernel and
+retrieves the result. The kernel is expected to have either
+<code>__global double *</code> or <code>__global float *</code>
+type (write-only) as the first argument which will be used for the
+result and <code>const unsigned int</code> second argument denoting the result
+length. All other arguments are assumed to be read-only and will be
+filled according to the <code>...</code> values.
+These can either be OpenCL buffers as generated by <code><a href="#topic+clBuffer">clBuffer</a></code> for
+pointer arguments, or scalar values (vectors of length one) for scalar
+arguments. Only integer (<code>int</code>), and numeric (<code>double</code> or
+<code>float</code>) scalars and OpenCL buffers are supported as kernel arguments.
+The caller is responsible for matching the argument types according to the
+kernel in a way similar to <code><a href="base.html#topic+.C">.C</a></code> and <code><a href="base.html#topic+.Call">.Call</a></code>.
+</p>
+<p>Note that the kernel must match the input types as well, so typically
+<code>as.clBuffer()</code> should include the mode (e.g., <code>"numeric"</code>)
+to match the kernel and/or explicit <code>as.numeric()</code> coercion should
+be used.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The resulting buffer of length <code>size</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Urbanek, Aaron Puchert
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+oclSimpleKernel">oclSimpleKernel</a></code>, <code><a href="#topic+clBuffer">clBuffer</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(OpenCL)
+## Only proceed if this machine has at least one OpenCL platform
+if (length(oclPlatforms())) {
+ctx = oclContext(precision="single")
+
+code = c("
+__kernel void dnorm(
+  __global numeric* output,
+ const unsigned int count,
+  __global numeric* input,
+ const numeric mu, const numeric sigma)
+{
+  size_t i = get_global_id(0);
+  if(i &lt; count)
+      output[i] = exp((numeric) (-0.5 * ((input[i] - mu) / sigma) * ((input[i] - mu) / sigma)))
+      / (sigma * sqrt((numeric) (2 * 3.14159265358979323846264338327950288 )) );
+}")
+k.dnorm &lt;- oclSimpleKernel(ctx, "dnorm", code)
+f &lt;- function(x, mu=0, sigma=1)
+  as.numeric(oclRun(k.dnorm, length(x), as.clBuffer(x, ctx, "numeric"), mu, sigma))
+
+## expect differences since the above uses single-precision but
+## it should be close enough
+f(1:10/2) - dnorm(1:10/2)
+
+## does the device support double-precision?
+if (any("cl_khr_fp64" == oclInfo(attributes(ctx)$device)$exts)) {
+  k.dnorm &lt;- oclSimpleKernel(ctx, "dnorm", code, "double")
+  f &lt;- function(x, mu=0, sigma=1)
+    as.numeric(oclRun(k.dnorm, length(x), as.clBuffer(x, ctx, "double"), mu, sigma))
+
+  ## probably not identical, but close...
+  f(1:10/2) - dnorm(1:10/2)
+} else cat("\nSorry, your device doesn't support double-precision\n")
+
+## Note that in practice you can use precision="best" in the first
+## example which will pick "double" on devices that support it and
+## "single" elsewhere
+}
+</code></pre>
+
+<hr>
+<h2 id='oclSimpleKernel'>
+Create and compile OpenCL kernel code.
+</h2><span id='topic+oclSimpleKernel'></span>
+
+<h3>Description</h3>
+
+<p>Creates a kernel object by compiling the supplied code.
+The kernel can then be used in <code><a href="#topic+oclRun">oclRun</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>oclSimpleKernel(context, name, code,
+    output.mode = c("numeric", "single", "double", "integer"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="oclSimpleKernel_+3A_context">context</code></td>
+<td>
+<p>Context (as created by <code><a href="#topic+oclContext">oclContext</a></code>)
+to compile the kernel in.
+</p>
+</td></tr>
+<tr><td><code id="oclSimpleKernel_+3A_name">name</code></td>
+<td>
+<p>Name of the kernel function - must match the name used in
+the supplied code.</p>
+</td></tr>
+<tr><td><code id="oclSimpleKernel_+3A_code">code</code></td>
+<td>
+<p>Character vector containing the code. The code will be
+concatenated (as-is, no newlines are added!) by the engine.</p>
+</td></tr>
+<tr><td><code id="oclSimpleKernel_+3A_output.mode">output.mode</code></td>
+<td>
+<p>Mode of the output argument of the kernel, as in
+<code><a href="#topic+clBuffer">clBuffer</a></code>. This can be one of &quot;single&quot;, &quot;double&quot;, &quot;integer&quot;,
+or &quot;numeric&quot;. The default value &quot;numeric&quot; maps to the default precision of
+the context.
+</p>
+<p>The kernel code may use a type <code>numeric</code> that is typedef'd to the
+given precision, i.e. either <code>float</code> or <code>double</code>. The OpenCL
+extension <code>cl_khr_fp64</code> will be enabled automatically in the second
+case, so you don't have to add the pragma yourself.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>oclSimpleKernel</code> builds the program specified by <code>code</code> and
+creates a kernel from the program.
+</p>
+<p>The kernel built by this function is simple in that it can have
+exactly one vector output and arbitrarily many inputs. The first
+argument of the kernel must be <code>__global double*</code> or
+<code>__global float*</code> for the output and the second argument must be
+<code>const unsigned int</code> for the length of the output vector.
+Additional numeric scalar arguments are assumed to have the same mode as the
+output, i.e. if the output shall have &quot;double&quot; precision, then numeric scalar
+arguments are assumed to be double values, similarly for single-precision.
+All additional arguments are optional. See <code><a href="#topic+oclRun">oclRun</a></code> for an
+example of a simple kernel.
+</p>
+<p>Note that building a kernel can take substantial amount of time
+(depending on the OpenCL implementation) so it is generally a good
+idea to compile a kernel once and re-use it many times.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Kernel object that can be used by <code><a href="#topic+oclRun">oclRun</a></code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simon Urbanek, Aaron Puchert
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+oclContext">oclContext</a></code>, <code><a href="#topic+oclRun">oclRun</a></code>
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

@@ -1,0 +1,778 @@
+<!DOCTYPE html><html><head><title>Help for package pcgen</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {pcgen}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#checkG'><p>Check for consistency in genetic effects</p></a></li>
+<li><a href='#gencovTest'><p>Estimate genetic covariances between all pairs of traits, and test their significance</p></a></li>
+<li><a href='#getResiduals'><p>Residuals from the GBLUP</p></a></li>
+<li><a href='#pcgen'><p>Causal inference with genetic effects</p></a></li>
+<li><a href='#pcgenFast'><p>pcgen with residual-based screening</p></a></li>
+<li><a href='#pcgenTest'><p>The conditional independence test in pcgen</p></a></li>
+<li><a href='#pcRes'><p>The pc algorithm applied to residuals</p></a></li>
+<li><a href='#simdata'><p>Simulated data</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Reconstruction of Causal Networks for Data with Random Genetic
+Effects</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.2.0</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Willem Kruijer, Pariya Behrouzi, Maria Xose Rodriguez-Alvarez</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Pariya Behrouzi &lt;pariya.behrouzi@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.1.0)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>pcalg, graph, Matrix, stats, MASS, utils, Hmisc, methods,
+lme4, sommer, ggm</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implements the pcgen algorithm, which is a modified version of the standard pc-algorithm,
+             with specific conditional independence tests and modified orientation rules. pcgen extends 
+			 the approach of Valente et al. (2010) &lt;<a href="https://doi.org/10.1534%2Fgenetics.109.112979">doi:10.1534/genetics.109.112979</a>&gt; with reconstruction of 
+			 direct genetic effects.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a></td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2019-02-18</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2019-02-18 13:27:37 UTC; behro001</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2019-02-18 14:50:03 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='checkG'>Check for consistency in genetic effects</h2><span id='topic+checkG'></span>
+
+<h3>Description</h3>
+
+<p>Given output from pcgen or pcgenFast, this function checks whether the estimated graph is consistent with the set of traits having significant genetic variance. The function detects traits that have significant genetic variance but for which there is no partially directed path from G.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>checkG(pcgen.output, suffStat, alpha = 0.01, covariates = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="checkG_+3A_pcgen.output">pcgen.output</code></td>
+<td>
+<p>A graph with nodes G (genotype) and a number of traits. Typically output from <code>pcgen</code> or <code>pcgenFast</code>.</p>
+</td></tr>
+<tr><td><code id="checkG_+3A_suffstat">suffStat</code></td>
+<td>
+<p>A data.frame, of which the first column is the factor G (genotype),  and subsequent columns contain the traits, and optionally some QTLs. The name of the first column should be G.</p>
+</td></tr>
+<tr><td><code id="checkG_+3A_alpha">alpha</code></td>
+<td>
+<p>The significance level used in each conditional independence test. Default is 0.01. </p>
+</td></tr>
+<tr><td><code id="checkG_+3A_covariates">covariates</code></td>
+<td>
+<p>A data.frame containing covariates, to be used in each conditional independence test.
+Cannot contain factors. Should be either <code>NULL</code> (default) or a data.frame with the same number of rows as suffStat. An intercept is already included for each trait in suffStat; covariates should not contain a column of ones.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A logical matrix of dimension <code class="reqn">(p+1) \times (p+1)</code>, <code class="reqn">p</code> being the number of traits. Most entries are <code>FALSE</code>, except those in the first row and column for which there are conflicts.  Entries <code class="reqn">[1, j]</code> and <code class="reqn">[j, 1]</code> are <code>TRUE</code> if the <code class="reqn">j</code>th trait has significant genetic variance, but there is no         partially directed path from G towards that trait. The matrix can then be used in a subsequent run of <code>pcgen</code> or <code>pcgenFast</code>, in the <code>fixedEdges</code> argument. The arguments <code>suffStat</code>, <code>alpha</code> and <code>covariates</code> should stay the same throughout (first run of <code>pcgen</code>, <code>checkG</code>, second run of <code>pcgen</code>).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Willem Kruijer and Pariya Behrouzi.
+Maintainers: Willem Kruijer <a href="mailto:willem.kruijer@wur.nl">willem.kruijer@wur.nl</a> and
+Pariya Behrouzi <a href="mailto:pariya.behrouzi@gmail.com">pariya.behrouzi@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Kruijer, W., Behrouzi, P., Rodriguez-Alvarez, M. X., Wit, E. C., Mahmoudi, S. M., Yandell, B., Van Eeuwijk, F., (2018, in preparation), Reconstruction of networks with direct and indirect genetic effects. <br />
+</p>
+
+<hr>
+<h2 id='gencovTest'>Estimate genetic covariances between all pairs of traits, and test their significance</h2><span id='topic+gencovTest'></span>
+
+<h3>Description</h3>
+
+<p>For each pair of traits in suffStat, we fit a bivariate mixed model, and 
+perform a likelihood ratio test for the null-hypothesis of zero genetic covariance.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  gencovTest(suffStat, max.iter = 200, out.cor = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gencovTest_+3A_suffstat">suffStat</code></td>
+<td>
+<p>A data.frame with (p + 1) columns, of which the first column is the factor G (genotype),  and subsequent p columns contain traits. It should not contain covariates or QTLs.</p>
+</td></tr>
+<tr><td><code id="gencovTest_+3A_max.iter">max.iter</code></td>
+<td>
+<p>Maximum number of iterations in the EM-algorithm, used to fit the bivariate mixed model</p>
+</td></tr></table>
+<p>.
+</p>
+<table>
+<tr><td><code id="gencovTest_+3A_out.cor">out.cor</code></td>
+<td>
+<p>If <code>TRUE</code>, the output will contain estimates of genetic correlations; otherwise covariances. The pvalues are always for genetic covariance.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with elements pvalues and out.cor, which are both p x p matrices
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Willem Kruijer and Pariya Behrouzi.
+Maintainers: Willem Kruijer <a href="mailto:willem.kruijer@wur.nl">willem.kruijer@wur.nl</a> and
+Pariya Behrouzi <a href="mailto:pariya.behrouzi@gmail.com">pariya.behrouzi@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Kruijer, W., Behrouzi, P., Rodriguez-Alvarez, M. X., Wit, E. C., Mahmoudi, S. M., Yandell, B., Van Eeuwijk, F., (2018, in preparation), Reconstruction of networks with direct and indirect genetic effects. <br />
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  
+    data(simdata)
+    test &lt;- gencovTest(suffStat= simdata, max.iter = 200, out.cor= TRUE )
+  
+</code></pre>
+
+<hr>
+<h2 id='getResiduals'>Residuals from the GBLUP</h2><span id='topic+getResiduals'></span>
+
+<h3>Description</h3>
+
+<p>Residuals from the best linear unbiased predictor of the genetic effects (GBLUP), which is computed given REML-estimates of the variance components.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'> getResiduals(suffStat, covariates = NULL, cov.method = "uni", K = NULL) </code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getResiduals_+3A_suffstat">suffStat</code></td>
+<td>
+<p>A data.frame, of which the first column is the factor G (genotype),  and subsequent columns contain the traits. The name of the first column should be G. </p>
+</td></tr>
+<tr><td><code id="getResiduals_+3A_covariates">covariates</code></td>
+<td>
+<p>A data.frame containing covariates, that should always be used in each conditional independence test. Should be either <code>NULL</code> (default) or a data.frame with the same number of rows as suffStat. An intercept is already included for each trait in suffStat; covariates should not contain a column of ones.</p>
+</td></tr>
+<tr><td><code id="getResiduals_+3A_cov.method">cov.method</code></td>
+<td>
+<p>(A string, specifying which method should be used to compute the GBLUP. Options are <code>"us"</code> (unstructured multi-trait model fitted using sommer) and <code>"uni"</code> (based on univariate GBLUPs). Default is <code>"uni"</code>). </p>
+</td></tr>
+<tr><td><code id="getResiduals_+3A_k">K</code></td>
+<td>
+<p>A genetic relatedness matrix. If <code>NULL</code> (default), independent genetic effects are assumed.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If <code>cov.method = "uni"</code>, the GBLUP and the residuals are computed separately for each trait in suffStat. The covariance of each trait is then assumed to be </p>
+<p style="text-align: center;"><code class="reqn">\sigma_G^2 Z K Z^t + \sigma_E^2 I_n</code>
+</p>
+<p> where <code class="reqn">Z</code> is a binary incidence matrix, assigning plants or plots to genotypes. <code class="reqn">Z</code> is based on the first column in <code>suffStat</code>. If there is a single observation per genotype (typically a genotypic mean), <code class="reqn">Z</code> is the identity matrix, and the relatedness matrix <code class="reqn">K</code> should be specified. If there are replicates for at least some of the genotypes, and no <code class="reqn">K</code> is provided, independent genetic effects are assumed (<code class="reqn">K</code> will be the identity matrix). It is also possible to have replicates and specify a non-diagonal <code class="reqn">K</code>.
+Whenever <code class="reqn">K</code> is specified, sommer (mmer2) will be used; otherwise lmer (lme4). The mmer2 is also used when <code>cov.method = "us"</code>, in which case the multivariate GBLUP is computed, for all traits in <code>suffStat</code> simultaneously. This is only possible for a limited number of traits.
+</p>
+
+
+<h3>Value</h3>
+
+<p> A data-frame with the residuals.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Willem Kruijer and Pariya Behrouzi.
+Maintainers: Willem Kruijer <a href="mailto:willem.kruijer@wur.nl">willem.kruijer@wur.nl</a> and
+Pariya Behrouzi <a href="mailto:pariya.behrouzi@gmail.com">pariya.behrouzi@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Covarrubias-Pazaran, G., 2016. Genome-assisted prediction of quantitative traits using the R package sommer. PloS one, 11(6), p.e0156744. <br />
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(simdata)
+rs &lt;- getResiduals(suffStat= simdata)
+
+</code></pre>
+
+<hr>
+<h2 id='pcgen'>Causal inference with genetic effects</h2><span id='topic+pcgen'></span>
+
+<h3>Description</h3>
+
+<p>Reconstruction of directed networks with random genetic effects, based on phenotypic observations. The pcgen algorithm is a modification of the pc-stable algorithm of Colombo &amp; Maathuis (2014) . It is assumed that there are replicates, and independent genetic effects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>pcgen(suffStat, covariates = NULL, QTLs = integer(), alpha = 0.01, m.max = Inf,
+fixedEdges = NULL, fixedGaps = NULL, verbose = FALSE, use.res = FALSE, 
+res.cor = NULL, max.iter = 50, stop.if.significant = TRUE, return.pvalues = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="pcgen_+3A_suffstat">suffStat</code></td>
+<td>
+<p>A data.frame, of which the first column is the factor G (genotype),  and subsequent columns contain the traits, and optionally some QTLs. The name of the first column should be G. Should not contain covariates.</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_covariates">covariates</code></td>
+<td>
+<p>A data.frame containing covariates, that should always be used in each conditional independence test Should be either <code>NULL</code> (default) or a data.frame with the same number of rows as <code>suffStat</code>. An intercept is already included for each trait in suffStat; covariates should not contain a column of ones.</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_qtls">QTLs</code></td>
+<td>
+<p>Column numbers in <code>suffStat</code> that correspond to QTLs.</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_alpha">alpha</code></td>
+<td>
+<p>The significance level used in each conditional independence test. Default is 0.01</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_m.max">m.max</code></td>
+<td>
+<p>Maximum size of the conditioning sets</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_fixededges">fixedEdges</code></td>
+<td>
+<p>A logical matrix of dimension <code class="reqn">(p+1) \times (p+1)</code>, where <code class="reqn">p</code> is the number of traits. The first row and column refer to the node G, and subsequent rows and columns to the traits. As in the pcalg package, the edge <code class="reqn">i - j</code> is never considered for removal if the entry <code class="reqn">[i, j]</code> or <code class="reqn">[j, i]</code> (or both) are <code>TRUE</code>. In that case, the edge is guaranteed to be present in the resulting graph.</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_fixedgaps">fixedGaps</code></td>
+<td>
+<p>A logical matrix of dimension <code class="reqn">(p+1) \times (p+1)</code>, where <code class="reqn">p</code> is the number of traits. The first row and column refer to the node G, and subsequent rows and columns to the traits. As in the pcalg package, the edge <code class="reqn">i - j</code> is removed before starting the algorithm if the entry <code class="reqn">[i, j]</code> or <code class="reqn">[j, i]</code> (or both) are <code>TRUE</code>. In that case, the edge is guaranteed to be absent in the resulting graph.</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_verbose">verbose</code></td>
+<td>
+<p>If <code>TRUE</code>, p-values for the conditional independence tests are printed</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_use.res">use.res</code></td>
+<td>
+<p>If <code>TRUE</code>, the test for conditional independence of 2 traits given a set of other traits and <code class="reqn">G</code> is based on residuals from GBLUP. If <code>FALSE</code> (the default), it is based on bivariate mixed models.
+</p>
+</td></tr>
+
+<tr><td><code id="pcgen_+3A_res.cor">res.cor</code></td>
+<td>
+<p>If <code>use.res = TRUE</code>, res.cor should be the correlation matrix of the residuals from the GBLUP. These can be obtained with the getResiduals function. See the example below.</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_max.iter">max.iter</code></td>
+<td>
+<p>Maximum number of iterations in the EM-algorithm, used to fit the bivariate mixed model (when <code>use.res = FALSE)</code>. </p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_stop.if.significant">stop.if.significant</code></td>
+<td>
+<p>If <code>TRUE</code>, the EM-algorithm used in some of the conditional independence tests (when <code>use.res = FALSE</code>) will be stopped whenever the p-value becomes significant, i.e. below <code>alpha</code>. This will speed up calculations, and can be done because (1) the PC algorithm only needs an accept/reject decision (2) In EM the likelihood is nondecreasing. Should be put to <code>FALSE</code> if the precise p-values are of interest.</p>
+</td></tr>
+<tr><td><code id="pcgen_+3A_return.pvalues">return.pvalues</code></td>
+<td>
+<p>If <code>TRUE</code>, the maximal p-value for each edge is returned.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The <code>pcgen</code> function is based on the <code>pc</code> function from the pcalg package (Kalisch et al. (2012) and Hauser and Buhlmann (2012)). 
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>return.pvalues = FALSE</code>, the output is a graph (an object with S3 class <code>"pcgen"</code>). If <code>return.pvalues = TRUE</code>, the output is a list with elements <code>gr</code> (the graph) and <code>pMax</code> (a matrix with the p-values).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Willem Kruijer and Pariya Behrouzi.
+Maintainers: Willem Kruijer <a href="mailto:willem.kruijer@wur.nl">willem.kruijer@wur.nl</a> and
+Pariya Behrouzi <a href="mailto:pariya.behrouzi@gmail.com">pariya.behrouzi@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>1. Kruijer, W., Behrouzi, P., Rodriguez-Alvarez, M. X., Wit, E. C., Mahmoudi, S. M., Yandell, B., Van Eeuwijk, F., (2018, in preparation), Reconstruction of networks with direct and indirect genetic effects. <br />
+2. Colombo, D. and Maathuis, M.H., 2014. Order-independent constraint-based causal structure learning. <em>The Journal of Machine Learning Research</em>, 15(1), pp.3741-3782. <br />
+3. Kalisch, M., Machler, M., Colombo, D., Maathuis, M.H. and Buhlmann, P., 2012. Causal inference using graphical models with the R package pcalg. <em>Journal of Statistical Software</em>, 47(11), pp.1-26. <br />
+4. Hauser, A. and Buhlmann, P., 2012. Characterization and greedy learning of interventional Markov equivalence classes of directed acyclic graphs. Journal of Machine Learning Research, 13(Aug), pp.2409-2464.<br />
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+getResiduals">getResiduals</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(simdata)
+out &lt;- pcgen(simdata) 
+
+data(simdata)
+rs &lt;- getResiduals(suffStat = simdata)
+pc.fit1 &lt;- pcgen(suffStat = simdata, alpha = 0.01, verbose = TRUE, 
+           use.res = TRUE, res.cor = cor(rs))
+</code></pre>
+
+<hr>
+<h2 id='pcgenFast'>pcgen with residual-based screening</h2><span id='topic+pcgenFast'></span>
+
+<h3>Description</h3>
+
+<p>The pcgen algorithm starting with a skeleton estimated using the standard pc-algorithm, based on residuals from the GBLUP.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>pcgenFast(suffStat, alpha = 0.01, m.max = Inf, res.m.max = Inf, verbose = FALSE, 
+          covariates = NULL, fixedEdges = NULL, QTLs = integer(), max.iter = 50,
+          stop.if.significant = TRUE, cov.method = 'uni', use.res = FALSE, 
+          return.pvalues = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="pcgenFast_+3A_suffstat">suffStat</code></td>
+<td>
+<p>A data.frame, of which the first column is the factor  G (genotype),  and subsequent columns contain the traits, and optionally some QTLs. The name of the first column should be G.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_alpha">alpha</code></td>
+<td>
+<p>The significance level used in each conditional independence test. Default is 0.01. </p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_m.max">m.max</code></td>
+<td>
+<p>Maximum size of the conditioning set, in the pcgen algorithm.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_res.m.max">res.m.max</code></td>
+<td>
+<p>Maximum size of the conditioning set, in the pc-algorithm on the residuals (used for prior screening).</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_verbose">verbose</code></td>
+<td>
+<p>If <code>TRUE</code>, p-values for the conditional independence tests are printed. </p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_covariates">covariates</code></td>
+<td>
+<p>A data.frame containing covariates, to be used in each conditional independence test. Cannot contain factors. Should be either <code>NULL</code> (default) or a data.frame with the same number of rows as suffStat. An intercept is already included for each trait in suffStat; covariates should not contain a column of ones.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_fixededges">fixedEdges</code></td>
+<td>
+<p>A logical matrix of dimension <code class="reqn">(p+1) \times (p+1)</code>, where <code class="reqn">p</code> is the number of traits. The first row and column refer to the node G, and subsequent rows and columns to the traits. As in the <code>pcalg</code> package, the edge <code class="reqn">i - j</code> is never considered for removal if the entry <code class="reqn">[i, j]</code> or <code class="reqn">[j, i]</code> (or both) are <code>TRUE</code>. In that case, the edge is guaranteed to be present in the resulting graph.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_qtls">QTLs</code></td>
+<td>
+<p>Column numbers in <code>suffStat</code> that correspond to QTLs.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_max.iter">max.iter</code></td>
+<td>
+<p>Maximum number of iterations in the EM-algorithm, used to fit the bivariate mixed model (when <code>use.res = FALSE)</code>.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_stop.if.significant">stop.if.significant</code></td>
+<td>
+<p>If <code>TRUE</code>, the EM-algorithm used in some of the conditional independence tests (when <code>use.res = FALSE</code>) will be stopped whenever the p-value becomes significant, i.e. below <code>alpha</code>. This will speed up calculations, and can be done because (1) the PC algorithm only needs an accept/reject decision (2) In EM the likelihood is nondecreasing. Should be put to <code>FALSE</code> if the precise p-values are of interest.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_cov.method">cov.method</code></td>
+<td>
+<p>A string, specifying which method should be used to compute the GBLUP. Options are <code>'us'</code> (unstructured multi-trait model fitted using sommer) and <code>'uni'</code> (based on univariate GBLUPs). Default is <code>'uni'</code>.</p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_use.res">use.res</code></td>
+<td>
+<p>If <code>FALSE</code>, residuals from GBLUP are only used for screening with the standard pc algotihm. After that, the standard pcgen algorithm is run on the remaining edges; the test for conditional independence of 2 traits given a set of other traits and G is based on bivariate mixed models. If <code>TRUE</code>, this test is
+based on the residuals. In this case, no further edges between traits are removed after screening and <code>pcgen</code> will only infer the orientation, and the direct genetic effects. </p>
+</td></tr>
+<tr><td><code id="pcgenFast_+3A_return.pvalues">return.pvalues</code></td>
+<td>
+<p>If <code>TRUE</code>, the maximal p-value for each edge is returned.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>If <code>return.pvalues = FALSE</code>, the output is a graph (an object with S3 class <code>"pcgen"</code>). If <code>return.pvalues = TRUE</code>, the output is a list with elements <code>gr</code> (the graph) and <code>pMax</code> (a matrix with the p-values).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Willem Kruijer and Pariya Behrouzi.
+Maintainers: Willem Kruijer <a href="mailto:willem.kruijer@wur.nl">willem.kruijer@wur.nl</a> and
+Pariya Behrouzi <a href="mailto:pariya.behrouzi@gmail.com">pariya.behrouzi@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>1. Kruijer, W., Behrouzi, P., Rodriguez-Alvarez, M. X., Wit, E. C., Mahmoudi, S. M., Yandell, B., Van Eeuwijk, F., (2018, in preparation), Reconstruction of networks with direct and indirect genetic effects. <br />
+2. Colombo, D. and Maathuis, M.H., 2014. Order-independent constraint-based causal structure learning. <em>The Journal of Machine Learning Research</em>, 15(1), pp.3741-3782. <br />
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+getResiduals">getResiduals</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(simdata)
+out &lt;- pcgenFast(suffStat = simdata, alpha = 0.01, verbose= FALSE, use.res = TRUE)
+</code></pre>
+
+<hr>
+<h2 id='pcgenTest'>The conditional independence test in pcgen</h2><span id='topic+pcgenTest'></span>
+
+<h3>Description</h3>
+
+<p>This performs the conditional independence test used in the pcgen algorithm, assuming there are replicates, and independent genetic effects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>pcgenTest(x, y, S, suffStat, QTLs = integer(), covariates = NULL, alpha = 0.01, 
+          max.iter = 50, stop.if.significant = TRUE, use.res = FALSE, res.cor = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="pcgenTest_+3A_x">x</code>, <code id="pcgenTest_+3A_y">y</code></td>
+<td>
+<p>Column numbers in <code>suffStat</code> that should be tested for conditional independence given the variables in S.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_s">S</code></td>
+<td>
+<p>vector of integers defining the conditioning set, where the integers refer to column numbers in <code>suffStat</code>. May be numeric(), i.e. the empty set.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_suffstat">suffStat</code></td>
+<td>
+<p>A data.frame, of which the first column is the factor G(genotype),  and subsequent columns contain the traits, and optionally some QTLs. The name of the first column should be G. It should not contain covariates.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_qtls">QTLs</code></td>
+<td>
+<p>Column numbers in <code>suffStat</code> that correspond to QTLs. These may be partly in <code class="reqn">S</code> and <code class="reqn">x</code> and <code class="reqn">y</code>, but <code class="reqn">x</code> and <code class="reqn">y</code> cannot be both QTLs.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_covariates">covariates</code></td>
+<td>
+<p>A data.frame containing covariates. It should be either <code>NULL</code> (default) or a data.frame with the same number of rows as <code>suffStat</code>. An intercept is already included for each trait in suffStat; covariates should not contain a column of ones.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_alpha">alpha</code></td>
+<td>
+<p>The significance level used in the test. The test itself of course does not depend on this, but it is used in the EM-algorithm to speed up calculations. When <code> stop.if.significant = TRUE</code>, the EM-algorithm is stopped once the p-value is below the significance level. Default is 0.01.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_max.iter">max.iter</code></td>
+<td>
+<p>Maximum number of iterations in the EM-algorithm, used to fit the bivariate mixed model (when <code>use.res = FALSE)</code>.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_stop.if.significant">stop.if.significant</code></td>
+<td>
+<p>If <code>TRUE</code>, the EM-algorithm used in some of the conditional independence tests (when <code>use.res = FALSE</code>) will be stopped whenever the p-value becomes significant, i.e. below <code>alpha</code>. This will speed up calculations, and can be done because (1) the PC algorithm only needs an accept/reject decision (2) In EM the likelihood is nondecreasing. It should be put to <code>FALSE</code> if the precise p-value is of interest.</p>
+</td></tr>
+<tr><td><code id="pcgenTest_+3A_use.res">use.res</code></td>
+<td>
+<p>If <code>TRUE</code>, the test for conditional independence of 2 traits given a set of other traits and G is based on residuals from GBLUP. If <code>FALSE</code> (the default), it is based on bivariate mixed models.
+</p>
+</td></tr>
+
+<tr><td><code id="pcgenTest_+3A_res.cor">res.cor</code></td>
+<td>
+<p>If <code>use.res = TRUE</code>, res.cor should be the correlation matrix of the residuals from the GBLUP. These can be obtained with the getResiduals function. See the example below.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>pcgenTest</code> tests for conditional independence between <code class="reqn">x</code> and <code class="reqn">y</code> given <code class="reqn">S</code>.
+It distinguishes 2 situations:
+(i) if one of <code class="reqn">x</code> and <code class="reqn">y</code> (say <code class="reqn">x</code>) is the factor G, <code>pcgenTest</code> will test if the genetic variance in <code class="reqn">y</code> is zero, given the traits in S. (ii) if <code class="reqn">x</code> and <code class="reqn">y</code> are both traits, <code>pcgenTest</code> tests if the residual covariance between them is zero, given the traits in <code class="reqn">S</code> and the factor G. The factor G is automatically included in the conditioning set <code class="reqn">S</code> (<code class="reqn">S</code> does not need to contain the integer 1). This test is either based on a bivariate mixed model (when <code>use.res=FALSE</code>), or on residuals from GBLUP (<code>use.res=T</code>), obtained with the getResiduals function. In the latter case, <code>res.cor</code> must be provided.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A p-value
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Willem Kruijer and Pariya Behrouzi.
+Maintainers: Willem Kruijer <a href="mailto:willem.kruijer@wur.nl">willem.kruijer@wur.nl</a> and
+Pariya Behrouzi <a href="mailto:pariya.behrouzi@gmail.com">pariya.behrouzi@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Kruijer, W., Behrouzi, P., Rodriguez-Alvarez, M. X., Wit, E. C., Mahmoudi, S. M., Yandell, B., Van Eeuwijk, F., (2018, in preparation), Reconstruction of networks with direct and indirect genetic effects. <br />
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+getResiduals">getResiduals</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(simdata)
+rs &lt;- getResiduals(suffStat= simdata)
+pcgenTest(suffStat= simdata, x= 2, y= 3, S= 4)
+pcgenTest(suffStat= simdata, x= 2, y= 3, S= c(1,4))
+pcgenTest(suffStat= simdata, x= 2, y= 3, S= 4, use.res= TRUE, res.cor= cor(rs))
+pcgenTest(suffStat= simdata, x= 2, y= 1, S= 4)
+
+</code></pre>
+
+<hr>
+<h2 id='pcRes'>The pc algorithm applied to residuals</h2><span id='topic+pcRes'></span>
+
+<h3>Description</h3>
+
+<p>The standard pc algorithm applied to GBLUP residuals, or to the GBLUP itself.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>pcRes(suffStat, alpha= 0.01, K = NULL, m.max = Inf, verbose = FALSE,
+  covariates = NULL, QTLs = integer(), cov.method = "uni",
+  use.GBLUP = FALSE, return.pvalues = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="pcRes_+3A_suffstat">suffStat</code></td>
+<td>
+<p>A data.frame, of which the first column is the factor G (genotype),  and subsequent columns contain the traits, and optionally some QTLs. The name of the first column should be G. </p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_alpha">alpha</code></td>
+<td>
+<p>The significance level used in the test. Default is 0.01.</p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_k">K</code></td>
+<td>
+<p>A genetic relatedness matrix. If <code>NULL</code> (the default), independent genetic effects are assumed.</p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_m.max">m.max</code></td>
+<td>
+<p>Maximum size of the conditioning set, in the pc-algorithm on the residuals. </p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_verbose">verbose</code></td>
+<td>
+<p>If <code>TRUE</code>, p-values for the conditional independence tests are printed. </p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_covariates">covariates</code></td>
+<td>
+<p>A data.frame containing covariates, that should always be used in each conditional independence test. Should be either <code>NULL</code> (default) or a data.frame with the same number of rows as <code>suffStat</code>. An intercept is already included for each trait in <code>suffStat</code>; covariates should not contain a column of ones.</p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_qtls">QTLs</code></td>
+<td>
+<p>Column numbers in suffStat that correspond to QTLs. </p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_cov.method">cov.method</code></td>
+<td>
+<p> A string, specifying which method should be used to compute the GBLUP. Options are <code>'us'</code> (unstructured multi-trait model fitted using sommer) and <code>'uni'</code> (based on univariate GBLUPs).</p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_use.gblup">use.GBLUP</code></td>
+<td>
+<p>Use the GBLUP itself, instead of the residuals</p>
+</td></tr>
+<tr><td><code id="pcRes_+3A_return.pvalues">return.pvalues</code></td>
+<td>
+<p>If <code>TRUE</code>, the maximal p-value for each edge is returned.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If <code>use.GBLUP = FALSE</code>, GBLUP residuals are used as input for the pc-stable algorithm of Colombo and Maathuis (2014). This closely resembles the residual networks of Valente et al., (2010) and Topner et al., (2017) (who used different ways to predict the genetic effects, and applied other causal inference algorithms to the residuals). When <code>use.GBLUP = TRUE</code>, pc-stable is applied to the GBLUP itself, which resembles the genomic networks of Topner et al., (2017). If <code>cov.method = "uni"</code>, the GBLUP and the residuals are computed separately for each trait in suffStat. The covariance of each trait is assumed to be
+</p>
+<p style="text-align: center;"><code class="reqn">\sigma_G^2 Z K Z^t + \sigma_E^2 I_n</code>
+</p>
+
+<p>where <code class="reqn">Z</code> is a binary incidence matrix, assigning plants or plots to genotypes. <code class="reqn">Z</code> is based on the first column in suffStat. If there is a single observation per genotype (typically a genotypic mean), <code class="reqn">Z</code> is the identity matrix, and the relatedness matrix <code class="reqn">K</code> should be specified. If there are replicates
+for at least some of the genotypes, and no <code class="reqn">K</code> is provided, independent genetic effects are assumed (<code class="reqn">K</code> will be the identity matrix). It is also possible to have replicates and specify a non-diagonal <code class="reqn">K</code>. Whenever  <code class="reqn">K</code> is specified, sommer (mmer2) will be used; otherwise lmer (lme4).
+mmer2 is also used when <code>cov.method = "us"</code>, in which case the multivariate GBLUP is computed, for all traits in suffStat simultaneously. This is only possible for a limited number of traits.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>return.pvalues = FALSE</code>, the output is a graph (an object with S3 class <code>"pcgen"</code>). If <code>return.pvalues = TRUE</code>, the output is a list with elements <code>gr</code> (the graph) and <code>pMax</code> (a matrix with the p-values).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Willem Kruijer and Pariya Behrouzi.
+Maintainers: Willem Kruijer <a href="mailto:willem.kruijer@wur.nl">willem.kruijer@wur.nl</a> and
+Pariya Behrouzi <a href="mailto:pariya.behrouzi@gmail.com">pariya.behrouzi@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>1. Colombo, D. and Maathuis, M.H., 2014. Order-independent constraint-based causal structure learning. <em>The Journal of Machine Learning Research</em>, 15(1), pp.3741-3782. <br />
+2. Kruijer, W., Behrouzi, P., Rodriguez-Alvarez, M. X., Wit, E. C., Mahmoudi, S. M., Yandell, B., Van Eeuwijk, F., (2018, in preparation), Reconstruction of networks with direct and indirect genetic effects. <br />
+3. Topner, K., Rosa, G.J., Gianola, D. and Schon, C.C., 2017. Bayesian Networks Illustrate Genomic and Residual Trait Connections in Maize (Zea mays L.). <em>G3: Genes, Genomes, Genetics</em>, pp.g3-117. <br />
+4. Valente, B.D., Rosa, G.J., Gustavo, A., Gianola, D. and Silva, M.A., 2010. Searching for recursive causal structures in multivariate quantitative genetics mixed models. <em>Genetics</em>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(simdata)
+out &lt;- pcRes(suffStat = simdata, alpha = 0.01, verbose= FALSE)
+
+</code></pre>
+
+<hr>
+<h2 id='simdata'>Simulated data</h2><span id='topic+simdata'></span>
+
+<h3>Description</h3>
+
+<p>Simulated data, for two replicates of genotypes g1,...,g200.
+Three traits were simulated (Y1, Y2 and Y3), using a structural equation model
+defined by Y1 -&gt; Y2 -&gt; Y3, and direct genetic effects on Y1 and Y3.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(simdata)</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame of dimension <code class="reqn"> 4 \times 400 </code>. The first column is the factor G (genotype); the subsequent columns contain <code class="reqn">y_1, y_2</code> and <code class="reqn">y_3</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(simdata)
+out &lt;- pcgen(simdata)
+out2 &lt;- pcRes(suffStat = simdata, alpha = 0.01, verbose= FALSE)
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

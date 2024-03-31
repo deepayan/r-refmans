@@ -1,0 +1,873 @@
+<!DOCTYPE html><html><head><title>Help for package ecoreg</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {ecoreg}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#eco'><p>Ecological regression using aggregate and/or individual data</p></a></li>
+<li><a href='#gauss.hermite'><p>Calculate Gauss-Hermite Quadrature Points</p></a></li>
+<li><a href='#integrate.gh'><p>Univariate Gauss-Hermite integration</p></a></li>
+<li><a href='#sim.eco'><p>Simulate ecological data and samples of individual-level data</p></a></li>
+<li><a href='#tapplysum.fast'><p>Simplified fast group sums</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Ecological Regression using Aggregate and Individual Data</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.2.4</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2024-01-23</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Christopher Jackson &lt;chris.jackson@mrc-bsu.cam.ac.uk&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Estimating individual-level covariate-outcome associations 
+ using aggregate data ("ecological inference") or a combination of 
+ aggregate and individual-level data ("hierarchical related regression").</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Christopher Jackson &lt;chris.jackson@mrc-bsu.cam.ac.uk&gt;</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a> | <a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a> [expanded from: GPL (&ge; 2)]</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2024-01-23 16:50:59 UTC; Chris</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2024-01-23 17:12:47 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='eco'>Ecological regression using aggregate and/or individual data</h2><span id='topic+eco'></span>
+
+<h3>Description</h3>
+
+<p>Estimation of an underlying individual-level logistic regression
+model, using aggregate data alone, individual-level data alone or a
+combination of aggregate and individual-level data. Any number
+number of covariates can be included in the individual-level
+regression. Covariates can be binary or categorical, expressed as proportions
+over the group, or normally-distributed, expressed as
+within-area means and optional covariances.  A general formula for
+group-level (contextual) effects can also be supplied.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>eco(formula, binary, categorical, normal, iformula, data, idata, groups, igroups,
+strata, istrata, pstrata, cross=NULL, norm.var=NULL, random=FALSE,
+pars, fixed=FALSE, model = c("marginal","conditional"),
+outcome=c("binomial","poisson"), gh.points=10, iter.adapt=5, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="eco_+3A_formula">formula</code></td>
+<td>
+<p> A model formula containing the group-level binomial
+response on the left-hand side, and general group-level covariates on the
+right-hand side.  For example,
+</p>
+<p><code>cbind(n.cases, population) ~ mean.income + deprivation.index</code>
+</p>
+<p>If <code>formula</code> is not specified, then there is assumed to be only
+individual-level data, and <code>iformula</code> should be supplied. 
+</p>
+</td></tr>
+<tr><td><code id="eco_+3A_binary">binary</code></td>
+<td>
+<p> An optional model formula with an empty left-hand
+side. The right-hand side should contain the names of any group-level
+proportions, which are to modelled as individual-level binary
+predictors of the response given in <code>formula</code>.  For example,
+</p>
+<p><code>~ p.smokers + p.nonwhite + p.unemployed</code>
+</p>
+</td></tr>
+<tr><td><code id="eco_+3A_categorical">categorical</code></td>
+<td>
+<p> An optional list of matrices or data frames.
+Each element corresponds to a categorical covariate.  Each element
+has the same number of rows as the aggregate data, and number of columns
+corresponding to the number of levels of the categorical covariate.
+The cells give the number or proportion of individuals in the area in each
+category.  These will be modelled as individual-level predictors of
+the response given in <code>formula</code>.
+</p>
+</td></tr>
+<tr><td><code id="eco_+3A_normal">normal</code></td>
+<td>
+<p> An optional model formula with an empty left-hand
+side. The right-hand side should list variables containing the
+group-level means of normally-distributed covariates.  These will be
+modelled as individual-level predictors of the response given in
+<code>formula</code>. For example
+</p>
+<p><code>~ pollution + income</code>.
+</p>
+</td></tr>
+<tr><td><code id="eco_+3A_iformula">iformula</code></td>
+<td>
+<p> A model for the corresponding individual-level data. The
+individual-level binary response should be on the right-hand side,
+and the individual-level covariates should be on the left-hand side.
+They should represent the same covariates, in the same order, as given in
+<code>formula</code> and <code>binary</code> respectively. However they need not
+have the same names.  For example
+</p>
+<p><code>outcome ~ mean.income + deprivation.index + smoking + nonwhite + unemployed</code>.
+</p>
+<p>If <code>iformula</code> is not specified, then there is assumed to be
+only aggregate data, and <code>formula</code> should be supplied. 
+</p>
+</td></tr>
+<tr><td><code id="eco_+3A_data">data</code></td>
+<td>
+<p> Data frame containing the group-level variables given in
+<code>formula</code> and <code>binary</code>. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_idata">idata</code></td>
+<td>
+<p> Data frame containing the individual-level variables
+given in <code>iformula</code>. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_groups">groups</code></td>
+<td>
+<p> A group-level variable containing the group identifiers
+to be matched with the groups given in <code>igroups</code>. Defaults to
+the row numbers of the aggregate data.  Only necessary if the model
+includes random group effects. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_igroups">igroups</code></td>
+<td>
+<p> An individual-level variable containing the group
+identifiers of the individual-level data to be matched with the
+groups given in <code>groups</code>. Only necessary if the model
+includes random group effects. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_strata">strata</code></td>
+<td>
+<p> A matrix with the same number of rows as the aggregate
+data. Rows representing groups, and columns
+representing strata occupancy probabilities, often estimated as 
+observed occupancy proportions.  The relative risks for the strata
+will be included as fixed offsets in the underlying logistic
+regression, using the probabilites supplied in <code>pstrata</code>.  This
+is to save the computational burden of estimating the &quot;nuisance&quot;
+strata-specific risks from the data. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_istrata">istrata</code></td>
+<td>
+<p> A variable containing the individual-level variable
+indicating the stratum an individual occupies. This should be a
+factor with the levels corresponding to the columns of the matrix
+<code>strata</code>.  </p>
+</td></tr>
+<tr><td><code id="eco_+3A_pstrata">pstrata</code></td>
+<td>
+<p> A vector with one element for each stratum, giving
+the assumed baseline outcome probabilities for the strata.  </p>
+</td></tr>
+<tr><td><code id="eco_+3A_cross">cross</code></td>
+<td>
+<p> A matrix giving the joint within-area distribution of
+all the covariates supplied in <code>binary</code> and <code>categorical</code>
+and any strata.  This should have the same number of rows as the
+aggregate data, and number of columns equal to the product of the
+numbers of levels of the covariates and strata, for example
+<code class="reqn">2^n</code> if there are <code class="reqn">n</code> binary covariates.  Each
+cell gives the proportion of individuals in the area occupying a 
+category defined by a unique combination of the covariates.   The
+categories are given in the order
+</p>
+<p>column 1: covariate 1 absent, covariate 2 absent, ..., covariate n-1 absent, covariate n absent <br />
+column 2: covariate 1 present, covariate 2 absent, ..., covariate n-1 absent, covariate n absent <br />
+column 3: covariate 1 absent, covariate 2 present, ..., covariate n-1 absent, covariate n absent  <br />
+column 4: covariate 1 present, covariate 2 present, ..., covariate n-1 absent, covariate n absent  <br />
+etc.
+</p>
+<p>(assuming <code class="reqn">n</code> binary covariates, with the obvious generalisation
+for categorical covariates) If <code>strata</code> are used, these are taken as
+covariate n+1.
+</p>
+</td></tr> 
+<tr><td><code id="eco_+3A_norm.var">norm.var</code></td>
+<td>
+<p> A data frame, matrix or list, supplying the within-area covariances of the continuous covariates.    
+</p>
+<p>If <code>norm.var</code> is a data frame or matrix, then the continuous
+covariates are assumed to be independent within areas.  It should
+have rows corresponding to areas, columns corresponding to continuous
+covariates, each cell giving the within-area standard deviation of
+the covariate.
+</p>
+<p>If <code>norm.var</code> is a list, then it should have the same number of
+elements as the number of areas, and each element should be the
+within-area covariance matrix of the continuous covariates.
+</p>
+<p><code>norm.var</code> can also be the name of a variable in <code>data</code>
+which contains the standard deviation of a single continuous
+covariate. 
+</p>
+</td></tr> 
+<tr><td><code id="eco_+3A_random">random</code></td>
+<td>
+<p> If <code>TRUE</code> then a normally-distributed random
+group-level intercept, with zero mean, is also included in the model. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_pars">pars</code></td>
+<td>
+<p> Vector of initial values of the model parameters, given
+in the following order:
+</p>
+<p>logit-scale intercept,<br />
+coefficients for group-level covariates,<br />
+coefficients for individual-level covariates,<br />
+random effects standard deviation.<br />
+</p>
+<p>If not supplied, the initial values are 0 for all covariate effects,
+1 for the random effects standard deviation.  The intercept is
+initialised to the logit mean outcome proportion over groups from
+the aggregate data. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_fixed">fixed</code></td>
+<td>
+<p> If <code>TRUE</code> then <code><a href="#topic+eco">eco</a></code> just calculates the
+likelihood with all parameters are fixed at their
+initial values. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_model">model</code></td>
+<td>
+<p> If &quot;marginal&quot; then the ecological group-level risk is based on
+integrating over binary individual-level covariates.  This is suitable if the
+aggregate exposures are estimated using a survey of individuals in the area. 
+If  &quot;conditional&quot; then the binary individual-level covariates are
+conditioned on, and the group-level risk is the normal approximation
+model described by Wakefield (2004).  This is suitable if the
+aggregate exposures are estimated using a full population census. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_outcome">outcome</code></td>
+<td>
+<p> Distribution of the aggregate outcome, by default
+&quot;binomial&quot;. <code>outcome="poisson"</code> can be specified for rare
+outcomes. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_gh.points">gh.points</code></td>
+<td>
+<p> Number of points for Gauss-Hermite numerical
+integration in the random effects model. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_iter.adapt">iter.adapt</code></td>
+<td>
+<p> Number of adaptive iterations to estimate the mode and scale
+for Gauss-Hermite numerical integration in the random-effects
+model. </p>
+</td></tr>
+<tr><td><code id="eco_+3A_...">...</code></td>
+<td>
+<p> Arguments passed to <code><a href="stats.html#topic+optim">optim</a></code>. </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Individual data are simply modelled by a logistic regression.
+</p>
+<p>Aggregate outcomes are modelled as binomial, with area-level risk
+obtained by integrating the underlying individual-level logistic
+regression model over the within-area distribution of the covariates.
+</p>
+<p>The model for combined individual and aggregate data shares the same
+coefficients between the individual and aggregate components.
+</p>
+<p>Aggregate data alone can be sufficient for inference of
+individual-level relationships, provided the between-area variability
+of the exposures is large compared to the within-area variability. 
+</p>
+<p>When there are several binary covariates, it is usually advisable to
+account for their within-area distribution, using <code>cross</code>.
+</p>
+<p>See Jackson et al. (2006,2008) for further details. 
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with components:
+</p>
+<table>
+<tr><td><code>call</code></td>
+<td>
+<p>The call to <code><a href="#topic+eco">eco</a></code>.</p>
+</td></tr>
+<tr><td><code>lik</code></td>
+<td>
+<p>Minus twice the log-likelihood at the estimates.</p>
+</td></tr>
+<tr><td><code>ors.ctx</code></td>
+<td>
+<p>Matrix of estimated odds ratios and 95% confidence
+intervals for the area-level covariates.</p>
+</td></tr>
+<tr><td><code>ors.indiv</code></td>
+<td>
+<p>Matrix of estimated odds ratios and 95% confidence
+intervals for the individual-level covariates.</p>
+</td></tr>
+<tr><td><code>random</code></td>
+<td>
+<p>The estimated random-effects standard deviation.</p>
+</td></tr>
+<tr><td><code>mod</code></td>
+<td>
+<p>A list of constants describing the model and data (not useful
+to end users).</p>
+</td></tr>
+<tr><td><code>corrmat</code></td>
+<td>
+<p>The correlation matrix of the maximum likelihood
+estimates (on the optimized scale, for example log odds ratios for
+covariates).</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>C. H. Jackson <a href="mailto:chris.jackson@mrc-bsu.cam.ac.uk">chris.jackson@mrc-bsu.cam.ac.uk</a></p>
+
+
+<h3>References</h3>
+
+<p>C. H. Jackson, N. G. Best, and S. Richardson. (2006) <em>Improving
+ecological inference using individual-level data.</em> Statistics in
+Medicine, 25(12): 2136-2159.
+</p>
+<p>C. H. Jackson, N. G. Best, and S. Richardson. (2008)
+<em>Hierarchical related regression for combining aggregate and
+survey data in studies of socio-economic disease risk factors.</em>
+Journal of the Royal Statistical Society, Series A, 171(1):159-178.
+</p>
+<p>J. Wakefield. (2004) <em>Ecological inference for 2 x 2 tables</em>
+(with discussion). Journal of the Royal Statistical Society, Series A,
+167(3) 385&ndash;445.
+</p>
+<p>J. Wakefield and R. Salway. (2001) <em>A statistical framework for
+ecological and aggregate studies</em>.  Journal of The Royal Statistical
+Society, Series A, 164(1):119&ndash;137, 2001.
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="#topic+sim.eco">sim.eco</a></code> </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## Simulate some aggregate data and some combined aggregate and
+## individual data. 
+ng &lt;- 50
+N &lt;- rep(100, ng)
+set.seed(1)
+ctx &lt;- cbind(deprivation = rnorm(ng), mean.income = rnorm(ng))
+phi &lt;- cbind(nonwhite = runif(ng), smoke = runif(ng))
+sim.df &lt;- as.data.frame(cbind(ctx, phi))
+mu &lt;- qlogis(0.05)  ## Disease with approximate 5% prevalence
+
+## Odds ratios for group-level deprivation and mean imcome
+alpha.c &lt;- log(c(1.01, 1.02))
+## Odds ratios for individual-level ethnicity and smoking
+alpha &lt;- log(c(1.5, 2)) 
+
+sim1 &lt;- sim.eco(N, ctx=~deprivation+mean.income, binary=~nonwhite+smoke,
+                data = sim.df,  mu=mu, alpha.c=alpha.c, alpha=alpha)
+sim2 &lt;- sim.eco(N, ctx=~deprivation+mean.income, binary=~nonwhite+smoke,
+                data = sim.df,  mu=mu, alpha.c=alpha.c, alpha=alpha, isam=7)
+
+## Fit the model to recover the simulated odds ratios.
+
+aggdata &lt;- as.data.frame(cbind(y=sim1$y, sim.df))
+agg.eco &lt;- eco(cbind(y, N) ~ deprivation + mean.income,
+               binary = ~ nonwhite + smoke,  data = aggdata)
+agg.eco
+
+## Combining with individual-level data
+## doesn't improve the precision of the estimates.
+
+agg.indiv.eco &lt;- eco(cbind(y, N) ~ deprivation + mean.income,
+               binary = ~ nonwhite + smoke,
+               iformula = y ~ deprivation + mean.income + nonwhite + smoke, 
+               data = aggdata, idata=sim2$idata)
+agg.indiv.eco
+
+## However, suppose we have much lower between-area variance in the
+## mean covariate value.
+
+phi &lt;- cbind(nonwhite = runif(ng, 0, 0.3), smoke = runif(ng, 0.1, 0.4))
+sim.df &lt;- as.data.frame(cbind(ctx, phi))
+sim1 &lt;- sim.eco(N, ctx=~deprivation+mean.income, binary=~nonwhite+smoke,
+                data = sim.df,  mu=mu, alpha.c=alpha.c, alpha=alpha)
+sim2 &lt;- sim.eco(N, ctx=~deprivation+mean.income, binary=~nonwhite+smoke,
+                data = sim.df,  mu=mu, alpha.c=alpha.c, alpha=alpha, isam=10)
+aggdata &lt;- as.data.frame(cbind(y=sim1$y, sim.df))
+
+## The aggregate data now contain little information about the
+## individual-level effects, and we get biased estimates of the true
+## individual model. 
+agg.eco &lt;- eco(cbind(y, N) ~ deprivation + mean.income,
+               binary = ~ nonwhite + smoke,  data = aggdata)
+agg.eco
+
+## We need individual-level data to be able to estimate the
+## individual-level effects accurately. 
+agg.indiv.eco &lt;- eco(cbind(y, N) ~ deprivation + mean.income,
+               binary = ~ nonwhite + smoke,
+               iformula = y ~ deprivation + mean.income + nonwhite + smoke, 
+               data = aggdata, idata=sim2$idata)
+agg.indiv.eco
+
+## But then why not just study the individual data?  Combining with
+## aggregate data improves precision.  
+indiv.eco &lt;- eco(iformula = y ~ deprivation + mean.income + nonwhite + smoke, 
+               idata=sim2$idata)
+indiv.eco
+
+</code></pre>
+
+<hr>
+<h2 id='gauss.hermite'>Calculate Gauss-Hermite Quadrature Points</h2><span id='topic+gauss.hermite'></span>
+
+<h3>Description</h3>
+
+<p><code>gauss.hermite</code> calculates the Gauss-Hermite quadrature values
+for a specified number of points.  From the <span class="pkg">rmutil</span> package by Jim
+Lindsey (<a href="https://www.commanster.eu/rcode.html">https://www.commanster.eu/rcode.html</a>)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>gauss.hermite(points, iterlim=50)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gauss.hermite_+3A_points">points</code></td>
+<td>
+<p>The number of points.</p>
+</td></tr>
+<tr><td><code id="gauss.hermite_+3A_iterlim">iterlim</code></td>
+<td>
+<p>Maximum number of iterations in Newton-Raphson.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>gauss.hermite</code> returns a two-column matrix containing the points
+and their corresponding weights.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>J.K. Lindsey</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>gauss.hermite(10)
+</code></pre>
+
+<hr>
+<h2 id='integrate.gh'>Univariate Gauss-Hermite integration</h2><span id='topic+integrate.gh'></span>
+
+<h3>Description</h3>
+
+<p>Computes the integral of a univariate function, or several univariate
+functions simultaneously, using Gauss-Hermite quadrature. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>integrate.gh(h, n=1, points = 10, mu = 0, scale = 1, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="integrate.gh_+3A_h">h</code></td>
+<td>
+<p> The function to be integrated. May either have a scalar
+first argument and return a scalar result, or have a first argument of
+length <code>n</code> and return a vector of <code>n</code> results, corresponding to <code>n</code>
+independent functions.  </p>
+</td></tr>
+<tr><td><code id="integrate.gh_+3A_n">n</code></td>
+<td>
+<p> The dimension of the result returned by <code>h</code>. </p>
+</td></tr>
+<tr><td><code id="integrate.gh_+3A_points">points</code></td>
+<td>
+<p> Number of Gauss-Hermite quadrature points.  </p>
+</td></tr>
+<tr><td><code id="integrate.gh_+3A_mu">mu</code></td>
+<td>
+<p> Mode of the function, to centre the quadrature points
+around. </p>
+</td></tr>
+<tr><td><code id="integrate.gh_+3A_scale">scale</code></td>
+<td>
+<p> Scale of the quadrature points. </p>
+</td></tr>
+<tr><td><code id="integrate.gh_+3A_...">...</code></td>
+<td>
+<p> Other arguments to be passed to <code>h</code>. </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The integral is more accurate if the standard quadrature points are
+shifted and scaled to match the mode and scale of <code class="reqn">g(x)</code>, that is
+the objective function divided by the standard normal density.  The
+scale is estimated by
+<code class="reqn">1/\sqrt{-H}</code>, where H is the Hessian at the maximum
+of <code class="reqn">g(x)</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The integral of <code class="reqn">h(x)</code> between <code>-Inf</code> and <code>Inf</code>, of length
+<code>n</code>.  In the usual application of Gauss-Hermite quadrature,
+<code class="reqn">h(x)</code> is equivalent to a function <code class="reqn">g(x)\phi(x)</code>, where
+<code class="reqn">\phi(x)</code> is the standard normal density function. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>C. H. Jackson <a href="mailto:chris.jackson@mrc-bsu.cam.ac.uk">chris.jackson@mrc-bsu.cam.ac.uk</a>
+</p>
+<p>The Gauss-Hermite polynomial values and weights are calculated using
+the <code><a href="#topic+gauss.hermite">gauss.hermite</a></code> function copied from the <span class="pkg">rmutil</span>
+package by J. K. Lindsey. 
+</p>
+
+
+<h3>References</h3>
+
+<p>Liu, Q. and Pierce, D. A. (1994) <em>A note on Gauss-Hermite
+quadrature</em>. Biometrika, 81 (624-629)
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+gauss.hermite">gauss.hermite</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Want the integral of h over the real line
+g &lt;- function(x) 4 * exp( - ((1 - x)^2 + 1))
+h &lt;- function(x) g(x) * dnorm(x)
+integrate(h, -Inf, Inf)
+integrate.gh(h)
+## Not very accurate with default 10 points. Either use more quadrature points, 
+integrate.gh(h, points=30)
+## or shift and scale the points.
+opt &lt;- nlm(function(x) -g(x), 0, hessian=TRUE)
+integrate.gh(h, mu=opt$estimate, scale=1/sqrt(opt$hessian))
+
+</code></pre>
+
+<hr>
+<h2 id='sim.eco'>Simulate ecological data and samples of individual-level data</h2><span id='topic+sim.eco'></span>
+
+<h3>Description</h3>
+
+<p>Simulate ecological data and samples of individual-level data from an 
+individual-level logistic regression model, depending on given binary,
+categorical or normally-distributed covariates. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>sim.eco(N, ctx, binary, m, data=NULL, S=0, cross=NULL, covnames, ncats,
+mu, alpha.c=0, alpha=0, beta=0, sig=0, strata, pstrata, isam = 0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="sim.eco_+3A_n">N</code></td>
+<td>
+<p> Vector of population sizes, one for each group. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_ctx">ctx</code></td>
+<td>
+<p> A model formula containing names of group-level, or
+contextual, covariates on the right-hand side. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_binary">binary</code></td>
+<td>
+<p> A model formula containing names of individual-level
+binary covariates on the right-hand side. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_data">data</code></td>
+<td>
+<p> Data frame containing the group-level variables given in
+<code>ctx</code>.  It should also contain the variables given in <code>binary</code>, interpreted as
+proportions of individuals exposed to each of the binary covariates. </p>
+</td></tr>   
+<tr><td><code id="sim.eco_+3A_m">m</code></td>
+<td>
+<p> A data frame with <code>length(N)</code> rows, containing the
+within-area means of a set of normally-distributed continuous
+covariates.</p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_s">S</code></td>
+<td>
+<p> A data frame with <code>length(N)</code> rows, containing the
+within-area standard deviations of a set of normally-distributed
+continuous covariates.  For the moment they are assumed to be
+independent.</p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_cross">cross</code></td>
+<td>
+<p> A matrix of cross-classifications of individuals in the
+area between categories of multiple binary or categorical covariates, defined in
+the same way as in <code><a href="#topic+eco">eco</a></code>.   If this is not supplied, the
+binary covariates are assumed to be independent, and the probability
+of an individual having a certain combination of covariates is
+calculated as the product of the relevant marginal probabilities. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_covnames">covnames</code></td>
+<td>
+<p> Vector of names of the covariates, if <code>cross</code>
+is supplied.  Otherwise the names are taken from <code>binary</code>. </p>
+</td></tr> 
+<tr><td><code id="sim.eco_+3A_ncats">ncats</code></td>
+<td>
+<p> Numeric vector of the number of levels of the
+covariates used in <code>cross</code>. </p>
+</td></tr> 
+<tr><td><code id="sim.eco_+3A_mu">mu</code></td>
+<td>
+<p> Regression intercept on the logit scale. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_alpha.c">alpha.c</code></td>
+<td>
+<p> Vector of coefficients for the group-level
+covariates in the underlying logistic regression, corresponding to
+the columns of <code>ctx</code>. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_alpha">alpha</code></td>
+<td>
+<p> Vector of coefficients for the individual-level
+binary covariates, corresponding to the columns of
+<code>phi</code>. Interactions are not currently supported. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_beta">beta</code></td>
+<td>
+<p> Vector of coefficients for the individual-level
+continuous covariates, corresponding to the columns of <code>m</code> or
+<code>S</code>. Interactions are not currently supported. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_sig">sig</code></td>
+<td>
+<p> Random-effects standard deviation. </p>
+</td></tr>
+<tr><td><code id="sim.eco_+3A_strata">strata</code></td>
+<td>
+<p> A matrix with rows representing groups, and columns
+representing strata occupancy probabilities.  </p>
+</td></tr> 
+<tr><td><code id="sim.eco_+3A_pstrata">pstrata</code></td>
+<td>
+<p> A vector with one element for each stratum, giving
+the assumed baseline outcome probabilities for the strata. The
+logits of <code>pstrata</code> are used as offsets in the logistic regression. </p>
+</td></tr> 
+<tr><td><code id="sim.eco_+3A_isam">isam</code></td>
+<td>
+<p> Number of individuals per group to retain in the
+individual-level data. </p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with components: 
+</p>
+<table>
+<tr><td><code>y</code></td>
+<td>
+<p>The simulated aggregate-level response, one for each group.</p>
+</td></tr>
+<tr><td><code>idata</code></td>
+<td>
+<p> A data frame containing the retained individual-level
+samples. The grouping indicator (with values <code>1</code> to <code>length(N)</code>)
+is named <code>group</code>, the response variable is named <code>y</code>, 
+the group-level covariates are copied from <code>ctx</code>, and the
+binary covariates, with values 1 or 0, are individual-level
+equivalents of the proportions given in <code>phi</code>.  </p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p> C. H. Jackson <a href="mailto:chris.jackson@mrc-bsu.cam.ac.uk">chris.jackson@mrc-bsu.cam.ac.uk</a> </p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="#topic+eco">eco</a></code> </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>N &lt;- rep(50, 20)
+ctx &lt;- cbind(deprivation = rnorm(20), mean.income = rnorm(20))
+phi &lt;- cbind(nonwhite = runif(20), smoke = runif(20))
+sim.df &lt;- as.data.frame(cbind(ctx, phi))
+mu &lt;- qlogis(0.05)  ## Disease with approximate 5% prevalence
+## Odds ratios for group-level deprivation and mean imcome
+alpha.c &lt;- c(1.01, 1.02)
+## Odds ratios for individual-level ethnicity and smoking
+alpha &lt;- c(1.5, 2) 
+sim.eco(N, ctx = ~ deprivation + mean.income, binary = ~ nonwhite +
+        smoke, data=sim.df, mu=mu, alpha.c=alpha.c, alpha=alpha)
+sim.eco(N, ctx = ~ deprivation + mean.income, binary = ~ nonwhite +
+        smoke, data=sim.df, mu=mu, alpha.c=alpha.c, alpha=alpha, isam=3)
+</code></pre>
+
+<hr>
+<h2 id='tapplysum.fast'>Simplified fast group sums</h2><span id='topic+tapplysum.fast'></span>
+
+<h3>Description</h3>
+
+<p>A hack to speed up tapply(x, group, sum) for the special case where
+x is sorted by group. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>tapplysum.fast(x, groups)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="tapplysum.fast_+3A_x">x</code></td>
+<td>
+<p>A numeric vector.</p>
+</td></tr>
+<tr><td><code id="tapplysum.fast_+3A_groups">groups</code></td>
+<td>
+<p>A grouping factor.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Works by computing the cumulative sum of x and taking the difference
+at the indices where the groups change.  Standard <code><a href="base.html#topic+tapply">tapply</a></code> can
+be slow when there are a large number of groups, due to the overhead
+of factor manipulation. 
+</p>
+
+
+<h3>Value</h3>
+
+<p>Vector containing the group sums of <code>x</code>. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>C. H. Jackson &lt;chris.jackson@mrc-bsu.cam.ac.uk&gt;</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="base.html#topic+tapply">tapply</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x &lt;- factor(rep(1:1000, each=100))
+y &lt;- rnorm(1000*100)
+system.time(tapply(y, x, sum))
+system.time(tapplysum.fast(y, x))
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

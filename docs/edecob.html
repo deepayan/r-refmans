@@ -1,0 +1,1125 @@
+<!DOCTYPE html><html><head><title>Help for package edecob</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {edecob}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#bt_smoother'><p>Bootstrap the Smoother</p></a></li>
+<li><a href='#conf_band'><p>Confidence Bounds of the Smoother</p></a></li>
+<li><a href='#detect_event'><p>Detect Events</p></a></li>
+<li><a href='#edecob'><p>Event DEtection using COnfidence Bounds</p></a></li>
+<li><a href='#example_data'><p>Artificially generated data for examples</p></a></li>
+<li><a href='#mov_med'><p>Moving Median over a Time Window</p></a></li>
+<li><a href='#plot.edecob'><p>Plot Event Data</p></a></li>
+<li><a href='#smoother_resid'><p>Residuals of the Smoother</p></a></li>
+<li><a href='#summary.edecob'><p>Summarizing Event Detection Results</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Event Detection Using Confidence Bounds</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.2.2</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Detects sustained change in digital bio-marker data using
+    simultaneous confidence bands. Accounts for noise using an auto-regressive
+    model. Based on Buehlmann (1998) "Sieve bootstrap for smoothing in
+    nonstationary time series" &lt;<a href="https://doi.org/10.1214%2Faos%2F1030563978">doi:10.1214/aos/1030563978</a>&gt;.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.1.2</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.5.0)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>stats (&ge; 3.5.0), ggplot2 (&ge; 3.1.0), rlang (&ge; 0.4.0), utils
+(&ge; 3.5.0), graphics (&ge; 3.5.0)</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>survival (&ge; 2.43)</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2022-11-04 11:29:00 UTC; ZCM</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Zheng Chen Man [aut, cre]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Zheng Chen Man &lt;zheng.chen.man@alumni.ethz.ch&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2022-11-04 12:00:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='bt_smoother'>Bootstrap the Smoother</h2><span id='topic+bt_smoother'></span>
+
+<h3>Description</h3>
+
+<p>First, fit an autoregressive model on the residuals of the smoother. Then bootstrap
+the errors of the autoregressive model. Afterwards, reconstruct the measurements
+by adding the bootstrapped error, the autoregressive model, and the smoother.
+We can again calculate the smoother using these reconstructed measurements to
+obtain the bootstrapped smoother (which can later be used to construct the
+simultaneous confidence bounds). For details see below.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>bt_smoother(
+  data,
+  smoother,
+  resample_method,
+  smoother_pts,
+  resid,
+  bt_tot_rep,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="bt_smoother_+3A_data">data</code></td>
+<td>
+<p>A data frame in long format containing the data for which events
+is to be detected. This means that each measurement corresponds to a row
+and the columns are (in order): source (the device or person from which the
+data was collected), point in time, and
+measurement value. If custom detection bounds are chosen, the folloing two
+columns must be added: lower detection bound, and upper detection bound.
+</p>
+<p>The source is expected to
+be a string; the time point are integers; measurements, and detection bounds are expected to be numerical.
+The detection bounds are in absolute value in the same unit as the
+values and each is expected to be identical for the same source.
+</p>
+<p>In case detection is wanted for a one sided change (e.g. give an event if
+the confidence bounds drop below a threshold) then the upper or lower detection
+bound can be chosen to be Inf or -Inf respectively.</p>
+</td></tr>
+<tr><td><code id="bt_smoother_+3A_smoother">smoother</code></td>
+<td>
+<p>A string specifying which smoother is to be used. Use <code>mov_med</code> for the
+moving median. When using the moving median, the parameter <code>med_win</code> must
+be given to specify the size of the window over which the moving median is
+to be taken. Defaults to the moving median.</p>
+</td></tr>
+<tr><td><code id="bt_smoother_+3A_resample_method">resample_method</code></td>
+<td>
+<p>A string that determines how to resample the errors of the
+autoregression for the bootstrap. Default is <code>all</code>, meaning that the epsilon of a
+certain time point are resampled from all time points. <code>past</code> only
+considers epsilon corresponding to a time point prior to the one being
+resampled. <code>window</code> resamples the epsilon from the window given by
+<code>resample_win</code>.</p>
+</td></tr>
+<tr><td><code id="bt_smoother_+3A_smoother_pts">smoother_pts</code></td>
+<td>
+<p>A data frame containing the smoother with columns time_point
+and value. Preferably the output of one of the smoother functions within
+this package.</p>
+</td></tr>
+<tr><td><code id="bt_smoother_+3A_resid">resid</code></td>
+<td>
+<p>A vector of the same length as the number of rows of data
+containing the difference between the smoother and the
+measurements. Preferably the output of <code><a href="#topic+smoother_resid">smoother_resid</a></code>.</p>
+</td></tr>
+<tr><td><code id="bt_smoother_+3A_bt_tot_rep">bt_tot_rep</code></td>
+<td>
+<p>The number of iterations for the bootstrap computation. Because of
+run time, it is recommended to keep this number below 500. Defaults to 100.</p>
+</td></tr>
+<tr><td><code id="bt_smoother_+3A_...">...</code></td>
+<td>
+<p>Additional parameters to be given to the function. Possible
+parameters for the model are <code>order</code> and <code>min_pts_in_win</code>. For
+the moving median, a <code>med_win</code> is required. When resampling from
+window, a <code>resample_win</code> may be given.
+</p>
+<p>The parameter <code>min_pts_in_win</code>
+defines the minimal number of
+measurements required to be in the time window for the median to be calculated.
+Defaults to 1.
+</p>
+<p>If the parameter <code>order</code> is given, that number will be the (maximal)
+order of the autoregressive model. If no <code>order</code> is given, it will be
+determined using the Akaike information criterion.
+</p>
+<p>When the moving
+median is used as the smoother, <code>med_win</code> is expected. If no <code>med_win</code> is
+given, it will default to <code>c(-42, 42)</code>.
+</p>
+<p>When resampling from window, one can choose the window size for the
+resampling window with <code>resample_win</code> by giving a window like e.g. <code>c(-14,14)</code>..</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>An autoregressive (AR) model is used for the residuals of the smoother:
+</p>
+<p style="text-align: center;"><code class="reqn">Y(t) = S(t) + \eta(t)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\eta(t) = \sum^{p}_{j = 1} \phi_j \eta(t - j) + \epsilon</code>
+</p>
+
+<p>where <code class="reqn">t</code> is the point in time, <code class="reqn">Y(t)</code> the data point,
+<code class="reqn">S(t)</code> a smoother, <code class="reqn">\eta(t)</code> the residual of the smoother, <code class="reqn">p</code>
+the order of the AR model, <code class="reqn">\phi_j</code> the coefficients of the AR model, and
+<code class="reqn">\epsilon</code> the error of the AR model.
+</p>
+<p>The bootstrap procedure is as follows:
+</p>
+
+<ol>
+<li><p> Compute the smoother <code class="reqn">S(t)</code>.
+</p>
+</li>
+<li><p> Compute the residuals <code class="reqn">\eta(t_i) = Y(t_i) - S(t_i)</code>.
+</p>
+</li>
+<li><p> Fit an AR(p) model to <code class="reqn">\eta(t_i)</code> to obtain the coefficients
+<code class="reqn">\phi_1, \dots, \phi_p</code> and residuals <code class="reqn">\epsilon(t_i) = \eta(t_i) -
+    \sum^{p}_{j = 1} \phi_j \eta(t_i - t_{i-j})</code>.
+</p>
+</li>
+<li><p> Resample <code class="reqn">\epsilon(t_i)*</code> from <code class="reqn">\epsilon(t_{p+1}), \dots,
+    \epsilon(t_n)</code> to obtain </p>
+<p style="text-align: center;"><code class="reqn">Y(t_i)* = S(t_i) + \eta(t_i)*,</code>
+</p>
+<p> where  </p>
+<p style="text-align: center;"><code class="reqn">\eta(t_i)* = \sum^{p}_{j=1} \phi_j \eta(t_{i-j})*+ \epsilon(t_{i-j})*.</code>
+</p>
+
+</li>
+<li><p> Compute <code class="reqn">S(.)* = g(Y(t_1), \dots, Y(t_n))</code> where <code class="reqn">g</code> is the
+function with which the smoother is calculated.
+</p>
+</li>
+<li><p> Repeat steps 4 and 5 <code>bt_tot_rep</code> times.
+</p>
+</li></ol>
+
+
+
+<h3>Value</h3>
+
+<p>A data frame containing the bootstrap repetitions of the smoother.
+The column are subject identifier, time point, value, and the bootstrap
+repetition the value corrsponds to.
+</p>
+
+
+<h3>References</h3>
+
+<p>Bühlmann, P. (1998). Sieve Bootstrap for Smoothing in
+Nonstationary Time Series. <em>The Annals of Statistics</em>, 26(1), 48-83.
+</p>
+
+<hr>
+<h2 id='conf_band'>Confidence Bounds of the Smoother</h2><span id='topic+conf_band'></span>
+
+<h3>Description</h3>
+
+<p>Calculate the confidence bounds of the smoother function using the bootstrap.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>conf_band(bt_smoother, smoother_pts, bt_tot_rep, conf_band_lvl)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="conf_band_+3A_bt_smoother">bt_smoother</code></td>
+<td>
+<p>A data frame containing the bootstrapped smoother. Use the output of <code>bt_smoother</code>.</p>
+</td></tr>
+<tr><td><code id="conf_band_+3A_smoother_pts">smoother_pts</code></td>
+<td>
+<p>A data frame containing the smoother. Preferably the
+output of one of the smoother functions included in this package.</p>
+</td></tr>
+<tr><td><code id="conf_band_+3A_bt_tot_rep">bt_tot_rep</code></td>
+<td>
+<p>The number of iterations for the bootstrap computation. Because of
+run time, it is recommended to keep this number below 500. Defaults to 100.</p>
+</td></tr>
+<tr><td><code id="conf_band_+3A_conf_band_lvl">conf_band_lvl</code></td>
+<td>
+<p>The confidence level for the simultaneous confidence
+bands. Defaults to 0.95. When detection of events using only the smoother
+is desired, <code>conf_band_lvl</code> can be chosen to be 0.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The procedure is as follows:
+</p>
+
+<ol>
+<li><p> We compute the quantiles </p>
+<p style="text-align: center;"><code class="reqn"> q_x(t_i), q_{1-x}(t_i) i = 1,\dots, N</code>
+</p>
+
+<p>where </p>
+<p style="text-align: center;"><code class="reqn">q_x(t_i) = inf\left\{u; P^*[S(t_i)^*_b - S(t_i) \le u] \ge x\right\} </code>
+</p>
+<p> is a
+pointwise bootstrap quantile, <code class="reqn">S(t_i)^*_b</code> the bootstrapped smoother,
+and <code class="reqn">N</code> the number of measurements or rows in <code>data</code>, in our case the number of rows.
+</p>
+</li>
+<li><p> We vary the pointwise error <code class="reqn">x</code> until </p>
+<p style="text-align: center;"><code class="reqn">P^*[q_x(t_i) \le S(t_i)^*_b - S(t_i) \le q_{1-x}(t_i) \forall i = 1,\dots, N] \approx 1-\alpha.</code>
+</p>
+
+<p>In other words, until the ratio of bootstrap curves that have all their points within
+<code class="reqn">[q_x(t_i), q_{1-x}(t_i)]</code> is approximately <code class="reqn">1-\alpha</code>.
+</p>
+</li>
+<li><p> We define
+</p>
+<p style="text-align: center;"><code class="reqn"> I_n(t_i) = [S(t_i) +  q_x(t_i), S(t_i) + q_{1-x}(t_i)] \forall i = 1,\dots, N</code>
+</p>
+
+<p>the confidence bounds. Then <code class="reqn">{I_n(t_i); i = 1,\dots, N}</code> is a consistent simultaneous confidence band of level <code class="reqn">1-\alpha</code>.
+</p>
+</li></ol>
+
+
+
+<h3>Value</h3>
+
+<p>A data frame containing the upper confidence bound, the lower confidence bound,
+and the time point corresponding to the bounds.
+</p>
+
+
+<h3>References</h3>
+
+<p>Bühlmann, P. (1998). Sieve Bootstrap for Smoothing in
+Nonstationary Time Series. <em>The Annals of Statistics</em>, 26(1), 48-83.
+</p>
+
+<hr>
+<h2 id='detect_event'>Detect Events</h2><span id='topic+detect_event'></span>
+
+<h3>Description</h3>
+
+<p>Detect events using the confidence bounds. An event is detected if all the
+points of the upper or lower bound of the confidence band are below or above
+the threshold for <code>min_change_dur</code> consecutive days.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>detect_event(conf_band, detec_lower, detec_upper, min_change_dur)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="detect_event_+3A_conf_band">conf_band</code></td>
+<td>
+<p>A data frame containing the confidence bounds. Ideally the output of <code><a href="#topic+conf_band">conf_band</a></code>.</p>
+</td></tr>
+<tr><td><code id="detect_event_+3A_detec_lower">detec_lower</code></td>
+<td>
+<p>The lower detection bound in the same units as the values in data.</p>
+</td></tr>
+<tr><td><code id="detect_event_+3A_detec_upper">detec_upper</code></td>
+<td>
+<p>The upper detection bound in the same units as the values in data.</p>
+</td></tr>
+<tr><td><code id="detect_event_+3A_min_change_dur">min_change_dur</code></td>
+<td>
+<p>The minimal number of time units that the confidence bounds
+need to stay inside the detection bounds in order for an event to be
+detected. Defaults to 84, i.e. 12 weeks.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of four values: </p>
+ <dl>
+<dt><code>event_detected</code></dt><dd><p>gives
+whether an event was detected</p>
+</dd>
+<dt><code>event_onset</code></dt><dd><p>gives the time_point at which the
+event was detected</p>
+</dd> <dt><code>event_duration</code></dt><dd><p>gives the duration the
+event is sustained</p>
+</dd> <dt><code>event_stop</code></dt><dd><p>gives whether the detected
+event is censored</p>
+</dd>
+</dl>
+
+
+<hr>
+<h2 id='edecob'>Event DEtection using COnfidence Bounds</h2><span id='topic+edecob'></span>
+
+<h3>Description</h3>
+
+<p>Calculate a smoother of longitudinal data of the same measure and bootstrap the errors of the autoregressive
+model fitted on the smoother to form simultaneous
+confidence bounds of a certain level (mathematical details below).
+Define an event if the simultaneous confidence bound is
+within a chosen interval for a predefined amount of time. When data from
+multiple sources is provided, the calculation will be done separately for
+each source.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>edecob(
+  data,
+  smoother = "mov_med",
+  resample_method = "all",
+  min_change_dur = 84,
+  conf_band_lvl = 0.95,
+  bt_tot_rep = 100,
+  time_unit = "day",
+  detect = "below",
+  detect_factor = 1,
+  bline_period = 14,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="edecob_+3A_data">data</code></td>
+<td>
+<p>A data frame in long format containing the data for which events
+is to be detected. This means that each measurement corresponds to a row
+and the columns are (in order): source (the device or person from which the
+data was collected), point in time, and
+measurement value. If custom detection bounds are chosen, the folloing two
+columns must be added: lower detection bound, and upper detection bound.
+</p>
+<p>The source is expected to
+be a string; the time point are integers; measurements, and detection bounds are expected to be numerical.
+The detection bounds are in absolute value in the same unit as the
+values and each is expected to be identical for the same source.
+</p>
+<p>In case detection is wanted for a one sided change (e.g. give an event if
+the confidence bounds drop below a threshold) then the upper or lower detection
+bound can be chosen to be Inf or -Inf respectively.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_smoother">smoother</code></td>
+<td>
+<p>A string specifying which smoother is to be used. Use <code>mov_med</code> for the
+moving median. When using the moving median, the parameter <code>med_win</code> must
+be given to specify the size of the window over which the moving median is
+to be taken. Defaults to the moving median.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_resample_method">resample_method</code></td>
+<td>
+<p>A string that determines how to resample the errors of the
+autoregression for the bootstrap. Default is <code>all</code>, meaning that the epsilon of a
+certain time point are resampled from all time points. <code>past</code> only
+considers epsilon corresponding to a time point prior to the one being
+resampled. <code>window</code> resamples the epsilon from the window given by
+<code>resample_win</code>.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_min_change_dur">min_change_dur</code></td>
+<td>
+<p>The minimal number of time units that the confidence bounds
+need to stay inside the detection bounds in order for an event to be
+detected. Defaults to 84, i.e. 12 weeks.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_conf_band_lvl">conf_band_lvl</code></td>
+<td>
+<p>The confidence level for the simultaneous confidence
+bands. Defaults to 0.95. When detection of events using only the smoother
+is desired, <code>conf_band_lvl</code> can be chosen to be 0.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_bt_tot_rep">bt_tot_rep</code></td>
+<td>
+<p>The number of iterations for the bootstrap computation. Because of
+run time, it is recommended to keep this number below 500. Defaults to 100.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_time_unit">time_unit</code></td>
+<td>
+<p>A string containing the unit of time used, in singular form.
+Defaults to day.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_detect">detect</code></td>
+<td>
+<p>A string specifying how the detection bounds are to be chosen.
+<code>below</code>, <code>above</code>, and <code>custom</code> can be chosen. <code>below</code>
+detects decreases in value, <code>above</code> detects increases in value, and
+<code>custom</code> can be used to manually add detection bounds for each subject.
+When <code>above</code> or <code>below</code> are used, the detection bound will be x percent
+above or below the median of the first y days, where x is <code>detect_factor</code>
+and y is <code>detect period</code>.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_detect_factor">detect_factor</code></td>
+<td>
+<p>A number specifying the factor by which the median of
+the fist <code>bline_period</code> days is to be multiplied to obtain the
+detection bounds. E.g. 0.9 sets the detection bound 10 percent below the
+said median.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_bline_period">bline_period</code></td>
+<td>
+<p>A number specifying the number of time units from which
+data should be taken to calculate the median to obtain the detection bounds.</p>
+</td></tr>
+<tr><td><code id="edecob_+3A_...">...</code></td>
+<td>
+<p>Additional parameters to be given to the function. Possible
+parameters for the model are <code>order</code> and <code>min_pts_in_win</code>. For
+the moving median, a <code>med_win</code> is required. When resampling from
+window, a <code>resample_win</code> may be given.
+</p>
+<p>The parameter <code>min_pts_in_win</code>
+defines the minimal number of
+measurements required to be in the time window for the median to be calculated.
+Defaults to 1.
+</p>
+<p>If the parameter <code>order</code> is given, that number will be the (maximal)
+order of the autoregressive model. If no <code>order</code> is given, it will be
+determined using the Akaike information criterion.
+</p>
+<p>When the moving
+median is used as the smoother, <code>med_win</code> is expected. If no <code>med_win</code> is
+given, it will default to <code>c(-42, 42)</code>.
+</p>
+<p>When resampling from window, one can choose the window size for the
+resampling window with <code>resample_win</code> by giving a window like e.g. <code>c(-14,14)</code>..</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>For the moving median, the med_win is the total size of the window, meaning
+that for the value corresponding to day x, the data points from day
+x + <code>med_win[1]</code> to x + <code>med_win[2]</code> will be used for the calculation
+of the median.
+</p>
+<p>If there is no data for two times <code>med_win[2]-med_win[1]</code> consecutive time units, there
+will be time points at which no confidence bound can be calculated. In this
+case, it will be assumed that the confidence bound is outside of the
+detection interval when detecting sustained change.
+</p>
+<p>In case there are multiple instances where the algorithm would detect a
+sustained change (i.e. if after the first sustained change the confidence
+bounds leave the detection interval and then return into it
+for longer than <code>min_change_dur</code> time units) then only the first
+sustained change would be detected.
+</p>
+<p>Please note that the event onset could be on a date where there are no actual
+measurements. This can happen when there is a gap in the data. In this case, the
+confidence bounds will extend into the gap.
+If the confidence bounds in this period are outside the detection interval and
+remain outside for the next <code>min_change_duration</code> time units,
+the event onset will be in this gap.
+</p>
+<p>The censoring date is based on the last date where the confidence bounds can be
+calculated. We do not extend the confidence bounds to the last data point so
+that the confidence bounds don't change in case we obtain new measurements
+with time points later than the latest time point at which we have a measurement.
+</p>
+<p>The <code>edecob</code> function runs the functions <code>mov_med</code>, <code>smoother_resid</code>,
+<code>bt_smoother</code>, <code>conf_band</code>, and <code>detect_event</code> in this order
+for all subjects given. If desired, the functions can also manually be
+applied for the data to obtain e.g. the confidence bands. Note that in order
+to run one of these functions, the output of the previous functions are needed.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output <code>data</code> is a list containing as many elements as
+the number of sources in <code>data</code> plus one. Every element in this list
+will again be a list named after the corresponding sources. Each of
+these lists contains the following elements: </p>
+
+<dl>
+<dt><code>event</code></dt><dd><p>gives a list with four values: <code>event_detected</code>,
+<code>event_onset</code>, <code>event_duration</code>, and <code>event_stop</code>.
+</p>
+<dl>
+<dt><code>event_detected</code></dt><dd><p>gives
+whether an event was detected</p>
+</dd>
+<dt><code>event_onset</code></dt><dd><p>gives the first time point at which the upper or lower bound
+of the confidence band is inside the detection bounds, and after which it
+stays inside the detection bounds for at least <code>min_change_dur</code>
+consecutive time units</p>
+</dd> <dt><code>event_duration</code></dt><dd><p>gives the number of time units the upper or lower bound
+of the confidence band stays inside the detection bounds
+after <code>event_onset</code></p>
+</dd> <dt><code>event_stop</code></dt><dd><p>gives whether the confidence
+bounds stay inside the detection bounds until
+the last time point at which we can calculate the confidence bound or not.</p>
+</dd></dl>
+
+</dd>
+<dt><code>conf_band</code></dt><dd><p>gives a data frame containing the confidence bands.
+The columns are source, time point, lower bound, and upper
+bound of the confidence band.</p>
+</dd>
+<dt><code>smoother_pts</code></dt><dd><p>gives a data frame containing the smoother.
+The columns are source, time point, and the smoother</p>
+</dd>
+<dt><code>data</code></dt><dd><p>gives the data but with four additional columns:
+<code>event_detected</code>, <code>event_onset</code>, <code>event_duration</code>, and
+<code>event_stop</code>. They contain the same values as in <code>event</code>.</p>
+</dd>
+<dt><code>detec_lower</code></dt><dd><p>gives the lower detection bound.</p>
+</dd>
+<dt><code>detec_upper</code></dt><dd><p>gives the upper detection bound.</p>
+</dd>
+<dt><code>smoother</code></dt><dd><p>gives the smoother used.</p>
+</dd>
+<dt><code>resample_method</code></dt><dd><p>gives the resampling method used for the bootstrap.</p>
+</dd>
+<dt><code>min_change_dur</code></dt><dd><p>gives the smallest consecutive number of time units
+the confidence bounds must stay within the detection bounds in order for an event to be detected.</p>
+</dd>
+<dt><code>conf_band_lvl</code></dt><dd><p>gives the level of the simultaneous confidence band.</p>
+</dd>
+<dt><code>bt_tot_rep</code></dt><dd><p>gives the total amount of bootstrap repetitions performed.</p>
+</dd>
+<dt><code>call</code></dt><dd><p>gives the function call.</p>
+</dd>
+<dt><code>col_names</code></dt><dd><p>gives the original column names of the data.</p>
+</dd>
+<dt><code>time_unit</code></dt><dd><p>gives the unit of time used.</p>
+</dd></dl>
+
+<p>The last element in the output <code>data</code> is called <code>event_info</code> and
+is a data frame containing the information from <code>event</code> from each
+patient. <code>event_info</code> will thus have the following columns:
+<code>source</code>, <code>event_detected</code>, <code>event_onset</code>,
+<code>event_duration</code>, and <code>event_stop</code>.
+</p>
+
+
+<h3>Mathematical background</h3>
+
+<p>The mathematical background will be explained in the following sections.
+</p>
+
+
+<h3>Moving Median</h3>
+
+<p>Consider a sample <code class="reqn">X_1,\dots, X_n</code> of size <code class="reqn">n</code> and the
+reordering <code class="reqn">X_{(1)},\dots, X_{(n)}</code> such
+that <code class="reqn">X_{(1)} \le X_{(2)} \le \dots \le X_{(n)}</code>, commonly
+called the order statistic. Then for <code class="reqn">n</code> even the median usually
+defined as </p>
+<p style="text-align: center;"><code class="reqn">median(X_1,\dots, X_n) = X_{(k)}, \mathrm{where} \; k = n/2.</code>
+</p>
+<p> In the
+case where <code class="reqn">n</code> is odd the median is
+defined as </p>
+<p style="text-align: center;"><code class="reqn">median(X_1,\dots, X_n) = 1/2(X_{(k)} + X_{(k+1)}), \mathrm{where} \; k = n/2.</code>
+</p>
+<p> Let the
+study days at which the measurements <code class="reqn">X_1, \dots, X_n</code> were taken
+be <code class="reqn">t_1, \dots, t_n</code>.
+Let <code class="reqn">T</code> a fixed positive amount of time. Then the moving median at time
+point <code class="reqn">t</code> with window size <code class="reqn">T</code> is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">S(t) = median({X_j | t - T/2 \le t_j \le t + T/2}).</code>
+</p>
+
+
+
+<h3>The Model</h3>
+
+<p>An autoregressive (AR) model is used to model the residuals of the smoother <code class="reqn">\eta</code>:
+</p>
+<p style="text-align: center;"><code class="reqn">Y(t) = S(t) + \eta(t)</code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\eta(t) = \sum^p_{j = 1} \phi_j \eta(t - j) + \epsilon</code>
+</p>
+<p> where
+variable <code class="reqn">t</code> is the study day, <code class="reqn">Y(t)</code> the data point at study day <code class="reqn">t</code>,
+<code class="reqn">S(t)</code> a smoother, <code class="reqn">\eta(t)</code> the difference between the smoother
+and the measurement at study day <code class="reqn">t</code>, <code class="reqn">p</code>
+the order of the AR model, <code class="reqn">\phi_j</code> the coefficients of the AR model, and
+<code class="reqn">\epsilon</code> the error of the AR model. The order is calculated using the
+Akaike information criterion (AIC) if it was not given in the function call.
+</p>
+
+
+<h3>Bootstrap</h3>
+
+<p>In the following, the star * denotes a bootstrapped value. The bootstrap
+procedure is as follows:
+</p>
+
+<ol>
+<li><p> Compute the smoother <code class="reqn">S(t)</code>.
+</p>
+</li>
+<li><p> Compute the residuals <code class="reqn">\eta(t_i) = Y(t_i) - S(t_i)</code>.
+</p>
+</li>
+<li><p> Fit an AR(p) model to <code class="reqn">\eta(t_i)</code> to obtain the coefficients
+<code class="reqn">\phi_1,\dots, \phi_p</code> and <code class="reqn">\epsilon(t_i) = \eta(t_i) -
+    \sum^p_{j = 1} \phi_j \eta(t_i - t_{i-j})</code> the error of the AR model.
+</p>
+</li>
+<li><p> Randomly choose a <code class="reqn">\epsilon(t_i)^*</code> with replacement from <code class="reqn">\epsilon(t_{p+1}),\dots,
+    \epsilon(t_n)</code> to obtain </p>
+<p style="text-align: center;"><code class="reqn">Y(t_i)^* = S(t_i) + \eta(t_i)^*,</code>
+</p>
+<p> where  </p>
+<p style="text-align: center;"><code class="reqn">\eta(t_i)^* = \sum^p_{j = 1} \phi_j \eta(t_{i-j})^*+ \epsilon(t_{i-j})^*</code>
+</p>
+<p> the bootstrapped residuals of the smoother.
+</p>
+</li>
+<li><p> Compute <code class="reqn">S(.)^* = g(Y(t_1),\dots, Y(t_n))</code> where <code class="reqn">g</code> is the
+function with which the smoother is calculated.
+</p>
+</li>
+<li><p> Repeat steps 4 and 5 <code>bt_tot_rep</code> times to obtain <code class="reqn">S(t_i)^*_b</code> for <code class="reqn">\beta = 1,\dots,</code>
+<code>bt_tot_rep</code>.
+</p>
+</li></ol>
+
+
+
+<h3>Calculation of the Confidence Bounds</h3>
+
+<p>The confidence bounds are calculated as follows:
+</p>
+
+<ol>
+<li><p> We compute the quantiles </p>
+<p style="text-align: center;"><code class="reqn"> q_x(t_i), q_{1-x}(t_i) i = 1,\dots, N</code>
+</p>
+
+<p>where </p>
+<p style="text-align: center;"><code class="reqn">q_x(t_i) = inf\left\{u; P^*[S(t_i)^*_b - S(t_i) \le u] \ge x\right\} </code>
+</p>
+<p> is a
+pointwise bootstrap quantile, <code class="reqn">S(t_i)^*_b</code> the bootstrapped smoother,
+and <code class="reqn">N</code> the number of measurements or rows in <code>data</code>, in our case the number of rows.
+</p>
+</li>
+<li><p> We vary the pointwise error <code class="reqn">x</code> until </p>
+<p style="text-align: center;"><code class="reqn">P^*[q_x(t_i) \le S(t_i)^*_b - S(t_i) \le q_{1-x}(t_i) \forall i = 1,\dots, N] \approx 1-\alpha.</code>
+</p>
+
+<p>In other words, until the ratio of bootstrap curves that have all their points within
+<code class="reqn">[q_x(t_i), q_{1-x}(t_i)]</code> is approximately <code class="reqn">1-\alpha</code>.
+</p>
+</li>
+<li><p> We define
+</p>
+<p style="text-align: center;"><code class="reqn"> I_n(t_i) = [S(t_i) +  q_x(t_i), S(t_i) + q_{1-x}(t_i)] \forall i = 1,\dots, N</code>
+</p>
+
+<p>the confidence bounds. Then <code class="reqn">{I_n(t_i); i = 1,\dots, N}</code> is a consistent simultaneous confidence band of level <code class="reqn">1-\alpha</code>.
+</p>
+</li></ol>
+
+
+
+<h3>References</h3>
+
+<p>Bühlmann, P. (1998). Sieve Bootstrap for Smoothing in
+Nonstationary Time Series. <em>The Annals of Statistics</em>, 26(1), 48-83.
+</p>
+<p>Hogg, R., McKean, J. and Craig, A. (2014).
+<em>Introduction to mathematical statistics.</em> Harlow: Pearson Education.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+summary.edecob">summary.edecob</a></code>, <code><a href="#topic+plot.edecob">plot.edecob</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(edecob)
+
+# Let us examine the example_data dataset
+head(example_data, 3)
+#&gt;     subject study_day jump_height
+#&gt; 1 Subject 1         1    58.13024
+#&gt; 2 Subject 1         5    59.48988
+#&gt; 3 Subject 1         9    54.14774
+
+# We apply the main fuction of the package onto our example_data
+example_event &lt;- edecob(example_data, med_win = c(-21,21), bt_tot_rep = 10,
+                        min_change_dur = 70)
+names(example_event)
+#&gt; [1] "Subject 1"  "Subject 2"  "event_info"
+
+# example_event contains the event data for each source
+plot(example_event$`Subject 1`)
+plot(example_event$`Subject 2`)
+
+# example_event also contains a data frame containing the event information for all patients
+example_event$event_info
+#&gt;           event_detected event_onset event_duration event_stop
+#&gt; Subject 1           TRUE         119            134       TRUE
+#&gt; Subject 2          FALSE         306             60      FALSE
+
+# Using this data frame, we can draw a survival plot
+library("survival")
+plot(survfit(Surv(time = event_onset, event = event_detected) ~ 1,
+             data = example_event$event_info),
+     conf.int = FALSE, xlim = c(0,350), ylim = c(0,1), mark.time = TRUE,
+     xlab = "Time point", ylab = "Survival probability", main = "Survival plot")
+</code></pre>
+
+<hr>
+<h2 id='example_data'>Artificially generated data for examples</h2><span id='topic+example_data'></span>
+
+<h3>Description</h3>
+
+<p>A dataset in the long format containing the jump height
+of 3 subjects over 300 days.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>example_data
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A dataframe with 317 rows and 5 variables:
+</p>
+
+<dl>
+<dt>subject</dt><dd><p>The subject identifier</p>
+</dd>
+<dt>time_point</dt><dd><p>The point in time from which the data is collected, in days</p>
+</dd>
+<dt>jump_height</dt><dd><p>The jump height, in cm</p>
+</dd>
+<dt>detect_lower</dt><dd><p>The lower detection bound for the subject</p>
+</dd>
+<dt>detect_upper</dt><dd><p>The upper detection bound for the subject</p>
+</dd>
+</dl>
+
+
+<hr>
+<h2 id='mov_med'>Moving Median over a Time Window</h2><span id='topic+mov_med'></span>
+
+<h3>Description</h3>
+
+<p>Calculates the moving median over a time window around a time point for the
+all time points between the first and last time point provided.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mov_med(data, med_win = c(-42, 42), min_pts_in_win = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mov_med_+3A_data">data</code></td>
+<td>
+<p>A data frame in long format containing the data for which events
+is to be detected. This means that each measurement corresponds to a row
+and the columns are (in order): source (the device or person from which the
+data was collected), point in time, and
+measurement value. If custom detection bounds are chosen, the folloing two
+columns must be added: lower detection bound, and upper detection bound.
+</p>
+<p>The source is expected to
+be a string; the time point are integers; measurements, and detection bounds are expected to be numerical.
+The detection bounds are in absolute value in the same unit as the
+values and each is expected to be identical for the same source.
+</p>
+<p>In case detection is wanted for a one sided change (e.g. give an event if
+the confidence bounds drop below a threshold) then the upper or lower detection
+bound can be chosen to be Inf or -Inf respectively.</p>
+</td></tr>
+<tr><td><code id="mov_med_+3A_med_win">med_win</code></td>
+<td>
+<p>A vector containing two numbers specifying the window over
+which the moving median is to be taken. More specifically, when given a
+certain time point, the numbers specify the maximum number of time units
+difference that a time point can have such that that data point will be
+considered for the moving median. Note that the first number must be smaller
+than the second number. The numbers may be negative.</p>
+</td></tr>
+<tr><td><code id="mov_med_+3A_min_pts_in_win">min_pts_in_win</code></td>
+<td>
+<p>The minimal number of measurements required to be in
+the time window in order for the median to be calculated.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Consider a sample <code class="reqn">X_1,\dots, X_n</code> of size <code class="reqn">n</code> and the
+reordering <code class="reqn">X_{(1)},\dots, X_{(n)}</code> such
+that <code class="reqn">X_{(1)} \le X_{(2)} \le \dots \le X_{(n)}</code>, commonly
+called the order statistic. Then for <code class="reqn">n</code> even the median usually
+defined as </p>
+<p style="text-align: center;"><code class="reqn">median(X_1,\dots, X_n) = X_{(k)}, \mathrm{where } \;  k = n/2.</code>
+</p>
+<p> In the
+case where <code class="reqn">n</code> is odd the median is
+defined as </p>
+<p style="text-align: center;"><code class="reqn">median(X_1,\dots, X_n) = 1/2(X_{(k)} + X_{(k+1)}), \mathrm{where } \;  k = n/2.</code>
+</p>
+<p> Let the
+study days at which the measurements <code class="reqn">X_1, \dots, X_n</code> were taken
+be <code class="reqn">t_1, \dots, t_n</code>.
+Let <code class="reqn">T</code> a fixed positive amount of time. Then the moving median at time
+point <code class="reqn">t</code> with window size <code class="reqn">T</code> is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">S(t) = median({X_j | t - T/2 \le t_j \le t + T/2}).</code>
+</p>
+
+<p>For the initial time points where the time difference between the first data
+point and the time point for which we are calculating the median is less than
+half the <code>width</code>, we do not have enough data points to form a window
+which has the same size to both sides of the time point. In this case fewer
+data points are used to calculate the median and the time window is not
+symmetric around the time point for which we are calculating the median.
+</p>
+<p>No median is calculated if the time difference between the last data point
+and the current time point for which we are calculating the median is less
+than half the <code>width</code>. We do not calculate the median using a smaller
+time window so that the values do not change upon receiving new data with
+time points newer than that of the old data.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A data frame containing the values of the moving median, the study
+day to which it corresponds, the time window from which it was calculated,
+and the subject id corresponding to the data.
+</p>
+
+<hr>
+<h2 id='plot.edecob'>Plot Event Data</h2><span id='topic+plot.edecob'></span>
+
+<h3>Description</h3>
+
+<p>Generates a ggplot2 visualizing the data and event if any detected.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'edecob'
+plot(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot.edecob_+3A_x">x</code></td>
+<td>
+<p>The output of the <code>edecob</code> function for one subject. It is an object
+of class <code>edecob</code> containing the data and the event information.</p>
+</td></tr>
+<tr><td><code id="plot.edecob_+3A_...">...</code></td>
+<td>
+<p>Other arguments like <code>title</code>, <code>xlab</code>, or <code>ylab</code>. If the
+plot should be returned, write <code>output = TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The data points are plotted on the x-axis with the time point on the y-axis.
+The data from the learning period are gray. The baseline period is outlined
+by two vertical blue lines. The smoother is plotted in orange. The confidence
+bound  is the blue area. If an event is detected, a red triangle will mark
+the detection day.
+</p>
+<p>If the parameter <code>output = TRUE</code> is given to the function, the function
+will output the ggplot. The plot can then be manipulated using the usual functions
+from the ggplot2 package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>None. If <code>output = TRUE</code> was written in function call, a <code>ggplot</code>
+object that visualizes the data will be returned. The returned plot will not
+contain the the text at the bottom.
+</p>
+
+<hr>
+<h2 id='smoother_resid'>Residuals of the Smoother</h2><span id='topic+smoother_resid'></span>
+
+<h3>Description</h3>
+
+<p>Calculate the residuals of the smoother to the data points.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>smoother_resid(data, smoother_pts)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="smoother_resid_+3A_data">data</code></td>
+<td>
+<p>A data frame in long format containing the data for which events
+is to be detected. This means that each measurement corresponds to a row
+and the columns are (in order): source (the device or person from which the
+data was collected), point in time, and
+measurement value. If custom detection bounds are chosen, the folloing two
+columns must be added: lower detection bound, and upper detection bound.
+</p>
+<p>The source is expected to
+be a string; the time point are integers; measurements, and detection bounds are expected to be numerical.
+The detection bounds are in absolute value in the same unit as the
+values and each is expected to be identical for the same source.
+</p>
+<p>In case detection is wanted for a one sided change (e.g. give an event if
+the confidence bounds drop below a threshold) then the upper or lower detection
+bound can be chosen to be Inf or -Inf respectively.</p>
+</td></tr>
+<tr><td><code id="smoother_resid_+3A_smoother_pts">smoother_pts</code></td>
+<td>
+<p>A data frame containing the smoother. Preferably the
+output of one of the smoother functions included in this package.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of the same length as <code>data</code> containing the residuals.
+</p>
+
+<hr>
+<h2 id='summary.edecob'>Summarizing Event Detection Results</h2><span id='topic+summary.edecob'></span>
+
+<h3>Description</h3>
+
+<p><code>summary</code> method for class &quot;<code>edecob</code>&quot;, gives a summary of an edecob object
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'edecob'
+summary(object, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summary.edecob_+3A_object">object</code></td>
+<td>
+<p>An object of class &quot;<code>edecob</code>&quot; for which the summary will be shown.</p>
+</td></tr>
+<tr><td><code id="summary.edecob_+3A_...">...</code></td>
+<td>
+<p>Other arguments</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A short summary whether an event was detected and the parameters of the <code>edecob</code> function call.
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

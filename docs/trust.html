@@ -1,0 +1,445 @@
+<!DOCTYPE html><html><head><title>Help for package trust</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {trust}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#trust'><p>Non-Linear Optimization</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>0.1-8</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2020-01-07</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Trust Region Optimization</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Charles J. Geyer &lt;charlie@stat.umn.edu&gt;.</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Charles J. Geyer &lt;charlie@stat.umn.edu&gt;</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 2.10.0)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>stats</td>
+</tr>
+<tr>
+<td>ByteCompile:</td>
+<td>TRUE</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Does local optimization using two derivatives and trust regions.
+    Guaranteed to converge to local minimum of objective function.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="http://www.stat.umn.edu/geyer/trust/">http://www.stat.umn.edu/geyer/trust/</a></td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2020-01-07 16:33:06 UTC; geyer</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2020-01-10 05:30:06 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='trust'>Non-Linear Optimization</h2><span id='topic+trust'></span>
+
+<h3>Description</h3>
+
+<p>This function carries out a minimization or maximization of a function
+using a trust region algorithm.  See the references for details.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>trust(objfun, parinit, rinit, rmax, parscale,
+    iterlim = 100, fterm = sqrt(.Machine$double.eps),
+    mterm = sqrt(.Machine$double.eps),
+    minimize = TRUE, blather = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="trust_+3A_objfun">objfun</code></td>
+<td>
+<p>an R function that computes value, gradient, and Hessian
+of the function to be minimized or maximized and returns them as a list
+with components <code>value</code>, <code>gradient</code>, and <code>hessian</code>.
+Its first argument should be a vector of
+the length of <code>parinit</code> followed by any other arguments specified
+by the <code>...</code> argument.
+</p>
+<p>If the domain of the objective function is not the whole Euclidean space
+of dimension <code>length(parinit)</code>, then <code>objfun</code> should return
+<code>list(value = Inf)</code> when given a parameter value not in the domain
+of the objective function and <code>minimize == TRUE</code>.  Similarly, it
+should return <code>list(value = - Inf)</code> when given a parameter value
+not in the domain and <code>minimize == FALSE</code>.  Conversely, when given
+a parameter value in the domain, it must return a list with components
+with components <code>value</code>, <code>gradient</code>, and <code>hessian</code>. that
+are all finite and are the value, gradient, and Hessian of the objective
+function at the given point.
+</p>
+<p><b>Warning:</b> The feature of allowing infinite values to indicate
+a restricted domain does not allow for true constrained optimization.
+The algorithm will converge to solutions on the boundary very slowly.
+(See details below.)</p>
+</td></tr>
+<tr><td><code id="trust_+3A_parinit">parinit</code></td>
+<td>
+<p>starting parameter values for the optimization.  Must
+be feasible (in the domain).</p>
+</td></tr>
+<tr><td><code id="trust_+3A_rinit">rinit</code></td>
+<td>
+<p>starting trust region radius.  The trust region radius
+(see details below) is adjusted as the
+algorithm proceeds.  A bad initial value wastes a few steps while the
+radius is adjusted, but does not keep the algorithm from working properly.</p>
+</td></tr>
+<tr><td><code id="trust_+3A_rmax">rmax</code></td>
+<td>
+<p>maximum allowed trust region radius.  This may be set very
+large.  If set small, the algorithm traces a steepest descent path
+(steepest ascent, when <code>minimize = FALSE</code>).</p>
+</td></tr>
+<tr><td><code id="trust_+3A_parscale">parscale</code></td>
+<td>
+<p>an estimate of the size of each parameter
+at the minimum.  The algorithm operates as if optimizing
+<code>function(x, ...) objfun(x / parscale, ...)</code>.  May be missing
+in which case no rescaling is done.  See also the details section below.</p>
+</td></tr>
+<tr><td><code id="trust_+3A_iterlim">iterlim</code></td>
+<td>
+<p>a positive integer specifying the maximum number of
+iterations to be performed before the program is terminated.</p>
+</td></tr>
+<tr><td><code id="trust_+3A_fterm">fterm</code></td>
+<td>
+<p>a positive scalar giving the tolerance at which the
+difference in objective function values in a step
+is considered close enough to zero to terminate the algorithm.</p>
+</td></tr>
+<tr><td><code id="trust_+3A_mterm">mterm</code></td>
+<td>
+<p>a positive scalar giving the tolerance at which the
+two-term Taylor-series approximation to the difference in objective
+function values in a step
+is considered close enough to zero to terminate the algorithm.</p>
+</td></tr>
+<tr><td><code id="trust_+3A_minimize">minimize</code></td>
+<td>
+<p>If <code>TRUE</code> minimize.  If <code>FALSE</code> maximize.</p>
+</td></tr>
+<tr><td><code id="trust_+3A_blather">blather</code></td>
+<td>
+<p>If <code>TRUE</code> return extra info.</p>
+</td></tr>
+<tr><td><code id="trust_+3A_...">...</code></td>
+<td>
+<p>additional arguments to <code>objfun</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>See Fletcher (1987, Section 5.1) or Nocedal and Wright (1999, Section 4.2)
+for detailed expositions.
+</p>
+<p>At each iteration, the algorithm minimizes (or maximizes) the two-term
+Taylor series approximation
+</p>
+<p style="text-align: center;"><code class="reqn">m(p) = f + g^T p + \frac{1}{2} p^T B p</code>
+</p>
+
+<p>where <code class="reqn">f</code>, <code class="reqn">g</code>, and <code class="reqn">B</code> are the value, gradient, and Hessian
+returned by <code>objfun</code> when evaluated at the current iterate,
+subject to the constraint
+</p>
+<p style="text-align: center;"><code class="reqn">p^T D^2 p \le r^2</code>
+</p>
+
+<p>where <code class="reqn">D</code> is the diagonal matrix with diagonal elements
+<code>parscale</code> and
+<code class="reqn">r</code> is the current trust region radius.  Both the current iterate
+<code class="reqn">x</code> and the trust region radius <code class="reqn">r</code>
+are adjusted as the algorithm iterates, as follows.
+</p>
+<p>Let <code class="reqn">f^*</code> be the value returned by
+<code>objfun</code> at <code class="reqn">x + p</code> and calculate the ratio of actual to
+predicted decrease in the objective function
+</p>
+<p style="text-align: center;"><code class="reqn">\rho = \frac{f^* - f}{g^T p + \frac{1}{2} p^T B p}</code>
+</p>
+
+<p>If <code class="reqn">\rho \ge 1 / 4</code>, then we accept <code class="reqn">x + p</code> as
+the next iterate.  Moreover, if <code class="reqn">\rho &gt; 3 / 4</code>
+and the step was constrained (<code class="reqn">p^T D^2 p = r^2</code>),
+then we increase the trust region radius to 2 times its current value
+or <code>rmax</code>, whichever is least,
+If <code class="reqn">\rho &lt; 1 / 4</code>, then we do not accept <code class="reqn">x + p</code> as
+the next iterate and remain at <code class="reqn">x</code>.  Moreover, we decrease the trust
+region radius to 1 / 4 of its current value.
+</p>
+<p>The trust region algorithm is known to be highly efficient and
+very safe.  It is guaranteed to converge to a point satisfying
+the first and second order necessary conditions (gradient is
+zero and Hessian is positive semidefinite) for a local minimum
+(Fletcher, 1987, Theorem 5.1.1; Nocedal and Wright, 1999, Theorem 4.8)
+if the level set of the objective function below the starting position
+is bounded.  If the point to which the algorithm converges actually
+satisfies the second order sufficient condition (Hessian is positive
+definite and Lipschitz in a neighborhood of this point),
+then the algorithm converges at second order
+(Fletcher, 1987, Theorem 5.1.2).
+</p>
+<p>The algorithm is not designed for use on functions of thousands of variables
+or for functions for which derivatives are not available.  Use
+<code><a href="stats.html#topic+nlm">nlm</a></code> or <code><a href="stats.html#topic+optim">optim</a></code> for them.
+It is designed to do the best possible job at local optimization
+when derivatives are available.  It is much safer and much better
+behaved than <code><a href="stats.html#topic+nlm">nlm</a></code> or <code><a href="stats.html#topic+optim">optim</a></code>.
+It is especially useful when function evaluations are expensive,
+since it makes the best possible use of each function, gradient,
+and Hessian evaluation.
+</p>
+<p>The algorithm is not designed for constrained optimization.  It does
+allow for a restricted domain, but does not converge efficiently to
+solutions on the boundary of the domain.  The theorems mentioned above
+assure rapid convergence to a local optimum (at least a point satisfying
+the first and second order necessary conditions) if the level set of the
+objective function below the starting position is bounded and is contained
+in the interior of the domain of the objective function (that is, all
+points on the boundary of the domain have higher objective function values
+than the starting point).  The algorithm automatically adjusts the trust
+region to keep accepted iterates in the interior of the domain.
+This is one way it is safer than <code><a href="stats.html#topic+nlm">nlm</a></code> or <code><a href="stats.html#topic+optim">optim</a></code>,
+which do not handle general restricted domains.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following components:
+</p>
+<table>
+<tr><td><code>value</code></td>
+<td>
+<p>the value returned by <code>objfun</code> at the final iterate.</p>
+</td></tr>
+<tr><td><code>gradient</code></td>
+<td>
+<p>the gradient returned by <code>objfun</code> at the final iterate.</p>
+</td></tr>
+<tr><td><code>hessian</code></td>
+<td>
+<p>the Hessian returned by <code>objfun</code> at the final iterate.</p>
+</td></tr>
+<tr><td><code>argument</code></td>
+<td>
+<p>the final iterate.</p>
+</td></tr>
+<tr><td><code>converged</code></td>
+<td>
+<p>if <code>TRUE</code> the final iterate was deemed optimal by
+the specified termination criteria.</p>
+</td></tr>
+<tr><td><code>iterations</code></td>
+<td>
+<p>number of trust region subproblems done (including those
+whose solutions are not accepted).</p>
+</td></tr>
+<tr><td><code>argpath</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of iterates, not
+including the final iterate.</p>
+</td></tr>
+<tr><td><code>argtry</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of solutions of the
+trust region subproblem.</p>
+</td></tr>
+<tr><td><code>steptype</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of cases that arise
+in solutions of the trust region subproblem.  <code>"Newton"</code> means
+the Newton step solves the subproblem (lies within the trust region).
+Other values mean the subproblem solution is constrained.
+<code>"easy-easy"</code> means the eigenvectors corresponding to the minimal
+eigenvalue of the rescaled Hessian are not all orthogonal to the gradient.
+The other cases are rarely seen.
+<code>"hard-hard"</code> means the Lagrange multiplier for the trust region
+constraint is minus the minimal eigenvalue of the rescaled Hessian;
+<code>"hard-easy"</code> means it isn't.</p>
+</td></tr>
+<tr><td><code>accept</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) indicates which of the sequence of
+solutions of the trust region subproblem were accepted as the next
+iterate.  (When not accepted the trust region radius is reduced, and
+the previous iterate is kept.)</p>
+</td></tr>
+<tr><td><code>r</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of trust region radii.</p>
+</td></tr>
+<tr><td><code>rho</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of ratios of actual over
+predicted decrease in the objective function in the trust region
+subproblem, where predicted means the predicted decrease in the two-term
+Taylor series model used in the subproblem.</p>
+</td></tr>
+<tr><td><code>valpath</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of objective function
+values at the iterates.</p>
+</td></tr>
+<tr><td><code>valtry</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of objective function
+values at the solutions of the trust region subproblem.</p>
+</td></tr>
+<tr><td><code>preddiff</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of predicted
+differences using the two-term Taylor-series model between the function
+values at the current iterate and at the solution of the trust region
+subproblem.</p>
+</td></tr>
+<tr><td><code>stepnorm</code></td>
+<td>
+<p>(if <code>blather == TRUE</code>) the sequence of norms of
+steps, that is distance between current iterate and proposed new iterate
+found in the trust region subproblem.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Fletcher, R. (1987)
+<em>Practical Methods of Optimization</em>, second edition.
+John Wiley, Chichester.
+</p>
+<p>Nocedal, J. and Wright, S. J. (1999)
+<em>Numerical Optimization</em>.
+Springer-Verlag, New York.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="stats.html#topic+nlm">nlm</a></code> and <code><a href="stats.html#topic+optim">optim</a></code> for competitors that do not
+require analytical derivatives.
+<code><a href="stats.html#topic+deriv">deriv</a></code> to calculate analytical derivatives.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>##### Rosenbrock's function #####
+objfun &lt;- function(x) {
+    stopifnot(is.numeric(x))
+    stopifnot(length(x) == 2)
+    f &lt;- expression(100 * (x2 - x1^2)^2 + (1 - x1)^2)
+    g1 &lt;- D(f, "x1")
+    g2 &lt;- D(f, "x2")
+    h11 &lt;- D(g1, "x1")
+    h12 &lt;- D(g1, "x2")
+    h22 &lt;- D(g2, "x2")
+    x1 &lt;- x[1]
+    x2 &lt;- x[2]
+    f &lt;- eval(f)
+    g &lt;- c(eval(g1), eval(g2))
+    B &lt;- rbind(c(eval(h11), eval(h12)), c(eval(h12), eval(h22)))
+    list(value = f, gradient = g, hessian = B)
+}
+
+trust(objfun, c(3, 1), 1, 5)
+
+##### function with restricted domain #####
+d &lt;- 5
+mu &lt;- 10 * seq(1, d)
+objfun &lt;- function(x) {
+    normxsq &lt;- sum(x^2)
+    omnormxsq &lt;- 1 - normxsq
+    if (normxsq &gt;= 1) return(list(value = Inf))
+    f &lt;- sum(x * mu) - log(omnormxsq)
+    g &lt;- mu + 2 * x / omnormxsq
+    B &lt;- 4 * outer(x, x) / omnormxsq^2 + 2 * diag(d) / omnormxsq
+    list(value = f, gradient = g, hessian = B)
+}
+
+whoop &lt;- trust(objfun, rep(0, d), 1, 100, blather = TRUE)
+whoop$converged
+whoop$iterations
+data.frame(type = whoop$steptype, rho = whoop$rho, change = whoop$preddiff,
+    accept = whoop$accept, r = whoop$r)
+
+##### solution
+whoop$argument
+##### distance of solution from boundary
+1 - sqrt(sum(whoop$argument^2))
+
+##### fail when initial point not feasible
+## Not run: trust(objfun, rep(0.5, d), 1, 100, blather = TRUE)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

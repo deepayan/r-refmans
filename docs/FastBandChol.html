@@ -1,0 +1,483 @@
+<!DOCTYPE html><html><head><title>Help for package FastBandChol</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {FastBandChol}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#banded.chol'><p>Computes estimate of covariance matrix by banding the Cholesky factor</p></a></li>
+<li><a href='#banded.chol.cv'><p>Selects bandwidth for Cholesky factorization by cross validation</p></a></li>
+<li><a href='#banded.sample'><p>Computes banded sample covariance matrix</p></a></li>
+<li><a href='#banded.sample.cv'><p>Selects bandwidth for sample covariance matrix by cross validation</p></a></li>
+<li><a href='#FastBandChol-package'>
+<p>Fast estimation of covariance matrix by banded Cholesky factor</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Fast Estimation of a Covariance Matrix by Banding the Cholesky
+Factor</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.1.1</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Aaron Molstad &lt;molst029@umn.edu&gt;</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Aaron Molstad &lt;molst029@umn.edu&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Fast and numerically stable estimation of a covariance matrix by banding the Cholesky factor using a modified Gram-Schmidt algorithm implemented in RcppArmadilo. See <a href="http://stat.umn.edu/~molst029">http://stat.umn.edu/~molst029</a> for details on the algorithm. </td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>TRUE</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>Rcpp</td>
+</tr>
+<tr>
+<td>LinkingTo:</td>
+<td>Rcpp, RcppArmadillo</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2015-08-26 14:08:04 UTC; aaron</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2015-08-26 16:44:04</td>
+</tr>
+</table>
+<hr>
+<h2 id='banded.chol'>Computes estimate of covariance matrix by banding the Cholesky factor</h2><span id='topic+banded.chol'></span>
+
+<h3>Description</h3>
+
+<p>Computes estimate of covariance matrix by banding the Cholesky factor using a modified Gram Schmidt algorithm implemented in RcppArmadillo. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>banded.chol(X, bandwidth, centered = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="banded.chol_+3A_x">X</code></td>
+<td>
+<p>A data matrix with <code class="reqn">n</code> rows and <code class="reqn">p</code> columns. Rows are assumed to be independent realizations from a <code class="reqn">p</code>-variate distribution with covariance <code class="reqn">\Sigma</code>.</p>
+</td></tr>
+<tr><td><code id="banded.chol_+3A_bandwidth">bandwidth</code></td>
+<td>
+<p>A positive integer. Must be less than <code class="reqn">n-1</code> and <code class="reqn">p-1</code>.</p>
+</td></tr>
+<tr><td><code id="banded.chol_+3A_centered">centered</code></td>
+<td>
+<p>Logical. Is data matrix centered? Default is <code>centered = FALSE</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with
+</p>
+<table>
+<tr><td><code>est</code></td>
+<td>
+<p>The estimated covariance matrix.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## set sample size and dimension
+n=20
+p=100
+
+## create covariance with AR1 structure
+Sigma = matrix(0, nrow=p, ncol=p)
+for(l in 1:p){
+  for(m in 1:p){
+    Sigma[l,m] = .5^(abs(l-m))
+  }
+}
+
+## simulation Normal data
+eo1 = eigen(Sigma)
+Sigma.sqrt = eo1$vec%*%diag(eo1$val^.5)%*%t(eo1$vec)
+X = t(Sigma.sqrt%*%matrix(rnorm(n*p), nrow=p, ncol=n))
+
+## compute estimate
+out1 = banded.chol(X, bandwidth=4)
+</code></pre>
+
+<hr>
+<h2 id='banded.chol.cv'>Selects bandwidth for Cholesky factorization by cross validation</h2><span id='topic+banded.chol.cv'></span>
+
+<h3>Description</h3>
+
+<p>Selects bandwidth for Cholesky factorization by k-fold cross validation
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>banded.chol.cv(X, bandwidth, folds = 3, est.eval = TRUE, Frob = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="banded.chol.cv_+3A_x">X</code></td>
+<td>
+<p>A data matrix with <code class="reqn">n</code> rows and <code class="reqn">p</code> columns. Rows are assumed to be independent realizations from a <code class="reqn">p</code>-variate distribution with covariance <code class="reqn">\Sigma</code>.</p>
+</td></tr>
+<tr><td><code id="banded.chol.cv_+3A_bandwidth">bandwidth</code></td>
+<td>
+<p>A vector of candidate bandwidths. Candidate bandwidths can only positive integers such that the maximum is less than the sample size outside of the <code class="reqn">k</code>th fold.</p>
+</td></tr>
+<tr><td><code id="banded.chol.cv_+3A_folds">folds</code></td>
+<td>
+<p>The number of folds used for cross validation. Default is <code>folds =3</code>.</p>
+</td></tr>
+<tr><td><code id="banded.chol.cv_+3A_est.eval">est.eval</code></td>
+<td>
+<p>Logical: <code>est.eval = TRUE</code> returns a list with both the selected bandwidth and the estimated covariance matrix. <code>est.eval=FALSE</code> returns a list with only the selected bandwidth. The default is <code>est.eval = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="banded.chol.cv_+3A_frob">Frob</code></td>
+<td>
+<p>Logical: <code>Frob = TRUE</code> uses squared Frobenius norm loss for cross-validation. <code>Frob = FALSE</code> uses operator norm loss. Default is <code>Frob = TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a list with
+</p>
+<table>
+<tr><td><code>bandwidth.min</code></td>
+<td>
+<p>The bandwidth minimizing cross-validation error.</p>
+</td></tr>
+<tr><td><code>est</code></td>
+<td>
+<p>The estimated covariance matrix computed with <code>bandwidth=bandwidth.min</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## set sample size and dimension
+n=20
+p=100
+
+## create covariance with AR1 structure
+Sigma = matrix(0, nrow=p, ncol=p)
+for(l in 1:p){
+  for(m in 1:p){
+    Sigma[l,m] = .5^(abs(l-m))
+  }
+}
+
+## simulation Normal data
+eo1 = eigen(Sigma)
+Sigma.sqrt = eo1$vec%*%diag(eo1$val^.5)%*%t(eo1$vec)
+X = t(Sigma.sqrt%*%matrix(rnorm(n*p), nrow=p, ncol=n))
+
+## perform cross validation
+k = 4:7
+out1.cv = banded.chol.cv(X, bandwidth=k, folds = 5)
+
+</code></pre>
+
+<hr>
+<h2 id='banded.sample'>Computes banded sample covariance matrix</h2><span id='topic+banded.sample'></span>
+
+<h3>Description</h3>
+
+<p>Estimates a covariance matrix by banding the sample covariance matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>banded.sample(X, bandwidth, centered = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="banded.sample_+3A_x">X</code></td>
+<td>
+<p>A data matrix with <code class="reqn">n</code> rows and <code class="reqn">p</code> columns. Rows are assumed to be independent realizations from a <code class="reqn">p</code>-variate distribution with covariance <code class="reqn">\Sigma</code>.</p>
+</td></tr>
+<tr><td><code id="banded.sample_+3A_bandwidth">bandwidth</code></td>
+<td>
+<p>A positive integer. Must be less than <code class="reqn">p-1</code>.</p>
+</td></tr></table>
+<p>.
+</p>
+<table>
+<tr><td><code id="banded.sample_+3A_centered">centered</code></td>
+<td>
+<p>Logical. Is data matrix centered? Default is <code>centered = FALSE</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with
+</p>
+<table>
+<tr><td><code>est</code></td>
+<td>
+<p>The estimated covariance matrix.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## set sample size and dimension
+n=20
+p=100
+
+## create covariance with AR1 structure
+Sigma = matrix(0, nrow=p, ncol=p)
+for(l in 1:p){
+  for(m in 1:p){
+    Sigma[l,m] = .5^(abs(l-m))
+  }
+}
+
+## simulation Normal data
+eo1 = eigen(Sigma)
+Sigma.sqrt = eo1$vec%*%diag(eo1$val^.5)%*%t(eo1$vec)
+X = t(Sigma.sqrt%*%matrix(rnorm(n*p), nrow=p, ncol=n))
+
+## compute estimate
+out2 = banded.sample(X, bandwidth=4)
+</code></pre>
+
+<hr>
+<h2 id='banded.sample.cv'>Selects bandwidth for sample covariance matrix by cross validation</h2><span id='topic+banded.sample.cv'></span>
+
+<h3>Description</h3>
+
+<p>Selects bandwidth for sample covariance matrix by k-fold cross validation
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>banded.sample.cv(X, bandwidth, folds = 3, est.eval = TRUE, Frob = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="banded.sample.cv_+3A_x">X</code></td>
+<td>
+<p>A data matrix with <code class="reqn">n</code> rows and <code class="reqn">p</code> columns. Rows are assumed to be independent realizations from a <code class="reqn">p</code>-variate distribution with covariance <code class="reqn">\Sigma</code>.</p>
+</td></tr>
+<tr><td><code id="banded.sample.cv_+3A_bandwidth">bandwidth</code></td>
+<td>
+<p>A vector of candidate bandwidths. Candidate bandwidths can only positive integers such that the maximum is less than <code class="reqn">p-1</code></p>
+</td></tr></table>
+<p>.
+</p>
+<table>
+<tr><td><code id="banded.sample.cv_+3A_folds">folds</code></td>
+<td>
+<p>The number of folds used for cross validation. Default is <code>folds =3</code>.</p>
+</td></tr>
+<tr><td><code id="banded.sample.cv_+3A_est.eval">est.eval</code></td>
+<td>
+<p>Logical: <code>est.eval = TRUE</code> returns a list with both the selected bandwidth and the estimated covariance matrix. <code>est.eval=FALSE</code> returns a list with only the selected bandwidth. The default is <code>est.eval = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="banded.sample.cv_+3A_frob">Frob</code></td>
+<td>
+<p>Logical: <code>Frob = TRUE</code> uses squared Frobenius norm loss for cross-validation. <code>Frob = FALSE</code> uses operator norm loss. Default is <code>Frob = TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with
+</p>
+<table>
+<tr><td><code>bandwidth.min</code></td>
+<td>
+<p>the bandwidth minimizing cv error</p>
+</td></tr>
+<tr><td><code>est</code></td>
+<td>
+<p>the sample covariance matrix at bandwidth.min</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## set sample size and dimension
+n=20
+p=100
+
+## create covariance with AR1 structure
+Sigma = matrix(0, nrow=p, ncol=p)
+for(l in 1:p){
+  for(m in 1:p){
+    Sigma[l,m] = .5^(abs(l-m))
+  }
+}
+
+## simulation Normal data
+eo1 = eigen(Sigma)
+Sigma.sqrt = eo1$vec%*%diag(eo1$val^.5)%*%t(eo1$vec)
+X = t(Sigma.sqrt%*%matrix(rnorm(n*p), nrow=p, ncol=n))
+
+## perform cross validation
+k = 4:7
+out2.cv = banded.sample.cv(X, bandwidth=k, folds=5)
+</code></pre>
+
+<hr>
+<h2 id='FastBandChol-package'>
+Fast estimation of covariance matrix by banded Cholesky factor
+</h2><span id='topic+FastBandChol-package'></span><span id='topic+FastBandChol'></span>
+
+<h3>Description</h3>
+
+<p>Fast and numerically stable estimation of covariance matrix by banding the Cholesky factor using a modified Gram-Schmidt algorithm implemented in RcppArmadilo. See &lt;https://stat.umn.edu/~molst029&gt; for details on the algorithm. 
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> FastBandChol</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 0.1.0</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2015-08-22</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL-2</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Aaron Molstad
+</p>
+
+
+<h3>References</h3>
+
+<p>Rothman, A.J., Levina, E., and Zhu, J. (2010). A new approach to Cholesky-based covariance regularization in high dimensions. Biometrika, 97(3):539-550.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## set sample size and dimension
+n = 20
+p = 100
+
+## create covariance with AR1 structure
+Sigma = matrix(0, nrow=p, ncol=p)
+for(l in 1:p){
+  for(m in 1:p){
+    Sigma[l,m] = .5^(abs(l-m))
+  }
+}
+
+## simulation Normal data
+eo1 = eigen(Sigma)
+Sigma.sqrt = eo1$vec%*%diag(eo1$val^.5)%*%t(eo1$vec)
+X = t(Sigma.sqrt%*%matrix(rnorm(n*p), nrow=p, ncol=n))
+
+## compute estimates
+est.sample = banded.sample(X, bandwidth=4)$est
+est.chol = banded.chol(X, bandwidth=4)$est
+
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

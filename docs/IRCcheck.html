@@ -1,0 +1,512 @@
+<!DOCTYPE html><html><head><title>Help for package IRCcheck</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {IRCcheck}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#constrained'><p>Constrained Precision Matrix</p></a></li>
+<li><a href='#gen_net'><p>Generate True Partial Correlation Matrix</p></a></li>
+<li><a href='#irc_ggm'><p>Irrepresentable Condition: Gaussian Graphical Model</p></a></li>
+<li><a href='#irc_regression'><p>Irrepresentable Condition: Regression</p></a></li>
+<li><a href='#IRCcheck-package'><p>IRCcheck:  Irrepresentable Condition Check</p></a></li>
+<li><a href='#symm_mat'><p>Symmetric Matrix</p>
+</p>
+<p>Copy the upper triangular of a matrix into the lower triangular portion of the matrix.</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Irrepresentable Condition Check</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0.0</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2021-04-01</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Check the irrepresentable condition (IRC) in both L1-regularized regression &lt;<a href="https://doi.org/10.1109%2FTIT.2006.883611">doi:10.1109/TIT.2006.883611</a>&gt;
+            and Gaussian graphical models. The IRC requires that the important and unimportant variables 
+            are not correlated, at least not all that much, and it is necessary for consistent model
+            selection. Exploring the IRC as a function of the number of variables, assumed sparsity,
+            and effect size can provide valuable insights into the model selection 
+            properties of L1-regularization.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>glmnet, MASS, Rdpack, GGMncv, corpcor, parallel</td>
+</tr>
+<tr>
+<td>RdMacros:</td>
+<td>Rdpack,</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.1.1</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2021-04-08 15:24:17 UTC; Donny</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Donald Williams [aut, cre]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Donald Williams &lt;drwwilliams@ucdavis.edu&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2021-04-09 09:00:05 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='constrained'>Constrained Precision Matrix</h2><span id='topic+constrained'></span>
+
+<h3>Description</h3>
+
+<p>Compute the maximum likelihood estimate, given certain elements are constrained to zero
+(e.g., an adjacency matrix). This approach is described in Hastie et al. (2009).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>constrained(Sigma, adj)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="constrained_+3A_sigma">Sigma</code></td>
+<td>
+<p>Covariance matrix</p>
+</td></tr>
+<tr><td><code id="constrained_+3A_adj">adj</code></td>
+<td>
+<p>Matrix with constraints. A zero indicates that element
+should be constrained to zero.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the inverse covariance matrix and the covariance matrix.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The algorithm is written in <code>c++</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Hastie T, Tibshirani R, Friedman J (2009).
+<em>The elements of statistical learning: data mining, inference, and prediction</em>.
+Springer Science \&amp; Business Media.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># random adj 
+# 90 % sparsity (roughly)
+p &lt;- 20
+adj &lt;- matrix(sample(0:1, size = p^2, replace = TRUE, 
+              prob = c(0.9, 0.1) ), 
+              nrow = p, ncol = p)
+
+adj &lt;-  symm_mat(adj)
+
+diag(adj) &lt;- 1
+
+# random correlation matrix
+set.seed(1)
+cors &lt;- cov2cor(
+  solve(
+  rWishart(1, p + 2, diag(p))[,,1])
+)
+
+# constrain to zero
+net &lt;- constrained(cors, adj = adj)
+
+</code></pre>
+
+<hr>
+<h2 id='gen_net'>Generate True Partial Correlation Matrix</h2><span id='topic+gen_net'></span>
+
+<h3>Description</h3>
+
+<p>Generate True Partial Correlation Matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>gen_net(p = 20, edge_prob = 0.3, lb = 0.05, ub = 0.3)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gen_net_+3A_p">p</code></td>
+<td>
+<p>number of variables (nodes)</p>
+</td></tr>
+<tr><td><code id="gen_net_+3A_edge_prob">edge_prob</code></td>
+<td>
+<p>connectivity</p>
+</td></tr>
+<tr><td><code id="gen_net_+3A_lb">lb</code></td>
+<td>
+<p>lower bound for the partial correlations</p>
+</td></tr>
+<tr><td><code id="gen_net_+3A_ub">ub</code></td>
+<td>
+<p>upper bound for the partial correlations</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with the true structure, adjacency matrix, and correlation matrix.
+</p>
+
+
+<h3>Note</h3>
+
+<p>The function checks for a valid matrix (positive definite),
+but sometimes this will
+still fail. For example, for larger <code>p</code>, to have
+large partial correlations this requires a sparse GGM
+(accomplished by setting <code>edge_prob</code> to a small value).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+true_net &lt;- gen_net(p = 10)
+</code></pre>
+
+<hr>
+<h2 id='irc_ggm'>Irrepresentable Condition: Gaussian Graphical Model</h2><span id='topic+irc_ggm'></span>
+
+<h3>Description</h3>
+
+<p>Check the IRC (or  Incoherence condition) in Gaussian graphical Models,
+following Equation (8) in (Ravikumar et al. 2008).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>irc_ggm(true_network, cores = 2)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="irc_ggm_+3A_true_network">true_network</code></td>
+<td>
+<p>A matrix of dimensions <em>p</em> by <em>p</em>, assumed to be
+a partial correlation matrix.</p>
+</td></tr>
+<tr><td><code id="irc_ggm_+3A_cores">cores</code></td>
+<td>
+<p>Integer. Number of cores for parallel computing (defaults to <code>2</code>)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>infinity norm (greater than 1 the IRC is violated, with closer to zero better).
+</p>
+
+
+<h3>References</h3>
+
+<p>Ravikumar P, Raskutti G, Wainwright MJ, Yu B (2008).
+&ldquo;Model Selection in Gaussian Graphical Models: High-Dimensional Consistency of l1-regularized MLE.&rdquo;
+In <em>NIPS</em>, 1329&ndash;1336.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# generate network
+net &lt;- gen_net(p = 20, edge_prob = 0.3, lb = 0.05, ub = 0.3)
+
+# check irc
+irc_ggm(net$pcors)
+
+# random adj 
+# 90 % sparsity (roughly)
+p &lt;- 20
+adj &lt;- matrix(sample(0:1, size = p^2, replace = TRUE, 
+              prob = c(0.9, 0.1) ), 
+              nrow = p, ncol = p)
+
+adj &lt;- symm_mat(adj)
+
+diag(adj) &lt;- 1
+
+# random correlation matrix
+set.seed(1)
+cors &lt;- cov2cor(
+  solve(
+  rWishart(1, p + 2, diag(p))[,,1])
+)
+
+# constrain to zero
+net &lt;- constrained(cors, adj = adj)
+
+irc_ggm(net$wadj)
+
+
+#' # random adj 
+# 50 % sparsity (roughly)
+p &lt;- 20
+adj &lt;- matrix(sample(0:1, size = p^2, replace = TRUE, prob = c(0.5, 0.5) ), 
+              nrow = p, ncol = p)
+
+adj &lt;- symm_mat(adj)
+diag(adj) &lt;- 1
+
+# random correlation matrix
+set.seed(1)
+cors &lt;- cov2cor(
+  solve(
+  rWishart(1, p + 2, diag(p))[,,1])
+)
+
+# constrain to zero
+net &lt;- constrained(cors, adj = adj)
+
+irc_ggm(net$wadj)
+
+
+</code></pre>
+
+<hr>
+<h2 id='irc_regression'>Irrepresentable Condition: Regression</h2><span id='topic+irc_regression'></span>
+
+<h3>Description</h3>
+
+<p>Check the IRC in multiple regression, following Equation (2)
+in (Zhao and Yu 2006).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>irc_regression(X, which_nonzero)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="irc_regression_+3A_x">X</code></td>
+<td>
+<p>A matrix of dimensions <em>n</em> (observations) by <em>p</em> (variables).</p>
+</td></tr>
+<tr><td><code id="irc_regression_+3A_which_nonzero">which_nonzero</code></td>
+<td>
+<p>Numeric vector with the location of the nonzero relations
+(a.k.a., the active set).</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>infinity norm (greater than 1 the IRC is violated)
+</p>
+
+
+<h3>Note</h3>
+
+<p>It is common to take 1 - the infinity norm, thereby indicating the IRC
+is violated when the value is negative.
+</p>
+
+
+<h3>References</h3>
+
+<p>Zhao P, Yu B (2006).
+&ldquo;On Model Selection Consistency of Lasso.&rdquo;
+<em>The Journal of Machine Learning Research</em>, <b>7</b>, 2541&ndash;2563.
+ISSN 15324435, doi: <a href="https://doi.org/10.1109/TIT.2006.883611">10.1109/TIT.2006.883611</a>, 1305.7477, <a href="https://doi.org/10.1109/TIT.2006.883611">https://doi.org/10.1109/TIT.2006.883611</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# data
+# note: irc_met (block diagonal; 1st 10 active)
+cors  &lt;- rbind(
+cbind(matrix(.7, 10,10), matrix(0, 10,10)),
+cbind(matrix(0, 10,10), matrix(0.7, 10,10))
+)
+diag(cors) &lt;- 1
+
+
+X &lt;- MASS::mvrnorm(2500, rep(0, 20), Sigma = cors, empirical = TRUE)
+ 
+# check IRC
+irc_regression(X, which_nonzero = 1:10)  
+
+# generate data
+y &lt;- X %*% c(rep(1,10), rep(0, 10)) + rnorm(2500)
+
+fit &lt;- glmnet::glmnet(X, y, lambda = seq(10, 0.01, length.out = 400))
+
+# plot
+plot(fit, xvar = "lambda")
+
+
+# Example (more or less) from Zhao and Yu (2006)
+# section 3.3
+
+# number of predictors
+p &lt;- 2^4
+
+# number active (q in Zhao and Yu 2006)
+n_beta &lt;- 4/8 * p
+
+# betas
+beta &lt;- c(rep(1, n_beta), rep(0, p - n_beta))
+
+check &lt;- NA
+for(i in 1:100){
+  cors &lt;- cov2cor(
+    solve(
+      rWishart(1, p , diag(p))[,,1]
+    ))
+  
+  # predictors
+  X &lt;- MASS::mvrnorm(500, rep(0, p), Sigma = cors, empirical = TRUE)
+  
+  check[i] &lt;- irc_regression(X, which_nonzero = which(beta != 0))
+}
+
+# less than 1
+mean(check  &lt; 1)
+
+# or greater than 0
+mean(1 - check &gt; 0)
+
+</code></pre>
+
+<hr>
+<h2 id='IRCcheck-package'>IRCcheck:  Irrepresentable Condition Check</h2><span id='topic+IRCcheck-package'></span>
+
+<h3>Description</h3>
+
+<p>L1 regularization requires the IRC for consistent model selection, that is,
+with more data, the true model is converged upon. This package allows
+for checking the IRC in both regression and Gaussian graphical models.</p>
+<pre>         Importantly, the IRC cannot be checked in real data. The primary 
+         use for this package is to explore the IRC in a \emph{true} model
+         that may be used in a simulation study. Alternatively, it is very 
+         informative to simply look at the IRC as a function of sparsity
+         and the number of variables, including the regularization path
+         and false selections.
+</pre>
+
+<hr>
+<h2 id='symm_mat'>Symmetric Matrix
+Copy the upper triangular of a matrix into the lower triangular portion of the matrix.</h2><span id='topic+symm_mat'></span>
+
+<h3>Description</h3>
+
+<p>Symmetric Matrix
+</p>
+<p>Copy the upper triangular of a matrix into the lower triangular portion of the matrix.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>symm_mat(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="symm_mat_+3A_x">x</code></td>
+<td>
+<p>A matrix of dimensions <em>p</em> by <em>p</em>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>adj &lt;- matrix(sample(0:1, size = 25, replace = TRUE), 5, 5)
+symm_mat(adj)
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

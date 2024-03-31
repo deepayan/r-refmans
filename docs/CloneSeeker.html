@@ -1,0 +1,832 @@
+<!DOCTYPE html><html><head><title>Help for package CloneSeeker</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {CloneSeeker}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#Seeking Clones'><p>Seeking Tumor Clones From Data</p></a></li>
+<li><a href='#Simplices'><p> Simplices and Clonal Fractions</p></a></li>
+<li><a href='#Simulating Clones'><p> Simulating Tumor Clones</p></a></li>
+<li><a href='#Tumor-class'><p>Class &quot;Tumor&quot;</p></a></li>
+<li><a href='#WeightVector-class'><p>Class &quot;WeightVector&quot;</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>1.0.11</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2022-06-30</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Seeking and Finding Clones in Copy Number and Sequencing Data</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Kevin R. Coombes, Mark Zucker</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Kevin R. Coombes &lt;krc@silicovore.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Defines the classes and functions used to simulate and
+  to analyze data sets describing copy number variants and,
+  optionally, sequencing mutations in order to detect clonal subsets.
+  See Zucker et al. (2019) &lt;<a href="https://doi.org/10.1093%2Fbioinformatics%2Fbtz057">doi:10.1093/bioinformatics/btz057</a>&gt;.</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.0)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>methods, graphics, combinat, mc2d, quantmod</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License (== 2.0)</a></td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="http://oompa.r-forge.r-project.org/">http://oompa.r-forge.r-project.org/</a></td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2022-06-30 16:39:05 UTC; KRC</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2022-06-30 17:00:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='Seeking+20Clones'>Seeking Tumor Clones From Data</h2><span id='topic+seekClones'></span><span id='topic+runAlg'></span>
+
+<h3>Description</h3>
+
+<p>Starting with copy number segmentation data and/or sequencing mutation
+data for a tumor, seek the number of clones, the fraction of cells
+belonging to each clone, and the likely set of abnormalities in each
+clone.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>seekClones(cndata, vardata, cnmodels, psiset, pars, imputedCN = NULL)
+runAlg(...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="Seeking+2B20Clones_+3A_cndata">cndata</code></td>
+<td>
+<p> A data frame with seven columns; can also be NULL. The
+names of the required columns are enumerated in the  man page for
+<code>generateTumorData</code>. These are the same as the output typically
+produced by the <code>DNAcopy</code> algorithm, where each row represents a
+segment (a contiguous region of a chromosome) where the copy number is
+believed to be constant.</p>
+</td></tr>
+<tr><td><code id="Seeking+2B20Clones_+3A_vardata">vardata</code></td>
+<td>
+<p> A data frame with eight columns; can also be NULL. The
+names of the required columns are enumerated in the man page for
+<code>generateTumorData</code>. These are typical of the output of a DNA
+sequencing experiment that has been processed to identify variants,
+which may be either germline or somatic.</p>
+</td></tr>
+<tr><td><code id="Seeking+2B20Clones_+3A_cnmodels">cnmodels</code></td>
+<td>
+<p> A matrix. Each row represents a model to be considered;
+each column represents a clone.  The entries are integers specifying
+the number of DNA copies present in that clone. See details.</p>
+</td></tr>
+<tr><td><code id="Seeking+2B20Clones_+3A_psiset">psiset</code></td>
+<td>
+<p> A matrix. Each column represents a clone, and each row
+represents a different possible model of the fraction of cells per
+clone. See details. </p>
+</td></tr>
+<tr><td><code id="Seeking+2B20Clones_+3A_pars">pars</code></td>
+<td>
+<p> A list of algorithm parameters; see details.</p>
+</td></tr>
+<tr><td><code id="Seeking+2B20Clones_+3A_imputedcn">imputedCN</code></td>
+<td>
+<p>a logical value; if missing, should the copy number be
+imputed from the mutation data.</p>
+</td></tr>
+<tr><td><code id="Seeking+2B20Clones_+3A_...">...</code></td>
+<td>
+<p>additional variables</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The algorithm starts with an initial set of 'psi' parameters
+(representing the fraction of tumor belonging to each clone). It
+computes the best (maximum a posteriori) clonal copy number and/or
+number of mutated alleles for each clone for each segment/mutation,
+conditional on the data and each of the initial psi vectors. It then
+computes the posterior probability for each psi-vector and its
+computed copy number and mutation parameters. It uses these posterior
+probabilities to resample new possible psi-vectors. The process
+repeats iteratively, and with each iterations obtains a better
+estimate of psi and the clonal segment copy number and mutation
+assignments until it terminates.
+</p>
+<p>The set of copy number models that we use is typically
+generated using the following command:
+<code>as.matrix(expand.grid(lapply(1:5, function(i){0:5})))</code>
+This setup considers all (7776) possible models with up to five clones,
+where the copy number for each clone ranges from 0 to 5. (In the future,
+we are likely to make this the default; right now, you have to generate
+these models yourself.)
+</p>
+<p>The set of possible psi-vectors (that is, the fraction of cells allocated
+to each clone) that we use is typically generated using the following
+command:
+<code>psis.20 &lt;- generateSimplex(20,5)</code>
+This setup considers all (192) possible divisions of the tumor into up to
+five clones, where the fraction of cells per clone is any possible
+multiple of 0.05. Each row is sorted to put the most abundant clones first,
+which makes it easier to identify specific clones, except in the rare case
+when two clones contain exactly the same fraction of cells. (In the future,
+we are likely to make this the default; right now, you have to generate
+these models yourself.)
+</p>
+<p>The object <code>pars</code> is a list of numerical algorithm parameters. The
+elements are:
+</p>
+
+<dl>
+<dt>sigma0</dt><dd><p>The standard deviation of measured allelic copy
+number at the SNP level.</p>
+</dd>
+<dt>ktheta</dt><dd><p>The probability parameter of the geometric prior
+distribution on <code>K</code>, the number of clones.</p>
+</dd> 
+<dt>theta</dt><dd><p>The probability parameter of the geometric prior
+distribution on genomic copy number.</p>
+</dd>
+<dt>mtheta</dt><dd><p>The probability parameter of the geometric prior
+distribution on the occurence of point mutations.</p>
+</dd>
+<dt>alpha</dt><dd><p>The (repeated) alpha parameter of a symmetric Dirichlet
+distributed prior on the  fractions of cells belong to each clone;
+default value is 0.5, giving a Jeffreys Prior.</p>
+</dd>
+<dt>thresh</dt><dd><p>The threshold determining the smallest possible
+detectable clone.</p>
+</dd>
+<dt>cutoff</dt><dd><p>SNP array segments with fewer markers than this are
+excluded.</p>
+</dd> 
+<dt>Q</dt><dd><p>Determines the number of new <code>psi</code> vectors resampled
+from the estimated posterior probability distribution at each
+iteration of the algorithm </p>
+</dd> 
+<dt>iters</dt><dd><p>The number of iterations in the algorithm.</p>
+</dd>
+</dl>
+
+<p>The default settings we used are from
+commonly used unfinformative priors (e.g., alpha=0.5 for the Dirichlet
+distribution is the Jeffreys Prior) or based on empirical assessments
+of the variation in data (sigma0, for example, which describes
+variation in SNP array data).
+</p>
+<p>Note that <code>runAlg</code> (an alias for <code>seekClones</code>) is DEPRECATED.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>seekClones</code> function returns a (rather long) list containing:
+</p>
+<table>
+<tr><td><code>psi</code></td>
+<td>
+<p>The most likely posterior psi-vector, given the data. The
+number of non-zero entries is the number of clones found, and the non-zero
+entries are the fraction of cells per clone</p>
+</td></tr>
+<tr><td><code>A</code></td>
+<td>
+<p>The most likely copy numbers for the A allele in each segment in each clone.</p>
+</td></tr>
+<tr><td><code>B</code></td>
+<td>
+<p>The most likely copy numbers for the B allele in each segment in each clone.</p>
+</td></tr>
+<tr><td><code>psibank</code></td>
+<td>
+<p>A matrix, where each row is one of the psi-vectors
+considered during the analysis.</p>
+</td></tr>
+<tr><td><code>psiPosts</code></td>
+<td>
+<p>A numeric vector, the (marginal) posterior probability of
+each psi-vector considered during the analysis.</p>
+</td></tr>
+<tr><td><code>indices</code></td>
+<td>
+<p>???</p>
+</td></tr>
+<tr><td><code>data</code></td>
+<td>
+<p>a list with two data-frame components containing the data
+used during the analysis.</p>
+</td></tr>
+<tr><td><code>filtered.data</code></td>
+<td>
+<p>a list with two data-frame components containing the
+filtered data used during the analysis. Filtering removes
+non-informative segments that have normal copy number or contain only
+germline mutations.</p>
+</td></tr>
+<tr><td><code>etaA</code></td>
+<td>
+<p>A vector of the weighted average allelic copy number for the 'A-Allele' at each segment (that is, the sum of the clonal A-allelic copy number values multiplied by the fraction of the tumor made up by each clone)</p>
+</td></tr>
+<tr><td><code>etaB</code></td>
+<td>
+<p>A vector of the weighted average allelic copy number for the 'B-Allele' at each segment</p>
+</td></tr>
+<tr><td><code>etaM</code></td>
+<td>
+<p>A vector of the weighted average number of copies of the mutated allele at each mutation</p>
+</td></tr>
+<tr><td><code>mutated</code></td>
+<td>
+<p>A matrix of the number of mutated alleles at each locus in each clone, where the number of rows is the number of somatic mutations in the data and the number of columns is the number of clones</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes <a href="mailto:krc@silicovore.com">krc@silicovore.com</a>,
+Mark Zucker <a href="mailto:zucker.64@buckeyemail.osu.edu">zucker.64@buckeyemail.osu.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Zucker MR, Abruzzo LV, Herling CD, Barron LL, Keating MJ, Abrams ZB,
+Heerema N, Coombes KR. Inferring Clonal Heterogeneity in Cancer using
+SNP Arrays and Whole Genome Sequencing. Bioinformatics. To
+appear. doi: 10.1093/bioinformatics/btz057.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># set up models
+psis.20 &lt;- generateSimplex(20,5)
+cnmodels &lt;- as.matrix(expand.grid(lapply(1:5, function(i){ 0:5 })))
+# set up algortihm parameters
+pars &lt;- list(sigma0=5, theta = 0.9, ktheta = 0.3, mtheta = 0.9,
+             alpha = 0.5, thresh = 0.04, cutoff = 100, Q = 100, iters = 4)
+# create a tumor
+psis &lt;- c(0.6, 0.3, 0.1) # three clones
+tumor &lt;- Tumor(psis, rounds = 100, nu = 0, pcnv = 1, norm.contam = FALSE)
+# simulate a dataset
+dataset &lt;- generateTumorData(tumor, 10000, 600000, 70, 25, 0.15, 0.03, 0.1)
+result &lt;- seekClones(dataset$cn.data, dataset$seq.data,
+             cnmodels, psis.20, pars = pars, imputedCN = NULL) 
+</code></pre>
+
+<hr>
+<h2 id='Simplices'> Simplices and Clonal Fractions </h2><span id='topic+Simplices'></span><span id='topic+sampleSimplex'></span><span id='topic+generateSimplex'></span>
+
+<h3>Description</h3>
+
+<p>Utility functions for working with vectors of clonal fractions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>sampleSimplex(n, d = 5)
+generateSimplex(k, d, reps = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="Simplices_+3A_d">d</code></td>
+<td>
+<p> an integer, the dimension of the simplex, or the number of
+clones. </p>
+</td></tr>
+<tr><td><code id="Simplices_+3A_n">n</code></td>
+<td>
+<p> an integer, the number of vectors to sample randomly.  </p>
+</td></tr>
+<tr><td><code id="Simplices_+3A_k">k</code></td>
+<td>
+<p> an integer, the number of equally spaced points to select along
+each side of the simplex while constructing a lattice. </p>
+</td></tr>
+<tr><td><code id="Simplices_+3A_reps">reps</code></td>
+<td>
+<p> an integer, the number of times to repeat the lattice. </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>When studying the clonal subpopulations of a tumor sample, we
+frequently need access to vectors that contain the fraction of cells
+belonging to each clone. These vectors are characterized by the fact
+that each entry is nonzero and they must add up to 1. The set of such
+vectors/points in d-dimensional space defines the &quot;d-simplex&quot;. The
+functions defined here allow us to work with d-simplices, either by
+randomly sampling vectors (<code>sampleSimplex</code>) or by systematically
+filling the space with a regular lattice (<code>generateSimplex</code>).
+</p>
+
+
+<h3>Value</h3>
+
+<p>Both functions return a matrix with <code>d</code> columns. Each row
+contains nonzeo real numbers that sum to 1. The <code>generateSimplex</code>
+function ensures that (a) each row is unique and (b) the entries in
+each row appear in decreasing order. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes <a href="mailto:krc@silicovore.com">krc@silicovore.com</a>,
+Mark Zucker <a href="mailto:zucker.64@buckeyemail.osu.edu">zucker.64@buckeyemail.osu.edu</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>sampleSimplex(5, 3)
+generateSimplex(5, 3)
+</code></pre>
+
+<hr>
+<h2 id='Simulating+20Clones'> Simulating Tumor Clones </h2><span id='topic+generateTumorData'></span><span id='topic+plotTumorData'></span><span id='topic+tumorGen'></span><span id='topic+dataGen'></span>
+
+<h3>Description</h3>
+
+<p>Simulating copy number segmentation data and sequencing mutation data
+for tumors composed of multiple clones.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>generateTumorData(tumor, snps.seq, snps.cgh, mu, sigma.reads,
+                  sigma0.lrr, sigma0.baf, density.sigma)
+plotTumorData(tumor, data)
+tumorGen(...)
+dataGen(tumor, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="Simulating+2B20Clones_+3A_tumor">tumor</code></td>
+<td>
+<p> an object of the <code>Tumor</code> class. </p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_snps.seq">snps.seq</code></td>
+<td>
+<p>an integer; the total number of germline variants and
+somatic mutations to simulate in the tumor genome.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_snps.cgh">snps.cgh</code></td>
+<td>
+<p>an integer; the number of single nucleotide
+polymorphisms (SNPs) to simulate as meaurements made to estimate
+copy number.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_mu">mu</code></td>
+<td>
+<p>an integer; the average read depth of a simulated sequencing
+study giving rise to mutations.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_sigma.reads">sigma.reads</code></td>
+<td>
+<p>a real number; the standard deviation of the number
+of simulated sequencing reads per base.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_sigma0.lrr">sigma0.lrr</code></td>
+<td>
+<p>a real number; the standard deviation of the
+simulated per-SNP log R ratio (LRR) for assessing copy number.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_sigma0.baf">sigma0.baf</code></td>
+<td>
+<p>a real number; the standard deviation of the
+simulated B allele frequency (BAF) for assessing copy number.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_density.sigma">density.sigma</code></td>
+<td>
+<p>a real number; the standard deviation of a beta
+distribution used to simulate the number of SNP markers per copy
+number segment.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_data">data</code></td>
+<td>
+<p> a list containing two data frames, <code>cn.data</code> and
+<code>seq.data</code>, as produced by <code>generateTumorData</code>.</p>
+</td></tr>
+<tr><td><code id="Simulating+2B20Clones_+3A_...">...</code></td>
+<td>
+<p>additional variables</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Copy number and mutation data are simulated essentially
+independently. Each simulation starts with a single &quot;normal&quot; genome, 
+and CNVs and/or mutations are randomly generated for each new &quot;branch&quot;
+or subclone. (The number of subclones depends on the input
+parameters.) Each successive branch is randomly determined to descend
+from one of the existing clones, and therefore contains both the
+aberrations belonging to its parent clone and the novel aberrations
+assigned to it. Depending on input parameters, the algorithm can also
+randomly select some clones for extinction in the process of
+generating the heterogeneous tumor, to yield a more realistic
+population structure. 
+</p>
+<p>Note that <code>tumorGen</code> (an alias for <code>Tumor</code> that returns a
+list instead of a Tumor object) and <code>dataGen</code> (an alias for
+<code>generateTumorData</code>) are DEPRECATED.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>generateTumorData</code> function returns a list with two
+components, <code>cn.data</code> and <code>seq.data</code>. Each component is
+itself a data frame. Note that in some cases, one of these data frames
+may have zero rows or may be returned as an <code>NA</code>.
+</p>
+<p>The <code>cn.data</code> component contains seven columns:
+</p>
+
+<dl>
+<dt><code>chr</code></dt><dd><p>the chromosome number;</p>
+</dd>
+<dt><code>seq</code></dt><dd><p>a unique segment identifier;</p>
+</dd>
+<dt><code>LRR</code></dt><dd><p>simulated segment-wise log ratios;</p>
+</dd>
+<dt><code>BAF</code></dt><dd><p>simulated segment-wise B allele frequencies;</p>
+</dd>
+<dt><code>X</code> and <code>Y</code></dt><dd><p>simulated intensities for two separate
+alleles/haplotypes per segment; and</p>
+</dd> 
+<dt><code>markers</code></dt><dd><p>the simulated number of SNPS per segment.</p>
+</dd>
+</dl>
+
+<p>The <code>seq.data</code> component contains eight columns:
+</p>
+
+<dl>
+<dt><code>chr</code></dt><dd><p>the chromosome number;</p>
+</dd>
+<dt><code>seq</code></dt><dd><p>a unique &quot;segment&quot; identifier;</p>
+</dd>
+<dt><code>mut.id</code></dt><dd><p>a unique mutation identifier;</p>
+</dd>
+<dt><code>refCounts</code> and <code>varCounts</code></dt><dd><p>the simulated numbers
+of reference and variant counts per mutation;</p>
+</dd>
+<dt><code>VAF</code></dt><dd><p>the simulated variant allele frequency;</p>
+</dd>
+<dt><code>totalCounts</code></dt><dd><p>the simulated total number of read counts;
+and</p>
+</dd>
+<dt><code>status</code></dt><dd><p>a character (that should probably be a factor)
+indicating whether a variant should be viewed as somatic or
+germline.</p>
+</dd>
+</dl>
+
+<p>The <code>plotTumorData</code> function invisibly returns its <code>data</code>
+argument.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes <a href="mailto:krc@silicovore.com">krc@silicovore.com</a>,
+Mark Zucker <a href="mailto:zucker.64@buckeyemail.osu.edu">zucker.64@buckeyemail.osu.edu</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>psis &lt;- c(0.6, 0.3, 0.1) # three clones
+# create tumor with copy number but no mutation data
+tumor &lt;- Tumor(psis, rounds = 400, nu = 0, pcnv = 1, norm.contam = FALSE)
+# simulate the dataset
+dataset &lt;- generateTumorData(tumor, 10000, 600000, 70, 25, 0.15, 0.03, 0.1)
+#plot it
+plotTumorData(tumor, dataset)
+</code></pre>
+
+<hr>
+<h2 id='Tumor-class'>Class &quot;Tumor&quot;</h2><span id='topic+Tumor-class'></span><span id='topic+Tumor'></span><span id='topic+getClone'></span><span id='topic+summary+2CTumor-method'></span><span id='topic+coerce+2CTumor+2Clist-method'></span>
+
+<h3>Description</h3>
+
+<p>A class that represents tumors, thought of as a collection of
+(sub)clones each with an associated measure as a fraction of all
+tumor cells.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>Tumor(psi, rounds, nu = 100, pcnv = 0.5, norm.contam = FALSE, cnmax = 4)
+getClone(tumor, i)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="Tumor-class_+3A_psi">psi</code></td>
+<td>
+<p> a numeric vector containing non-negative values.</p>
+</td></tr>
+<tr><td><code id="Tumor-class_+3A_rounds">rounds</code></td>
+<td>
+<p>an integer; the number of generations through which to
+evolve the potential clones.</p>
+</td></tr>
+<tr><td><code id="Tumor-class_+3A_nu">nu</code></td>
+<td>
+<p>an integer; the expected number of mutations in each clonal
+generation.</p>
+</td></tr>
+<tr><td><code id="Tumor-class_+3A_pcnv">pcnv</code></td>
+<td>
+<p>a real number between 0 and 1; the probability of a CNV
+occuring per generation.</p>
+</td></tr>
+<tr><td><code id="Tumor-class_+3A_norm.contam">norm.contam</code></td>
+<td>
+<p>a logical value; should we treat one of the cell
+populations as normal cells that are &quot;contaminating&quot; the tumor
+specimen?</p>
+</td></tr>
+<tr><td><code id="Tumor-class_+3A_cnmax">cnmax</code></td>
+<td>
+<p>an integer, the maximum copy number allowed in the
+simulated data.</p>
+</td></tr>
+<tr><td><code id="Tumor-class_+3A_tumor">tumor</code></td>
+<td>
+<p> an object of the <code>Tumor</code> class.</p>
+</td></tr>
+<tr><td><code id="Tumor-class_+3A_i">i</code></td>
+<td>
+<p>a integer; which clone to extract.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The <code>Tumor</code> class is used to represent compex tumors, each of
+which consists a set of subclones representing different fractional
+parts of the tumor. Each clone is characterized by a set of copy
+number variants (modeled by the output produced by something like the
+<code>DNAcopy</code> package) and, optionally, a set of sequence
+mutations. Each of these genetic events is mapped to a specific
+interval or point in the human genome.
+</p>
+<p>In the current implementation, a <code>Tumor</code> consists of a weight
+vector that specifies the fractions of cells for each clone and a list
+of clones. At present, each clone is itself a list containing one (if
+there are no mutations) or two (if there are both copy number
+variants and mutations) data frames. This structure is likely to
+change in later versions of the package, since we expect to implement a
+full-fledged S4 class to represent clones. So, one should not rely on
+the current implementation. 
+</p>
+
+
+<h3>Value</h3>
+
+<p>The constructor returns a valid object of the <code>Tumor</code>
+class.
+</p>
+
+
+<h3>Objects from the Class</h3>
+
+<p>Although objects can be created using <code>new</code>, the preferred method
+is to use the constructor function, <code>Tumor</code>.
+</p>
+
+
+<h3>Slots</h3>
+
+
+<dl>
+<dt><code>psi</code></dt><dd><p> a <code><a href="#topic+WeightVector">WeightVector</a></code> containing
+non-negative values whose sum  equals one. </p>
+</dd>
+<dt><code>clones</code></dt><dd><p> a list, each of whose elements represents a
+clone.</p>
+</dd>
+</dl>
+
+
+
+<h3>Methods</h3>
+
+
+<dl>
+<dt>coerce(from, to, strict = TRUE)</dt><dd><p>Convert the
+<code>Tumor</code> object into a simple numeric vector. Never
+actually used in this form, since the preferred method is to write
+<code>as(WV, "list")</code>.</p>
+</dd>
+</dl>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes <a href="mailto:krc@silicovore.com">krc@silicovore.com</a>,
+Mark Zucker <a href="mailto:zucker.64@buckeyemail.osu.edu">zucker.64@buckeyemail.osu.edu</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+WeightVector">WeightVector</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>showClass("Tumor")
+
+tumor &lt;- Tumor(c(0.5, 0.3, 0.2), 100)
+simpleTumor &lt;- as(tumor, "list")
+reformed &lt;- as(simpleTumor, "Tumor")
+</code></pre>
+
+<hr>
+<h2 id='WeightVector-class'>Class &quot;WeightVector&quot;</h2><span id='topic+WeightVector-class'></span><span id='topic+WeightVector'></span><span id='topic+coerce+2CWeightVector+2Cnumeric-method'></span>
+
+<h3>Description</h3>
+
+<p>A class, with validity checking, to contain vectors of non-negative
+real numbers whose sum equals one.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>WeightVector(phi)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="WeightVector-class_+3A_phi">phi</code></td>
+<td>
+<p> a numeric vector containing non-negative values.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>When trying to simulate or model biological data from (sub)clonal
+populations of cells, we need vectors that keep track of the fraction
+of cells belonging to each clone. These vectors can only contain
+non-negative entries, and the entries must add up to one. (We
+thought about calling these things &quot;ClonalFractions&quot;, but that seems
+overly specialized for a notion that is likely to prove useful in
+other contexts.) Such vectors of length <code>d</code> can also be viewed as
+points of a d-dimensional simplex.
+</p>
+<p>We have implemented <code>WeightVector</code>s as an S4 class, primarily so
+we can enforce the defining properties. We also expect this design to
+make it easier to use them as slots in other classes.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The constructor returns a valid object of the <code>WeightVector</code>
+class.
+</p>
+
+
+<h3>Objects from the Class</h3>
+
+<p>Although objects can be created using <code>new</code>, the preferred method
+is to use the constructor function, <code>WeightVector</code>.
+</p>
+
+
+<h3>Slots</h3>
+
+
+<dl>
+<dt><code>psi</code></dt><dd><p> a vector containing non-negative values whose sum
+equals one. </p>
+</dd>
+</dl>
+
+
+
+<h3>Methods</h3>
+
+
+<dl>
+<dt>coerce(from, to, strict = TRUE)</dt><dd><p>Convert the
+<code>WeightVector</code> object into a simple numeric vector. Never
+actually used in this form, since the preferred method is to write
+<code>as(WV, "numeric")</code>.</p>
+</dd>
+</dl>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes <a href="mailto:krc@silicovore.com">krc@silicovore.com</a>,
+Mark Zucker <a href="mailto:zucker.64@buckeyemail.osu.edu">zucker.64@buckeyemail.osu.edu</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+Simplices">Simplices</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>showClass("WeightVector")
+
+WeightVector(1:4)
+as(WeightVector(c(2, 3, 5)), "numeric")
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

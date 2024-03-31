@@ -1,0 +1,2281 @@
+<!DOCTYPE html><html><head><title>Help for package optextras</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {optextras}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#axsearch'><p>Perform axial search around a supposed minimum and provide diagnostics</p></a></li>
+<li><a href='#bmchk'><p>Check bounds and masks for parameter constraints used in nonlinear optimization</p></a></li>
+<li><a href='#bmstep'><p>Compute the maximum step along a search direction.</p></a></li>
+<li><a href='#ctrldefault'><p>set control defaults</p></a></li>
+<li><a href='#fnchk'><p>Run tests, where possible, on user objective function</p></a></li>
+<li><a href='#gHgen'><p>Generate gradient and Hessian for a function at given parameters.</p></a></li>
+<li><a href='#gHgenb'><p>Generate gradient and Hessian for a function at given parameters.</p></a></li>
+<li><a href='#grback'><p>Backward difference numerical gradient approximation.</p></a></li>
+<li><a href='#grcentral'><p>Central difference numerical gradient approximation.</p></a></li>
+<li><a href='#grchk'><p>Run tests, where possible, on user objective function and (optionally) gradient and hessian</p></a></li>
+<li><a href='#grfwd'><p>Forward difference numerical gradient approximation.</p></a></li>
+<li><a href='#grnd'><p>A reorganization of the call to numDeriv grad() function.</p></a></li>
+<li><a href='#hesschk'><p>Run tests, where possible, on user objective function and (optionally) gradient and hessian</p></a></li>
+<li><a href='#kktchk'><p>Check Kuhn Karush Tucker conditions for a supposed function minimum</p></a></li>
+<li><a href='#optextras-package'>
+<p>Tools to Support Optimization Possibly with Bounds and Masks</p></a></li>
+<li><a href='#scalechk'><p>Check the scale of the initial parameters and bounds input to an optimization code</p>
+used in nonlinear optimization</a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>2019-12.4</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2019-12-04</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Tools to Support Optimization Possibly with Bounds and Masks</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>John C Nash &lt;nashjc@uottawa.ca&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Tools to assist in safely applying user generated objective and 
+   derivative function to optimization programs. These are primarily function 
+   minimization methods with at most bounds and masks on the parameters.
+   Provides a way to check the basic computation of objective functions that 
+   the user provides, along with proposed gradient and Hessian functions, 
+   as well as to wrap such functions to avoid failures when inadmissible parameters 
+   are provided. Check bounds and masks. Check scaling or optimality conditions. 
+   Perform an axial search to seek lower points on the objective function surface. 
+   Includes forward, central and backward gradient approximation codes.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>numDeriv, utils</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2019-12-04 17:30:36 UTC; john</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>John C Nash [aut, cre]</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2019-12-20 13:20:07 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='axsearch'>Perform axial search around a supposed minimum and provide diagnostics</h2><span id='topic+axsearch'></span>
+
+<h3>Description</h3>
+
+<p>Nonlinear optimization problems often terminate at points in the 
+parameter space that are not satisfactory optima. This routine conducts an axial
+search, stepping forward and backward along each parameter and computing the objective
+function. This allows us to compute the <code>tilt</code> and <code>radius of curvature</code> or
+<code>roc</code> along that parameter axis. 
+</p>
+<p><code>axsearch</code> assumes that one is MINIMIZING the function <code>fn</code>. While we believe
+that it will work using the wrapper <code>ufn</code> from this package with the 'maximize=TRUE'
+setting, we believe it is much safer to write your own function that is to be minimized.
+That is minimize  (-1)*(function to be maximized). All discussion here is in
+terms of minimization.
+</p>
+<p>Axial search may find parameters with a function value lower than that at the 
+supposed minimum, i.e., lower than <code>fmin</code>. 
+</p>
+<p>In this case <code>axsearch</code> exits immediately with the new function value and
+parameters. This can be used to restart an optimizer, as in the optimx wrapper.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>       axsearch(par, fn=NULL, fmin=NULL, lower=NULL, upper=NULL, bdmsk=NULL, trace=0, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="axsearch_+3A_par">par</code></td>
+<td>
+<p>A numeric vector of values of the optimization function parameters that are
+at a supposed minimum.</p>
+</td></tr>
+<tr><td><code id="axsearch_+3A_fn">fn</code></td>
+<td>
+<p>The user objective function</p>
+</td></tr>
+<tr><td><code id="axsearch_+3A_fmin">fmin</code></td>
+<td>
+<p>The value of the objective function at the parameters <code>par</code>. ?? what if fmin==NULL?</p>
+</td></tr>
+<tr><td><code id="axsearch_+3A_lower">lower</code></td>
+<td>
+<p>A vector of lower bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="axsearch_+3A_upper">upper</code></td>
+<td>
+<p>A vector of upper bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="axsearch_+3A_bdmsk">bdmsk</code></td>
+<td>
+<p>An indicator vector, having 1 for each parameter that is &quot;free&quot; or
+unconstrained, and 0 for any parameter that is fixed or MASKED for the
+duration of the optimization. Partly for historical reasons, we use the 
+same array during the progress of optimization as an indicator that a 
+parameter is at a lower bound (bdmsk element set to -3) or upper bound (-1).</p>
+</td></tr>
+<tr><td><code id="axsearch_+3A_trace">trace</code></td>
+<td>
+<p>If trace&gt;0, then local output is enabled.</p>
+</td></tr>
+<tr><td><code id="axsearch_+3A_...">...</code></td>
+<td>
+<p>Extra arguments for the user function.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The axial search MAY give a lower function value, in which case, one can restart.
+Its primary use is in presenting some features of the function surface in the
+tilt and radius of curvature measures returned. However, better measures should
+be possible, and this function should be regarded as largely experimental.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with components:
+</p>
+<table>
+<tr><td><code>bestfn</code></td>
+<td>
+<p>The lowest (best) function value found (??maximize??) during the axial search, 
+else the original fmin value. (This is actively set in that case.)</p>
+</td></tr>
+<tr><td><code>par</code></td>
+<td>
+<p>The vector of parameters at the best function value. </p>
+</td></tr>
+<tr><td><code>details</code></td>
+<td>
+<p>A data frame reporting the original parameters, the forward step and backward
+step function values, the size of the step taken for a particular parameter, the tilt and
+the roc (radius of curvature). Some elements will be NA if we find a lower function
+value during the axial search.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#####################
+# require(optimx)
+require(optextras)
+# Simple bounds test for n=4
+bt.f&lt;-function(x){
+  sum(x*x)
+}
+
+bt.g&lt;-function(x){
+  gg&lt;-2.0*x
+}
+
+n&lt;-4
+lower&lt;-rep(0,n)
+upper&lt;-lower # to get arrays set
+bdmsk&lt;-rep(1,n)
+# bdmsk[(trunc(n/2)+1)]&lt;-0
+for (i in 1:n) { 
+  lower[i]&lt;-1.0*(i-1)*(n-1)/n
+  upper[i]&lt;-1.0*i*(n+1)/n
+}
+xx&lt;-0.5*(lower+upper)
+
+cat("lower bounds:")
+print(lower)
+cat("start:       ")
+print(xx)
+cat("upper bounds:")
+print(upper)
+
+abtrvm &lt;- list() # ensure we have the structure
+
+cat("Rvmmin \n\n")
+# Note: trace set to 0 below. Change as needed to view progress. 
+
+# Following can be executed if package optimx available
+# abtrvm &lt;- optimr(xx, bt.f, bt.g, lower=lower, upper=upper, method="Rvmmin", 
+#                 control=list(trace=0))
+# Note: use lower=lower etc. because there is a missing hess= argument
+# print(abtrvm)
+
+abtrvm$par &lt;- c(0.00, 0.75, 1.50, 2.25)
+abtrvm$value &lt;- 7.875
+cat("Axial search")
+axabtrvm &lt;- axsearch(abtrvm$par, fn=bt.f, fmin=abtrvm$value, lower, upper, bdmsk=NULL, 
+                     trace=0)
+print(axabtrvm)
+
+abtrvm1 &lt;- list() # set up structure
+# Following can be executed if package optimx available
+# cat("Now force an early stop\n")
+# abtrvm1 &lt;- optimr(xx, bt.f, bt.g, lower=lower, upper=upper, method="Rvmmin", 
+#                   control=list(maxit=1, trace=0))
+# print(abtrvm1)
+
+abtrvm1$value &lt;- 8.884958
+abtrvm1$par &lt;- c(0.625, 1.625, 2.625, 3.625)
+
+cat("Axial search")
+axabtrvm1 &lt;- axsearch(abtrvm1$par, fn=bt.f, fmin=abtrvm1$value, lower, upper, bdmsk=NULL, 
+                      trace=0)
+print(axabtrvm1)
+
+cat("Do NOT try axsearch() with maximize\n")
+
+</code></pre>
+
+<hr>
+<h2 id='bmchk'>Check bounds and masks for parameter constraints used in nonlinear optimization</h2><span id='topic+bmchk'></span>
+
+<h3>Description</h3>
+
+<p>Nonlinear optimization problems often have explicit or implicit upper and
+lower bounds on the parameters of the function to be miminized or maximized. These are 
+called bounds or box constraints. Some of the parameters may be fixed for a given problem
+or for a temporary trial. These fixed, or masked, paramters are held at one value during 
+a specific 'run' of the optimization.
+</p>
+<p>It is possible that the bounds are inadmissible, that is, that at least one lower bound
+exceeds an upper bound. In this case we set the flag <code>admissible</code> to FALSE.
+</p>
+<p>Parameters that are outside the bounds are moved to the nearest bound and the flag
+<code>parchanged</code> is set TRUE. However, we DO NOT change masked parameters, and they
+may be outside the bounds. This is an implementation choice, since it may be useful
+to test objective functions at point outside the bounds.
+</p>
+<p>The package bmchk is essentially a test of the R function bmchk(), which is likely to be 
+incorporated within optimization codes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   bmchk(par, lower=NULL, upper=NULL, bdmsk=NULL, trace=0, tol=NULL, shift2bound=TRUE)   
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="bmchk_+3A_par">par</code></td>
+<td>
+<p>A numeric vector of starting values of the optimization function parameters.</p>
+</td></tr>
+<tr><td><code id="bmchk_+3A_lower">lower</code></td>
+<td>
+<p>A vector of lower bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="bmchk_+3A_upper">upper</code></td>
+<td>
+<p>A vector of upper bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="bmchk_+3A_bdmsk">bdmsk</code></td>
+<td>
+<p>An indicator vector, having 1 for each parameter that is &quot;free&quot; or
+unconstrained, and 0 for any parameter that is fixed or MASKED for the
+duration of the optimization. Partly for historical reasons, we use the 
+same array during the progress of optimization as an indicator that a 
+parameter is at a lower bound (bdmsk element set to -3) or upper bound (-1).</p>
+</td></tr>
+<tr><td><code id="bmchk_+3A_trace">trace</code></td>
+<td>
+<p>An integer that controls whether diagnostic information is displayed.
+A positive value displays information, 0 (default) does not.</p>
+</td></tr>
+<tr><td><code id="bmchk_+3A_tol">tol</code></td>
+<td>
+<p>If provided, is used to detect a MASK, that is, lower=upper for some
+parameter.</p>
+</td></tr>
+<tr><td><code id="bmchk_+3A_shift2bound">shift2bound</code></td>
+<td>
+<p>If TRUE, non-masked paramters outside bounds are adjusted 
+to the nearest bound. We then set parchanged = TRUE which implies the 
+original parameters were infeasible.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The bmchk function will check that the bounds exist and are admissible, 
+that is, that there are no lower bounds that exceed upper bounds. 
+</p>
+<p>There is a check if lower and upper bounds are very close together, in 
+which case a mask is imposed and maskadded is set TRUE. NOTE: it is 
+generally a VERY BAD IDEA to have bounds close together in optimization,
+but here we use a tolerance based on the double precision machine 
+epsilon. Thus it is not a good idea to rely on bmchk() to test if 
+bounds constraints are well-posed.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with components:
+</p>
+<table>
+<tr><td><code>bvec</code></td>
+<td>
+<p>The vector of parameters, possibly adjusted for bounds. Parameters 
+outside bounds are adjusted to the nearest bound.</p>
+</td></tr>
+<tr><td><code>bdmsk</code></td>
+<td>
+<p>adjusted input masks</p>
+</td></tr>
+<tr><td><code>bchar</code></td>
+<td>
+<p>indicator for humans &ndash; &quot;-&quot;,&quot;L&quot;,&quot;F&quot;,&quot;U&quot;,&quot;+&quot;,&quot;M&quot;
+for out-of-bounds-low, lower bound, free, 
+upper bound, out-of-bounds-high, masked (fixed)</p>
+</td></tr>
+<tr><td><code>lower</code></td>
+<td>
+<p>(adjusted) lower bounds. If upper-lower&lt;tol, we create a mask
+rather than leave bounds. In this case we could eliminate the bounds.
+At the moment, this change is NOT made, but a commented line of code
+is present in the file <code>bmchk.R</code>.</p>
+</td></tr>
+<tr><td><code>upper</code></td>
+<td>
+<p>(adjusted) upper bounds</p>
+</td></tr>
+<tr><td><code>nolower</code></td>
+<td>
+<p>TRUE if no lower bounds, FALSE otherwise</p>
+</td></tr>
+<tr><td><code>noupper</code></td>
+<td>
+<p>TRUE if no upper bounds, FALSE otherwise</p>
+</td></tr>
+<tr><td><code>bounds</code></td>
+<td>
+<p>TRUE if there are any bounds, FALSE otherwise</p>
+</td></tr>
+<tr><td><code>admissible</code></td>
+<td>
+<p>TRUE if bounds are admissible, FALSE otherwise
+This means no lower bound exceeds an upper bound. That is the bounds 
+themselves are sensible. This condition has nothing to do with the 
+starting parameters.</p>
+</td></tr>
+<tr><td><code>maskadded</code></td>
+<td>
+<p>TRUE when a mask has been added because bounds are very close
+or equal, FALSE otherwise. See the code for the implementation.</p>
+</td></tr>
+<tr><td><code>parchanged</code></td>
+<td>
+<p>TRUE if parameters are changed by bounds, FALSE otherswise.
+Note that parchanged = TRUE implies the input parameter values were infeasible, 
+that is, violated the bounds constraints.</p>
+</td></tr>
+<tr><td><code>feasible</code></td>
+<td>
+<p>TRUE if parameters are within or on bounds, FALSE otherswise.</p>
+</td></tr>
+<tr><td><code>onbound</code></td>
+<td>
+<p>TRUE if any parameter is on a bound, FALSE otherswise.
+Note that parchanged = TRUE implies onbound = TRUE, but this is not used inside
+the function. This output value may be important, for example, in using the
+optimization function <code>nmkb</code> from package <code>dfoptim</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#####################
+
+cat("25-dimensional box constrained function\n")
+flb &lt;- function(x)
+    { p &lt;- length(x); sum(c(1, rep(4, p-1)) * (x - c(1, x[-p])^2)^2) }
+
+start&lt;-rep(2, 25)
+cat("\n start:")
+print(start)
+lo&lt;-rep(2,25)
+cat("\n lo:")
+print(lo)
+hi&lt;-rep(4,25)
+cat("\n hi:")
+print(hi)
+bt&lt;-bmchk(start, lower=lo, upper=hi, trace=1)
+print(bt)
+
+</code></pre>
+
+<hr>
+<h2 id='bmstep'>Compute the maximum step along a search direction.</h2><span id='topic+bmstep'></span>
+
+<h3>Description</h3>
+
+<p>Nonlinear optimization problems often have explicit or implicit upper and
+lower bounds on the parameters of the function to be miminized or maximized. These are 
+called bounds or box constraints. Some of the parameters may be fixed for a given problem
+or for a temporary trial. These fixed, or masked, paramters are held at one value during 
+a specific 'run' of the optimization.
+</p>
+<p>The bmstep() function computes the maximum step possible (which could be infinite) 
+along a particular search direction from current parameters to bounds.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   bmstep(par, srchdirn, lower=NULL, upper=NULL, bdmsk=NULL, trace=0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="bmstep_+3A_par">par</code></td>
+<td>
+<p>A numeric vector of starting values of the optimization function parameters.</p>
+</td></tr>
+<tr><td><code id="bmstep_+3A_srchdirn">srchdirn</code></td>
+<td>
+<p>A numeric vector giving the search direction.</p>
+</td></tr>
+<tr><td><code id="bmstep_+3A_lower">lower</code></td>
+<td>
+<p>A vector of lower bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="bmstep_+3A_upper">upper</code></td>
+<td>
+<p>A vector of upper bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="bmstep_+3A_bdmsk">bdmsk</code></td>
+<td>
+<p>An indicator vector, having 1 for each parameter that is &quot;free&quot; or
+unconstrained, and 0 for any parameter that is fixed or MASKED for the
+duration of the optimization. Partly for historical reasons, we use the 
+same array during the progress of optimization as an indicator that a 
+parameter is at a lower bound (bdmsk element set to -3) or upper bound (-1).</p>
+</td></tr>
+<tr><td><code id="bmstep_+3A_trace">trace</code></td>
+<td>
+<p>An integer that controls whether diagnostic information is displayed.
+A positive value displays information, 0 (default) does not.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The bmstep function will compute and return (as a double or Inf) the 
+maximum step to the bounds.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A double precision value or Inf giving the 
+maximum step to the bounds.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#####################
+xx &lt;- c(1, 1)
+lo &lt;- c(0, 0)
+up &lt;- c(100, 40)
+sdir &lt;- c(4,1)
+bm &lt;- c(1,1) # both free
+ans &lt;- bmstep(xx, sdir, lo, up, bm, trace=1)
+# stepsize
+print(ans)
+# distance
+print(ans*sdir)
+# New parameters
+print(xx+ans*sdir)
+
+</code></pre>
+
+<hr>
+<h2 id='ctrldefault'>set control defaults</h2><span id='topic+ctrldefault'></span><span id='topic+dispdefault'></span>
+
+<h3>Description</h3>
+
+<p>Set control defaults.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   ctrldefault(npar)
+
+   dispdefault(ctrl)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ctrldefault_+3A_npar">npar</code></td>
+<td>
+<p>Number of parameters to optimize.</p>
+</td></tr>
+<tr><td><code id="ctrldefault_+3A_ctrl">ctrl</code></td>
+<td>
+<p>A list (likely generated by 'ctrldefault') of default settings to 'optimx'.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>ctrldefault</code> returns the default control settings for optimization tools.
+</p>
+<p><code>dispdefault</code> provides a compact display of the contents of a control settings list.
+</p>
+
+<hr>
+<h2 id='fnchk'>Run tests, where possible, on user objective function</h2><span id='topic+fnchk'></span>
+
+<h3>Description</h3>
+
+<p><code>fnchk</code> checks a user-provided R function, <code>ffn</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   fnchk(xpar, ffn, trace=0, ... )
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fnchk_+3A_xpar">xpar</code></td>
+<td>
+
+<p>the (double) vector of parameters to the objective funcion
+</p>
+</td></tr>
+<tr><td><code id="fnchk_+3A_ffn">ffn</code></td>
+<td>
+
+<p>a user-provided function to compute the objective function
+</p>
+</td></tr>
+<tr><td><code id="fnchk_+3A_trace">trace</code></td>
+<td>
+
+<p>set &gt;0 to provide output from fnchk to the console, 0 otherwise
+</p>
+</td></tr>
+<tr><td><code id="fnchk_+3A_...">...</code></td>
+<td>
+
+<p>optional arguments passed to the objective function.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>fnchk</code> attempts to discover various errors in function setup in user-supplied
+functions primarily intended for use in optimization calculations. There are always 
+more conditions that could be tested!    
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output is a list consisting of 
+list(fval=fval, infeasible=infeasible, excode=excode, msg=msg)
+</p>
+<table>
+<tr><td><code>fval</code></td>
+<td>
+<p>The calculated value of the function at parameters <code>xpar</code> if the function
+can be evaluated.</p>
+</td></tr>
+<tr><td><code>infeasible</code></td>
+<td>
+<p>FALSE if the function can be evaluated, TRUE if not.</p>
+</td></tr>
+<tr><td><code>excode</code></td>
+<td>
+<p>An exit code, which has a relationship to </p>
+</td></tr>
+<tr><td><code>msg</code></td>
+<td>
+<p>A text string giving information about the result of the function check: Messages and
+the corresponding values of <code>excode</code> are:
+</p>
+
+<ul>
+<li><p>fnchk OK; <code>excode</code> = 0; 
+<code>infeasible</code> = FALSE
+</p>
+</li>
+<li><p>Function returns INADMISSIBLE;
+ <code>excode</code> = -1; <code>infeasible</code> = TRUE
+</p>
+</li>
+<li><p>Function returns a vector not a scalar;
+ <code>excode</code> = -4; <code>infeasible</code> = TRUE
+</p>
+</li>
+<li><p>Function returns a list not a scalar;
+ <code>excode</code> = -4; <code>infeasible</code> = TRUE
+</p>
+</li>
+<li><p>Function returns a matrix list not a scalar;
+ <code>excode</code> = -4; <code>infeasible</code> = TRUE
+</p>
+</li>
+<li><p>Function returns an array not a scalar;
+ <code>excode</code> = -4; <code>infeasible</code> = TRUE
+</p>
+</li>
+<li><p>Function returned not length 1, despite not vector, matrix or array;
+ <code>excode</code> = -4; <code>infeasible</code> = TRUE
+</p>
+</li>
+<li><p>Function returned non-numeric value; <code>excode</code> = 0;
+ <code>excode</code> = -1; <code>infeasible</code> = TRUE
+</p>
+</li>
+<li><p>Function returned Inf or NA (non-computable);
+ <code>excode</code> = -1; <code>infeasible</code> = TRUE
+</p>
+</li></ul>
+
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>John C. Nash &lt;nashjc@uottawa.ca&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Want to illustrate each case.
+# Ben Bolker idea for a function that is NOT scalar
+# rm(list=ls())
+# library(optimx)
+sessionInfo()
+benbad&lt;-function(x, y){
+  # y may be provided with different structures
+  f&lt;-(x-y)^2
+} # very simple, but ...
+
+y&lt;-1:10
+x&lt;-c(1)
+cat("fc01: test benbad() with y=1:10, x=c(1)\n")
+fc01&lt;-fnchk(x, benbad, trace=4, y)
+print(fc01)
+
+y&lt;-as.vector(y)
+cat("fc02: test benbad() with y=as.vector(1:10), x=c(1)\n")
+fc02&lt;-fnchk(x, benbad, trace=1, y)
+print(fc02)
+
+y&lt;-as.matrix(y)
+cat("fc03: test benbad() with y=as.matrix(1:10), x=c(1)\n")
+fc03&lt;-fnchk(x, benbad, trace=1, y)
+print(fc03)
+
+y&lt;-as.array(y)
+cat("fc04: test benbad() with y=as.array(1:10), x=c(1)\n")
+fc04&lt;-fnchk(x, benbad, trace=1, y)
+print(fc04)
+
+y&lt;-"This is a string"
+cat("test benbad() with y a string, x=c(1)\n")
+fc05&lt;-fnchk(x, benbad, trace=1, y)
+print(fc05)
+
+cat("fnchk with Rosenbrock\n")
+fr &lt;- function(x) {   ## Rosenbrock Banana function
+  x1 &lt;- x[1]
+  x2 &lt;- x[2]
+  100 * (x2 - x1 * x1)^2 + (1 - x1)^2
+}
+xtrad&lt;-c(-1.2,1)
+ros1&lt;-fnchk(xtrad, fr, trace=1)
+print(ros1)
+npar&lt;-2
+opros&lt;-list2env(list(fn=fr, gr=NULL, hess=NULL, MAXIMIZE=FALSE, PARSCALE=rep(1,npar), FNSCALE=1,
+                     KFN=0, KGR=0, KHESS=0, dots=NULL))
+uros1&lt;-fnchk(xtrad, fr, trace=1)
+print(uros1)
+
+
+</code></pre>
+
+<hr>
+<h2 id='gHgen'>Generate gradient and Hessian for a function at given parameters.</h2><span id='topic+gHgen'></span>
+
+<h3>Description</h3>
+
+<p><code>gHgen</code> is used to generate the gradient and Hessian of an objective
+function used for optimization. If a user-provided gradient function 
+<code>gr</code> is available it is used to compute the gradient, otherwise 
+package <code>numDeriv</code> is used. If a user-provided Hessian function
+<code>hess</code> is available, it is used to compute a Hessian. Otherwise, if
+<code>gr</code> is available, we use the function <code>jacobian()</code> from
+package <code>numDeriv</code> to compute the Hessian. In both these cases we
+check for symmetry of the Hessian. Computational Hessians are commonly
+NOT symmetric. If only the objective function <code>fn</code> is provided, then
+the Hessian is approximated with the function <code>hessian</code> from 
+package <code>numDeriv</code> which guarantees a symmetric matrix. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  gHgen(par, fn, gr=NULL, hess=NULL,
+      control=list(ktrace=0), ...) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gHgen_+3A_par">par</code></td>
+<td>
+<p>Set of parameters, assumed to be at a minimum of the function <code>fn</code>.</p>
+</td></tr>
+<tr><td><code id="gHgen_+3A_fn">fn</code></td>
+<td>
+<p>Name of the objective function.</p>
+</td></tr>
+<tr><td><code id="gHgen_+3A_gr">gr</code></td>
+<td>
+<p>(Optional) function to compute the gradient of the objective function. If present,
+we use the Jacobian of the gradient as the Hessian and avoid one layer of numerical
+approximation to the Hessian.</p>
+</td></tr> 
+<tr><td><code id="gHgen_+3A_hess">hess</code></td>
+<td>
+<p>(Optional) function to compute the Hessian of the objective function. This
+is rarely available, but is included for completeness.</p>
+</td></tr>
+<tr><td><code id="gHgen_+3A_control">control</code></td>
+<td>
+<p>A list of controls to the function. Currently 
+asymptol (default of 1.0e-7 which tests for asymmetry of Hessian approximation
+(see code for details of the test); 
+ktrace, a logical flag which, if TRUE, monitors the progress 
+of gHgen (default FALSE), and 
+stoponerror, defaulting to FALSE to NOT stop when there is
+an error or asymmetry of Hessian. Set TRUE to stop.</p>
+</td></tr>
+<tr><td><code id="gHgen_+3A_...">...</code></td>
+<td>
+<p>Extra data needed to compute the function, gradient and Hessian.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>None
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>ansout</code> a list of four items, 
+</p>
+
+<ul>
+<li><p><code>gn</code>  The approximation to the gradient vector.
+</p>
+</li>
+<li><p><code>Hn</code>  The approximation to the Hessian matrix.
+</p>
+</li>
+<li><p><code>gradOK</code>  TRUE if the gradient has been computed acceptably. FALSE otherwise.
+</p>
+</li>
+<li><p><code>hessOK</code>  TRUE if the gradient has been computed acceptably and passes the
+symmetry test. FALSE otherwise.
+</p>
+</li>
+<li><p><code>nbm</code>  Always 0. The number of active bounds and masks.
+Present to make function consistent with <code>gHgenb</code>.
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># genrose function code
+genrose.f&lt;- function(x, gs=NULL){ # objective function
+## One generalization of the Rosenbrock banana valley function (n parameters)
+	n &lt;- length(x)
+        if(is.null(gs)) { gs=100.0 }
+	fval&lt;-1.0 + sum (gs*(x[1:(n-1)]^2 - x[2:n])^2 + (x[2:n] - 1)^2)
+        return(fval)
+}
+
+genrose.g &lt;- function(x, gs=NULL){
+# vectorized gradient for genrose.f
+# Ravi Varadhan 2009-04-03
+	n &lt;- length(x)
+        if(is.null(gs)) { gs=100.0 }
+	gg &lt;- as.vector(rep(0, n))
+	tn &lt;- 2:n
+	tn1 &lt;- tn - 1
+	z1 &lt;- x[tn] - x[tn1]^2
+	z2 &lt;- 1 - x[tn]
+	gg[tn] &lt;- 2 * (gs * z1 - z2)
+	gg[tn1] &lt;- gg[tn1] - 4 * gs * x[tn1] * z1
+	return(gg)
+}
+
+genrose.h &lt;- function(x, gs=NULL) { ## compute Hessian
+   if(is.null(gs)) { gs=100.0 }
+	n &lt;- length(x)
+	hh&lt;-matrix(rep(0, n*n),n,n)
+	for (i in 2:n) {
+		z1&lt;-x[i]-x[i-1]*x[i-1]
+#		z2&lt;-1.0-x[i]
+                hh[i,i]&lt;-hh[i,i]+2.0*(gs+1.0)
+                hh[i-1,i-1]&lt;-hh[i-1,i-1]-4.0*gs*z1-4.0*gs*x[i-1]*(-2.0*x[i-1])
+                hh[i,i-1]&lt;-hh[i,i-1]-4.0*gs*x[i-1]
+                hh[i-1,i]&lt;-hh[i-1,i]-4.0*gs*x[i-1]
+	}
+        return(hh)
+}
+
+trad&lt;-c(-1.2,1)
+ans100fgh&lt;-  gHgen(trad, genrose.f, gr=genrose.g, hess=genrose.h,
+      control=list(ktrace=1)) 
+print(ans100fgh)
+ans100fg&lt;-  gHgen(trad, genrose.f, gr=genrose.g, 
+      control=list(ktrace=1)) 
+print(ans100fg)
+ans100f&lt;-  gHgen(trad, genrose.f, control=list(ktrace=1)) 
+print(ans100f)
+ans10fgh&lt;-   gHgen(trad, genrose.f, gr=genrose.g, hess=genrose.h,
+      control=list(ktrace=1), gs=10) 
+print(ans10fgh)
+ans10fg&lt;-   gHgen(trad, genrose.f, gr=genrose.g, 
+      control=list(ktrace=1), gs=10) 
+print(ans10fg)
+ans10f&lt;-   gHgen(trad, genrose.f, control=list(ktrace=1), gs=10) 
+print(ans10f)
+
+</code></pre>
+
+<hr>
+<h2 id='gHgenb'>Generate gradient and Hessian for a function at given parameters.</h2><span id='topic+gHgenb'></span>
+
+<h3>Description</h3>
+
+<p><code>gHgenb</code> is used to generate the gradient and Hessian of an objective
+function used for optimization. If a user-provided gradient function 
+<code>gr</code> is available it is used to compute the gradient, otherwise 
+package <code>numDeriv</code> is used. If a user-provided Hessian function
+<code>hess</code> is available, it is used to compute a Hessian. Otherwise, if
+<code>gr</code> is available, we use the function <code>jacobian()</code> from
+package <code>numDeriv</code> to compute the Hessian. In both these cases we
+check for symmetry of the Hessian. Computational Hessians are commonly
+NOT symmetric. If only the objective function <code>fn</code> is provided, then
+the Hessian is approximated with the function <code>hessian</code> from 
+package <code>numDeriv</code> which guarantees a symmetric matrix. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  gHgenb(par, fn, gr=NULL, hess=NULL, bdmsk=NULL, lower=NULL, upper=NULL,
+      control=list(ktrace=0), ...) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gHgenb_+3A_par">par</code></td>
+<td>
+<p>Set of parameters, assumed to be at a minimum of the function <code>fn</code>.</p>
+</td></tr>
+<tr><td><code id="gHgenb_+3A_fn">fn</code></td>
+<td>
+<p>Name of the objective function.</p>
+</td></tr>
+<tr><td><code id="gHgenb_+3A_gr">gr</code></td>
+<td>
+<p>(Optional) function to compute the gradient of the objective function. If present,
+we use the Jacobian of the gradient as the Hessian and avoid one layer of numerical
+approximation to the Hessian.</p>
+</td></tr> 
+<tr><td><code id="gHgenb_+3A_hess">hess</code></td>
+<td>
+<p>(Optional) function to compute the Hessian of the objective function. This
+is rarely available, but is included for completeness.</p>
+</td></tr>
+<tr><td><code id="gHgenb_+3A_bdmsk">bdmsk</code></td>
+<td>
+<p>An integer vector of the same length as <code>par</code>. When an element
+of this vector is 0, the corresponding parameter value is fixed (masked) 
+during an optimization. Non-zero values indicate a parameter is free (1),
+at a lower bound (-3) or at an upper bound (-1), but this routine only
+uses 0 values.</p>
+</td></tr>
+<tr><td><code id="gHgenb_+3A_lower">lower</code></td>
+<td>
+<p>Lower bounds for parameters in <code>par</code>.</p>
+</td></tr>
+<tr><td><code id="gHgenb_+3A_upper">upper</code></td>
+<td>
+<p>Upper bounds for parameters in <code>par</code>.</p>
+</td></tr>
+<tr><td><code id="gHgenb_+3A_control">control</code></td>
+<td>
+<p>A list of controls to the function. Currently 
+asymptol (default of 1.0e-7 which tests for asymmetry of Hessian approximation
+(see code for details of the test); 
+ktrace, a logical flag which, if TRUE, monitors the progress 
+of gHgenb (default FALSE), and 
+stoponerror, defaulting to FALSE to NOT stop when there is
+an error or asymmetry of Hessian. Set TRUE to stop.</p>
+</td></tr>
+<tr><td><code id="gHgenb_+3A_...">...</code></td>
+<td>
+<p>Extra data needed to compute the function, gradient and Hessian.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>None
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>ansout</code> a list of four items, 
+</p>
+
+<ul>
+<li><p><code>gn</code>  The approximation to the gradient vector.
+</p>
+</li>
+<li><p><code>Hn</code>  The approximation to the Hessian matrix.
+</p>
+</li>
+<li><p><code>gradOK</code>  TRUE if the gradient has been computed acceptably. FALSE otherwise.
+</p>
+</li>
+<li><p><code>hessOK</code>  TRUE if the gradient has been computed acceptably and passes the
+symmetry test. FALSE otherwise.
+</p>
+</li>
+<li><p><code>nbm</code>  The number of active bounds and masks.
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>require(numDeriv)
+# genrose function code
+genrose.f&lt;- function(x, gs=NULL){ # objective function
+## One generalization of the Rosenbrock banana valley function (n parameters)
+	n &lt;- length(x)
+        if(is.null(gs)) { gs=100.0 }
+	fval&lt;-1.0 + sum (gs*(x[1:(n-1)]^2 - x[2:n])^2 + (x[2:n] - 1)^2)
+        return(fval)
+}
+
+genrose.g &lt;- function(x, gs=NULL){
+# vectorized gradient for genrose.f
+# Ravi Varadhan 2009-04-03
+	n &lt;- length(x)
+        if(is.null(gs)) { gs=100.0 }
+	gg &lt;- as.vector(rep(0, n))
+	tn &lt;- 2:n
+	tn1 &lt;- tn - 1
+	z1 &lt;- x[tn] - x[tn1]^2
+	z2 &lt;- 1 - x[tn]
+	gg[tn] &lt;- 2 * (gs * z1 - z2)
+	gg[tn1] &lt;- gg[tn1] - 4 * gs * x[tn1] * z1
+	return(gg)
+}
+
+genrose.h &lt;- function(x, gs=NULL) { ## compute Hessian
+   if(is.null(gs)) { gs=100.0 }
+	n &lt;- length(x)
+	hh&lt;-matrix(rep(0, n*n),n,n)
+	for (i in 2:n) {
+		z1&lt;-x[i]-x[i-1]*x[i-1]
+		z2&lt;-1.0-x[i]
+                hh[i,i]&lt;-hh[i,i]+2.0*(gs+1.0)
+                hh[i-1,i-1]&lt;-hh[i-1,i-1]-4.0*gs*z1-4.0*gs*x[i-1]*(-2.0*x[i-1])
+                hh[i,i-1]&lt;-hh[i,i-1]-4.0*gs*x[i-1]
+                hh[i-1,i]&lt;-hh[i-1,i]-4.0*gs*x[i-1]
+	}
+        return(hh)
+}
+
+
+maxfn&lt;-function(x, top=10) {
+      	n&lt;-length(x)
+	ss&lt;-seq(1,n)
+	f&lt;-top-(crossprod(x-ss))^2
+	f&lt;-as.numeric(f)
+	return(f)
+}
+
+negmaxfn&lt;-function(x) {
+	f&lt;-(-1)*maxfn(x)
+	return(f)
+}
+
+parx&lt;-rep(1,4)
+lower&lt;-rep(-10,4)
+upper&lt;-rep(10,4)
+bdmsk&lt;-c(1,1,0,1) # masked parameter 3
+fval&lt;-genrose.f(parx)
+gval&lt;-genrose.g(parx)
+Ahess&lt;-genrose.h(parx)
+gennog&lt;-gHgenb(parx,genrose.f)
+cat("results of gHgenb for genrose without gradient code at ")
+print(parx)
+print(gennog)
+cat("compare to g =")
+print(gval)
+cat("and Hess\n")
+print(Ahess)
+cat("\n\n")
+geng&lt;-gHgenb(parx,genrose.f,genrose.g)
+cat("results of gHgenb for genrose at ")
+print(parx)
+print(gennog)
+cat("compare to g =")
+print(gval)
+cat("and Hess\n")
+print(Ahess)
+cat("*****************************************\n")
+parx&lt;-rep(0.9,4)
+fval&lt;-genrose.f(parx)
+gval&lt;-genrose.g(parx)
+Ahess&lt;-genrose.h(parx)
+gennog&lt;-gHgenb(parx,genrose.f,control=list(ktrace=TRUE), gs=9.4)
+cat("results of gHgenb with gs=",9.4," for genrose without gradient code at ")
+print(parx)
+print(gennog)
+cat("compare to g =")
+print(gval)
+cat("and Hess\n")
+print(Ahess)
+cat("\n\n")
+geng&lt;-gHgenb(parx,genrose.f,genrose.g, control=list(ktrace=TRUE))
+cat("results of gHgenb for genrose at ")
+print(parx)
+print(gennog)
+cat("compare to g =")
+print(gval)
+cat("and Hess\n")
+print(Ahess)
+gst&lt;-5
+cat("\n\nTest with full calling sequence and gs=",gst,"\n")
+gengall&lt;-gHgenb(parx,genrose.f,genrose.g,genrose.h, control=list(ktrace=TRUE),gs=gst)
+print(gengall)
+
+
+top&lt;-25
+x0&lt;-rep(2,4)
+cat("\n\nTest for maximization and top=",top,"\n")
+cat("Gradient and Hessian will have sign inverted")
+maxt&lt;-gHgen(x0, maxfn, control=list(ktrace=TRUE), top=top)
+print(maxt)
+
+cat("test against negmaxfn\n")
+gneg &lt;- grad(negmaxfn, x0)
+Hneg&lt;-hessian(negmaxfn, x0)
+# gdiff&lt;-max(abs(gneg-maxt$gn))/max(abs(maxt$gn))
+# Hdiff&lt;-max(abs(Hneg-maxt$Hn))/max(abs(maxt$Hn))
+# explicitly change sign 
+gdiff&lt;-max(abs(gneg-(-1)*maxt$gn))/max(abs(maxt$gn))
+Hdiff&lt;-max(abs(Hneg-(-1)*maxt$Hn))/max(abs(maxt$Hn))
+cat("gdiff = ",gdiff,"  Hdiff=",Hdiff,"\n")
+
+
+
+</code></pre>
+
+<hr>
+<h2 id='grback'>Backward difference numerical gradient approximation.</h2><span id='topic+grback'></span>
+
+<h3>Description</h3>
+
+<p><code>grback</code> computes the backward difference approximation to the gradient of 
+user function <code>userfn</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   grback(par, userfn, fbase=NULL, env=optsp, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="grback_+3A_par">par</code></td>
+<td>
+
+<p>parameters to the user objective function userfn
+</p>
+</td></tr>
+<tr><td><code id="grback_+3A_userfn">userfn</code></td>
+<td>
+
+<p>User-supplied objective function
+</p>
+</td></tr>
+<tr><td><code id="grback_+3A_fbase">fbase</code></td>
+<td>
+
+<p>The value of the function at the parameters, else NULL. This is to save
+recomputing the function at this point.
+</p>
+</td></tr>
+<tr><td><code id="grback_+3A_env">env</code></td>
+<td>
+
+<p>Environment for scratchpad items (like <code>deps</code> for approximation 
+control in this routine). Default <code>optsp</code>.
+</p>
+</td></tr>
+<tr><td><code id="grback_+3A_...">...</code></td>
+<td>
+
+<p>optional arguments passed to the objective function.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> grback</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Depends: </td><td style="text-align: left;"> R (&gt;= 2.6.1)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL Version 2.</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+  
+
+
+<h3>Value</h3>
+
+<p><code>grback</code> returns a single vector object <code>df</code> which approximates the 
+gradient of userfn at the parameters par. The approximation is controlled by a
+global value <code>optderiveps</code> that is set when the package is attached.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>John C. Nash
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>cat("Example of use of grback\n")
+
+myfn&lt;-function(xx, shift=100){
+    ii&lt;-1:length(xx)
+    result&lt;-shift+sum(xx^ii)
+}
+
+xx&lt;-c(1,2,3,4)
+ii&lt;-1:length(xx)
+print(xx)
+gn&lt;-grback(xx,myfn, shift=0)
+print(gn)
+ga&lt;-ii*xx^(ii-1)
+cat("compare to analytic gradient:\n")
+print(ga)
+
+cat("change the step parameter to 1e-4\n")
+optsp$deps &lt;- 1e-4
+gn2&lt;-grback(xx,myfn, shift=0)
+print(gn2)
+
+</code></pre>
+
+<hr>
+<h2 id='grcentral'>Central difference numerical gradient approximation.</h2><span id='topic+grcentral'></span>
+
+<h3>Description</h3>
+
+<p><code>grcentral</code> computes the central difference approximation to the gradient of 
+user function <code>userfn</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   grcentral(par, userfn, fbase=NULL, env=optsp, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="grcentral_+3A_par">par</code></td>
+<td>
+
+<p>parameters to the user objective function userfn
+</p>
+</td></tr>
+<tr><td><code id="grcentral_+3A_userfn">userfn</code></td>
+<td>
+
+<p>User-supplied objective function
+</p>
+</td></tr>
+<tr><td><code id="grcentral_+3A_fbase">fbase</code></td>
+<td>
+
+<p>The value of the function at the parameters, else NULL. This is to save
+recomputing the function at this point.
+</p>
+</td></tr>
+<tr><td><code id="grcentral_+3A_env">env</code></td>
+<td>
+
+<p>Environment for scratchpad items (like <code>deps</code> for approximation 
+control in this routine). Default <code>optsp</code>.
+</p>
+</td></tr>
+<tr><td><code id="grcentral_+3A_...">...</code></td>
+<td>
+
+<p>optional arguments passed to the objective function.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> grcentral</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Depends: </td><td style="text-align: left;"> R (&gt;= 2.6.1)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL Version 2.</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+  
+
+
+<h3>Value</h3>
+
+<p><code>grcentral</code> returns a single vector object <code>df</code> which approximates the 
+gradient of userfn at the parameters par. The approximation is controlled by a
+global value <code>optderiveps</code> that is set when the package is attached.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>John C. Nash
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>cat("Example of use of grcentral\n")
+
+myfn&lt;-function(xx, shift=100){
+    ii&lt;-1:length(xx)
+    result&lt;-shift+sum(xx^ii)
+}
+xx&lt;-c(1,2,3,4)
+ii&lt;-1:length(xx)
+print(xx)
+gn&lt;-grcentral(xx,myfn, shift=0)
+print(gn)
+ga&lt;-ii*xx^(ii-1)
+cat("compare to\n")
+print(ga)
+
+</code></pre>
+
+<hr>
+<h2 id='grchk'>Run tests, where possible, on user objective function and (optionally) gradient and hessian</h2><span id='topic+grchk'></span>
+
+<h3>Description</h3>
+
+<p><code>grchk</code> checks a user-provided R function, <code>ffn</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   grchk(xpar, ffn, ggr, trace=0, testtol=(.Machine$double.eps)^(1/3), ...) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="grchk_+3A_xpar">xpar</code></td>
+<td>
+
+<p>parameters to the user objective and gradient functions ffn and ggr
+</p>
+</td></tr>
+<tr><td><code id="grchk_+3A_ffn">ffn</code></td>
+<td>
+
+<p>User-supplied objective function
+</p>
+</td></tr>
+<tr><td><code id="grchk_+3A_ggr">ggr</code></td>
+<td>
+
+<p>User-supplied gradient function
+</p>
+</td></tr>
+<tr><td><code id="grchk_+3A_trace">trace</code></td>
+<td>
+
+<p>set &gt;0 to provide output from grchk to the console, 0 otherwise
+</p>
+</td></tr>
+<tr><td><code id="grchk_+3A_testtol">testtol</code></td>
+<td>
+
+<p>tolerance for equality tests
+</p>
+</td></tr>
+<tr><td><code id="grchk_+3A_...">...</code></td>
+<td>
+
+<p>optional arguments passed to the objective function.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> grchk</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Depends: </td><td style="text-align: left;"> R (&gt;= 2.6.1)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL Version 2.</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+  
+<p><code>numDeriv</code> is used to numerically approximate the gradient of function <code>ffn</code>
+and compare this to the result of function <code>ggr</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>grchk</code> returns a single object <code>gradOK</code> which is true if the differences 
+between analytic and approximated gradient are small as measured by the tolerance 
+<code>testtol</code>.
+</p>
+<p>This has attributes &quot;ga&quot; and &quot;gn&quot; for the analytic and numerically approximated gradients.
+</p>
+<p>At the time of preparation, there are no checks for validity of the gradient code in
+<code>ggr</code> as in the function <code>fnchk</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>John C. Nash
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Would like examples of success and failure. What about "near misses"??
+cat("Show how grchk works\n")
+require(optextras)
+require(numDeriv)
+# require(optimx)
+
+jones&lt;-function(xx){
+  x&lt;-xx[1]
+  y&lt;-xx[2]
+  ff&lt;-sin(x*x/2 - y*y/4)*cos(2*x-exp(y))
+  ff&lt;- -ff
+}
+
+jonesg &lt;- function(xx) {
+  x&lt;-xx[1]
+  y&lt;-xx[2]
+  gx &lt;-  cos(x * x/2 - y * y/4) * ((x + x)/2) * cos(2 * x - exp(y)) - 
+    sin(x * x/2 - y * y/4) * (sin(2 * x - exp(y)) * 2)
+  gy &lt;- sin(x * x/2 - y * y/4) * (sin(2 * x - exp(y)) * exp(y)) - cos(x * 
+              x/2 - y * y/4) * ((y + y)/4) * cos(2 * x - exp(y))
+  gg &lt;- - c(gx, gy)
+}
+
+jonesg2 &lt;- function(xx) {
+  gx &lt;- 1
+  gy &lt;- 2
+  gg &lt;- - c(gx, gy)
+}
+
+
+xx &lt;- c(1, 2)
+
+gcans &lt;- grchk(xx, jones, jonesg, trace=1, testtol=(.Machine$double.eps)^(1/3))
+gcans
+
+gcans2 &lt;- grchk(xx, jones, jonesg2, trace=1, testtol=(.Machine$double.eps)^(1/3))
+gcans2
+
+
+
+
+</code></pre>
+
+<hr>
+<h2 id='grfwd'>Forward difference numerical gradient approximation.</h2><span id='topic+grfwd'></span><span id='topic+optsp'></span>
+
+<h3>Description</h3>
+
+<p><code>grfwd</code> computes the forward difference approximation to the gradient of 
+user function <code>userfn</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   grfwd(par, userfn, fbase=NULL, env=optsp, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="grfwd_+3A_par">par</code></td>
+<td>
+
+<p>parameters to the user objective function userfn
+</p>
+</td></tr>
+<tr><td><code id="grfwd_+3A_userfn">userfn</code></td>
+<td>
+
+<p>User-supplied objective function
+</p>
+</td></tr>
+<tr><td><code id="grfwd_+3A_fbase">fbase</code></td>
+<td>
+
+<p>The value of the function at the parameters, else NULL. This is to save
+recomputing the function at this point.
+</p>
+</td></tr>
+<tr><td><code id="grfwd_+3A_env">env</code></td>
+<td>
+
+<p>Environment for scratchpad items (like <code>deps</code> for approximation 
+control in this routine). Default <code>optsp</code>.
+</p>
+</td></tr>
+<tr><td><code id="grfwd_+3A_...">...</code></td>
+<td>
+
+<p>optional arguments passed to the objective function.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> grfwd</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Depends: </td><td style="text-align: left;"> R (&gt;= 2.6.1)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL Version 2.</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+  
+
+
+<h3>Value</h3>
+
+<p><code>grfwd</code> returns a single vector object <code>df</code> which approximates the 
+gradient of userfn at the parameters par. The approximation is controlled by a
+global value <code>optderiveps</code> that is set when the package is attached.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>John C. Nash
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>cat("Example of use of grfwd\n")
+
+myfn&lt;-function(xx, shift=100){
+    ii&lt;-1:length(xx)
+    result&lt;-shift+sum(xx^ii)
+}
+xx&lt;-c(1,2,3,4)
+ii&lt;-1:length(xx)
+print(xx)
+gn&lt;-grfwd(xx,myfn, shift=0)
+print(gn)
+ga&lt;-ii*xx^(ii-1)
+cat("compare to\n")
+print(ga)
+</code></pre>
+
+<hr>
+<h2 id='grnd'>A reorganization of the call to numDeriv grad() function.</h2><span id='topic+grnd'></span>
+
+<h3>Description</h3>
+
+<p>Provides a wrapper for the numDeriv approximation to the
+gradient of a user supplied objective function <code>userfn</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>       grnd(par, userfn, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="grnd_+3A_par">par</code></td>
+<td>
+<p>A vector of parameters to the user-supplied function <code>fn</code></p>
+</td></tr>
+<tr><td><code id="grnd_+3A_userfn">userfn</code></td>
+<td>
+<p>A user-supplied function </p>
+</td></tr>
+<tr><td><code id="grnd_+3A_...">...</code></td>
+<td>
+<p>Other data needed to evaluate the user function.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The Richardson method is used in this routine.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>grnd</code> returns an approximation to the gradient of the function userfn
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>cat("Example of use of grnd\n")
+require(numDeriv)
+myfn&lt;-function(xx, shift=100){
+    ii&lt;-1:length(xx)
+    result&lt;-shift+sum(xx^ii)
+}
+xx&lt;-c(1,2,3,4)
+ii&lt;-1:length(xx)
+print(xx)
+gn&lt;-grnd(xx,myfn, shift=0)
+print(gn)
+ga&lt;-ii*xx^(ii-1)
+cat("compare to\n")
+print(ga)
+</code></pre>
+
+<hr>
+<h2 id='hesschk'>Run tests, where possible, on user objective function and (optionally) gradient and hessian</h2><span id='topic+hesschk'></span>
+
+<h3>Description</h3>
+
+<p><code>hesschk</code> checks a user-provided R function, <code>ffn</code>. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   hesschk(xpar, ffn, ggr, hhess, trace=0, testtol=(.Machine$double.eps)^(1/3), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="hesschk_+3A_xpar">xpar</code></td>
+<td>
+
+<p>parameters to the user objective and gradient functions ffn and ggr
+</p>
+</td></tr>
+<tr><td><code id="hesschk_+3A_ffn">ffn</code></td>
+<td>
+
+<p>User-supplied objective function
+</p>
+</td></tr>
+<tr><td><code id="hesschk_+3A_ggr">ggr</code></td>
+<td>
+
+<p>User-supplied gradient function
+</p>
+</td></tr>
+<tr><td><code id="hesschk_+3A_hhess">hhess</code></td>
+<td>
+
+<p>User-supplied Hessian function
+</p>
+</td></tr>
+<tr><td><code id="hesschk_+3A_trace">trace</code></td>
+<td>
+
+<p>set &gt;0 to provide output from hesschk to the console, 0 otherwise
+</p>
+</td></tr>
+<tr><td><code id="hesschk_+3A_testtol">testtol</code></td>
+<td>
+
+<p>tolerance for equality tests
+</p>
+</td></tr>
+<tr><td><code id="hesschk_+3A_...">...</code></td>
+<td>
+
+<p>optional arguments passed to the objective function.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> hesschk</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Depends: </td><td style="text-align: left;"> R (&gt;= 2.6.1)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL Version 2.</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+  
+<p><code>numDeriv</code> is used to compute a numerical approximation to the Hessian
+matrix. If there is no analytic gradient, then the <code>hessian()</code> function 
+from <code>numDeriv</code> is applied to the user function <code>ffn</code>. Otherwise, 
+the <code>jacobian()</code> function of <code>numDeriv</code> is applied to the <code>ggr</code>
+function so that only one level of differencing is used.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns a single object <code>hessOK</code> which is TRUE if the 
+analytic Hessian code returns a Hessian matrix that is &quot;close&quot; to the 
+numerical approximation obtained via <code>numDeriv</code>; FALSE otherwise.
+</p>
+<p><code>hessOK</code> is returned with the following attributes:
+</p>
+
+<ul>
+<li><p>&quot;nullhess&quot;Set TRUE if the user does not supply a function to compute the Hessian.
+</p>
+</li>
+<li><p>&quot;asym&quot;Set TRUE if the Hessian does not satisfy symmetry conditions to
+within a tolerance. See the <code>hesschk</code> for details.
+</p>
+</li>
+<li><p>&quot;ha&quot;The analytic Hessian computed at paramters <code>xpar</code> using <code>hhess</code>.
+</p>
+</li>
+<li><p>&quot;hn&quot;The numerical approximation to the Hessian computed at paramters <code>xpar</code>.
+</p>
+</li>
+<li><p>&quot;msg&quot;A text comment on the outcome of the tests.
+</p>
+</li></ul>
+
+
+
+<h3>Author(s)</h3>
+
+<p>John C. Nash
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># genrose function code
+genrose.f&lt;- function(x, gs=NULL){ # objective function
+## One generalization of the Rosenbrock banana valley function (n parameters)
+	n &lt;- length(x)
+        if(is.null(gs)) { gs=100.0 }
+	fval&lt;-1.0 + sum (gs*(x[1:(n-1)]^2 - x[2:n])^2 + (x[2:n] - 1)^2)
+        return(fval)
+}
+
+genrose.g &lt;- function(x, gs=NULL){
+# vectorized gradient for genrose.f
+# Ravi Varadhan 2009-04-03
+	n &lt;- length(x)
+        if(is.null(gs)) { gs=100.0 }
+	gg &lt;- as.vector(rep(0, n))
+	tn &lt;- 2:n
+	tn1 &lt;- tn - 1
+	z1 &lt;- x[tn] - x[tn1]^2
+	z2 &lt;- 1 - x[tn]
+	gg[tn] &lt;- 2 * (gs * z1 - z2)
+	gg[tn1] &lt;- gg[tn1] - 4 * gs * x[tn1] * z1
+	return(gg)
+}
+
+genrose.h &lt;- function(x, gs=NULL) { ## compute Hessian
+   if(is.null(gs)) { gs=100.0 }
+	n &lt;- length(x)
+	hh&lt;-matrix(rep(0, n*n),n,n)
+	for (i in 2:n) {
+		z1&lt;-x[i]-x[i-1]*x[i-1]
+#		z2&lt;-1.0-x[i]
+                hh[i,i]&lt;-hh[i,i]+2.0*(gs+1.0)
+                hh[i-1,i-1]&lt;-hh[i-1,i-1]-4.0*gs*z1-4.0*gs*x[i-1]*(-2.0*x[i-1])
+                hh[i,i-1]&lt;-hh[i,i-1]-4.0*gs*x[i-1]
+                hh[i-1,i]&lt;-hh[i-1,i]-4.0*gs*x[i-1]
+	}
+        return(hh)
+}
+
+trad&lt;-c(-1.2,1)
+ans100&lt;-hesschk(trad, genrose.f, genrose.g, genrose.h, trace=1)
+print(ans100)
+ans10&lt;-hesschk(trad, genrose.f, genrose.g, genrose.h, trace=1, gs=10)
+print(ans10)
+
+
+</code></pre>
+
+<hr>
+<h2 id='kktchk'>Check Kuhn Karush Tucker conditions for a supposed function minimum</h2><span id='topic+kktchk'></span>
+
+<h3>Description</h3>
+
+<p>Provide a check on Kuhn-Karush-Tucker conditions based on quantities
+already computed. Some of these used only for reporting.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>     kktchk(par, fn, gr, hess=NULL, upper=NULL, lower=NULL, 
+                 maximize=FALSE, control=list(), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="kktchk_+3A_par">par</code></td>
+<td>
+<p>A vector of values for the parameters which are supposedly optimal.</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_fn">fn</code></td>
+<td>
+<p>The objective function</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_gr">gr</code></td>
+<td>
+<p>The gradient function</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_hess">hess</code></td>
+<td>
+<p>The Hessian function</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_upper">upper</code></td>
+<td>
+<p>Upper bounds on the parameters</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_lower">lower</code></td>
+<td>
+<p>Lower bounds on the parameters</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_maximize">maximize</code></td>
+<td>
+<p>Logical TRUE if function is being maximized. Default FALSE.</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_control">control</code></td>
+<td>
+<p>A list of controls for the function</p>
+</td></tr>
+<tr><td><code id="kktchk_+3A_...">...</code></td>
+<td>
+<p>The dot arguments needed for evaluating the function and gradient and hessian</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>kktchk computes the gradient and Hessian measures for BOTH unconstrained and 
+bounds (and masks) constrained parameters, but the kkt measures are evaluated
+only for the constrained case.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output is a list consisting of 
+</p>
+<table>
+<tr><td><code>gmax</code></td>
+<td>
+<p>The absolute value of the largest gradient component in magnitude.</p>
+</td></tr>
+<tr><td><code>evratio</code></td>
+<td>
+<p>The ratio of the smallest to largest Hessian eigenvalue. Note that this
+may be negative.</p>
+</td></tr>
+<tr><td><code>kkt1</code></td>
+<td>
+<p>A logical value that is TRUE if we consider the first (i.e., gradient) 
+KKT condition to be satisfied. WARNING: The decision is dependent on tolerances and
+scaling that may be inappropriate for some problems.</p>
+</td></tr>
+<tr><td><code>kkt2</code></td>
+<td>
+<p>A logical value that is TRUE if we consider the second (i.e., positive
+definite Hessian) KKT condition to be satisfied. WARNING: The decision is dependent 
+on tolerances and scaling that may be inappropriate for some problems.</p>
+</td></tr>
+<tr><td><code>hev</code></td>
+<td>
+<p>The calculated hessian eigenvalues, sorted largest to smallest??</p>
+</td></tr>
+<tr><td><code>ngatend</code></td>
+<td>
+<p>The computed (unconstrained) gradient at the solution parameters.</p>
+</td></tr>
+<tr><td><code>nnatend</code></td>
+<td>
+<p>The computed (unconstrained) hessian at the solution parameters.</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="stats.html#topic+optim">optim</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>cat("Show how kktc works\n")
+
+# require(optimx)
+require(optextras)
+
+jones&lt;-function(xx){
+  x&lt;-xx[1]
+  y&lt;-xx[2]
+  ff&lt;-sin(x*x/2 - y*y/4)*cos(2*x-exp(y))
+  ff&lt;- -ff
+}
+
+jonesg &lt;- function(xx) {
+  x&lt;-xx[1]
+  y&lt;-xx[2]
+  gx &lt;-  cos(x * x/2 - y * y/4) * ((x + x)/2) * cos(2 * x - exp(y)) - 
+    sin(x * x/2 - y * y/4) * (sin(2 * x - exp(y)) * 2)
+  gy &lt;- sin(x * x/2 - y * y/4) * (sin(2 * x - exp(y)) * exp(y)) - cos(x * 
+             x/2 - y * y/4) * ((y + y)/4) * cos(2 * x - exp(y))
+  gg &lt;- - c(gx, gy)
+}
+
+ans &lt;- list() # to ensure structure available
+# If optimx package available, the following can be run.
+# xx&lt;-0.5*c(pi,pi)
+# ans &lt;- optimr(xx, jones, jonesg, method="Rvmmin")
+# ans
+
+ans$par &lt;- c(3.154083, -3.689620)
+
+kkans &lt;- kktchk(ans$par, jones, jonesg)
+kkans
+
+
+
+</code></pre>
+
+<hr>
+<h2 id='optextras-package'>
+Tools to Support Optimization Possibly with Bounds and Masks
+</h2><span id='topic+optextras'></span>
+
+<h3>Description</h3>
+
+<p>Provides tools that work with extensions of the optim() function to unify
+and streamline optimization capabilities in R for smooth, possibly box
+constrained functions of several or many parameters
+</p>
+<p>There are three test functions, fnchk, grchk, and hesschk, to allow the user
+function to be tested for validity and correctness. However, no set of tests is 
+exhaustive, and extensions and improvements are welcome. The package 
+<code>numDeriv</code> is used for generation of numerical approximations to 
+derivatives.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> optextras</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 2012-6.18</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2012-06-18</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL-2</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Lazyload: </td><td style="text-align: left;"> Yes</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Depends: </td><td style="text-align: left;"> numDeriv </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Suggests: </td><td style="text-align: left;"> BB, ucminf, Rcgmin, Rvmmin, minqa, setRNG, dfoptim</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Repository: </td><td style="text-align: left;"> R-Forge</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Repository/R-Forge/Project: </td><td style="text-align: left;"> optimizer</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>Index:
+</p>
+<pre>
+axsearch     Perform an axial search optimality check
+bmchk        Check bounds and masks for parameter constraints
+bmstep       Compute the maximum step along a search direction.
+fnchk        Test validity of user function
+gHgen        Compute gradient and Hessian as a given 
+             set of parameters
+gHgenb       Compute gradient and Hessian as a given 
+             set of parameters appying bounds and masks
+grback       Backward numerical gradient approximation
+grcentral    Central numerical gradient approximation
+grchk        Check that gradient function evaluation 
+             matches numerical gradient
+grfwd        Forward numerical gradient approximation
+grnd         Gradient approximation using \code{numDeriv}
+hesschk      Check that Hessian function evaluation 
+             matches numerical approximation
+kktchk       Check the Karush-Kuhn-Tucker optimality conditions
+optsp        An environment to hold some globally useful items
+             used by optimization programs
+scalechk     Check scale of initial parameters and bounds
+</pre>
+
+
+<h3>Author(s)</h3>
+
+<p>John C Nash &lt;nashjc@uottawa.ca&gt; and Ravi Varadhan &lt;RVaradhan@jhmi.edu&gt;
+</p>
+<p>Maintainer: John C Nash &lt;nashjc@uottawa.ca&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Nash, John C. and Varadhan, Ravi (2011) Unifying Optimization Algorithms 
+to Aid Software System Users: optimx for R, Journal of Statistical
+Software, publication pending.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>optim
+</p>
+
+<hr>
+<h2 id='scalechk'>Check the scale of the initial parameters and bounds input to an optimization code
+used in nonlinear optimization</h2><span id='topic+scalechk'></span>
+
+<h3>Description</h3>
+
+<p>Nonlinear optimization problems often have different scale for different
+parameters. This function is intended to explore the differences in scale. It is, however,
+an imperfect and heuristic tool, and could be improved.
+</p>
+<p>At this time scalechk does NOT take account of masks. (?? should 110702)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>   scalechk(par, lower = lower, upper = upper, bdmsk=NULL, dowarn = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="scalechk_+3A_par">par</code></td>
+<td>
+<p>A numeric vector of starting values of the optimization function parameters.</p>
+</td></tr>
+<tr><td><code id="scalechk_+3A_lower">lower</code></td>
+<td>
+<p>A vector of lower bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="scalechk_+3A_upper">upper</code></td>
+<td>
+<p>A vector of upper bounds on the parameters.</p>
+</td></tr>
+<tr><td><code id="scalechk_+3A_bdmsk">bdmsk</code></td>
+<td>
+<p>An indicator vector, having 1 for each parameter that is &quot;free&quot; or
+unconstrained, and 0 for any parameter that is fixed or MASKED for the
+duration of the optimization.</p>
+</td></tr>
+<tr><td><code id="scalechk_+3A_dowarn">dowarn</code></td>
+<td>
+<p>Set TRUE to issue warnings. Othwerwise this is a silent routine.
+Default TRUE.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The scalechk function will check that the bounds exist and are admissible, 
+that is, that there are no lower bounds that exceed upper bounds. 
+</p>
+<p>NOTE: Free paramters outside bounds are adjusted to the nearest bound.
+We then set parchanged = TRUE which implies the original parameters
+were infeasible.
+</p>
+<p>There is a check if lower and upper bounds are very close together, in 
+which case a mask is imposed and maskadded is set TRUE. NOTE: it is 
+generally a VERY BAD IDEA to have bounds close together in optimization,
+but here we use a tolerance based on the double precision machine 
+epsilon. Thus it is not a good idea to rely on scalechk() to test if 
+bounds constraints are well-posed.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with components:
+</p>
+<p># Returns:
+#   list(lpratio, lbratio) &ndash; the log of the ratio of largest to smallest parameters
+#      and bounds intervals (upper-lower) in absolute value (ignoring Inf, NULL, NA)
+</p>
+<table>
+<tr><td><code>lpratio</code></td>
+<td>
+<p>The log of the ratio of largest to smallest parameters
+in absolute value (ignoring Inf, NULL, NA)</p>
+</td></tr>
+<tr><td><code>lbration</code></td>
+<td>
+<p>The log of the ratio of largest to smallest bounds intervals 
+(upper-lower) in absolute value (ignoring Inf, NULL, NA)</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#####################
+  par &lt;- c(-1.2, 1)
+  lower &lt;- c(-2, 0)
+  upper &lt;- c(100000, 10)
+  srat&lt;-scalechk(par, lower, upper,dowarn=TRUE)
+  print(srat)
+  sratv&lt;-c(srat$lpratio, srat$lbratio)
+  if (max(sratv,na.rm=TRUE) &gt; 3) { # scaletol from ctrldefault in optimx
+     warnstr&lt;-"Parameters or bounds appear to have different scalings.\n
+     This can cause poor performance in optimization. \n
+     It is important for derivative free methods like BOBYQA, UOBYQA, NEWUOA."
+     cat(warnstr,"\n")
+  }
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

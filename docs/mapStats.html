@@ -1,0 +1,928 @@
+<!DOCTYPE html><html><head><title>Help for package mapStats</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {mapStats}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#jiggleClass'>
+<p>Adjust class boundaries to protect from rounding errors</p></a></li>
+<li><a href='#mapStats'>
+<p>Calculate and plot survey statistics</p></a></li>
+<li><a href='#mapStats-internal'>
+<p>Internal functions for mapStats package</p></a></li>
+<li><a href='#mapStats-package'>
+<p>Geographic display of survey data statistics</p></a></li>
+<li><a href='#usMap'>
+<p>Shapefile of US state boundaries</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Geographic Display of Survey Data Statistics</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>3.1</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2023-11-6</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Automated calculation and visualization of survey data statistics on a color-coded (choropleth) map.</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.0.2), survey, lattice</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a> | <a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a> [expanded from: GPL (&ge; 2)]</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>RColorBrewer, Hmisc, classInt, sp, sf, colorspace, reshape2,
+ttutils</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-11-09 16:24:12 UTC; Sam Ackerman</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Samuel Ackerman [aut, cre]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Samuel Ackerman &lt;smackrmn@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2023-11-10 07:20:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='jiggleClass'>
+Adjust class boundaries to protect from rounding errors
+</h2><span id='topic+jiggleClass'></span>
+
+<h3>Description</h3>
+
+<p>When using <code><a href="classInt.html#topic+classIntervals">classIntervals</a></code> to compute classes, occasionally there are rounding errors so that
+when the data is plotted and the class breaks are used for colors, for instance, the rounding error may cause a value to 
+not be plotted with the right color, or to not be plotted at all.  For this reason, we add a small value to each of the
+break points to accomodate a possible rounding error.  This correction is negligible and should not affect plotting.
+When both the variable values and all the interval breaks are integer-valued (e.g. for sums of integer values),
+jiggleClass adjusts the interval breaks to be at the midpoints between interval endpoints.
+Additionally, in case <code>ngroups</code> is high, resulting in empty groups (even though the number of unique values is higher than <code>ngroups</code>),
+the function also eliminates the empty groups as part of the adjustment above.  In case there is such a change, the palettes are also changed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>jiggleClass(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="jiggleClass_+3A_x">x</code></td>
+<td>
+
+<p>an object of class <code>classIntervals</code> from the function <code><a href="classInt.html#topic+classIntervals">classIntervals</a></code>.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>an object of class <code>classIntervals</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+
+y &lt;- 100*rnorm(50)
+
+#compute class intervals using either right or left interval closure
+
+class_list_right &lt;- classInt::classIntervals(var=y, n=12, intervalClosure="right")
+class_list_right$brks
+class_list_left &lt;- classInt::classIntervals(var=y, n=12, intervalClosure="left")
+class_list_left$brks
+
+#there should be a slight difference now between class breaks from before, but should 
+#have same number of observations per interval as before, and for both left and right closure
+
+jiggleClass(x=class_list_right)
+jiggleClass(x=class_list_left)
+
+
+#example with discrete data, 7 groups but 9 unique values.
+#classIntervals generates some empty intervals, so jiggleClass eliminates them and adjusts breaks
+#in this example, with integer values, right/left closure matters more, and so the results
+#will differ slightly depending on which is chosen
+# here, both the observed values and the breaks under right and left are integers
+
+y &lt;- c(1, 1, 1, 1, 2, 3, 6, 7, 8, 9, 10, 10, 10, 10, 11)
+class_list_right &lt;- classInt::classIntervals(y, 7, intervalClosure="right")
+class_list_right
+#style: quantile
+#  one of 28 possible partitions of this variable into 7 classes
+#  [1,1]   (1,2]   (2,6]   (6,8]  (8,10] (10,10] (10,11] 
+#      4       1       2       2       1       4       1 
+
+class_list_left &lt;- classInt::classIntervals(y, 7, intervalClosure="left")
+class_list_left
+#style: quantile
+#  one of 28 possible partitions of this variable into 7 classes
+#  [1,1)   [1,2)   [2,6)   [6,8)  [8,10) [10,10) [10,11] 
+#      0       4       2       2       2       0       5 
+
+
+#number of groups falls now for left closure, from 7 to 5, in this example
+
+jiggleClass(x=class_list_right)
+#style: quantile
+#  one of 28 possible partitions of this variable into 7 classes
+#  [0.5,1.5]   (1.5,2.5]   (2.5,6.5]   (6.5,8.5]   (8.5,9.5]  (9.5,10.5] (10.5,11.5] 
+#          4           1           2           2           1           4           1 
+
+
+jiggleClass(x=class_list_left)
+#style: quantile
+#  one of 70 possible partitions of this variable into 5 classes
+# [0.5,1.5)  [1.5,4.5)  [4.5,7.5)  [7.5,9.5) [9.5,11.5] 
+#         4          2          2          2          5 
+
+</code></pre>
+
+<hr>
+<h2 id='mapStats'>
+Calculate and plot survey statistics
+</h2><span id='topic+mapStats'></span><span id='topic+calcStats'></span>
+
+<h3>Description</h3>
+
+<p><code>mapStats</code> computes statistics and quantiles of survey variable(s), with optional class variables, and displays them on a color-coded map.
+It calls function <code>calcStats</code> which is also usable outside of <code>mapStats</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mapStats(d = NULL, main.var, stat = c("mean", "quantile"), quantiles = c(0.5, 0.75), 
+         wt.var = NULL, wt.label = TRUE, d.geo.var, by.var = NULL, 
+          map.file = NULL, map.geo.var = d.geo.var, makeplot = TRUE, ngroups = 4, 
+         separate = 1 , cell.min = 0, paletteName = "Reds", colorVec = NULL, 
+         map.label = TRUE, map.label.names = map.geo.var, cex.label = 0.8,
+           col.label = "black", titles = NULL, cex.title = 1, var.pretty = main.var,
+         geo.pretty = map.geo.var, by.pretty = by.var, as.table = TRUE, 
+         sp_layout.pars = list(), between = list(y = 1), horizontal.fill = TRUE,
+         plotbyvar = ifelse(separate == 1 &amp; length(main.var) &gt; 1, FALSE, TRUE), 
+         num.row = 1, num.col = 1, ...) 
+
+calcStats(d, main.var, d.geo.var, stat = c("mean", "quantile"), quantiles = c(0.5, 0.75), 
+          by.var = NULL, wt.var = NULL, cell.min = 0) 
+ 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mapStats_+3A_d">d</code></td>
+<td>
+
+<p>a data frame containing the variables to be analyzed. 
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_main.var">main.var</code></td>
+<td>
+
+<p>a vector of character strings of the name of the variables that statistics will be calculated for.  Multiple variables are allowed.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_stat">stat</code></td>
+<td>
+
+<p>a character vector of names of statistics to calculate. Valid names are &quot;mean&quot;, &quot;total&quot;, &quot;quantile&quot;, &quot;sd&quot; (standard deviation), and &quot;var&quot; (variance).  &quot;Quantile&quot; must be included
+for the quantiles specified to be calculated. Statistics are printed in the order given. For instance if <code>stat = c("total","quantile","mean")</code>,
+then the order will be total, then quantiles in order specified in argument <code>quantiles</code>, then the mean.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_quantiles">quantiles</code></td>
+<td>
+
+<p>a numeric vector of quantiles to be calculated for each variable in variable <code>main.var</code>. The quantiles must be specified as decimals between 0 and 1.
+In order to be calculated, &quot;quantile&quot; must be specified as a statistic in the argument <code>stat</code>.  
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_wt.var">wt.var</code></td>
+<td>
+
+<p>a character string of the name of the variable to be used as sample weights in calculating statistics.  The default is NULL,
+meaning unweighted statistics will be calculated.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_wt.label">wt.label</code></td>
+<td>
+
+<p>logical.  Default is TRUE, in which case automatic titles will be followed by the string '(wtd.)' or '(unwtd.)' as appropriate,
+depending on whether weighted statistics were calculated. If FALSE no label will be added.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_d.geo.var">d.geo.var</code></td>
+<td>
+
+<p>a character string specifying the variable name in the dataset that is the geographic unit to calculate statistics by.
+When using <code>calCstats</code> outside of <code>mapStats</code> without a mapping application, <code>d.geo.var</code> would be the first class variable,
+and additional ones can be specified in <code>by.var</code>.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_by.var">by.var</code></td>
+<td>
+
+<p>a vector of character strings specifying variable names in the dataset <code>d</code> to use as class variables.  The order in which variables are specified will affect the order in which they are combined for calculations.
+The default is NULL, in which case statistics are calculated by each geographic unit (<code>d.geo.var</code>) only.
+The function will omit from analysis any class variables that have only one level over the entire dataset.  However it is still possible that a given class variable will have only one value 
+for one of the analysis variables if, say, multiple analysis variables are used. 
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_map.file">map.file</code></td>
+<td>
+
+<p>an object of class <code><a href="sp.html#topic+SpatialPolygonsDataFrame">SpatialPolygonsDataFrame</a></code> on which the statistics will be plotted.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_map.geo.var">map.geo.var</code></td>
+<td>
+
+<p>a character string of the name of the geographic identifier in the data portion of <code>map.file</code>. The default is for it to be <code>d.geo.var</code>.The values of the geographic variables in the map and original dataset must be coded the same way for merging (i.e. the factor levels must be the same).
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_makeplot">makeplot</code></td>
+<td>
+
+<p>logical. Default is TRUE; if FALSE, plots will not be drawn.  This option can be used to calculate statistics without an available shapefile.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_ngroups">ngroups</code></td>
+<td>
+
+<p>a numeric vector of the number of levels for color plotting of variable statistics.  If more than one number is specified, <code>ngroups</code> 
+will be different in each plot.  See details.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_separate">separate</code></td>
+<td>
+
+<p>numeric (or logical TRUE or FALSE for legacy cases).  Accepted values are 0,1,2,3.  This parameter controls how plot color breaks are calculated.  If <code>separate</code>=0, all variables and statistic combinations have the same color breaks.  If <code>separate</code>=3, each variable and statistic combination plot has a potentially different color break.  If <code>separate</code>=1 (the default), then each statistic has a different color break, but this break is the same for the statistics acoss different variables.  If <code>separate</code>=2, then each variable has a different color break, but this break is the same for all statistics of that variable.  In the legacy case of this parameter, TRUE results in 1 and FALSE results in 0.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_cell.min">cell.min</code></td>
+<td>
+
+<p>numeric. Indicates the minimum number of observations in a cell combination of class variables of <code>d.geo.var</code> and  <code>by.var</code>.  If there are fewer than that, the statistic will be NA in that combination, and if plotted, the geographic unit will be white and not used in calculating the color key.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_palettename">paletteName</code></td>
+<td>
+
+<p>a character vector containing names of color palettes for the <code>RColorBrewer</code> function <code><a href="RColorBrewer.html#topic+brewer.pal">brewer.pal</a></code>. See details
+below for valid names.  The default is to use these palettes for coloring, in which case <code>ngroups</code> will be restricted to between 
+3 and 9 levels, since there are at most 9 levels in <code>RColorBrewer</code> palettes.  This is a good simple option. 
+User-provided palettes can be used instead by specifying the argument <code>colorVec</code> to override this option.  See details below.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_colorvec">colorVec</code></td>
+<td>
+
+<p>a list where each element is vector of ordered colors; they should be ordered from light to dark for a sequential palette.  These override
+the use of <code>RColorBrewer</code> through the <code>paletteName</code> argument.  See the demo for an example of using HCL sequential palettes from the 
+<code>colorspace</code> package.  Use of the <code>colorVec</code> argument will override a value provided for <code>ngroups</code>.  See details below.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_map.label">map.label</code></td>
+<td>
+
+<p>logical.  Default is TRUE; if FALSE, names of the geographic regions will not be labeled on the map outputs.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_map.label.names">map.label.names</code></td>
+<td>
+
+<p>a character string naming the vector from the <code>map.file@data</code> data.frame to use to label the map. The default is to 
+use <code>map.geo.var</code>.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_cex.label">cex.label</code></td>
+<td>
+
+<p>numeric. Character expansion for the labels to be printed.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_col.label">col.label</code></td>
+<td>
+
+<p>color of the label text to be printed.  Default is black.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_titles">titles</code></td>
+<td>
+
+<p>a character string of length equal to the number of statistics to be plotted, in order. Replaces the default plot titles.  The default is NULL, in which case the plot titles are automatically generated.  See details below.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_cex.title">cex.title</code></td>
+<td>
+
+<p>numeric. Character expansion for the plot titles.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_var.pretty">var.pretty</code></td>
+<td>
+
+<p>a character string used to name the analysis variables <code>main.var</code> in the default plot titles. The default is to use <code>main.var</code> as the name in titles.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_geo.pretty">geo.pretty</code></td>
+<td>
+
+<p>a character string used to name the geographic variable in the default panel strip labels. The default is to use <code>map.geo.var</code> as the name labels.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_by.pretty">by.pretty</code></td>
+<td>
+
+<p>a character string used to name the by-variables (optional class variables) in the default panel strip labels. The default is to use <code>by.var</code> as the name labels.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_as.table">as.table</code></td>
+<td>
+
+<p>logical.  Default is TRUE, meaning the panels will be displayed in ascending order of <code>by.var</code> (top to bottom).
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_sp_layout.pars">sp_layout.pars</code></td>
+<td>
+
+<p>a list.  This contains additional parameters to be plotted on each panel.  See details section below and explanation of <code>sp.layout</code> 
+in <code><a href="sp.html#topic+spplot">spplot</a></code>. An example is provided in the demo file. 
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_between">between</code></td>
+<td>
+
+<p>list.  A <code>lattice</code> argument for parameters for spacing between panels.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_horizontal.fill">horizontal.fill</code></td>
+<td>
+
+<p>logical.  Default is TRUE, meaning that given the plot arrangement specified with <code>num.row</code> and <code>num.col</code>, 
+plots will be plotted in order left to right then down.  FALSE means they will be plotted going down first and then left to right.
+The user may need to use the optional <code>lattice</code> <code>layout</code> argument to control the layout of panels within a 
+single plot to make sure the plots print with enough space, and <code>par.strip.text</code> to control the size of panel strip fonts.  Examples are shown in the demo file.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_plotbyvar">plotbyvar</code></td>
+<td>
+
+<p>logical.  If TRUE plots will be grouped by variable, otherwise by statistic.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_num.row">num.row</code></td>
+<td>
+
+<p>numeric. To print multiple statistics on one page, indicate the number of rows for panel arrangement.  Under the default, one statistic is
+printed per page.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_num.col">num.col</code></td>
+<td>
+
+<p>numeric. To print multiple statistics on one page, indicate the number of columns for panel arrangement.  Under the default, one statistic is
+printed per page.
+</p>
+</td></tr>
+<tr><td><code id="mapStats_+3A_...">...</code></td>
+<td>
+
+<p>Further arguments, usually lattice plot arguments.  
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>paletteName</code> should contain one or more names of a sequential color palette in R from the <code><a href="RColorBrewer.html#topic+RColorBrewer">RColorBrewer</a></code> package.  These are: 
+Blues BuGn BuPu GnBu Greens Greys Oranges OrRd PuBu PuBuGn PuRd Purples RdPu Reds YlGn YlGnBu YlOrBr YlOrRd.  The argument <code>ngroups</code> for this option should contain
+values between 3 and 9 since sequential color palettes have at most nine levels.  The <code>style</code> argument from <code><a href="classInt.html#topic+classIntervals">classIntervals</a></code> can be included 
+to change the method for calculating breaks (the default is by quantiles).
+</p>
+<p>The default titles for the plots will be &quot;(stat) of (variable) by (geography)&quot;, followed by either &quot;(unwtd.)&quot; or &quot;(wtd.)&quot;, as appropriate.  Using the <code>wt.label</code> 
+argument controls the appearance of the weight label in the titles.  Providing a value for the <code>titles</code> argument will override the default titles. 
+This can be used, for instance, as shown below, to display percentages for a binary variable by calculating the mean of an
+indicator variable and specifying titles that indicate the percent is displayed.
+</p>
+<p>If <code>quantiles</code> are 0 (minimum), 0.50 (median), or 1 (maximum), the statistics in the titles will be named &quot;Minimum&quot;, &quot;Median&quot;, and &quot;Maximum&quot; instead of &quot;Q0&quot;, &quot;Q50&quot; or &quot;Q100&quot;.
+</p>
+<p>Parameter <code>separate</code> affects given values of <code>colorVec</code>, <code>paletteName</code>, and <code>ngroups</code>.  Say there are 2 variables and 3 statistics (mean, median, and variance) to calculate for each.  If any of the 3 parameters above are of length 1, (e.g. <code>paletteName</code>=&quot;Reds&quot;), these will be used for all plots. If multiple values are given for any of the 3 parameters, these should be done with <code>separate</code> in mind.  For instance, if <code>separate</code>=0 (same color breaks for all plots), then the first element of each of <code>colorVec</code>, <code>paletteName</code>, and <code>ngroups</code> will be used.  If <code>separate</code>=1 (e.g. all of the means) have the same breaks, then the user may want to specify 3 different color palettes, for example.  In this case, if <code>ngroups</code>=c(3,4,5,6), for instance, only the first 3 values will be used since there are only 3 statistics.  If <code>separate</code>=2, then only up to 2 palettes, for instance, are used.  If <code>separate</code>=3, then up to 6 values for each parameter will be used.  See the demo file for examples.
+</p>
+<p>The <code>lattice</code> <code>layout</code> argument can be used to control the placement of panels within a graph, especially if multiple plots are done on a page.
+</p>
+<p><code>sp_layout.pars</code> must itself be a list, even if its contents are lists also.  This allows overplotting of more than one object.  For instance, say you had a shapefile
+<code>areas</code> to be colored blue, and a vector of strings <code>labels1</code> that had x-coordinates <code>xplaces</code> and y-coordinates <code>yplaces</code> to overlay on
+the plot.  Create objects <code>areas_overlay</code>=
+<code>list("sp.polygons", areas, fill="blue")</code>, and <code>labels_overlay</code>= 
+<code>list("panel.text", labels1, xplaces, yplaces)</code>.  
+Then set argument <code>sp_layout.pars</code>= 
+<code>list(areas_overlay, labels_overlay)</code>.  Even if you only wanted to
+overlay with <code>areas</code>, you would still need to enclose it in another list, for example <code>sp_layout.pars</code>= <code>list(areas_overlay)</code>.  An example is shown in the demo file.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>mapStats</code> and <code>calcStats</code> return an object of class &quot;list&quot;
+</p>
+<table>
+<tr><td><code>summary.stats</code></td>
+<td>
+<p>a list containing the calculated statistics matrices, as well as a frequency count matrix</p>
+</td></tr>
+</table>
+<p>with attribute
+</p>
+<table>
+<tr><td><code>variable</code></td>
+<td>
+<p>    the name of the variable</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>Please see the included demo file <code>map_examples</code> for examples on controlling formatting,
+coloring, and other customizable options, as well as more examples 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Samuel Ackerman
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The <code>survey</code> package function <code><a href="survey.html#topic+svyby">svyby</a></code> is used to calculate variable statistics, and <code><a href="sp.html#topic+spplot">spplot</a></code> plots the map. 
+See the supplied demo <code>map_examples</code> for a fuller set of examples illustrating the range of parameter options.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#More complex examples with formatting are shown in the map_examples 
+#demo for the package
+
+#create synthetic survey dataset from internal function
+
+surveydata &lt;- synthetic_US_dataset()
+
+
+#load map shapefile
+usMap &lt;- sf::as_Spatial(sf::st_read(system.file("shapes/usMap.shp", package="mapStats")[1]))
+
+
+#Calculate weighted mean of variable income by state and year.  Display using red 
+#sequential color palette with 4 groups.  In the titles, rename 'income'
+#by 'household income'.     
+
+# save result in an object to suppress output
+
+res &lt;- mapStats(d=surveydata, main.var="income", d.geo.var="state", by.var="year",
+				wt.var="obs_weight", map.file=usMap, stat="mean", ngroups=4,
+				paletteName="Reds", var.pretty="household income", map.label=TRUE)
+
+
+#Calculate the weighted mean and 40th and 50th quantiles of the variable income
+#by state, survey year, and education. Use three color palettes
+
+
+res &lt;- mapStats(d=surveydata, main.var="income", d.geo.var="state", 
+				by.var=c("year","educ"), wt.var="obs_weight", map.file=usMap,
+				stat=c("mean","quantile"), quantiles=c(.4, .5), ngroups=6,
+				paletteName=c("Reds","Greens","Blues"), 
+				var.pretty="household income", map.label=TRUE, num.col=1, 
+				num.row=2, layout=c(2,1), cex.label=.5)
+
+
+#To calculate percentages of class variables, create an indicator variable, calculate
+#its mean, and override the default titles to say you are calculating the percentage.
+#Here we illustrate by calculating the percent of respondents by state that have income
+#above $20,000.
+
+res &lt;- mapStats(d=surveydata, main.var="income_ge30k", wt.var="obs_weight", 
+				map.file=usMap, d.geo.var="state", map.geo.var="STATE_ABBR", 
+				paletteName="Reds", stat=c("mean"), 
+				titles="Percent of respondents with income at least $30,000")
+
+#calculating statistics using the functions outside of mapStats
+
+res &lt;- calcStats(d=surveydata, main.var="income", stat="mean",
+				 d.geo.var="state", by.var=c("year", "educ"), 
+				 wt.var="obs_weight")
+
+
+</code></pre>
+
+<hr>
+<h2 id='mapStats-internal'>
+Internal functions for mapStats package
+</h2><span id='topic+plotStats'></span><span id='topic+print.plotStats'></span><span id='topic+calcQuantiles'></span><span id='topic+nobsEach'></span><span id='topic+synthetic_US_dataset'></span>
+
+<h3>Description</h3>
+
+<p><code>plotStats</code> creates trellis plot objects that are then printed by <code>print.plotStats</code>.  They are called
+internally from within <code><a href="#topic+mapStats">mapStats</a></code>.  <code>nobsEach</code> is used by <code>jiggleClass</code> to 
+calculate the number of observations in each division.  <code>synthetic_US_dataset</code> generates a synthetic dataset
+to be used in examples with the supplied <code>usMap</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plotStats(statmats, map.file, d.geo.var, map.geo.var, ngroups, separate, paletteName,
+          colorVec, map.label, map.label.names, cex.label, col.label, titles, cex.title,
+          wt.ind = FALSE, wt.label, var.pretty, geo.pretty, by.pretty,
+          sp_layout.pars, plotbyvar, num.col, ...)
+
+calcQuantiles(...)
+
+nobsEach(divs)
+
+## S3 method for class 'plotStats'
+print(x, horizontal.fill = TRUE, num.row = 1, num.col = 1, ...)
+
+synthetic_US_dataset()
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mapStats-internal_+3A_statmats">statmats</code></td>
+<td>
+
+<p>a list object produced by <code>calcStats</code> or <code>calcQuantiles</code> containing the matrices of statistics to plot.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_map.file">map.file</code></td>
+<td>
+
+<p>an object of class <code><a href="sp.html#topic+SpatialPolygonsDataFrame">SpatialPolygonsDataFrame</a></code> on which the statistics will be plotted.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_d.geo.var">d.geo.var</code></td>
+<td>
+
+<p>a character string of the name of the variable in the data frame <code>d</code> that is the geographic identifier.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_map.geo.var">map.geo.var</code></td>
+<td>
+
+<p>a character string of the name of the geographic identifier in the data portion of <code>map.file</code>. This is the counterpart of
+<code>d.geo.var</code>.  The default is for this to be the same name as <code>d.geo.var</code>.
+The values of <code>d.geo.var</code> and <code>map.geo.var</code> must be coded the same way for merging.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_ngroups">ngroups</code></td>
+<td>
+
+<p>a numeric vector of the number of levels for color plotting of variable statistics.  If more than one number is specified, <code>ngroups</code>
+will be different in each plot.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_separate">separate</code></td>
+<td>
+
+<p>logical.  Default is TRUE, meaning that class divisions will be calculated separately for each statistic's values.  Setting
+it to FALSE causes the function to calculate a color key by pooling the values from all the statistics across the by variables.
+Generally if you plot multiple statistics on a page with the same color palette, setting <code>separate</code> to TRUE may cause confusion
+because colors will represent different values for each panel.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_palettename">paletteName</code></td>
+<td>
+
+<p>a character vector containing names of color palettes for the <code>RColorBrewer</code> function <code><a href="RColorBrewer.html#topic+brewer.pal">brewer.pal</a></code>. See details
+below for valid names.  The default is to use these palettes for coloring, in which case <code>ngroups</code> will be restricted to between
+3 and 9 levels, since there are at most 9 levels in <code>RColorBrewer</code> palettes.  This is a good simple option.
+User-provided palettes can be used instead by specifying the argument <code>colorVec</code> to override this option.  See details below.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_colorvec">colorVec</code></td>
+<td>
+
+<p>a list where each element is vector of ordered colors; they should be ordered from light to dark for a sequential palette.  These will override
+the use of <code>RColorBrewer</code> through the <code>paletteName</code> argument.  See the demo for an example of using HCL sequential palettes from the
+<code>colorspace</code> package.  Use of the <code>colorVec</code> argument will override a value provided for <code>ngroups</code>.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_map.label">map.label</code></td>
+<td>
+
+<p>logical.  Default is TRUE; if FALSE, names of the geographic regions will not be labeled on the map outputs.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_map.label.names">map.label.names</code></td>
+<td>
+
+<p>a character string naming the vector from the <code>map.file@data</code> data.frame to use to label the map. The default is to
+use <code>map.geo.var</code>.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_cex.label">cex.label</code></td>
+<td>
+
+<p>numeric. Character expansion for the labels to be printed.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_col.label">col.label</code></td>
+<td>
+
+<p>color of the label text to be printed.  Default is black.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_titles">titles</code></td>
+<td>
+
+<p>a character string of length equal to the number of statistics to be plotted, in order. Replaces the default plot titles.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_cex.title">cex.title</code></td>
+<td>
+
+<p>numeric. Character expansion for the plot titles.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_wt.ind">wt.ind</code></td>
+<td>
+
+<p>logical.  Default is FALSE. If TRUE, weighted statistics were calculated. If <code>map.label</code> is TRUE, default plot titles will indicate whether weighted
+or unweighted statistics were calculated.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_wt.label">wt.label</code></td>
+<td>
+
+<p>logical.  Default is TRUE, in which case automatic titles will be followed by the string '(wtd.)' or '(unwtd.)' as appropriate,
+depending on whether weighted statistics were calculated. If FALSE no label will be added.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_var.pretty">var.pretty</code></td>
+<td>
+
+<p>a character string used to name the analysis variable in the default plot titles. The default is to use <code>var</code> as the name in titles.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_geo.pretty">geo.pretty</code></td>
+<td>
+
+<p>a character string used to name the geographic class variable in the default plot titles. The default is to use <code>d.geo.var</code> as the name in titles.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_by.pretty">by.pretty</code></td>
+<td>
+
+<p>a vector of character strings used to name the by variables (other than the geographic one) in the default panel strip labels. The default is to use the original variable names in <code>by.var</code>.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_sp_layout.pars">sp_layout.pars</code></td>
+<td>
+
+<p>a list.  This contains additional parameters to be plotted on each panel.  See details section below and explanation of <code>sp.layout</code>
+in <code><a href="sp.html#topic+spplot">spplot</a></code>. An example is provided in the demo file.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_plotbyvar">plotbyvar</code></td>
+<td>
+
+<p>logical.  If TRUE plots will be grouped by variable, otherwise by statistic.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_num.col">num.col</code></td>
+<td>
+
+<p>numeric. To print multiple statistics on one page, indicate the number of columns for panel arrangement.  Under the default, one statistic is
+printed per page.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_x">x</code></td>
+<td>
+
+<p>list. A list produced by <code>plotStats</code> containing <code>trellis</code> plot objects.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_horizontal.fill">horizontal.fill</code></td>
+<td>
+
+<p>logical.  Default is TRUE, meaning that given the plot arrangement specified with <code>num.row</code> and <code>num.col</code>,
+plots will be plotted in order left to right then down.  FALSE means they will be plotted going down first and then left to right.
+The user may need to use the optional <code>lattice</code> <code>layout</code> argument to control the layout of panels within a
+single plot to make sure the plots print with enough space.  Examples are shown in the demo file.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_num.row">num.row</code></td>
+<td>
+
+<p>numeric. To print multiple statistics on one page, indicate the number of rows for panel arrangement.  Under the default, one statistic is
+printed per page.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_divs">divs</code></td>
+<td>
+
+<p>An object of class <code>classIntervals</code>.
+</p>
+</td></tr>
+<tr><td><code id="mapStats-internal_+3A_...">...</code></td>
+<td>
+
+<p>Further arguments, usually lattice plot arguments.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<table>
+<tr><td><code>plotStats</code></td>
+<td>
+
+<p>Returns a list of plot images.  Used only internally within function <code>mapStats</code>.
+</p>
+</td></tr>
+<tr><td><code>calcQuantiles</code></td>
+<td>
+
+<p>Returns a list of <code>data.frame</code> objects representing statistic values.
+</p>
+</td></tr>
+<tr><td><code>nobsEach</code></td>
+<td>
+
+<p>Returns a vector of frequency counts of observations in an object of class <code>classIntervals</code>.
+</p>
+</td></tr>
+<tr><td><code>synthetic_US_dataset</code></td>
+<td>
+
+<p>Returns an item of class <code>data.frame</code>.	
+</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Samuel Ackerman
+</p>
+
+<hr>
+<h2 id='mapStats-package'>
+Geographic display of survey data statistics
+</h2><span id='topic+mapStats-package'></span>
+
+<h3>Description</h3>
+
+<p><code>mapStats</code> will calculate statistics (mean, total, quantiles, variance, and standard deviation) for survey data
+variables, by geography level (e.g., state, county) and optional observation-level factor variables
+(e.g., survey year, eduction level, race).  The statistics for each variable
+are then plotted on a shapefile with color codes (choropleth map).  Easy control over visual 
+elements such as cell censoring, color palettes, titles, plot layout, and variable renaming is enabled; see included <code>demo(map_examples)</code> for a 
+full overview of options.  Statistics may be calculated either weighted or unweighted.  
+The function <code><a href="#topic+calcStats">calcStats</a></code>, which is called by <code><a href="#topic+mapStats">mapStats</a></code>, can also be used on its own to calculate variable statistics.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> mapStats</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 3.1</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2023-11-6</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL (&gt;=2)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+ 
+
+
+<h3>Author(s)</h3>
+
+<p>Samuel Ackerman
+Maintainer: Samuel Ackerman &lt;smackrmn@gmail.com&gt;
+</p>
+
+<hr>
+<h2 id='usMap'>
+Shapefile of US state boundaries
+</h2><span id='topic+usMap'></span>
+
+<h3>Description</h3>
+
+<p>Examples are provided using the <code><a href="#topic+usMap">usMap</a></code> shapefile with a synthetic dataset.
+</p>
+
+
+<h3>Source</h3>
+
+<p><a href="https://www.cdc.gov/brfss/gis/gis_maps.htm">https://www.cdc.gov/brfss/gis/gis_maps.htm</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#read the shapefile
+#display first five rows of shapefile dataset
+#plot the shapefile boundaries
+
+usMap &lt;- sf::as_Spatial(sf::st_read(system.file("shapes/usMap.shp", package="mapStats")[1]))
+head(usMap@data)
+# plot the outlines of the shapefile only
+sp::plot(usMap)
+# plot map colored according to one of the variables in @data
+sp::spplot(usMap, zcol="A187_1")
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

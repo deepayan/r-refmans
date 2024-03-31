@@ -1,0 +1,954 @@
+<!DOCTYPE html><html><head><title>Help for package HMC</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {HMC}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#anchored_lasso_testing'><p>Anchored test for two-sample mean comparison.</p></a></li>
+<li><a href='#debiased_pc_testing'><p>Debiased one-step test for two-sample mean comparison. A small p-value tells us not only there is difference in the mean vectors, but can also indicates which principle component the difference aligns with.</p></a></li>
+<li><a href='#estimate_nuisance_parameter_lasso'><p>The function for nuisance parameter estimation in anchored_lasso_testing().</p></a></li>
+<li><a href='#estimate_nuisance_pc'><p>The function for nuisance parameter estimation in simple_pc_testing() and debiased_pc_testing().</p></a></li>
+<li><a href='#evaluate_influence_function_multi_factor'><p>Calculate the test statistics on the left-out samples. Called in debiased_pc_testing().</p></a></li>
+<li><a href='#evaluate_pca_lasso_plug_in'><p>Calculate the test statistics on the left-out samples. Called in anchored_lasso_testing().</p></a></li>
+<li><a href='#evaluate_pca_plug_in'><p>Calculate the test statistics on the left-out samples. Called in simple_pc_testing().</p></a></li>
+<li><a href='#extract_lasso_coef'><p>Extract the lasso estimate from the output of anchored_lasso_testing().</p></a></li>
+<li><a href='#extract_pc'><p>Extract the principle components from the output of simple_pc_testing() and debiased_pc_testing().</p></a></li>
+<li><a href='#index_spliter'><p>Split the sample index into n_folds many groups so that we can perform cross-fitting</p></a></li>
+<li><a href='#simple_pc_testing'><p>Simple plug-in test for two-sample mean comparison.</p></a></li>
+<li><a href='#summarize_feature_name'><p>Summarize the features (e.g. genes) that contribute to the test result, i.e. those features consistently show up in Lasso vectors.</p></a></li>
+<li><a href='#summarize_pc_name'><p>Summarize the features (e.g. genes) that contribute to the test result, i.e. those features consistently show up in the sparse principle components.</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>High Dimensional Mean Comparison with Projection and
+Cross-Fitting</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2024-03-04</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Provides interpretable High-dimensional Mean Comparison methods (HMC). For example, users can use them to assess the difference in gene expression between two treatment groups. It is not a gene-by-gene comparison. Instead, we focus on the interplay between features and are interested in those that are predictive of the group label. The methods are valid frequentist tests and give sparse estimates indicating which features contribute to the test results.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>glmnet, irlba, PMA, MASS, stats</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.2.3</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2024-03-08 20:57:22 UTC; tianyuzhang</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Tianyu Zhang [aut, cre, cph]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Tianyu Zhang &lt;tianyuz3@andrew.cmu.edu&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2024-03-09 13:30:09 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='anchored_lasso_testing'>Anchored test for two-sample mean comparison.</h2><span id='topic+anchored_lasso_testing'></span>
+
+<h3>Description</h3>
+
+<p>Anchored test for two-sample mean comparison.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>anchored_lasso_testing(
+  sample_1,
+  sample_2,
+  pca_method = "sparse_pca",
+  mean_method = "lasso",
+  num_latent_factor = 1,
+  n_folds = 5,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="anchored_lasso_testing_+3A_sample_1">sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="anchored_lasso_testing_+3A_sample_2">sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="anchored_lasso_testing_+3A_pca_method">pca_method</code></td>
+<td>
+<p>Methods used to estimate principle component The default is &quot;sparse_pca&quot;, using sparse PCA from package PMA. Other choices are &quot;dense_pca&quot;&mdash;the regular PCA; and &quot;hard&quot;&mdash; hard-thresholding PCA, which also induces sparsity.</p>
+</td></tr>
+<tr><td><code id="anchored_lasso_testing_+3A_mean_method">mean_method</code></td>
+<td>
+<p>Methods used to estimate the mean vector. Default is sample mean &quot;naive&quot;. There is also a hard-thresholding sparse estiamtor &quot;hard&quot;.</p>
+</td></tr>
+<tr><td><code id="anchored_lasso_testing_+3A_num_latent_factor">num_latent_factor</code></td>
+<td>
+<p>The principle component that lasso coefficient anchors at. The default is PC1 = 1.</p>
+</td></tr>
+<tr><td><code id="anchored_lasso_testing_+3A_n_folds">n_folds</code></td>
+<td>
+<p>Number of splits when performing cross-fitting. The default is 5, if computational time allows, you can try to set it to 10.</p>
+</td></tr>
+<tr><td><code id="anchored_lasso_testing_+3A_verbose">verbose</code></td>
+<td>
+<p>Print information to the console. Default is TRUE.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of test statistics.
+</p>
+<table>
+<tr><td><code>test_statistics</code></td>
+<td>
+<p>Test statistics. Each entry corresponds to the test result of one principle component.</p>
+</td></tr>
+<tr><td><code>standard_error</code></td>
+<td>
+<p>Estimated standard error of test_statistics_before_studentization.</p>
+</td></tr>
+<tr><td><code>test_statistics_before_studentization</code></td>
+<td>
+<p>Similar to test_statistics but does not have variance = 1.</p>
+</td></tr>
+<tr><td><code>split_data</code></td>
+<td>
+<p>Intermediate quantities needed for further assessment and interpretation of the test results.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>sample_size_1 &lt;- sample_size_2 &lt;- 300
+true_mean_1 &lt;- matrix(c(rep(1, 10), rep(0, 90)), ncol = 1)
+true_mean_2 &lt;- matrix(c(rep(1.5, 10), rep(0, 90)), ncol = 1)
+
+sample_1 &lt;- data.frame(MASS::mvrnorm(sample_size_1,
+                               mu = true_mean_1,
+                               Sigma = diag(1, 100)))
+ sample_2 &lt;- data.frame(MASS::mvrnorm(sample_size_2,
+                               mu = true_mean_2,
+                               Sigma = diag(1, 100)))
+ result &lt;- anchored_lasso_testing(sample_1, sample_2)
+ result$test_statistics
+ ##the test statistic. It should follow normal(0,1) when there is no difference between the groups.
+ summarize_feature_name(result) 
+ #summarize which features contribute to discriminant vectors (i.e. logistic lasso)
+ extract_pc(result) # extract the estimated discriminant coefficients
+ 
+</code></pre>
+
+<hr>
+<h2 id='debiased_pc_testing'>Debiased one-step test for two-sample mean comparison. A small p-value tells us not only there is difference in the mean vectors, but can also indicates which principle component the difference aligns with.</h2><span id='topic+debiased_pc_testing'></span>
+
+<h3>Description</h3>
+
+<p>Debiased one-step test for two-sample mean comparison. A small p-value tells us not only there is difference in the mean vectors, but can also indicates which principle component the difference aligns with.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>debiased_pc_testing(
+  sample_1,
+  sample_2 = NULL,
+  pca_method = "sparse_pca",
+  mean_method = "naive",
+  num_latent_factor = 1,
+  n_folds = 5,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="debiased_pc_testing_+3A_sample_1">sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="debiased_pc_testing_+3A_sample_2">sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="debiased_pc_testing_+3A_pca_method">pca_method</code></td>
+<td>
+<p>Methods used to estimate principle component The default is &quot;sparse_pca&quot;, using sparse PCA from package PMA. Other choices are &quot;dense_pca&quot;&mdash;the regular PCA; and &quot;hard&quot;&mdash; hard-thresholding PCA, which also induces sparsity.</p>
+</td></tr>
+<tr><td><code id="debiased_pc_testing_+3A_mean_method">mean_method</code></td>
+<td>
+<p>Methods used to estimate the mean vector. Default is sample mean &quot;naive&quot;. There is also a hard-thresholding sparse estiamtor &quot;hard&quot;.</p>
+</td></tr>
+<tr><td><code id="debiased_pc_testing_+3A_num_latent_factor">num_latent_factor</code></td>
+<td>
+<p>Number of principle to be estimated/tested. Default is 1.</p>
+</td></tr>
+<tr><td><code id="debiased_pc_testing_+3A_n_folds">n_folds</code></td>
+<td>
+<p>Number of splits when performing cross-fitting. The default is 5, if computational time allows, you can try to set it to 10.</p>
+</td></tr>
+<tr><td><code id="debiased_pc_testing_+3A_verbose">verbose</code></td>
+<td>
+<p>Print information to the console. Default is TRUE.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of test statistics.
+</p>
+<table>
+<tr><td><code>test_statistics</code></td>
+<td>
+<p>Test statistics. Each entry corresponds to the test result of one principle component.</p>
+</td></tr>
+<tr><td><code>standard_error</code></td>
+<td>
+<p>Estimated standard error of test_statistics_before_studentization.</p>
+</td></tr>
+<tr><td><code>test_statistics_before_studentization</code></td>
+<td>
+<p>Similar to test_statistics but does not have variance = 1.</p>
+</td></tr>
+<tr><td><code>split_data</code></td>
+<td>
+<p>Intermediate quantities needed for further assessment and interpretation of the test results.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>sample_size_1 &lt;- sample_size_2 &lt;- 300
+
+true_mean_1 &lt;- matrix(c(rep(1, 10), rep(0, 90)), ncol = 1)
+true_mean_2 &lt;- matrix(c(rep(1.5, 10), rep(0, 90)), ncol = 1)
+pc1 &lt;- c(rep(1, 10), rep(0, 90))
+pc1 &lt;- pc1/norm(pc1, type = '2')
+
+simulation_covariance &lt;- 10 * pc1 %*% t(pc1)
+simulation_covariance &lt;- simulation_covariance + diag(1, 100)
+
+sample_1 &lt;- data.frame(MASS::mvrnorm(sample_size_1,
+                               mu = true_mean_1,
+                               Sigma = simulation_covariance))
+ sample_2 &lt;- data.frame(MASS::mvrnorm(sample_size_2,
+                               mu = true_mean_2,
+                               Sigma = simulation_covariance))
+ result &lt;- debiased_pc_testing(sample_1, sample_2)
+ result$test_statistics
+ ##these are test statistics. Each one of them corresponds to one PC.
+ summarize_pc_name(result, latent_fator_index = 1) #shows which features contribute to PC1
+ extract_pc(result) # extract the estimated leading PCs.
+ 
+ 
+</code></pre>
+
+<hr>
+<h2 id='estimate_nuisance_parameter_lasso'>The function for nuisance parameter estimation in anchored_lasso_testing().</h2><span id='topic+estimate_nuisance_parameter_lasso'></span>
+
+<h3>Description</h3>
+
+<p>The function for nuisance parameter estimation in anchored_lasso_testing().
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>estimate_nuisance_parameter_lasso(
+  nuisance_sample_1,
+  nuisance_sample_2,
+  pca_method = "sparse_pca",
+  mean_method = "lasso",
+  num_latent_factor = 1,
+  local_environment = local_environment,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="estimate_nuisance_parameter_lasso_+3A_nuisance_sample_1">nuisance_sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_parameter_lasso_+3A_nuisance_sample_2">nuisance_sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_parameter_lasso_+3A_pca_method">pca_method</code></td>
+<td>
+<p>Methods used to estimate principle component The default is &quot;sparse_pca&quot;, using sparse PCA from package PMA. Other choices are &quot;dense_pca&quot;&mdash;the regular PCA; and &quot;hard&quot;&mdash; hard-thresholding PCA, which also induces sparsity.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_parameter_lasso_+3A_mean_method">mean_method</code></td>
+<td>
+<p>Methods used to estimate the discriminant direction. Default is logistic Lasso &quot;lasso&quot;.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_parameter_lasso_+3A_num_latent_factor">num_latent_factor</code></td>
+<td>
+<p>The principle component that lasso coefficient anchors at. The default is PC1 = 1.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_parameter_lasso_+3A_local_environment">local_environment</code></td>
+<td>
+<p>A environment for hyperparameters shared between folds.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_parameter_lasso_+3A_verbose">verbose</code></td>
+<td>
+<p>Print information to the console. Default is TRUE.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of estimated nuisance quantities.
+</p>
+<table>
+<tr><td><code>estimate_leading_pc</code></td>
+<td>
+<p>Leading principle components</p>
+</td></tr>
+<tr><td><code>estimate_mean_1</code></td>
+<td>
+<p>Sample mean for group 1</p>
+</td></tr>
+<tr><td><code>estimate_mean_2</code></td>
+<td>
+<p>Sample mean for group 1</p>
+</td></tr>
+<tr><td><code>estimate_lasso_beta</code></td>
+<td>
+<p>Logistic Lasso regression coefficients.</p>
+</td></tr>
+<tr><td><code>estimate_projection_direction</code></td>
+<td>
+<p>Anchored projection direction. It is similar to PC1 when signal is weak but similar to estimate_optimal_direction when the signal is moderately large.</p>
+</td></tr>
+<tr><td><code>estimate_optimal_direction</code></td>
+<td>
+<p>Discriminant direction.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='estimate_nuisance_pc'>The function for nuisance parameter estimation in simple_pc_testing() and debiased_pc_testing().</h2><span id='topic+estimate_nuisance_pc'></span>
+
+<h3>Description</h3>
+
+<p>The function for nuisance parameter estimation in simple_pc_testing() and debiased_pc_testing().
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>estimate_nuisance_pc(
+  nuisance_sample_1,
+  nuisance_sample_2 = NULL,
+  pca_method = "sparse_pca",
+  mean_method = "naive",
+  num_latent_factor = 1,
+  local_environment = NA
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="estimate_nuisance_pc_+3A_nuisance_sample_1">nuisance_sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_pc_+3A_nuisance_sample_2">nuisance_sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_pc_+3A_pca_method">pca_method</code></td>
+<td>
+<p>Methods used to estimate principle component The default is &quot;sparse_pca&quot;, using sparse PCA from package PMA. Other choices are &quot;dense_pca&quot;&mdash;the regular PCA; and &quot;hard&quot;&mdash; hard-thresholding PCA, which also induces sparsity.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_pc_+3A_mean_method">mean_method</code></td>
+<td>
+<p>Methods used to estimate the mean vector. Default is sample mean &quot;naive&quot;. There is also a hard-thresholding sparse estiamtor &quot;hard&quot;.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_pc_+3A_num_latent_factor">num_latent_factor</code></td>
+<td>
+<p>Number of principle to be estimated/tested. Default is 1.</p>
+</td></tr>
+<tr><td><code id="estimate_nuisance_pc_+3A_local_environment">local_environment</code></td>
+<td>
+<p>A environment for hyperparameters shared between folds.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of estimated nuisance quantities.
+</p>
+<table>
+<tr><td><code>estimate_leading_pc</code></td>
+<td>
+<p>Leading principle components</p>
+</td></tr>
+<tr><td><code>estimate_mean_1</code></td>
+<td>
+<p>Sample mean for group 1</p>
+</td></tr>
+<tr><td><code>estimate_mean_2</code></td>
+<td>
+<p>Sample mean for group 1</p>
+</td></tr>
+<tr><td><code>estimate_eigenvalue</code></td>
+<td>
+<p>Eigenvalue for each principle compoenent.</p>
+</td></tr>
+<tr><td><code>estimate_noise_variance</code></td>
+<td>
+<p>Noise variance, I need this to construct block-diagonal estimates of the covariance matrix.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='evaluate_influence_function_multi_factor'>Calculate the test statistics on the left-out samples. Called in debiased_pc_testing().</h2><span id='topic+evaluate_influence_function_multi_factor'></span>
+
+<h3>Description</h3>
+
+<p>Calculate the test statistics on the left-out samples. Called in debiased_pc_testing().
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>evaluate_influence_function_multi_factor(
+  cross_fitting_sample_1,
+  cross_fitting_sample_2 = NULL,
+  nuisance_collection,
+  num_latent_factor = 1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="evaluate_influence_function_multi_factor_+3A_cross_fitting_sample_1">cross_fitting_sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="evaluate_influence_function_multi_factor_+3A_cross_fitting_sample_2">cross_fitting_sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="evaluate_influence_function_multi_factor_+3A_nuisance_collection">nuisance_collection</code></td>
+<td>
+<p>A collection of nuisance quantities estimated using &quot;nuisance&quot; samples. It is the output of estimate_nuisance_pc().</p>
+</td></tr>
+<tr><td><code id="evaluate_influence_function_multi_factor_+3A_num_latent_factor">num_latent_factor</code></td>
+<td>
+<p>Number of principle components to be considered.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of test statistics.
+</p>
+<table>
+<tr><td><code>inner_product_1</code></td>
+<td>
+<p>Simple inner products for sample 1.</p>
+</td></tr>
+<tr><td><code>inner_product_2</code></td>
+<td>
+<p>Simple inner products for sample 2.</p>
+</td></tr>
+<tr><td><code>influence_eigenvector_each_subject_1</code></td>
+<td>
+<p>Debiased test statistics, sample 1.</p>
+</td></tr>
+<tr><td><code>influence_eigenvector_each_subject_2</code></td>
+<td>
+<p>Debiased test statistics, sample 1.</p>
+</td></tr>
+<tr><td><code>for_variance_subject_1</code></td>
+<td>
+<p>Statistics for variance calculation, sample 1.</p>
+</td></tr>
+<tr><td><code>for_variance_subject_2</code></td>
+<td>
+<p>Statistics for variance calculation, sample 2.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='evaluate_pca_lasso_plug_in'>Calculate the test statistics on the left-out samples. Called in anchored_lasso_testing().</h2><span id='topic+evaluate_pca_lasso_plug_in'></span>
+
+<h3>Description</h3>
+
+<p>Calculate the test statistics on the left-out samples. Called in anchored_lasso_testing().
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>evaluate_pca_lasso_plug_in(
+  cross_fitting_sample_1,
+  cross_fitting_sample_2,
+  nuisance_collection,
+  mean_method = "lasso"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="evaluate_pca_lasso_plug_in_+3A_cross_fitting_sample_1">cross_fitting_sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="evaluate_pca_lasso_plug_in_+3A_cross_fitting_sample_2">cross_fitting_sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="evaluate_pca_lasso_plug_in_+3A_nuisance_collection">nuisance_collection</code></td>
+<td>
+<p>A collection of nuisance quantities estimated using &quot;nuisance&quot; samples. It is the output of estimate_nuisance_pc().</p>
+</td></tr>
+<tr><td><code id="evaluate_pca_lasso_plug_in_+3A_mean_method">mean_method</code></td>
+<td>
+<p>Methods used to estimate the discriminant direction. Default is logistic Lasso &quot;lasso&quot;.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of test statistics.
+</p>
+<table>
+<tr><td><code>influence_each_subject_1</code></td>
+<td>
+<p>Test statistics for sample 1.</p>
+</td></tr>
+<tr><td><code>influence_each_subject_1</code></td>
+<td>
+<p>Test statistics for sample 2.</p>
+</td></tr>
+<tr><td><code>for_variance_each_subject_1</code></td>
+<td>
+<p>Statistics for variance calculation, sample 1.</p>
+</td></tr>
+<tr><td><code>for_variance_each_subject_2</code></td>
+<td>
+<p>Statistics for variance calculation, sample 2.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='evaluate_pca_plug_in'>Calculate the test statistics on the left-out samples. Called in simple_pc_testing().</h2><span id='topic+evaluate_pca_plug_in'></span>
+
+<h3>Description</h3>
+
+<p>Calculate the test statistics on the left-out samples. Called in simple_pc_testing().
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>evaluate_pca_plug_in(
+  cross_fitting_sample_1,
+  cross_fitting_sample_2 = NULL,
+  nuisance_collection
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="evaluate_pca_plug_in_+3A_cross_fitting_sample_1">cross_fitting_sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="evaluate_pca_plug_in_+3A_cross_fitting_sample_2">cross_fitting_sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="evaluate_pca_plug_in_+3A_nuisance_collection">nuisance_collection</code></td>
+<td>
+<p>A collection of nuisance quantities estimated using &quot;nuisance&quot; samples. It is the output of estimate_nuisance_pc().</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of test statistics.
+</p>
+<table>
+<tr><td><code>influence_each_subject_1</code></td>
+<td>
+<p>Statistics for sample 1.</p>
+</td></tr>
+<tr><td><code>influence_each_subject_2</code></td>
+<td>
+<p>Statistics for sample 2.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='extract_lasso_coef'>Extract the lasso estimate from the output of anchored_lasso_testing().</h2><span id='topic+extract_lasso_coef'></span>
+
+<h3>Description</h3>
+
+<p>Extract the lasso estimate from the output of anchored_lasso_testing().
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>extract_lasso_coef(testing_result)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="extract_lasso_coef_+3A_testing_result">testing_result</code></td>
+<td>
+<p>The output/test result list from anchored_lasso_testing().</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list, whose elements are the estimated discriminant directions for each split&mdash;the length of the output list is the same as n_folds.
+</p>
+<p>The discriminant vectors for each split.
+</p>
+
+<hr>
+<h2 id='extract_pc'>Extract the principle components from the output of simple_pc_testing() and debiased_pc_testing().</h2><span id='topic+extract_pc'></span>
+
+<h3>Description</h3>
+
+<p>Extract the principle components from the output of simple_pc_testing() and debiased_pc_testing().
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>extract_pc(testing_result)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="extract_pc_+3A_testing_result">testing_result</code></td>
+<td>
+<p>The output/test result list from simple_pc_testing() or debiased_pc_testing().</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list, whose elements are the estimated PC for each split&mdash;the length of the output list is the same as n_folds.
+</p>
+<p>The PC vectors for each split.
+</p>
+
+<hr>
+<h2 id='index_spliter'>Split the sample index into n_folds many groups so that we can perform cross-fitting</h2><span id='topic+index_spliter'></span>
+
+<h3>Description</h3>
+
+<p>Split the sample index into n_folds many groups so that we can perform cross-fitting
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>index_spliter(array, n_folds = 5)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="index_spliter_+3A_array">array</code></td>
+<td>
+<p>Sample index. Usually just an array from 1 to the number of samples in one group.</p>
+</td></tr>
+<tr><td><code id="index_spliter_+3A_n_folds">n_folds</code></td>
+<td>
+<p>Number of splits</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list indicates the sample indices in each split.
+</p>
+
+<hr>
+<h2 id='simple_pc_testing'>Simple plug-in test for two-sample mean comparison.</h2><span id='topic+simple_pc_testing'></span>
+
+<h3>Description</h3>
+
+<p>Simple plug-in test for two-sample mean comparison.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>simple_pc_testing(
+  sample_1,
+  sample_2 = NULL,
+  pca_method = "sparse_pca",
+  mean_method = "naive",
+  num_latent_factor = 1,
+  n_folds = 5,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="simple_pc_testing_+3A_sample_1">sample_1</code></td>
+<td>
+<p>Group 1 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="simple_pc_testing_+3A_sample_2">sample_2</code></td>
+<td>
+<p>Group 2 sample. Each row is a subject and each column corresponds to a feature.</p>
+</td></tr>
+<tr><td><code id="simple_pc_testing_+3A_pca_method">pca_method</code></td>
+<td>
+<p>Methods used to estimate principle component The default is &quot;sparse_pca&quot;, using sparse PCA from package PMA. Other choices are &quot;dense_pca&quot;&mdash;the regular PCA; and &quot;hard&quot;&mdash; hard-thresholding PCA, which also induces sparsity.</p>
+</td></tr>
+<tr><td><code id="simple_pc_testing_+3A_mean_method">mean_method</code></td>
+<td>
+<p>Methods used to estimate the mean vector. Default is sample mean &quot;naive&quot;. There is also a hard-thresholding sparse estiamtor &quot;hard&quot;.</p>
+</td></tr>
+<tr><td><code id="simple_pc_testing_+3A_num_latent_factor">num_latent_factor</code></td>
+<td>
+<p>Number of principle to be estimated/tested. Default is 1.</p>
+</td></tr>
+<tr><td><code id="simple_pc_testing_+3A_n_folds">n_folds</code></td>
+<td>
+<p>Number of splits when performing cross-fitting. The default is 5, if computational time allows, you can try to set it to 10.</p>
+</td></tr>
+<tr><td><code id="simple_pc_testing_+3A_verbose">verbose</code></td>
+<td>
+<p>Print information to the console. Default is TRUE.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of test statistics.
+</p>
+<table>
+<tr><td><code>test_statistics</code></td>
+<td>
+<p>Test statistics. Each entry corresponds to the test result of one principle component.</p>
+</td></tr>
+<tr><td><code>standard_error</code></td>
+<td>
+<p>Estimated standard error of test_statistics_before_studentization.</p>
+</td></tr>
+<tr><td><code>test_statistics_before_studentization</code></td>
+<td>
+<p>Similar to test_statistics but does not have variance = 1.</p>
+</td></tr>
+<tr><td><code>split_data</code></td>
+<td>
+<p>Intermediate quantities needed for further assessment and interpretation of the test results.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>sample_size_1 &lt;- sample_size_2 &lt;- 300
+true_mean_1 &lt;- matrix(c(rep(1, 10), rep(0, 90)), ncol = 1)
+true_mean_2 &lt;- matrix(c(rep(1.5, 10), rep(0, 90)), ncol = 1)
+pc1 &lt;- c(rep(1, 10), rep(0, 90))
+pc1 &lt;- pc1/norm(pc1, type = '2')
+
+simulation_covariance &lt;- 10 * pc1 %*% t(pc1)
+simulation_covariance &lt;- simulation_covariance + diag(1, 100)
+
+sample_1 &lt;- data.frame(MASS::mvrnorm(sample_size_1,
+                                     mu = true_mean_1,
+                                     Sigma = simulation_covariance))
+sample_2 &lt;- data.frame(MASS::mvrnorm(sample_size_2,
+                                     mu = true_mean_2,
+                                     Sigma = simulation_covariance))
+result &lt;- simple_pc_testing(sample_1, sample_2)
+result$test_statistics
+##these are test statistics. Each one of them corresponds to one PC.
+summarize_pc_name(result, latent_fator_index = 1) #shows which features contribute to PC1
+extract_pc(result) # extract the estimated leading PCs.
+
+</code></pre>
+
+<hr>
+<h2 id='summarize_feature_name'>Summarize the features (e.g. genes) that contribute to the test result, i.e. those features consistently show up in Lasso vectors.</h2><span id='topic+summarize_feature_name'></span>
+
+<h3>Description</h3>
+
+<p>Summarize the features (e.g. genes) that contribute to the test result, i.e. those features consistently show up in Lasso vectors.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>summarize_feature_name(testing_result, method = "majority voting")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summarize_feature_name_+3A_testing_result">testing_result</code></td>
+<td>
+<p>The output/test result list from anchored_lasso_testing().</p>
+</td></tr>
+<tr><td><code id="summarize_feature_name_+3A_method">method</code></td>
+<td>
+<p>How to combine the feature list across different splits. Default is 'majority voting'&mdash;features that show up more than 50% of the splits are considered active/useful. It can be 'union'&mdash;all the features pooled together; or 'intersection'&mdash;only include features showing up in all splits.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of names of features (your very original input data need to have column names!) that contribute to the test result. An empty list means there is barely any difference between the two groups.
+</p>
+<p>Feature names that consistently showing up in the discriminant vectors.
+</p>
+
+<hr>
+<h2 id='summarize_pc_name'>Summarize the features (e.g. genes) that contribute to the test result, i.e. those features consistently show up in the sparse principle components.</h2><span id='topic+summarize_pc_name'></span>
+
+<h3>Description</h3>
+
+<p>Summarize the features (e.g. genes) that contribute to the test result, i.e. those features consistently show up in the sparse principle components.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>summarize_pc_name(
+  testing_result,
+  latent_fator_index = 1,
+  method = "majority voting"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summarize_pc_name_+3A_testing_result">testing_result</code></td>
+<td>
+<p>The output/test result list from simple_pc_testing() or debiased_pc_testing().</p>
+</td></tr>
+<tr><td><code id="summarize_pc_name_+3A_latent_fator_index">latent_fator_index</code></td>
+<td>
+<p>Which principle component should the algorithm summarize? Default is PC1.</p>
+</td></tr>
+<tr><td><code id="summarize_pc_name_+3A_method">method</code></td>
+<td>
+<p>How to combine the feature list across different splits. Default is 'majority voting'&mdash;features that show up more than 50% of the splits are considered active/useful. It can be 'union'&mdash;all the features pooled together; or 'intersection'&mdash;only include features showing up in all splits.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of names of features (your very original input data need to have column names!) that contribute to the test result.
+</p>
+<p>Feature names that consistently showing up in the estimated PC vectors.
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

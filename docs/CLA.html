@@ -1,0 +1,904 @@
+<!DOCTYPE html><html><head><title>Help for package CLA</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {CLA}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#CLA'><p>Critical Line Algorithm for mean-variance optimal portfolio</p></a></li>
+<li><a href='#findMu'><p>Find  mu(W) and W, given sigma(W) and CLA result</p></a></li>
+<li><a href='#findSig'><p>Find sigma(W) and W, given mu(W) and CLA result</p></a></li>
+<li><a href='#MS'><p>Means (Mu) and Standard Deviations (Sigma) of the &ldquo;Turning Points&rdquo; from CLA</p></a></li>
+<li><a href='#muS.10ex'><p>10 Assets Example Data from Markowitz &amp; Todd</p></a></li>
+<li><a href='#muS.sp500'><p>Return Expectation and Covariance for &quot;FRAPO&quot;s SP500 data</p></a></li>
+<li><a href='#muSigmaGarch'><p>Compute (mu, Sigma) for a Set of Assets via GARCH fit</p></a></li>
+<li><a href='#plot.CLA'><p>Plotting CLA() results including Efficient Frontier</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>0.96-2</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2021-12-14</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Critical Line Algorithm in Pure R</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Yanhao Shi &lt;syhelena@163.com&gt;,
+	Martin Maechler &lt;maechler@stat.math.ethz.ch&gt;</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Martin Maechler &lt;maechler@stat.math.ethz.ch&gt;</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.6.0)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>stats, grDevices, graphics, utils</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>fGarch, FRAPO, Matrix, sfsmisc</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implements 'Markowitz' Critical Line Algorithm ('CLA') for classical
+  mean-variance portfolio optimization, see Markowitz (1952) &lt;<a href="https://doi.org/10.2307%2F2975974">doi:10.2307/2975974</a>&gt;.
+  Care has been taken for correctness in light of previous buggy implementations.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL (&ge; 3)</a> | file LICENSE</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="https://gitlab.math.ethz.ch/maechler/CLA/">https://gitlab.math.ethz.ch/maechler/CLA/</a></td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2021-12-15 10:10:49 UTC; maechler</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2021-12-16 10:42:03 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='CLA'>Critical Line Algorithm for mean-variance optimal portfolio</h2><span id='topic+CLA'></span>
+
+<h3>Description</h3>
+
+<p>The Critical Line Algorithm was first proposed by Markowitz(1987) to
+solve the mean-variance optimal portfolio problem.
+</p>
+<p>We solve the problem with &ldquo;box&rdquo; constraints, i.e., allow to
+specify lower and upper bounds (via <code>lB</code> and <code>uB</code>) for each
+asset weight.
+</p>
+<p>Here we provide a pure <span class="rlang"><b>R</b></span> implementation, quite fine tuned and
+debugged compared to earlier ones.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>CLA(mu, covar, lB, uB,
+    check.cov = TRUE, check.f = TRUE,
+    tol.lambda = 1e-07,
+    give.MS = TRUE, keep.names = TRUE, trace = 0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="CLA_+3A_mu">mu</code></td>
+<td>
+<p>numeric vector of length <code>n</code> containing the expected
+return <code class="reqn">E[R_i]</code> for <code class="reqn">1=1,2,\dots,n</code>.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_covar">covar</code></td>
+<td>
+<p>the <code class="reqn">n \times n</code> covariance matrix of the
+returns, must be positive definite.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_lb">lB</code>, <code id="CLA_+3A_ub">uB</code></td>
+<td>
+<p>vectors of length <code>n</code> with lower and upper bounds
+for the asset weights.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_check.cov">check.cov</code></td>
+<td>
+<p><code><a href="base.html#topic+logical">logical</a></code> indicating if the <code>covar</code>
+matrix should be checked to be positive definite.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_check.f">check.f</code></td>
+<td>
+<p><code><a href="base.html#topic+logical">logical</a></code> indicating if a warning should be
+produced when the algorithm cannot produce a new (smaller) lambda even
+though there are still <b>f</b>ree weights to be chosen.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_tol.lambda">tol.lambda</code></td>
+<td>
+<p>the tolerance when checking for lambda changes or
+being zero.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_give.ms">give.MS</code></td>
+<td>
+<p><code><a href="base.html#topic+logical">logical</a></code> indicating if <code><a href="#topic+MS">MS</a>()</code>
+should be computed (and returned) as well.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_keep.names">keep.names</code></td>
+<td>
+<p><code><a href="base.html#topic+logical">logical</a></code> indicating if the
+<code>weights_set</code> matrix should keep the (asset) <code>names(mu)</code>.</p>
+</td></tr>
+<tr><td><code id="CLA_+3A_trace">trace</code></td>
+<td>
+<p>an integer (or <code><a href="base.html#topic+logical">logical</a></code>) indicating if and
+how much diagnostic or progress output should be produced.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The current implementation of the CLA is based (via Norring's)
+on Bailey et al.(2013).   We have found buglets in that implementation
+which lead them to introduce their &ldquo;purge&rdquo; routines
+(<code>purgeNumErr</code>, <code>purgeExcess</code>),
+which are no longer necessary.
+</p>
+<p>Even though this is a pure <span class="rlang"><b>R</b></span> implementation, the algorithm is quite fast
+also when the number of assets <code class="reqn">n</code> is large (1000s), though that
+depends quite a bit on the exact problem.
+</p>
+
+
+<h3>Value</h3>
+
+<p>an object of <code><a href="base.html#topic+class">class</a></code> <code>"CLA"</code> which is a
+<code><a href="base.html#topic+list">list</a></code> with components
+</p>
+<table>
+<tr><td><code>weights_set</code></td>
+<td>
+<p>a <code class="reqn">n \times m</code> matrix of asset weights,
+corresponding to the <code class="reqn">m</code> steps that the CLA has completed or the
+<code class="reqn">m</code> &ldquo;turning points&rdquo; it has computed.</p>
+</td></tr>
+<tr><td><code>free_indices</code></td>
+<td>
+<p>a <code><a href="base.html#topic+list">list</a></code> of length <code>m</code>, the
+<code class="reqn">k</code>-th component with the indices in <code class="reqn">{1,\dots,n}</code> of
+those assets whose weights were not at the boundary after ... </p>
+</td></tr>
+<tr><td><code>gammas</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">m</code> of the values
+<code class="reqn">\gamma_k</code> for CLA step <code class="reqn">k</code>, <code class="reqn">k=1,\dots,n</code>.</p>
+</td></tr>
+<tr><td><code>lambdas</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">m</code> of the Lagrange parameters
+<code class="reqn">\lambda_k</code> for CLA step <code class="reqn">k</code>, <code class="reqn">k=1,\dots,n</code>.</p>
+</td></tr>
+<tr><td><code>MS_weights</code></td>
+<td>
+<p>the <code class="reqn">\mu(W)</code> and <code class="reqn">\sigma(W)</code> corresponding
+to the asset weights <code>weights_set</code>, i.e., simply the same as
+<code><a href="#topic+MS">MS</a>(weights_set = weights_set, mu = mu, covar = covar)</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>The exact results of the algorithm, e.g., the assets with non-zero
+weights, may slightly depend on the (computer) platform, e.g., for the
+<abbr><span class="acronym">S&amp;P 500</span></abbr> example, differences between 64-bit or 32-bit, version
+of BLAS or Lapack libraries etc, do have an influence, see the <span class="rlang"><b>R</b></span> script
+&lsquo;<span class="file">tests/SP500-ex.R</span>&rsquo; 
+in the package sources.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Alexander Norring did the very first version (unpublished master
+thesis). Current implementation: Yanhao Shi and Martin Maechler
+</p>
+
+
+<h3>References</h3>
+
+<p>Markowitz, H. (1952)
+Portfolio selection, <em>The Journal of Finance</em> <b>7</b>, 77&ndash;91;
+doi: <a href="https://doi.org/10.2307/2975974">10.2307/2975974</a>.
+</p>
+<p>Markowitz, H. M. (1987, 1st ed.) and
+Markowitz, H. M. and Todd, P. G. (2000)
+<em>Mean-Variance Analysis in Portfolio Choice and Capital Markets</em>;
+chapters 7 and 13.
+</p>
+
+
+
+
+<p>Niedermayer, A. and Niedermayer, D. (2010)
+Applying Markowitz’s Critical Line Algorithm, in J. B. Guerard (ed.),
+Handbook of Portfolio Construction, Springer; chapter 12, 383&ndash;400;
+doi: <a href="https://doi.org/10.1007/978-0-387-77439-8_12">10.1007/978-0-387-77439-8_12</a>.
+</p>
+<p>Bailey, D. H. and López de Prado, M. (2013)
+An open-source implementation of the critical-line algorithm for portfolio
+optimization, <em>Algorithms</em> <b>6</b>(1), 169&ndash;196;
+doi: <a href="https://doi.org/10.3390/a6010169">10.3390/a6010169</a>,
+</p>
+<p>Yanhao Shi (2017)
+Implementation and applications of critical line algorithm for
+portfolio optimization; unpublished Master's thesis, ETH Zurich.
+
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+MS">MS</a></code>;
+for plotting <code>CLA</code> results: <code><a href="#topic+plot.CLA">plot.CLA</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(muS.sp500)
+## Full data taking too much time for example
+set.seed(47)
+iS &lt;- sample.int(length(muS.sp500$mu), 24)
+
+CLsp.24 &lt;- CLA(muS.sp500$mu[iS], muS.sp500$covar[iS, iS], lB=0, uB=1/10)
+CLsp.24 # using the print() method for class "CLA"
+
+plot(CLsp.24)
+
+if(require(Matrix)) { ## visualize how weights change "along turning points"
+  show(image(Matrix(CLsp.24$weights_set, sparse=TRUE),
+             main = "CLA(muS.sp500 &lt;random_sample(size=24)&gt;) $ weights_set",
+             xlab = "turning point", ylab = "asset number"))
+}
+
+## A 3x3 example (from real data) where CLA()'s original version failed
+## and  'check.f = TRUE' produces a warning :
+mc3 &lt;- list(
+    mu = c(0.0408, 0.102, -0.023),
+    cv = matrix(c(0.00648, 0.00792, 0.00473,
+                  0.00792, 0.0334,  0.0121,
+                  0.00473, 0.0121, 0.0793), 3, 3,
+           dimnames = list(NULL,
+                           paste0(c("TLT", "VTI","GLD"), ".Adjusted"))))
+
+rc3 &lt;- with(mc3,  CLA(mu=mu, covar=cv, lB=0, uB=1, trace=TRUE))
+
+</code></pre>
+
+<hr>
+<h2 id='findMu'>Find  mu(W) and W, given sigma(W) and CLA result</h2><span id='topic+findMu'></span>
+
+<h3>Description</h3>
+
+<p>Find <code class="reqn">\mu(W)</code> and <code class="reqn">W</code>, given <code class="reqn">\sigma(W</code>) and
+<code><a href="#topic+CLA">CLA</a></code> result.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>findMu(Sig0, result, covar, tol.unir = 1e-06, equal.tol = 1e-06)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="findMu_+3A_sig0">Sig0</code></td>
+<td>
+<p>numeric vector of <code class="reqn">\sigma(W)</code> values.</p>
+</td></tr>
+<tr><td><code id="findMu_+3A_result">result</code></td>
+<td>
+<p>a <code><a href="base.html#topic+list">list</a></code> with components <code>MS_weight</code>
+and <code>weights_set</code> as resulting from <code><a href="#topic+CLA">CLA</a>()</code>.</p>
+</td></tr>
+<tr><td><code id="findMu_+3A_covar">covar</code></td>
+<td>
+<p>the same <code class="reqn">n \times n</code> covariance matrix (of
+asset returns) as the argument of <code><a href="#topic+CLA">CLA</a>()</code>.</p>
+</td></tr>
+<tr><td><code id="findMu_+3A_tol.unir">tol.unir</code></td>
+<td>
+<p>numeric tolerance passed to <code><a href="stats.html#topic+uniroot">uniroot</a></code>.</p>
+</td></tr>
+<tr><td><code id="findMu_+3A_equal.tol">equal.tol</code></td>
+<td>
+<p>numeric tolerance to be used in
+<code><a href="Matrix.html#topic+all.equal">all.equal</a>(.., tolerance = equal.tol)</code> in the check to
+see if the <code class="reqn">\mu</code> of two neighbouring turning points are
+equal.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a <code><a href="base.html#topic+list">list</a></code> with components
+</p>
+<table>
+<tr><td><code>Mu</code></td>
+<td>
+<p>numeric vector of same length, say <code class="reqn">M</code>, as <code>Sig0</code>.</p>
+</td></tr>
+<tr><td><code>weight</code></td>
+<td>
+<p>numeric <code class="reqn">n \times M</code> matrix of weights.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Master thesis, p.33
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+findSig">findSig</a></code>,
+<code><a href="#topic+CLA">CLA</a></code>, <code><a href="#topic+MS">MS</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(muS.sp500)
+## Full data taking too much time for example
+if(getRversion() &gt;= "3.6") .Rk &lt;- RNGversion("3.5.0") # for back compatibility &amp; warning
+set.seed(2016)
+iS &lt;- sample.int(length(muS.sp500$mu), 17)
+if(getRversion() &gt;= "3.6") do.call(RNGkind, as.list(.Rk)) # revert
+cov17 &lt;- muS.sp500$covar[iS, iS]
+CLsp.17 &lt;- CLA(muS.sp500$mu[iS], covar=cov17, lB=0, uB = 1/2)
+CLsp.17 # 16 turning points
+summary(tpS &lt;- CLsp.17$MS_weights[,"Sig"])
+str(s0 &lt;- seq(0.0186, 0.0477, by = 0.0001))
+mu.. &lt;- findMu(s0, result=CLsp.17, covar=cov17)
+str(mu..)
+stopifnot(dim(mu..$weight) == c(17, length(s0)))
+plot(s0, mu..$Mu, xlab=quote(sigma), ylab = quote(mu),
+     type = "o", cex = 1/4)
+points(CLsp.17$MS_weights, col = "tomato", cex = 1.5)
+</code></pre>
+
+<hr>
+<h2 id='findSig'>Find sigma(W) and W, given mu(W) and CLA result</h2><span id='topic+findSig'></span>
+
+<h3>Description</h3>
+
+<p>Find <code class="reqn">\sigma(W)</code> and <code class="reqn">W</code>, given <code class="reqn">\mu(W</code>) and
+<code><a href="#topic+CLA">CLA</a></code> result.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>findSig(Mu0, result, covar, equal.tol)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="findSig_+3A_mu0">Mu0</code></td>
+<td>
+<p>numeric vector of <code class="reqn">\mu(W)</code> values.</p>
+</td></tr>
+<tr><td><code id="findSig_+3A_result">result</code></td>
+<td>
+<p>a <code><a href="base.html#topic+list">list</a></code> with components <code>MS_weight</code>
+and <code>weights_set</code> as resulting from <code><a href="#topic+CLA">CLA</a>()</code>.</p>
+</td></tr>
+<tr><td><code id="findSig_+3A_covar">covar</code></td>
+<td>
+<p>the same <code class="reqn">n \times n</code> covariance matrix (of
+asset returns) as the argument of <code><a href="#topic+CLA">CLA</a>()</code>.</p>
+</td></tr>
+<tr><td><code id="findSig_+3A_equal.tol">equal.tol</code></td>
+<td>
+<p>numeric tolerance to be used in
+<code><a href="Matrix.html#topic+all.equal">all.equal</a>(.., tolerance = equal.tol)</code> in the check to
+see if the <code class="reqn">\mu</code> of two neighbouring turning points are
+equal.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a <code><a href="base.html#topic+list">list</a></code> with components
+</p>
+<table>
+<tr><td><code>Sig</code></td>
+<td>
+<p>numeric vector of same length, say <code class="reqn">M</code>, as <code>Mu0</code>.</p>
+</td></tr>
+<tr><td><code>weight</code></td>
+<td>
+<p>numeric <code class="reqn">n \times M</code> matrix of weights.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Master thesis, p.33
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+findMu">findMu</a></code>,
+<code><a href="#topic+CLA">CLA</a></code>, <code><a href="#topic+MS">MS</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(muS.sp500)
+## Full data taking too much time for example: Subset of n=21:
+if(getRversion() &gt;= "3.6") .Rk &lt;- RNGversion("3.5.0") # for back compatibility &amp; warning
+set.seed(2018)
+iS &lt;- sample.int(length(muS.sp500$mu), 21)
+if(getRversion() &gt;= "3.6") do.call(RNGkind, as.list(.Rk)) # revert
+cov21 &lt;- muS.sp500$covar[iS, iS]
+CLsp.21 &lt;- CLA(muS.sp500$mu[iS], covar=cov21, lB=0, uB = 1/2)
+CLsp.21 # 14 turning points
+summary(tpM &lt;- CLsp.21$MS_weights[,"Mu"])
+str(m0 &lt;- c(min(tpM),seq(0.00205, 0.00525, by = 0.00005), max(tpM)))
+sig. &lt;- findSig(m0, result=CLsp.21, covar=cov21)
+str(sig.)
+stopifnot(dim(sig.$weight) == c(21, length(m0)))
+plot(sig.$Sig, m0, xlab=quote(sigma), ylab = quote(mu),
+     type = "o", cex = 1/4)
+points(CLsp.21$MS_weights, col = "tomato", cex = 1.5)
+title("Efficient Frontier from CLA()")
+mtext("findSig() to interpolate between turning points", side=3)
+</code></pre>
+
+<hr>
+<h2 id='MS'>Means (Mu) and Standard Deviations (Sigma) of the &ldquo;Turning Points&rdquo; from CLA</h2><span id='topic+MS'></span>
+
+<h3>Description</h3>
+
+<p>Compute the vectors of means (<code class="reqn">\mu_i</code>) and standard deviations
+(<code class="reqn">sigma_i</code>), for all the turning points of a <code><a href="#topic+CLA">CLA</a></code>
+result.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>MS(weights_set, mu, covar)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="MS_+3A_weights_set">weights_set</code></td>
+<td>
+<p>numeric matrix (<code class="reqn">n \times m</code>) of optimal
+asset weights <code class="reqn">W = (w_1, w_2, \ldots, w_m)</code>, as
+resulting from <code><a href="#topic+CLA">CLA</a>()</code>.</p>
+</td></tr>
+<tr><td><code id="MS_+3A_mu">mu</code></td>
+<td>
+<p>expected (log) returns (identical to <em>argument</em> of
+<code><a href="#topic+CLA">CLA</a>()</code>).</p>
+</td></tr>
+<tr><td><code id="MS_+3A_covar">covar</code></td>
+<td>
+<p>covariance matrix of (log) returns (identical to
+<em>argument</em> of <code><a href="#topic+CLA">CLA</a>()</code>).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>These are trivially computable from the <code><a href="#topic+CLA">CLA</a>()</code>'s result.
+To correctly <em>interpolate</em> this, &ldquo;hyperbolic&rdquo;
+interpolation is needed, provided by the <code><a href="#topic+findSig">findSig</a></code> and
+<code><a href="#topic+findMu">findMu</a></code> functions.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a <code><a href="base.html#topic+list">list</a></code> with components
+</p>
+<table>
+<tr><td><code>Sig</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">m</code> of standard deviations,
+<code class="reqn">\sigma(W)</code>.</p>
+</td></tr>
+<tr><td><code>Mu</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">m</code> of means <code class="reqn">\mu(W)</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Yanhao Shi</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+CLA">CLA</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## The function is quite simply
+MS
+## and really an auxiliary function for CLA().
+
+## TODO:  add small (~12 assets) example
+</code></pre>
+
+<hr>
+<h2 id='muS.10ex'>10 Assets Example Data from Markowitz &amp; Todd</h2><span id='topic+muS.10ex'></span>
+
+<h3>Description</h3>
+
+<p>The simple example Data of Markowitz and Todd (2000); used for
+illustrating the CLA; reused in Bailey and López de Prado (2013).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data("muS.10ex")
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A list with two components,
+</p>
+
+<dl>
+<dt>mu</dt><dd><p>Named num [1:10] 1.175 1.19 0.396 1.12 0.346 ...<br />
+names : chr [1:10] &quot;X1&quot; &quot;X2&quot; &quot;X3&quot; &quot;X4&quot; ...</p>
+</dd>
+<dt>covar</dt><dd><p>num [1:10, 1:10] 0.4076 0.0318 0.0518 0.0566 0.033 ...</p>
+</dd>
+</dl>
+
+
+
+<h3>Source</h3>
+
+<p>From &lsquo;<span class="file">http://www.quantresearch.info/CLA_Data.csv.txt</span>&rsquo; (URL no longer
+working, Aug.2020!) by López de Prado.
+</p>
+
+
+<h3>References</h3>
+
+<p>Markowitz, H. M. (1987, 1st ed.) and
+Markowitz, H. M. and Todd, P. G. (2000)
+<em>Mean-Variance Analysis in Portfolio Choice and Capital Markets</em>,
+page 335.
+</p>
+<p>Bailey, D. H. and López de Prado, M. (2013)
+An open-source implementation of the critical-line algorithm for portfolio
+optimization, <em>Algorithms</em> <b>6</b>(1), 169&ndash;196;
+doi: <a href="https://doi.org/10.3390/a6010169">10.3390/a6010169</a>, p. 16f.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(muS.10ex)
+str(muS.10ex)
+
+CLA.10ex &lt;- with(muS.10ex, CLA(mu, covar, lB=0, uB=1))
+if(require("Matrix"))
+  drop0(zapsmall(CLA.10ex$weights_set))
+## The results, summarized, as in Bayley and López de Prado (Table 2, p.18) :
+with(CLA.10ex, round(cbind(MS_weights[,2:1], lambda=lambdas, t(weights_set)), 3))
+
+CLA.10ex.1c &lt;- with(muS.10ex, CLA(mu, covar, lB=1/100, uB=1))
+round(CLA.10ex.1c$weights_set, 3)
+</code></pre>
+
+<hr>
+<h2 id='muS.sp500'>Return Expectation and Covariance for &quot;FRAPO&quot;s SP500 data</h2><span id='topic+muS.sp500'></span>
+
+<h3>Description</h3>
+
+<p>If <code class="reqn">R_{j,t}</code> are the basically the scale standardized log returns
+for <code class="reqn">j = 1,2,\dots,476</code> of 476 stocks from <abbr><span class="acronym">S&amp;P 500</span></abbr>, as
+from <code><a href="FRAPO.html#topic+SP500">SP500</a></code>, then <code class="reqn">mu_j = E[R_{j,*}]</code> somehow
+averaged over time; actually as predicted by <code>muSigma()</code> at the
+end of the time period, and
+<code class="reqn">\Sigma_{j,k} = Cov(R_j, R_k)</code>
+are estimated covariances.
+</p>
+<p>These are the main &ldquo;inputs&rdquo; needed for the CLA algorithm, see
+<code><a href="#topic+CLA">CLA</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data("muS.sp500")
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A list with two components,
+</p>
+
+<dl>
+<dt>mu</dt><dd><p>Named num [1:476] 0.00233 0.0035 0.01209 0.00322 0.00249 ...<br />
+names : chr [1:476] &quot;A&quot; &quot;AA&quot; &quot;AAPL&quot; &quot;ABC&quot; ...</p>
+</dd>
+<dt>covar</dt><dd><p>num [1:476, 1:476] 0.001498 0.000531 0.000536 ...</p>
+</dd>
+</dl>
+
+
+
+<h3>Source</h3>
+
+<p>It is as simple as this:</p>
+<pre>
+    data(SP500, package="FRAPO")
+    system.time(muS.sp500 &lt;- muSigmaGarch(SP500))   #   26 sec. (lynne, 2017)
+  </pre>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+muSigmaGarch">muSigmaGarch</a>()</code> which was used to construct it.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(muS.sp500)
+str(muS.sp500)
+</code></pre>
+
+<hr>
+<h2 id='muSigmaGarch'>Compute (mu, Sigma) for a Set of Assets via GARCH fit</h2><span id='topic+muSigmaGarch'></span>
+
+<h3>Description</h3>
+
+<p>Compute (mu, Sigma) for a set of assets via a GARCH fit to each
+individual asset, using package
+<a href="https://CRAN.R-project.org/package=fGarch"><span class="pkg">fGarch</span></a>'s <code><a href="fGarch.html#topic+garchFit">garchFit</a>()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>muSigmaGarch(x, formula = ~garch(1, 1), cond.dist = "std", trace = FALSE,
+             ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="muSigmaGarch_+3A_x">x</code></td>
+<td>
+<p>numeric matrix or data frame (<code class="reqn">T \times d</code>) of log
+returns of <code class="reqn">d</code> assets, observed on a common set of <code class="reqn">T</code> time points.
+</p>
+</td></tr>
+<tr><td><code id="muSigmaGarch_+3A_formula">formula</code></td>
+<td>
+<p>optional formula for <code><a href="fGarch.html#topic+garchFit">garchFit</a></code>.</p>
+</td></tr>
+<tr><td><code id="muSigmaGarch_+3A_cond.dist">cond.dist</code></td>
+<td>
+<p>the conditional distribution to be used for the garch process.</p>
+</td></tr>
+<tr><td><code id="muSigmaGarch_+3A_trace">trace</code></td>
+<td>
+<p>logical indicating if some progress of <code>garchFit()</code>
+should printed to the console.</p>
+</td></tr>
+<tr><td><code id="muSigmaGarch_+3A_...">...</code></td>
+<td>
+<p>optional arguments to <code><a href="stats.html#topic+cor">cor</a></code>, i.e., <code>use</code>
+or <code>method</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a list with components
+</p>
+<table>
+<tr><td><code>mu</code></td>
+<td>
+<p>numeric vector of length <code class="reqn">n</code> of mean returns (<code class="reqn">= E[R_i]</code>).</p>
+</td></tr>
+<tr><td><code>covar</code></td>
+<td>
+<p>covariance matrix (<code class="reqn">n \times n</code>) of the returns.</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+muS.sp500">muS.sp500</a></code> which has been produced via <code>muSigmaGarch</code>.
+<code><a href="#topic+CLA">CLA</a></code> which needs <code>(mu, covar)</code> as crucial input.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>if(requireNamespace("FRAPO")) {
+  data(NASDAQ, package = "FRAPO")
+  ## 12 randomly picked stocks from NASDAQ data
+  iS &lt;- if(FALSE) {  ## created (w/ warning, in new R)  by
+    RNGversion("3.5.0"); set.seed(17); iS &lt;- sample(ncol(NASDAQ), 12)
+  } else c(341L, 2126L, 1028L, 1704L, 895L, 1181L, 454L, 410L, 1707L, 425L, 950L, 5L)
+  X. &lt;- NASDAQ[, iS]
+  muSig &lt;- muSigmaGarch(X.)
+  stopifnot(identical(names(muSig$mu), names(NASDAQ)[iS]),
+            identical(dim(muSig$covar), c(12L,12L)),
+     all.equal(unname(muSig$mu),
+               c(  7.97, -4.05, -14,     21.5, -5.36, -15.3,
+                 -15.9,  11.8,   -1.64, -14,    3.13, 121) / 10000,
+               tol = 0.0015))
+}
+</code></pre>
+
+<hr>
+<h2 id='plot.CLA'>Plotting CLA() results including Efficient Frontier</h2><span id='topic+plot.CLA'></span>
+
+<h3>Description</h3>
+
+<p>A partly experimental <code><a href="graphics.html#topic+plot">plot</a>()</code> method for
+<code><a href="#topic+CLA">CLA</a>()</code> objects.
+</p>
+<p>It draws the efficient frontier in the <code class="reqn">\mu_w,\sigma_w</code> aka (mean,
+std.dev.) plane.
+</p>
+<p>Currently, this is quite rudimentary.<br />
+Future improvements would allow
+- to add the/some single asset points,
+- to correctly   (&lsquo;hyperbolically&rsquo;) interpolate between turning points
+- add text about the number of (unique) critical points
+- add option <code>add = FALSE</code> which when TRUE would use
+<code><a href="graphics.html#topic+lines">lines</a></code> instead <code>plot</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+## S3 method for class 'CLA'
+plot(x, type = "o", main = "Efficient Frontier",
+     xlab = expression(sigma(w)),
+     ylab = expression(mu(w)),
+     col = adjustcolor("blue", alpha.f = 0.5),
+     pch = 16, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot.CLA_+3A_x">x</code></td>
+<td>
+<p>a named <code><a href="base.html#topic+list">list</a></code> as resulting from <code><a href="#topic+CLA">CLA</a>()</code>.</p>
+</td></tr>
+<tr><td><code id="plot.CLA_+3A_type">type</code></td>
+<td>
+<p>the <code><a href="graphics.html#topic+lines">lines</a></code>/<code><a href="graphics.html#topic+points">points</a></code> types used
+for the efficient frontier.  This will become more sophisticated,
+i.e., <em>may change non-compatibly!!</em></p>
+</td></tr>
+<tr><td><code id="plot.CLA_+3A_main">main</code></td>
+<td>
+<p>main <code><a href="graphics.html#topic+title">title</a></code>.</p>
+</td></tr>
+<tr><td><code id="plot.CLA_+3A_xlab">xlab</code>, <code id="plot.CLA_+3A_ylab">ylab</code></td>
+<td>
+<p>x- and y- axis labels, passed to <code><a href="graphics.html#topic+plot.default">plot.default</a></code>.</p>
+</td></tr>
+<tr><td><code id="plot.CLA_+3A_col">col</code>, <code id="plot.CLA_+3A_pch">pch</code></td>
+<td>
+<p>color and point type, passed to
+<code><a href="graphics.html#topic+plot.default">plot.default</a></code>, but with differing defaults in this method.</p>
+</td></tr>
+<tr><td><code id="plot.CLA_+3A_...">...</code></td>
+<td>
+<p>potentially further arguments passed to
+<code><a href="graphics.html#topic+plot">plot</a></code>, i.e., <code><a href="graphics.html#topic+plot.default">plot.default</a></code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Martin Maechler.</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+CLA">CLA</a></code>, <code><a href="graphics.html#topic+plot.default">plot.default</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## TODO %% Add A. Norring's small 12-asset example see --&gt; ../TODO
+## ---- one example is in help(CLA)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

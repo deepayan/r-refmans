@@ -1,0 +1,769 @@
+<!DOCTYPE html><html><head><title>Help for package PCDimension</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {PCDimension}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#agDimFunction'>
+<p>Divide Steps into &quot;Long&quot; and &quot;Short&quot; to Compute Auer-Gervini Dimension</p></a></li>
+<li><a href='#AuerGervini-class'><p>Estimating Number of Principal Components Using the Auer-Gervini Method</p></a></li>
+<li><a href='#brokenStick'>
+<p>The Broken Stick Method</p></a></li>
+<li><a href='#compareAgDimMethods'>
+<p>Compare Methods to Divide Steps into &quot;Long&quot; and &quot;Short&quot;</p></a></li>
+<li><a href='#rndLambdaF'>
+<p>Principal Component Statistics Based on Randomization</p></a></li>
+<li><a href='#spca-data'><p>Sample PCA Dataset</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>1.1.13</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2022-06-30</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Finding the Number of Significant Principal Components</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Kevin R. Coombes, Min Wang</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Kevin R. Coombes &lt;krc@silicovore.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implements methods to automate the Auer-Gervini graphical
+  Bayesian approach for determining the number of significant
+  principal components. Automation uses clustering, change points, or
+  simple statistical models to distinguish "long" from "short" steps
+  in a graph showing the posterior number of components as a function
+  of a prior parameter. See &lt;<a href="https://doi.org/10.1101%2F237883">doi:10.1101/237883</a>&gt;.</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.1), ClassDiscovery</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>methods, stats, graphics, oompaBase, kernlab, changepoint, cpm</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>MASS, nFactors</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License (== 2.0)</a></td>
+</tr>
+<tr>
+<td>biocViews:</td>
+<td>Clustering</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="http://oompa.r-forge.r-project.org/">http://oompa.r-forge.r-project.org/</a></td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2022-06-30 16:47:14 UTC; KRC</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2022-06-30 17:30:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='agDimFunction'>
+Divide Steps into &quot;Long&quot; and &quot;Short&quot; to Compute Auer-Gervini Dimension
+</h2><span id='topic+agDimFunction'></span><span id='topic+agDimTwiceMean'></span><span id='topic+agDimKmeans'></span><span id='topic+agDimKmeans3'></span><span id='topic+agDimSpectral'></span><span id='topic+agDimTtest'></span><span id='topic+agDimTtest2'></span><span id='topic+agDimCPT'></span><span id='topic+makeAgCpmFun'></span>
+
+<h3>Description</h3>
+
+<p>Auer and Gervini developed a Bayesian graphical method to determine
+the number <code class="reqn">d</code> of significant principal components; a brief
+overview is included in the help for the <code><a href="#topic+AuerGervini">AuerGervini</a></code>
+class.  The output of their method is a step function that displays
+the maximum a posteriori (MAP) choice of <code class="reqn">d</code> as a step function of
+a one-parameter family of prior distributions, and they recommend
+choosing the highest &quot;long&quot; step.  The functions described here help
+automate the process of dividing the step lengths into &quot;long&quot; and
+&quot;short&quot; classes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  agDimTwiceMean(stepLength)
+  agDimKmeans(stepLength)
+  agDimKmeans3(stepLength)
+  agDimSpectral(stepLength)
+  agDimTtest(stepLength, extra=0)
+  agDimTtest2(stepLength)
+  agDimCPT(stepLength)
+  makeAgCpmFun(method)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="agDimFunction_+3A_steplength">stepLength</code></td>
+<td>
+<p>A numeric vector</p>
+</td></tr>
+<tr><td><code id="agDimFunction_+3A_method">method</code></td>
+<td>
+<p>A character string describing a method supported by the
+<code>detectChangePointBatch</code> function in the <code>cpm</code>
+package.</p>
+</td></tr>
+<tr><td><code id="agDimFunction_+3A_extra">extra</code></td>
+<td>
+<p>Just ignore this. Don't use it. It's a hack to avoid
+having to maintain two different versions of the same code.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The <code>agDimTwiceMean</code> function implements a simple and naive rule:
+a step is considered long if it as least twice the mean length.
+</p>
+<p>The <code>agDimKmeans</code> uses the <code><a href="stats.html#topic+kmeans">kmeans</a></code> algorithm with
+<code class="reqn">k=2</code> to divide the step lengths into two classes.  Starting
+centers for the groups are taken to be the minimum and maximum
+values.
+</p>
+<p>The <code>agDimKmeans3</code> function uses <code>kmeans</code> with <code class="reqn">k=3</code>,
+using the median as the third center.  Only one of the three groups is
+considered &quot;short&quot;.
+</p>
+<p>The <code>agDimSpectral</code> applies spectral clustering (as implemented
+by the <code>specc</code> function from the <code>kernlab</code> package)
+to divide the steps lengths into two groups.
+</p>
+<p>The <code>agDimTtest</code> and <code>agDimTtest2</code> functions implement two
+variants of a novel algorithm specialized for this particular task.
+The idea is to start by sorting the step lengths so that </p>
+<p style="text-align: center;"><code class="reqn">L_1 \le
+  L_2 \le \dots \le L_n.</code>
+</p>
+<p>  Then, for each <code class="reqn">i \in 3,\dots, N-1</code>, we
+compute the mean and standard deviation of the first <code class="reqn">i</code> step
+lengths.  Finally, one computes the likelhood that <code class="reqn">L_{i+1}</code> comes
+from the normal distribution defined by the first <code class="reqn">i</code> lengths. If
+the probability that <code class="reqn">L_{i+1}</code> is larger is less than <code class="reqn">0.01</code>,
+then it is chosen as the &quot;smallest long step&quot;.
+</p>
+<p>The novel method just described can also be viewed as a way to detect
+a particular kind of change point.  So, we also provide the
+<code>agDimCPT</code> function that uses the changepoint detection
+algorithm implement by the <code>cpt.mean</code> function in the
+<code>changepoint</code> package.  More generally, the <code>makeAgCpmFun</code>
+allows you to use any of the changepoint models implemented as part
+of the <code>detectChangePointBatch</code> function in the <code>cpm</code>
+package.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Each of the functions <code>agDimTwiceMean</code>, <code>agDimKmeans</code>,
+<code>agDimKmeans3</code>, <code>agDimSpectral</code>, <code>agDimTtest</code>,
+<code>agDimTtest2</code>, and <code>agDimCPT</code> returns a logical vector whose
+length is equal to the input <code>stepLength</code>.  <code>TRUE</code> values
+identify &quot;long&quot; steps and <code>FALSE</code> values identify &quot;short&quot;
+steps.
+</p>
+<p>The <code>makeAgCpmFun</code> returns a function that takes one argument (a
+numeric <code>stepLength</code> vector) and returns a logical vector of the
+same length.
+</p>
+<p><em>Note:</em> Our simulations suggest that &quot;TwiceMean&quot; and &quot;CPM&quot; give
+the best results.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes &lt;krc@silicovore.com&gt;, Min Wang &lt;wang.1807@osu.edu&gt;.
+</p>
+
+
+<h3>References</h3>
+
+<p>P Auer, D Gervini.
+Choosing principal components: a new graphical method based on Bayesian model selection.
+Communications in Statistics-Simulation and Computation 37 (5), 962-977
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The functions described here implerment different algorithms that can
+be used by the <code><a href="#topic+agDimension">agDimension</a></code> function to automatically
+compute the number of significant principal components based on the
+<code><a href="#topic+AuerGervini">AuerGervini</a></code> approach.  Several of these functions are
+wrappers around functions defined in other packages, including
+<code>specc</code> in the <code>kernlab</code> package,
+<code>cpt.mean</code> in the <code>changepoint</code> package, and
+<code>detectChangePointBatch</code> in the <code>cpm</code> package.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># simulate variances
+lambda &lt;- rev(sort(diff(sort(c(0, 1, runif(9))))))
+# apply the Auer-Gervini method
+ag &lt;- AuerGervini(lambda, dd=c(3,10))
+# Review the results
+summary(ag)
+agDimension(ag)
+agDimension(ag, agDimKmeans)
+agDimension(ag, agDimSpectral)
+f &lt;- makeAgCpmFun("Exponential")
+agDimension(ag, f)
+</code></pre>
+
+<hr>
+<h2 id='AuerGervini-class'>Estimating Number of Principal Components Using the Auer-Gervini Method</h2><span id='topic+PCDimension'></span><span id='topic+AuerGervini-class'></span><span id='topic+plot+2CAuerGervini+2Cmissing-method'></span><span id='topic+summary+2CAuerGervini-method'></span><span id='topic+AuerGervini'></span><span id='topic+agDimension'></span>
+
+<h3>Description</h3>
+
+<p>Auer and Gervini [1] described a graphical Bayesian method for
+estimating the number of statistically significant principal
+components.  We have implemented their method in the <code>AuerGervini</code>
+class, and enhanced it by automating the final selection.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>AuerGervini(Lambda, dd=NULL, epsilon = 2e-16)
+agDimension(object, agfun=agDimTwiceMean)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="AuerGervini-class_+3A_lambda">Lambda</code></td>
+<td>
+<p>Either a <code>SamplePCA</code> object or a numerical vector
+of variances from a principal components analysis.</p>
+</td></tr>
+<tr><td><code id="AuerGervini-class_+3A_dd">dd</code></td>
+<td>
+<p>A vector of length 2 containing the dimensions of the data
+used to created the Auer-Gervini object. If <code>Lambda</code> is a
+<code>SamplePCA</code> object, then the dimensions are taken from it,
+ignoring the <code>dd</code> argument.</p>
+</td></tr>
+<tr><td><code id="AuerGervini-class_+3A_epsilon">epsilon</code></td>
+<td>
+<p>A numeric value.  Used to remove any variances that are
+less than <code>epsilon</code>; defaults to 2e-16.  Should only be needed in
+rare cases where negative variances show up because of round-off error.</p>
+</td></tr>
+<tr><td><code id="AuerGervini-class_+3A_object">object</code></td>
+<td>
+<p>An object of the <code>AuerGervini</code> class.</p>
+</td></tr>
+<tr><td><code id="AuerGervini-class_+3A_agfun">agfun</code></td>
+<td>
+<p>A function that takes one argument (a vector of step
+lengths) and returns a logical vector of the same length (where true
+indicates &quot;long&quot;  as opposed to &quot;short&quot; steps).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The Auer-Gervini method for determining the number of principal
+components is based on a Bayesian model that assaerts that the
+vector of explained variances (eigenvalues) should have the form
+</p>
+<p style="text-align: center;"><code class="reqn">a_1 \le a_2 \le \dots \le a_d &lt; a_{d+1} = a_{d+2} = \dots a_n</code>
+</p>
+
+<p>with the goal being to find the true dimension <code class="reqn">d</code>. They consider
+a set of prior distributions on <code class="reqn">d \in \{1, \dots, n\}</code> that decay
+exponentially, with the rate of decay controlled by a parameter
+<code class="reqn">\theta</code>.  For each value of <code class="reqn">\theta</code>, one selects the value
+of <code class="reqn">d</code> that has the maximum a posteriori (MAP) probability. Auer
+and Gervini show that the dimensions selected by this procedure write
+<code class="reqn">d</code> as a non-increasing step function of <code class="reqn">\theta</code>. The values
+of <code class="reqn">\theta</code> where the steps change are stored in    the
+<code>changePoints</code> slot, and the corresponding <code class="reqn">d</code>-values are 
+stored in the <code>dLevels</code> slot.
+</p>
+<p>Auer and Gervini go on to advise using their method as a graphical
+approach, manually (or visually?) selecting the highest step that is
+&quot;long&quot;. Our implementation provides several different algorithms for
+automatically deciding what is &quot;long&quot; enough.  The simplest (but
+fairly naive) approach   is to take anything that is longer than twice
+the mean; other algorithms are described in
+<code><a href="#topic+agDimFunction">agDimFunction</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>AuerGervini</code> function constructs and returns an object of
+the <code>AuerGervini</code> class.
+</p>
+<p>The <code>agDimension</code> function computes the number of significant
+principal components.  The general idea is that one starts by
+computing the length of each step in the Auer-Gerivni plot, and must
+then separate these into &quot;long&quot; and &quot;short&quot; classes.  We provide a
+variety of different algorithms to carry out this process; the
+default algorithm in the function <code><a href="#topic+agDimTwiceMean">agDimTwiceMean</a></code> defines
+a step as &quot;long&quot; if it more than twice the mean step length.
+</p>
+
+
+<h3>Objects from the Class</h3>
+
+<p>Objects should be created using the <code>AuerGervini</code> constructor.
+</p>
+
+
+<h3>Slots</h3>
+
+
+<dl>
+<dt><code>Lambda</code>:</dt><dd><p>A <code>numeric</code> vector containing
+the explained variances in decreasing order. </p>
+</dd>
+<dt><code>dimensions</code></dt><dd><p>Numeric vector of length 2 containing the
+dimnesions of the underlying data matrix.</p>
+</dd>
+<dt><code>dLevels</code>:</dt><dd><p>Object of class <code>numeric</code>; see details </p>
+</dd>
+<dt><code>changePoints</code>:</dt><dd><p>Object of class <code>numeric</code>; see details </p>
+</dd>
+</dl>
+
+
+
+<h3>Methods</h3>
+
+
+<dl>
+<dt>plot</dt><dd><p><code>signature(x = "AuerGervini", y = "missing")</code>: ... </p>
+</dd>
+<dt>summary</dt><dd><p><code>signature(object = "AuerGervini")</code>: ... </p>
+</dd>
+</dl>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes &lt;krc@silicovore.com&gt;</p>
+
+
+<h3>References</h3>
+
+<p>[1] P Auer, D Gervini.
+Choosing principal components: a new graphical method based on Bayesian model selection.
+Communications in Statistics-Simulation and Computation 37 (5),
+962-977.
+</p>
+<p>[2] Wang M, Kornbla SM, Coombes KR.
+Decomposing the Apoptosis Pathway Into Biologically Interpretable
+Principal Components.
+Preprint: bioRxiv, 2017. &lt;doi://10.1101/237883&gt;.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+agDimFunction">agDimFunction</a></code> to get a complete list of the functions
+implementing different algorithms to separate the step lengths into
+two classes.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>showClass("AuerGervini")
+# simulate variances
+lambda &lt;- rev(sort(diff(sort(c(0, 1, runif(9))))))
+# apply the Auer-Gervini method
+ag &lt;- AuerGervini(lambda, dd=c(3,10))
+# Review the results
+summary(ag)
+agDimension(ag)
+agDimension(ag, agDimKmeans)
+# Look at the results graphically
+plot(ag, agfun=list(agDimTwiceMean, agDimKmeans))
+</code></pre>
+
+<hr>
+<h2 id='brokenStick'>
+The Broken Stick Method
+</h2><span id='topic+brokenStick'></span><span id='topic+bsDimension'></span>
+
+<h3>Description</h3>
+
+<p>The Broken Stick model is one proposed method for estimating the
+number of statistically significant principal components. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>brokenStick(k, n)
+bsDimension(lambda, FUZZ = 0.005)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="brokenStick_+3A_k">k</code></td>
+<td>
+<p>An integer between 1 and <code>n</code>.</p>
+</td></tr>
+<tr><td><code id="brokenStick_+3A_n">n</code></td>
+<td>
+<p>An integer; the total number of principal components.</p>
+</td></tr>
+<tr><td><code id="brokenStick_+3A_lambda">lambda</code></td>
+<td>
+<p>The set of variances from each component from a principal
+components analysis.  These are assumed to be already sorted in
+decreasing order. You can also supply a <code>SamplePCA</code>
+object, and the variances will be automatically extracted.</p>
+</td></tr>
+<tr><td><code id="brokenStick_+3A_fuzz">FUZZ</code></td>
+<td>
+<p>A real number; anything smaller than <code>FUZZ</code> is
+assumed to equal zero for all practical purposes.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The Broken Stick model is one proposed method for estimating the
+number of statistically significant principal components.  The idea is
+to model <code class="reqn">N</code> variances by taking a stick of unit length and breaking it
+into <code class="reqn">N</code> pieces by randomly (and simultaneously) selecting break
+points from a uniform distribution.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The <code>brokenStick</code> function returns, as a real number, the
+expected value of the <code>k</code>-th longest piece when breaking a
+stick of length one into <code>n</code> total pieces.  Most commonly used
+via the idiom <code>brokenStick(1:N, N)</code> to get the entire vector of
+lengths at one time.
+</p>
+<p>The <code>bsDimension</code> function returns an integer, the number of
+significant components under this model.  This is computed by finding
+the last point at which the observed variance is bugger than the
+expected value under the broken stick model by at least <code>FUZZ</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes &lt;krc@silicovore.com&gt;</p>
+
+
+<h3>References</h3>
+
+<p>Jackson, D. A. (1993). Stopping rules in principal components analysis:
+a comparison of heuristical and statistical approaches. Ecology 74,
+2204&ndash;2214. 
+</p>
+<p>Legendre, P. and Legendre, L. (1998) Numerical Ecology. 2nd English ed. Elsevier.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Better methods to address this question are based on the Auer-Gervini
+method; see <code><a href="#topic+AuerGervini">AuerGervini</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>brokenStick(1:10, 10)
+sum( brokenStick(1:10, 10) )
+fakeVar &lt;- c(30, 20, 8, 4, 3, 2, 1)
+bsDimension(fakeVar)
+</code></pre>
+
+<hr>
+<h2 id='compareAgDimMethods'>
+Compare Methods to Divide Steps into &quot;Long&quot; and &quot;Short&quot;
+</h2><span id='topic+compareAgDimMethods'></span>
+
+<h3>Description</h3>
+
+<p>Auer and Gervini developed a Bayesian graphical method to determine
+the number <code class="reqn">d</code> of significant principal components; a brief
+overview is included in the help for the <code><a href="#topic+AuerGervini">AuerGervini</a></code>
+class.  The output of their method is a step function that displays
+the maximum a posteriori (MAP) choice of <code class="reqn">d</code> as a step function of
+a one-parameter family of prior distributions, and they recommend
+choosing the highest &quot;long&quot; step.  The functions described here help
+automate the process of dividing the step lengths into &quot;long&quot; and
+&quot;short&quot; classes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  compareAgDimMethods(object, agfuns)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="compareAgDimMethods_+3A_object">object</code></td>
+<td>
+<p>An object of the <code><a href="#topic+AuerGervini">AuerGervini</a></code> class</p>
+</td></tr>
+<tr><td><code id="compareAgDimMethods_+3A_agfuns">agfuns</code></td>
+<td>
+<p>A list of functions</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This method simply iterates over the list of functions that implement
+different algorithms/methods to determine the PC dimension.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an integer vector of te same length as the list of
+<code>agfuns</code>, containing the number of significant principal
+components computed by each method.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes &lt;krc@silicovore.com&gt;, Min Wang &lt;wang.1807@osu.edu&gt;.
+</p>
+
+
+<h3>References</h3>
+
+<p>P Auer, D Gervini.
+Choosing principal components: a new graphical method based on Bayesian model selection.
+Communications in Statistics-Simulation and Computation 37 (5), 962-977
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+AuerGervini">AuerGervini</a></code>, <code><a href="#topic+agDimension">agDimension</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># simulate variances
+lambda &lt;- rev(sort(diff(sort(c(0, 1, runif(9))))))
+# apply the Auer-Gervini method
+ag &lt;- AuerGervini(lambda, dd=c(3,10))
+# try different methods
+agfuns &lt;- list(twice=agDimTwiceMean,
+               km=agDimKmeans,
+               cpt=agDimCPT)
+compareAgDimMethods(ag, agfuns)
+</code></pre>
+
+<hr>
+<h2 id='rndLambdaF'>
+Principal Component Statistics Based on Randomization
+</h2><span id='topic+rndLambdaF'></span>
+
+<h3>Description</h3>
+
+<p>Implements randomization-based procedures to estimate the number of
+principal components.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rndLambdaF(data, B = 1000, alpha = 0.05)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="rndLambdaF_+3A_data">data</code></td>
+<td>
+<p>A numeric data matrix.</p>
+</td></tr>
+<tr><td><code id="rndLambdaF_+3A_b">B</code></td>
+<td>
+<p>An integer; the number of times to scramble the data columns.</p>
+</td></tr>
+<tr><td><code id="rndLambdaF_+3A_alpha">alpha</code></td>
+<td>
+<p>A real number between 0 and 1; the significance level.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The randomization procedures implemented here were first developed by
+ter Brack [1,2].  In a simulation study, Peres-Neto and colleagues
+concluded that these methods were among the best [3]. Our own
+simulations on larger data matrices find that rnd-Lambda performs
+well (comparably to Auer-Gervini, though slower), but that rnd-F works
+poorly.
+</p>
+<p>The test procedure is: (1) randomize the values with all the attribute
+columns of the data matrix; (2) perform PCA on the scrambled data
+matrix; and (3) compute the test statistics. All three steps are
+repeated a total of (B - 1) times, where B is large enough to
+guarantee accuracy when estimating p-values; in practice, B is usually
+set to 1000. In each randomization, two test statistics are computed:
+(1) the eigenvalue <code class="reqn">\lambda_k</code> for the k-th principal component; and
+(2) a pseudo F-ratio computed as <code class="reqn">\lambda_k / \sum_{i=k+1}^n \lambda_i</code>.
+Finally, the p-value for each k and each statistic of
+interest is estimated to be the proportion of the test statistics in
+all data sets that are greater than or equal to the one in the
+observed data matrix.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A named vector of length two, containing the predicted number of
+principal components based on the rnd-Lambda and rnd-F statistics. </p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin R. Coombes &lt;krc@silicovore.com&gt;, Min Wang &lt;wang.1807@osu.edu&gt;.
+</p>
+
+
+<h3>References</h3>
+
+<p>[1] ter Braak CFJ. CANOCO &ndash; a Fortran program for canonical community
+ordination by [partial] [detrended] [canonical] correspondence
+analysis, principal component analysis and redundancy analysis
+(version 2.1). Agricultural Mathematics Group, Report LWA-88- 02,
+Wageningen, 1988.
+</p>
+<p>[2] ter Braak CFJ. Update notes: CANOCO (version 3.1). Agricultural
+Mathematics Group, Wageningen, 1990.
+</p>
+<p>[3] Peres-Neto PR, Jackson DA and Somers KM. How many principal components? Stopping
+rules for determining the number of non-trivial axes revisited. Computational Statistics and
+Data Analysis 2005; 49: 974&ndash;997.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="#topic+AuerGervini-class">AuerGervini-class</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>dataset &lt;- matrix(rnorm(200*15, 6), ncol=15)
+rndLambdaF(dataset)
+</code></pre>
+
+<hr>
+<h2 id='spca-data'>Sample PCA Dataset</h2><span id='topic+spca-data'></span><span id='topic+spca'></span>
+
+<h3>Description</h3>
+
+<p>This data set contains an object of the class <code>SamplePCA</code>.
+This object results from performing a principal components analysis on
+a simulated data set.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(spca)
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A <code>SamplePCA</code> object based on a simulated data matrix with
+204 rows and 14 columns, with true &quot;principal component dimension&quot;
+equal to one. That is, there should be one significant principal
+component.</p>
+
+
+<h3>Source</h3>
+
+<p>Simulations are described in detail in the <code>Thresher</code> package,
+which depends on the <code>PCDimension</code> package.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The ClassDiscovery package contains the <code>SamplePCA</code>
+class and functions.
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

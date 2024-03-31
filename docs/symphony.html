@@ -1,0 +1,1123 @@
+<!DOCTYPE html><html><head><title>Help for package symphony</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {symphony}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#buildReference'><p>Function for building a Symphony reference starting from expression matrix</p></a></li>
+<li><a href='#buildReferenceFromHarmonyObj'><p>Function for building a Symphony reference from a Harmony object. Useful if you would like your</p>
+code to be more modular. Note that you must have saved vargenes_means_sds and PCA loadings.</a></li>
+<li><a href='#calcknncorr'><p>Calculates the k-NN correlation, which measures how well the sorted ordering of k nearest reference</p>
+neighbors in a gold standard embedding correlate with the ordering for the same reference cells in
+an alternative embedding (i.e. from reference mapping).
+NOTE: it is very important for the order of reference cells (cols) in gold_ref matches that of alt_ref
+(same for matching columns of gold_query and alt_query).</a></li>
+<li><a href='#calcknncorrWithinQuery'><p>Calculates the k-NN correlation within the query cells only, which measures how well the sorted</p>
+ordering of k nearest query neighbors in a query de novo PCA embedding correlate with the ordering
+for the cells in the reference mapping embedding.</a></li>
+<li><a href='#calcPerCellMappingMetric'><p>Per-cell Confidence Score:</p>
+Calculates the weighted Mahalanobis distance for the query cells to reference clusters. Returns a vector
+of distance scores, one per query cell. Higher distance metric indicates less confidence.</a></li>
+<li><a href='#calcPerClusterMappingMetric'><p>Per-cluster Confidence Score:</p>
+Calculates the Mahalanobis distance from user-defined query clusters to their nearest
+reference centroid after initial projection into reference PCA space.
+All query cells in a cluster get the same score. Higher distance indicates less confidence.
+Due to the instability of estimating covariance with small numbers of cells, we do not assign a
+score to clusters smaller than u * d, where d is the dimensionality of the embedding and u is specified.</a></li>
+<li><a href='#evaluate'><p>Function for evaluating F1 by cell type,</p>
+adapted from automated cell type identifiaction benchmarking paper (Abdelaal et al. Genome Biology, 2019)</a></li>
+<li><a href='#findVariableGenes'><p>Function to find variable genes using mean variance relationship method</p></a></li>
+<li><a href='#knnPredict'><p>Predict annotations of query cells from the reference using k-NN method</p></a></li>
+<li><a href='#mapQuery'><p>Function for mapping query cells to a Symphony reference</p></a></li>
+<li><a href='#pbmcs_exprs_small'><p>Log(CP10k+1) normalized counts matrix (genes by cells) for 10x PBMCs dataset for vignette.</p></a></li>
+<li><a href='#pbmcs_meta_small'><p>Metadata for 10x PBMCs dataset for vignette.</p></a></li>
+<li><a href='#plotReference'><p>Function to plot reference, colored by cell type</p></a></li>
+<li><a href='#rowSDs'><p>Calculate standard deviations by row</p></a></li>
+<li><a href='#runPCAQueryAlone'><p>Runs a standard PCA pipeline on query (1 batch). Assumes query_exp is already normalized.</p></a></li>
+<li><a href='#scaleDataWithStats'><p>Scale data with given mean and standard deviations</p></a></li>
+<li><a href='#symphony'><p>symphony</p></a></li>
+<li><a href='#vargenes_vst'><p>Function to find variable genes using variance stabilizing transform (vst) method</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Efficient and Precise Single-Cell Reference Atlas Mapping</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.1.1</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implements the Symphony single-cell reference building and query mapping algorithms and additional functions described in Kang et al <a href="https://www.nature.com/articles/s41467-021-25957-x">https://www.nature.com/articles/s41467-021-25957-x</a>.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL (&ge; 3)</a></td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.2.3</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>knitr, rmarkdown, testthat, ggthemes, ggrastr, ggrepel</td>
+</tr>
+<tr>
+<td>LinkingTo:</td>
+<td>Rcpp, RcppArmadillo</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>methods, Rcpp, harmony, uwot, irlba, class, purrr, dplyr,
+ggplot2, stats, utils, magrittr, data.table, tibble, Matrix,
+tidyr, rlang, RColorBrewer, RANN</td>
+</tr>
+<tr>
+<td>VignetteBuilder:</td>
+<td>knitr</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.5)</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-01-16 18:27:53 UTC; jbk37</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Joyce Kang <a href="https://orcid.org/0000-0002-1962-1291"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut,
+    cre],
+  Ilya Korsunsky <a href="https://orcid.org/0000-0003-4848-3948"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a>
+    [aut],
+  Soumya Raychaudhuri
+    <a href="https://orcid.org/0000-0002-1901-8265"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Joyce Kang &lt;joyce_kang@hms.harvard.edu&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2023-01-16 19:30:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='buildReference'>Function for building a Symphony reference starting from expression matrix</h2><span id='topic+buildReference'></span>
+
+<h3>Description</h3>
+
+<p>Function for building a Symphony reference starting from expression matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>buildReference(
+  exp_ref,
+  metadata_ref,
+  vars = NULL,
+  K = 100,
+  verbose = FALSE,
+  do_umap = TRUE,
+  do_normalize = TRUE,
+  vargenes_method = "vst",
+  vargenes_groups = NULL,
+  topn = 2000,
+  tau = 0,
+  theta = 2,
+  save_uwot_path = NULL,
+  d = 20,
+  additional_genes = NULL,
+  umap_min_dist = 0.1,
+  seed = 111
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="buildReference_+3A_exp_ref">exp_ref</code></td>
+<td>
+<p>Reference gene expression (genes by cells)</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_metadata_ref">metadata_ref</code></td>
+<td>
+<p>Reference cell metadata (cells by attributes)</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_vars">vars</code></td>
+<td>
+<p>Reference variables to Harmonize over e.g. c('donor', 'technology')</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_k">K</code></td>
+<td>
+<p>Number of soft cluster centroids in model</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_verbose">verbose</code></td>
+<td>
+<p>Verbose output</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_do_umap">do_umap</code></td>
+<td>
+<p>Perform UMAP visualization on harmonized reference embedding</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_do_normalize">do_normalize</code></td>
+<td>
+<p>Perform log(CP10K+1) normalization</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_vargenes_method">vargenes_method</code></td>
+<td>
+<p>Variable gene selection method (either 'vst' or 'mvp')</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_vargenes_groups">vargenes_groups</code></td>
+<td>
+<p>Name of metadata column specifying groups for variable gene selection. If not NULL, calculate topn variable genes in each group separately, then pool</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_topn">topn</code></td>
+<td>
+<p>Number of variable genes to subset by</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_tau">tau</code></td>
+<td>
+<p>Tau parameter for Harmony step</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_theta">theta</code></td>
+<td>
+<p>Theta parameter(s) for Harmony step</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_save_uwot_path">save_uwot_path</code></td>
+<td>
+<p>Absolute path to save the uwot model (used if do_umap is TRUE)</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_d">d</code></td>
+<td>
+<p>Number of PC dimensions</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_additional_genes">additional_genes</code></td>
+<td>
+<p>Any custom genes (e.g. marker genes) to include in addition to variable genes</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_umap_min_dist">umap_min_dist</code></td>
+<td>
+<p>umap parameter (see uwot documentation for details)</p>
+</td></tr>
+<tr><td><code id="buildReference_+3A_seed">seed</code></td>
+<td>
+<p>Random seed</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Symphony reference object. Integrated embedding is stored in the $Z_corr slot. Other slots include
+cell-level metadata ($meta_data), variable genes means and standard deviations ($vargenes),
+loadings from PCA ($loadings), original PCA embedding ($Z_orig), reference compression terms ($cache),
+betas from Harmony integration ($betas), cosine normalized soft cluster centroids ($centroids),
+centroids in PC space ($centroids_pc), and optional umap coordinates ($umap$embedding).
+</p>
+
+<hr>
+<h2 id='buildReferenceFromHarmonyObj'>Function for building a Symphony reference from a Harmony object. Useful if you would like your
+code to be more modular. Note that you must have saved vargenes_means_sds and PCA loadings.</h2><span id='topic+buildReferenceFromHarmonyObj'></span>
+
+<h3>Description</h3>
+
+<p>Function for building a Symphony reference from a Harmony object. Useful if you would like your
+code to be more modular. Note that you must have saved vargenes_means_sds and PCA loadings.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>buildReferenceFromHarmonyObj(
+  harmony_obj,
+  metadata,
+  vargenes_means_sds,
+  pca_loadings,
+  verbose = TRUE,
+  do_umap = TRUE,
+  save_uwot_path = NULL,
+  umap_min_dist = 0.1,
+  seed = 111
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_harmony_obj">harmony_obj</code></td>
+<td>
+<p>Harmony object (output from HarmonyMatrix())</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_metadata">metadata</code></td>
+<td>
+<p>Reference cell metadata (cells by attributes)</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_vargenes_means_sds">vargenes_means_sds</code></td>
+<td>
+<p>Variable genes in dataframe with columns named ('symbol', 'mean', 'stddev')</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_pca_loadings">pca_loadings</code></td>
+<td>
+<p>Gene loadings from PCA (e.g. irlba(ref_exp_scaled, nv = 20)$u)</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_verbose">verbose</code></td>
+<td>
+<p>Verbose output</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_do_umap">do_umap</code></td>
+<td>
+<p>Perform UMAP visualization on harmonized reference embedding</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_save_uwot_path">save_uwot_path</code></td>
+<td>
+<p>Absolute path to save the uwot model (if do_umap is TRUE)</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_umap_min_dist">umap_min_dist</code></td>
+<td>
+<p>UMAP parameter (see uwot documentation for details)</p>
+</td></tr>
+<tr><td><code id="buildReferenceFromHarmonyObj_+3A_seed">seed</code></td>
+<td>
+<p>Random seed</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Symphony reference object. Integrated embedding is stored in the $Z_corr slot. Other slots include
+cell-level metadata ($meta_data), variable genes means and standard deviations ($vargenes),
+loadings from PCA or other dimensional reduction such as CCA ($loadings), original PCA embedding ($Z_orig),
+reference compression terms ($cache), betas from Harmony integration ($betas), cosine-normalized soft cluster centroids ($centroids),
+centroids in PC space ($centroids_pc), and optional umap coordinates ($umap$embedding).
+</p>
+
+<hr>
+<h2 id='calcknncorr'>Calculates the k-NN correlation, which measures how well the sorted ordering of k nearest reference
+neighbors in a gold standard embedding correlate with the ordering for the same reference cells in
+an alternative embedding (i.e. from reference mapping).
+NOTE: it is very important for the order of reference cells (cols) in gold_ref matches that of alt_ref
+(same for matching columns of gold_query and alt_query).</h2><span id='topic+calcknncorr'></span>
+
+<h3>Description</h3>
+
+<p>Calculates the k-NN correlation, which measures how well the sorted ordering of k nearest reference
+neighbors in a gold standard embedding correlate with the ordering for the same reference cells in
+an alternative embedding (i.e. from reference mapping).
+NOTE: it is very important for the order of reference cells (cols) in gold_ref matches that of alt_ref
+(same for matching columns of gold_query and alt_query).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>calcknncorr(gold_ref, alt_ref, gold_query, alt_query, k = 500)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="calcknncorr_+3A_gold_ref">gold_ref</code></td>
+<td>
+<p>Reference cells in gold standard embedding (PCs by cells)</p>
+</td></tr>
+<tr><td><code id="calcknncorr_+3A_alt_ref">alt_ref</code></td>
+<td>
+<p>Reference cells in alternative embedding (PCs by cells)</p>
+</td></tr>
+<tr><td><code id="calcknncorr_+3A_gold_query">gold_query</code></td>
+<td>
+<p>Query cells in gold standard embedding (PCs by cells)</p>
+</td></tr>
+<tr><td><code id="calcknncorr_+3A_alt_query">alt_query</code></td>
+<td>
+<p>Query cells in alternative embedding (PCs by cells)</p>
+</td></tr>
+<tr><td><code id="calcknncorr_+3A_k">k</code></td>
+<td>
+<p>Number of reference neighbors to use for kNN-correlation calculation</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Vector of k-NN correlations for query cells
+</p>
+
+<hr>
+<h2 id='calcknncorrWithinQuery'>Calculates the k-NN correlation within the query cells only, which measures how well the sorted
+ordering of k nearest query neighbors in a query de novo PCA embedding correlate with the ordering
+for the cells in the reference mapping embedding.</h2><span id='topic+calcknncorrWithinQuery'></span>
+
+<h3>Description</h3>
+
+<p>Calculates the k-NN correlation within the query cells only, which measures how well the sorted
+ordering of k nearest query neighbors in a query de novo PCA embedding correlate with the ordering
+for the cells in the reference mapping embedding.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>calcknncorrWithinQuery(
+  query,
+  var = NULL,
+  k = 100,
+  topn = 2000,
+  d = 20,
+  distance = "euclidean"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="calcknncorrWithinQuery_+3A_query">query</code></td>
+<td>
+<p>Query object (returned from mapQuery)</p>
+</td></tr>
+<tr><td><code id="calcknncorrWithinQuery_+3A_var">var</code></td>
+<td>
+<p>Query metadata batch variable (PCA is calculated within each batch separately); if NULL, do not split by batch</p>
+</td></tr>
+<tr><td><code id="calcknncorrWithinQuery_+3A_k">k</code></td>
+<td>
+<p>Number of neighbors to use for kNN-correlation calculation</p>
+</td></tr>
+<tr><td><code id="calcknncorrWithinQuery_+3A_topn">topn</code></td>
+<td>
+<p>number of variable genes to calculate within each query batch for query PCA</p>
+</td></tr>
+<tr><td><code id="calcknncorrWithinQuery_+3A_d">d</code></td>
+<td>
+<p>number of dimensions for query PCA within each query batch</p>
+</td></tr>
+<tr><td><code id="calcknncorrWithinQuery_+3A_distance">distance</code></td>
+<td>
+<p>either 'euclidean' or 'cosine'</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Vector of within-query k-NN correlations for query cells
+</p>
+
+<hr>
+<h2 id='calcPerCellMappingMetric'>Per-cell Confidence Score:
+Calculates the weighted Mahalanobis distance for the query cells to reference clusters. Returns a vector
+of distance scores, one per query cell. Higher distance metric indicates less confidence.</h2><span id='topic+calcPerCellMappingMetric'></span>
+
+<h3>Description</h3>
+
+<p>Per-cell Confidence Score:
+Calculates the weighted Mahalanobis distance for the query cells to reference clusters. Returns a vector
+of distance scores, one per query cell. Higher distance metric indicates less confidence.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>calcPerCellMappingMetric(
+  reference,
+  query,
+  Z_orig = TRUE,
+  metric = "mahalanobis"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="calcPerCellMappingMetric_+3A_reference">reference</code></td>
+<td>
+<p>Reference object as returned by Symphony buildReference()</p>
+</td></tr>
+<tr><td><code id="calcPerCellMappingMetric_+3A_query">query</code></td>
+<td>
+<p>Query object as returned by Symphony mapQuery()</p>
+</td></tr>
+<tr><td><code id="calcPerCellMappingMetric_+3A_z_orig">Z_orig</code></td>
+<td>
+<p>Define reference distribution using original PCA embedding or harmonized PC embedding</p>
+</td></tr>
+<tr><td><code id="calcPerCellMappingMetric_+3A_metric">metric</code></td>
+<td>
+<p>Uses Mahalanobis by default, but added as a parameter for potential future use</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of per-cell mapping metric scores for each cell.
+</p>
+
+<hr>
+<h2 id='calcPerClusterMappingMetric'>Per-cluster Confidence Score:
+Calculates the Mahalanobis distance from user-defined query clusters to their nearest
+reference centroid after initial projection into reference PCA space.
+All query cells in a cluster get the same score. Higher distance indicates less confidence.
+Due to the instability of estimating covariance with small numbers of cells, we do not assign a
+score to clusters smaller than u * d, where d is the dimensionality of the embedding and u is specified.</h2><span id='topic+calcPerClusterMappingMetric'></span>
+
+<h3>Description</h3>
+
+<p>Per-cluster Confidence Score:
+Calculates the Mahalanobis distance from user-defined query clusters to their nearest
+reference centroid after initial projection into reference PCA space.
+All query cells in a cluster get the same score. Higher distance indicates less confidence.
+Due to the instability of estimating covariance with small numbers of cells, we do not assign a
+score to clusters smaller than u * d, where d is the dimensionality of the embedding and u is specified.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>calcPerClusterMappingMetric(
+  reference,
+  query,
+  query_cluster_labels,
+  metric = "mahalanobis",
+  u = 2,
+  lambda = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="calcPerClusterMappingMetric_+3A_reference">reference</code></td>
+<td>
+<p>Reference object as returned by Symphony buildReference()</p>
+</td></tr>
+<tr><td><code id="calcPerClusterMappingMetric_+3A_query">query</code></td>
+<td>
+<p>Query object as returned by Symphony mapQuery()</p>
+</td></tr>
+<tr><td><code id="calcPerClusterMappingMetric_+3A_query_cluster_labels">query_cluster_labels</code></td>
+<td>
+<p>Vector of user-defined labels denoting clusters / putative novel cell type to calculate the score for</p>
+</td></tr>
+<tr><td><code id="calcPerClusterMappingMetric_+3A_metric">metric</code></td>
+<td>
+<p>Uses Mahalanobis by default, but added as a parameter for potential future use</p>
+</td></tr>
+<tr><td><code id="calcPerClusterMappingMetric_+3A_u">u</code></td>
+<td>
+<p>Do not assign scores to clusters smaller than u * d (see above description)</p>
+</td></tr>
+<tr><td><code id="calcPerClusterMappingMetric_+3A_lambda">lambda</code></td>
+<td>
+<p>Optional ridge parameter added to covariance diagonal to help stabilize numeric estimates</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data.frame of per-cluster mapping metric scores for each user-specified query cluster.
+</p>
+
+<hr>
+<h2 id='evaluate'>Function for evaluating F1 by cell type,
+adapted from automated cell type identifiaction benchmarking paper (Abdelaal et al. Genome Biology, 2019)</h2><span id='topic+evaluate'></span>
+
+<h3>Description</h3>
+
+<p>Function for evaluating F1 by cell type,
+adapted from automated cell type identifiaction benchmarking paper (Abdelaal et al. Genome Biology, 2019)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>evaluate(true, predicted)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="evaluate_+3A_true">true</code></td>
+<td>
+<p>vector of true labels</p>
+</td></tr>
+<tr><td><code id="evaluate_+3A_predicted">predicted</code></td>
+<td>
+<p>vector of predicted labels</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of results with confusion matrix ($Conf), median F1-score ($MedF1), F1 scores per class ($F1), and accuracy ($Acc).
+</p>
+
+<hr>
+<h2 id='findVariableGenes'>Function to find variable genes using mean variance relationship method</h2><span id='topic+findVariableGenes'></span>
+
+<h3>Description</h3>
+
+<p>Function to find variable genes using mean variance relationship method
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>findVariableGenes(
+  X,
+  groups,
+  min_expr = 0.1,
+  max_expr = Inf,
+  min_dispersion = 0,
+  max_dispersion = Inf,
+  num.bin = 20,
+  binning.method = "equal_width",
+  return_top_n = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="findVariableGenes_+3A_x">X</code></td>
+<td>
+<p>expression matrix</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_groups">groups</code></td>
+<td>
+<p>vector of groups</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_min_expr">min_expr</code></td>
+<td>
+<p>min expression cutoff</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_max_expr">max_expr</code></td>
+<td>
+<p>max expression cutoff</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_min_dispersion">min_dispersion</code></td>
+<td>
+<p>min dispersion cutoff</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_max_dispersion">max_dispersion</code></td>
+<td>
+<p>max dispersion cutoff</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_num.bin">num.bin</code></td>
+<td>
+<p>number of bins to use for scaled analysis</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_binning.method">binning.method</code></td>
+<td>
+<p>how bins are computed</p>
+</td></tr>
+<tr><td><code id="findVariableGenes_+3A_return_top_n">return_top_n</code></td>
+<td>
+<p>returns top n genes</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data.frame of variable genes
+</p>
+
+<hr>
+<h2 id='knnPredict'>Predict annotations of query cells from the reference using k-NN method</h2><span id='topic+knnPredict'></span>
+
+<h3>Description</h3>
+
+<p>Predict annotations of query cells from the reference using k-NN method
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>knnPredict(
+  query_obj,
+  ref_obj,
+  train_labels,
+  k = 5,
+  save_as = "cell_type_pred_knn",
+  confidence = TRUE,
+  seed = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="knnPredict_+3A_query_obj">query_obj</code></td>
+<td>
+<p>Symphony query object</p>
+</td></tr>
+<tr><td><code id="knnPredict_+3A_ref_obj">ref_obj</code></td>
+<td>
+<p>Symphony reference object</p>
+</td></tr>
+<tr><td><code id="knnPredict_+3A_train_labels">train_labels</code></td>
+<td>
+<p>vector of labels to train</p>
+</td></tr>
+<tr><td><code id="knnPredict_+3A_k">k</code></td>
+<td>
+<p>number of neighbors</p>
+</td></tr>
+<tr><td><code id="knnPredict_+3A_save_as">save_as</code></td>
+<td>
+<p>string that result column will be named in query metadata</p>
+</td></tr>
+<tr><td><code id="knnPredict_+3A_confidence">confidence</code></td>
+<td>
+<p>return k-NN confidence scores (proportion of neighbors voting for the predicted annotation)</p>
+</td></tr>
+<tr><td><code id="knnPredict_+3A_seed">seed</code></td>
+<td>
+<p>random seed (k-NN has some stochasticity in the case of ties)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Symphony query object, with predicted reference labels stored in the 'save_as' slot of the query$meta_data
+</p>
+
+<hr>
+<h2 id='mapQuery'>Function for mapping query cells to a Symphony reference</h2><span id='topic+mapQuery'></span>
+
+<h3>Description</h3>
+
+<p>Function for mapping query cells to a Symphony reference
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mapQuery(
+  exp_query,
+  metadata_query,
+  ref_obj,
+  vars = NULL,
+  verbose = TRUE,
+  do_normalize = TRUE,
+  do_umap = TRUE,
+  sigma = 0.1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mapQuery_+3A_exp_query">exp_query</code></td>
+<td>
+<p>Query gene expression (genes by cells)</p>
+</td></tr>
+<tr><td><code id="mapQuery_+3A_metadata_query">metadata_query</code></td>
+<td>
+<p>Query metadata (cells by attributes)</p>
+</td></tr>
+<tr><td><code id="mapQuery_+3A_ref_obj">ref_obj</code></td>
+<td>
+<p>Reference object as returned by Symphony buildReference()</p>
+</td></tr>
+<tr><td><code id="mapQuery_+3A_vars">vars</code></td>
+<td>
+<p>Query batch variable(s) to integrate over (column names in metadata)</p>
+</td></tr>
+<tr><td><code id="mapQuery_+3A_verbose">verbose</code></td>
+<td>
+<p>Verbose output</p>
+</td></tr>
+<tr><td><code id="mapQuery_+3A_do_normalize">do_normalize</code></td>
+<td>
+<p>Perform log(CP10K+1) normalization on query expression</p>
+</td></tr>
+<tr><td><code id="mapQuery_+3A_do_umap">do_umap</code></td>
+<td>
+<p>Perform umap projection into reference UMAP (if reference includes a uwot model)</p>
+</td></tr>
+<tr><td><code id="mapQuery_+3A_sigma">sigma</code></td>
+<td>
+<p>Fuzziness parameter for soft clustering (sigma = 1 is hard clustering)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Symphony query object. Mapping embedding is in the $Z slot. Other slots include
+query expression matrix ($exp), query cell-level metadata ($meta_data),
+query cell embedding in pre-Harmonized reference PCs ($Zq_pca), query cell soft cluster
+assignments ($R), and query cells in reference UMAP coordinates ($umap).
+</p>
+
+<hr>
+<h2 id='pbmcs_exprs_small'>Log(CP10k+1) normalized counts matrix (genes by cells) for 10x PBMCs dataset for vignette.</h2><span id='topic+pbmcs_exprs_small'></span>
+
+<h3>Description</h3>
+
+<p>Log(CP10k+1) normalized counts matrix (genes by cells) for 10x PBMCs dataset for vignette.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>pbmcs_exprs_small
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>: Sparse matrix (dgCMatrix): dimensions 1,764 genes by 1,200 cells
+</p>
+
+<hr>
+<h2 id='pbmcs_meta_small'>Metadata for 10x PBMCs dataset for vignette.</h2><span id='topic+pbmcs_meta_small'></span>
+
+<h3>Description</h3>
+
+<p>Metadata for 10x PBMCs dataset for vignette.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>pbmcs_meta_small
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>: A data frame with 1,200 cells and 7 metadata fields.
+</p>
+
+<dl>
+<dt>cell_id</dt><dd><p>unique cell ID</p>
+</dd>
+<dt>donor</dt><dd><p>dataset (3pv1, 3pv2, or 5p)</p>
+</dd>
+<dt>nUMI</dt><dd><p>number of UMIs</p>
+</dd>
+<dt>nGene</dt><dd><p>number of genes</p>
+</dd>
+<dt>percent_mito</dt><dd><p>percent mito genes</p>
+</dd>
+<dt>cell_type</dt><dd><p>cell type assigned in Symphony publication</p>
+</dd>
+<dt>cell_type_broad</dt><dd><p>cell subtype assigned in Symphony publication</p>
+</dd>
+</dl>
+
+
+<hr>
+<h2 id='plotReference'>Function to plot reference, colored by cell type</h2><span id='topic+plotReference'></span>
+
+<h3>Description</h3>
+
+<p>Function to plot reference, colored by cell type
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plotReference(
+  reference,
+  as.density = TRUE,
+  bins = 10,
+  bandwidth = 1.5,
+  title = "Reference",
+  color.by = "cell_type",
+  celltype.colors = NULL,
+  show.legend = TRUE,
+  show.labels = TRUE,
+  show.centroids = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plotReference_+3A_reference">reference</code></td>
+<td>
+<p>Symphony reference object (must have UMAP stored)</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_as.density">as.density</code></td>
+<td>
+<p>if TRUE, plot as density; if FALSE, plot as individual cells</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_bins">bins</code></td>
+<td>
+<p>for density, nbins parameter for stat_density_2d</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_bandwidth">bandwidth</code></td>
+<td>
+<p>for density, bandwidth parameter for stat_density_2d</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_title">title</code></td>
+<td>
+<p>Plot title</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_color.by">color.by</code></td>
+<td>
+<p>metadata column name for phenotype labels</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_celltype.colors">celltype.colors</code></td>
+<td>
+<p>custom color mapping</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_show.legend">show.legend</code></td>
+<td>
+<p>Show cell type legend</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_show.labels">show.labels</code></td>
+<td>
+<p>Show cell type labels</p>
+</td></tr>
+<tr><td><code id="plotReference_+3A_show.centroids">show.centroids</code></td>
+<td>
+<p>Plot soft cluster centroid locations</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A ggplot object.
+</p>
+
+<hr>
+<h2 id='rowSDs'>Calculate standard deviations by row</h2><span id='topic+rowSDs'></span>
+
+<h3>Description</h3>
+
+<p>Calculate standard deviations by row
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rowSDs(A, row_means = NULL, weights = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="rowSDs_+3A_a">A</code></td>
+<td>
+<p>expression matrix (genes by cells)</p>
+</td></tr>
+<tr><td><code id="rowSDs_+3A_row_means">row_means</code></td>
+<td>
+<p>row means</p>
+</td></tr>
+<tr><td><code id="rowSDs_+3A_weights">weights</code></td>
+<td>
+<p>weights for weighted standard dev calculation</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of row standard deviations
+</p>
+
+<hr>
+<h2 id='runPCAQueryAlone'>Runs a standard PCA pipeline on query (1 batch). Assumes query_exp is already normalized.</h2><span id='topic+runPCAQueryAlone'></span>
+
+<h3>Description</h3>
+
+<p>Runs a standard PCA pipeline on query (1 batch). Assumes query_exp is already normalized.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>runPCAQueryAlone(query_exp, topn = 2000, d = 20, seed = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="runPCAQueryAlone_+3A_query_exp">query_exp</code></td>
+<td>
+<p>Query expression matrix (genes x cells)</p>
+</td></tr>
+<tr><td><code id="runPCAQueryAlone_+3A_topn">topn</code></td>
+<td>
+<p>Number of variable genes to use</p>
+</td></tr>
+<tr><td><code id="runPCAQueryAlone_+3A_d">d</code></td>
+<td>
+<p>Number of dimensions</p>
+</td></tr>
+<tr><td><code id="runPCAQueryAlone_+3A_seed">seed</code></td>
+<td>
+<p>random seed</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix of PCs by cells
+</p>
+
+<hr>
+<h2 id='scaleDataWithStats'>Scale data with given mean and standard deviations</h2><span id='topic+scaleDataWithStats'></span>
+
+<h3>Description</h3>
+
+<p>Scale data with given mean and standard deviations
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>scaleDataWithStats(A, mean_vec, sd_vec, margin = 1, thresh = 10)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="scaleDataWithStats_+3A_a">A</code></td>
+<td>
+<p>expression matrix (genes by cells)</p>
+</td></tr>
+<tr><td><code id="scaleDataWithStats_+3A_mean_vec">mean_vec</code></td>
+<td>
+<p>vector of mean values</p>
+</td></tr>
+<tr><td><code id="scaleDataWithStats_+3A_sd_vec">sd_vec</code></td>
+<td>
+<p>vector of standard deviation values</p>
+</td></tr>
+<tr><td><code id="scaleDataWithStats_+3A_margin">margin</code></td>
+<td>
+<p>1 for row-wise calculation</p>
+</td></tr>
+<tr><td><code id="scaleDataWithStats_+3A_thresh">thresh</code></td>
+<td>
+<p>threshold to clip max values</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix of scaled expression values.
+</p>
+
+<hr>
+<h2 id='symphony'>symphony</h2><span id='topic+symphony'></span>
+
+<h3>Description</h3>
+
+<p>Efficient single-cell reference atlas mapping (Kang et al.)
+</p>
+
+<hr>
+<h2 id='vargenes_vst'>Function to find variable genes using variance stabilizing transform (vst) method</h2><span id='topic+vargenes_vst'></span>
+
+<h3>Description</h3>
+
+<p>Function to find variable genes using variance stabilizing transform (vst) method
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vargenes_vst(object, groups, topn, loess.span = 0.3)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vargenes_vst_+3A_object">object</code></td>
+<td>
+<p>expression matrix</p>
+</td></tr>
+<tr><td><code id="vargenes_vst_+3A_groups">groups</code></td>
+<td>
+<p>finds variable genes within each group then pools</p>
+</td></tr>
+<tr><td><code id="vargenes_vst_+3A_topn">topn</code></td>
+<td>
+<p>Return top n genes</p>
+</td></tr>
+<tr><td><code id="vargenes_vst_+3A_loess.span">loess.span</code></td>
+<td>
+<p>Loess span parameter used when fitting the variance-mean relationship</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data.frame of variable genes, with means and standard deviations.
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

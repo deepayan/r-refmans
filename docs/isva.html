@@ -1,0 +1,533 @@
+<!DOCTYPE html><html><head><title>Help for package isva</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {isva}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#DoISVA'><p>Feature selection using independent surrogate variables</p></a></li>
+<li><a href='#EstDimRMT'><p>Estimates dimensionality of a data set using Random Matrix Theory</p></a></li>
+<li><a href='#isva'>
+<p>Independent Surrogate Variable Analysis</p></a></li>
+<li><a href='#isvaFn'><p>Main engine function for inference of independent surrogate variables (ISVs)</p></a></li>
+<li><a href='#simdataISVA'><p>Simulated data for ISVA</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Independent Surrogate Variable Analysis</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.9</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2017-1-14</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Andrew E Teschendorff</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Andrew Teschendorff &lt;a.teschendorff@ucl.ac.uk&gt;</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>qvalue, fastICA, JADE</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Independent Surrogate Variable Analysis is an algorithm
+        for feature selection in the presence of potential confounding
+        factors (see Teschendorff AE et al 2011, &lt;<a href="https://doi.org/10.1093%2Fbioinformatics%2Fbtr171">doi:10.1093/bioinformatics/btr171</a>&gt;).</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></td>
+</tr>
+<tr>
+<td>LazyLoad:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2017-01-14 00:16:24 UTC; andrew</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2017-01-14 01:35:23</td>
+</tr>
+</table>
+<hr>
+<h2 id='DoISVA'>Feature selection using independent surrogate variables</h2><span id='topic+DoISVA'></span>
+
+<h3>Description</h3>
+
+<p>Given a data matrix and a phenotype of interest, this function performs
+feature selection to identify features associated with the phenotype of
+interest in the presence of potential confounding factors. The algorithm
+first finds the variation in the data matrix not associated with the
+phenotype of interest (using a linear model), and subsequently performs
+Independent Component Analysis (ICA) on this residual variation
+matrix. The number of independent components to be inferred can be
+prespecified or estimated using Random Matrix Theory (RMT). Independent
+Surrogate Variables (ISVs) are constructed from the independent
+components and provide estimates of the effect of confounders on the
+data. If potential confounders are unknown (default NULL option) there
+will be as many ISVs as there are independent components in the residual
+variation space. If potential confounders are known (either exactly or
+subject to error/uncertainty) the algorithm will select only those
+independent components that correlate with the confounders. If potential
+confounders are specified it can happen that ISVA will not select any
+ISVs because none of the independent components correlates with the
+confounders. In this scenario ISVA should be rerun with the default
+(NULL) option. The constructed ISVs are finally included as covariates
+in a multivariate regression model to identify features that correlate
+with the phenotype of interest independently of the potential
+confounders. There are two implementations of ICA offered: JADE and
+fastICA. We note that the former will result in the same solution
+(therefore deterministic), whereas fastICA may result in convergence to
+different local minima for different runs. In the latter case, a
+consensus solution is advised if results vary between runs.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>DoISVA(data.m, pheno.v, cf.m = NULL, factor.log, pvthCF = 0.01,
+ th = 0.05, ncomp = NULL,icamethod=c("JADE","fastICA"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="DoISVA_+3A_data.m">data.m</code></td>
+<td>
+<p>Data matrix: rows label features, columns label samples. It is assumed that number of features is much larger than number of samples.</p>
+</td></tr>
+<tr><td><code id="DoISVA_+3A_pheno.v">pheno.v</code></td>
+<td>
+<p>Numeric vector of length equal to number of columns of data matrix. At present only numeric (ordinal) phenotypes are supported, so categorical phenotypes are excluded.</p>
+</td></tr>
+<tr><td><code id="DoISVA_+3A_cf.m">cf.m</code></td>
+<td>
+<p>Matrix of potential confounding factors. Rows label samples, Columns label confounding factors, which may be numeric or categorical. The default option (NULL) is for the case where potential confounding factors are not known or irrelevant.</p>
+</td></tr>
+<tr><td><code id="DoISVA_+3A_factor.log">factor.log</code></td>
+<td>
+<p>A logical vector of same length as columns of <code>cf.m</code>. FALSE indicates factor is to be treated as a numeric, TRUE as categorical.</p>
+</td></tr>
+<tr><td><code id="DoISVA_+3A_pvthcf">pvthCF</code></td>
+<td>
+<p>P-value threshold to call a significant association between an independent surrogate variable and a confounding factor. By default this is 0.01.</p>
+</td></tr>
+<tr><td><code id="DoISVA_+3A_th">th</code></td>
+<td>
+<p>False discovery rate threshold for feature selection. By default this is 0.05.</p>
+</td></tr>
+<tr><td><code id="DoISVA_+3A_ncomp">ncomp</code></td>
+<td>
+<p>Number of independent surrogate variables to look for. By
+default this is NULL, and estimation is performed using Random
+MatrixTheory.</p>
+</td></tr>
+<tr><td><code id="DoISVA_+3A_icamethod">icamethod</code></td>
+<td>
+<p>Method implementing ICA to be used. Must be either
+JADE or fastICA.</p>
+</td></tr>  
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with following entries:
+</p>
+<table>
+<tr><td><code>spv</code></td>
+<td>
+<p>Sorted P-values.</p>
+</td></tr>
+<tr><td><code>rk</code></td>
+<td>
+<p>Ranked index of features.</p>
+</td></tr>
+<tr><td><code>qv</code></td>
+<td>
+<p>Estimated sorted q-values (False Discovery Rate).</p>
+</td></tr>
+<tr><td><code>ndeg</code></td>
+<td>
+<p>Number of differentially altered features.</p>
+</td></tr>
+<tr><td><code>deg</code></td>
+<td>
+<p>Indices of differentially altered features.</p>
+</td></tr>
+<tr><td><code>lm</code></td>
+<td>
+<p>Matrix of significant feature regression statistics and P-values.</p>
+</td></tr>
+<tr><td><code>isv</code></td>
+<td>
+<p>Matrix of selected independent surrogate variables (ISVs).</p>
+</td></tr>
+<tr><td><code>nsv</code></td>
+<td>
+<p>Number of selected ISVs.</p>
+</td></tr>
+<tr><td><code>pvCF</code></td>
+<td>
+<p>P-value matrix of associations between factors (phenotype of interest plus confounding factors) and inferred ISVs. Note that this may be a larger set than the selected ISVs.</p>
+</td></tr>
+<tr><td><code>selisv</code></td>
+<td>
+<p>Column indices of selected ISVs.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Andrew E Teschendorff</p>
+
+
+<h3>References</h3>
+
+<p>Independent Surrogate Variable Analysis to deconvolve confounding factors in large-scale microarray profiling studies. Teschendorff AE, Zhuang JJ, Widschwendter M. Bioinformatics. 2011 Jun 1;27(11):1496-505.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+### Example
+
+### load in simulated data
+data(simdataISVA);
+data.m &lt;- simdataISVA$data;
+pheno.v &lt;- simdataISVA$pheno;
+
+## factors matrix (two potential confounding factors, e.g chip and cohort)
+factors.m &lt;- cbind(simdataISVA$factors[[1]],simdataISVA$factors[[2]]);
+colnames(factors.m) &lt;- c("CF1","CF2");
+
+### Estimate number of significant components of variation
+rmt.o &lt;- EstDimRMT(data.m);
+print(paste("Number of significant components=",rmt.o$dim,sep=""));
+### this makes sense since 1 component is associated with the
+### the phenotype of interest, while the other two are associated
+### with the confounders
+ncp &lt;- rmt.o$dim-1 ;
+
+### Do ISVA
+### run with the confounders as given
+isva.o &lt;- DoISVA(data.m,pheno.v,factors.m,factor.log=rep(FALSE,2),
+pvthCF=0.01,th=0.05,ncomp=ncp,icamethod="fastICA");
+
+### Evaluation (ISVs should correlate with confounders)
+### modeling of CFs
+print(cor(isva.o$isv,factors.m));
+### this shows that CFs are reconstructed fairly well
+
+### sensitivity (fraction of detected true positives)
+print(length(intersect(isva.o$deg,simdataISVA$deg))/length(simdataISVA$deg));
+
+### PPV (1-false discovery rate)
+print(length(intersect(isva.o$deg,simdataISVA$deg))/length(isva.o$deg));
+
+### run not knowing what confounders there are and with ncp=3 say.
+isva2.o &lt;- DoISVA(data.m,pheno.v,cf.m=NULL,factor.log=rep(FALSE,2),
+pvthCF=0.01,th=0.05,ncomp=3,icamethod="fastICA");
+
+### sensitivity (fraction of detected true positives)
+print(length(intersect(isva2.o$deg,simdataISVA$deg))/length(simdataISVA$deg));
+
+### PPV (1-false discovery rate)
+print(length(intersect(isva2.o$deg,simdataISVA$deg))/length(isva2.o$deg));
+
+
+</code></pre>
+
+<hr>
+<h2 id='EstDimRMT'>Estimates dimensionality of a data set using Random Matrix Theory</h2><span id='topic+EstDimRMT'></span>
+
+<h3>Description</h3>
+
+<p>Given the data matrix, it estimates the number of significant components of variation by comparing the observed distribution of spectral eigenvalues to the theoretical one under a Gaussian Orthogonal Ensemble (GOE). Specifically, a spectral decomposition of the data covariance matrix is performed and the number of eigenvalues larger than the theoretical maximum predicted by the GOE is taken as an estimate of the number of significant components.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>EstDimRMT(data.m,plot=TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="EstDimRMT_+3A_data.m">data.m</code></td>
+<td>
+<p>Data matrix. Rows label features, Columns samples.</p>
+</td></tr>
+<tr><td><code id="EstDimRMT_+3A_plot">plot</code></td>
+<td>
+<p>Logical. Plots Eigenvalue densities if true.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with following objects
+</p>
+<table>
+<tr><td><code>cor</code></td>
+<td>
+<p>Data covariance matrix.</p>
+</td></tr>
+<tr><td><code>dim</code></td>
+<td>
+<p>Estimated intrinsic dimensionality of data.</p>
+</td></tr>
+<tr><td><code>estdens</code></td>
+<td>
+<p>Empirical density of eigenvalues.</p>
+</td></tr>
+<tr><td><code>thdens</code></td>
+<td>
+<p>Theoretical density of eigenvalues.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Andrew E Teschendorff</p>
+
+
+<h3>References</h3>
+
+<p>Random matrix approach to cross correlations in financial data. Plerou et al. Physical Review E (2002), Vol.65.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## see example for DoISVA
+</code></pre>
+
+<hr>
+<h2 id='isva'>
+Independent Surrogate Variable Analysis
+</h2><span id='topic+isva'></span>
+
+<h3>Description</h3>
+
+<p>Independent Surrogate Variable Analysis is an algorithm for feature
+selection in the presence of potential confounding factors, specially
+designed for the analysis of large-scale high-dimensional quantitative
+genomic data (e.g microarrays). It uses Independent Component Analysis
+(ICA) to model the confounding factors as independent surrogate
+variables (ISVs). These ISVs are included as covariates in a
+multivariate regression model to subsequently identify features that
+correlate with a phenotype of interest independently of these
+confounders. Two ICA implementations are offered: JADE from the JADE
+R-package and fastICA from the fastICA R-package.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> isva</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.9</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2017-01-13</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL-2</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+LazyLoad: </td><td style="text-align: left;"> yes</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>There are two internal functions. One function (EstDimRMT) performs the dimensionality estimation using a Random Matrix Theory approximation. The other function (isvaFn) is the main engine function and performs the modelling of confounding factors using Independent Component Analysis (ICA). Briefly, ICA is applied on the residual variation orthogonal to that of the phenotype of interest. DoISVA is the main user function, performing feature selection using the constructed independent surrogate variables as covariates.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Andrew E Teschendorff
+Maintainer:&lt;a.teschendorff@ucl.ac.uk&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Independent Surrogate Variable Analysis to deconvolve confounding factors in large-scale microarray profiling studies. Teschendorff AE, Zhuang JJ, Widschwendter M. Bioinformatics. 2011 Jun 1;27(11):1496-505.
+</p>
+
+<hr>
+<h2 id='isvaFn'>Main engine function for inference of independent surrogate variables (ISVs)</h2><span id='topic+isvaFn'></span>
+
+<h3>Description</h3>
+
+<p>This is the main engine function which infers the statistically
+independent surrogate variables (ISVs) by performing Independent
+Component Analysis (ICA) on the residual variation matrix. It uses
+either the ICA implementation of JADE or the one from the fastICA R-package. The residual variation matrix reflects the variation orthogonal to that of a phenotype of interest and is inferred using a linear model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>isvaFn(data.m, pheno.v, ncomp = NULL,icamethod)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="isvaFn_+3A_data.m">data.m</code></td>
+<td>
+<p>Data matrix. Rows label features. Columns label samples.</p>
+</td></tr>
+<tr><td><code id="isvaFn_+3A_pheno.v">pheno.v</code></td>
+<td>
+<p>Numeric vector encoding phenotype of interest.</p>
+</td></tr>
+<tr><td><code id="isvaFn_+3A_ncomp">ncomp</code></td>
+<td>
+<p>Optionally specify number of ISVs to look for. By default
+will use Approximate Random Matrix Theory to infer this number.</p>
+</td></tr>
+<tr><td><code id="isvaFn_+3A_icamethod">icamethod</code></td>
+<td>
+<p>The ICA method to be used. Input value is taken from DoISVA.</p>
+</td></tr>  
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with following entries:
+</p>
+<table>
+<tr><td><code>n.isv</code></td>
+<td>
+<p>Number of inferred ISVs.</p>
+</td></tr>
+<tr><td><code>isv</code></td>
+<td>
+<p>Matrix of inferred ISVs.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Andrew E Teschendorff</p>
+
+
+<h3>References</h3>
+
+<p>Independent Surrogate Variable Analysis to deconvolve confounding factors in large-scale microarray profiling studies. Teschendorff AE, Zhuang JJ, Widschwendter M. Bioinformatics. 2011 Jun 1;27(11):1496-505.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## see example for DoISVA
+</code></pre>
+
+<hr>
+<h2 id='simdataISVA'>Simulated data for ISVA</h2><span id='topic+simdataISVA'></span>
+
+<h3>Description</h3>
+
+<p>A synthetic data set of 750 features and 50 samples with a binary phenotype
+and two confounding factors. Relative effect size of confounding
+factors (CFs) to that of phenotype of interest is 2. For further details please
+see reference.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>simdataISVA</code></pre>
+
+
+<h3>Format</h3>
+
+<p>This synthetic data set is a list object containing the following
+elements: (i) data is the data matrix (750 features, 50 samples),
+(ii) pheno is a binary phenotype vector, (iii) factors is a list of
+length two containing the two binary confounding factors, (iv) deg is
+the index vector of those truly differentially &quot;expressed&quot; features, (v)
+degL is a list of index vectors for features truly differentially
+altered (first element,degL[[1]]=deg) and those features affected by CFs (2nd and
+3rd elements).
+</p>
+
+
+<h3>References</h3>
+
+<p>Independent Surrogate Variable Analysis to deconvolve confounding factors in large-scale microarray profiling studies. Teschendorff AE, Zhuang JJ, Widschwendter M. Bioinformatics. 2011 Jun 1;27(11):1496-505.</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

@@ -1,0 +1,706 @@
+<!DOCTYPE html><html><head><title>Help for package NVCSSL</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {NVCSSL}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#NVC_frequentist'><p>Fits frequentist penalized nonparametric varying coefficient (NVC) models</p></a></li>
+<li><a href='#NVC_predict'><p>Prediction for nonparametric varying coefficient (NVC) models</p></a></li>
+<li><a href='#NVC_SSL'><p>Nonparametric Varying Coefficient Spike-and-Slab Lasso (NVC-SSL)</p></a></li>
+<li><a href='#SimulatedData'><p>Simulated data for illustration</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Nonparametric Varying Coefficient Spike-and-Slab Lasso</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>2.0</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2023-09-17</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Ray Bai</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Ray Bai &lt;raybaistat@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Fits Bayesian regularized varying coefficient models with the Nonparametric Varying Coefficient Spike-and-Slab Lasso (NVC-SSL) introduced by Bai et al. (2023) &lt;<a href="https://arxiv.org/abs/1907.06477">arXiv:1907.06477</a>&gt;. Functions to fit frequentist penalized varying coefficients are also provided, with the option of employing the group lasso penalty of Yuan and Lin (2006) &lt;<a href="https://doi.org/10.1111%2Fj.1467-9868.2005.00532.x">doi:10.1111/j.1467-9868.2005.00532.x</a>&gt;, the group minimax concave penalty (MCP) of Breheny and Huang &lt;<a href="https://doi.org/10.1007%2Fs11222-013-9424-2">doi:10.1007/s11222-013-9424-2</a>&gt;, or the group smoothly clipped absolute deviation (SCAD) penalty of Breheny and Huang (2015) &lt;<a href="https://doi.org/10.1007%2Fs11222-013-9424-2">doi:10.1007/s11222-013-9424-2</a>&gt;.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a></td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.6.0)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>stats, splines, dae, plyr, Matrix, GIGrvg, MASS, MCMCpack,
+grpreg, mvtnorm</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-09-17 21:32:05 UTC; rayba</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2023-09-17 22:50:19 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='NVC_frequentist'>Fits frequentist penalized nonparametric varying coefficient (NVC) models</h2><span id='topic+NVC_frequentist'></span>
+
+<h3>Description</h3>
+
+<p>This function implements frequentist penalized nonparametric varying coefficient (NVC) models. It supports the following penalty functions: the group lasso penalty of Yuan and Lin (2006), the group minimax concave penalty (MCP) of Breheny and Huang (2015), and the group smoothly clipped absolute deviation (SCAD) penalty of Breheny and Huang (2015). This function solves a penalized regression problem of the form,
+</p>
+<p style="text-align: center;"><code class="reqn"> argmax_{\gamma} \frac{1}{N} \ell(\gamma) + pen_{\lambda}(\gamma),</code>
+</p>
+
+<p>where <code class="reqn">N</code> is the total number of observations, <code class="reqn">\ell(\gamma)</code> is the loss function, and <code class="reqn">pen_{\lambda}(\cdot)</code> is a penalty function with regularization parameter <code class="reqn">\lambda &gt; 0</code>. Since the objective function is rescaled by <code class="reqn">1/N</code>, the penalty <code class="reqn">\lambda</code> is typically smaller than the spike hyperparameter <code class="reqn">\lambda_0</code> used by the <code>NVC_SSL</code> function. The BIC criterion is used to select the optimal tuning parameter <code class="reqn">\lambda</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NVC_frequentist(y, t, X, n_basis=8, penalty=c("gLASSO","gSCAD","gMCP"),
+                lambda=NULL, include_intercept=TRUE) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NVC_frequentist_+3A_y">y</code></td>
+<td>
+<p><code class="reqn">N \times 1</code> vector of response observations <code class="reqn">y_{11}, ..., y_{1m_1}, ..., y_{n1}, ..., y_{nm_n}</code></p>
+</td></tr>
+<tr><td><code id="NVC_frequentist_+3A_t">t</code></td>
+<td>
+<p><code class="reqn">N \times 1</code> vector of observation times <code class="reqn">t_{11}, ..., t_{1m_1}, ..., t_{n1}, ..., t_{nm_n}</code></p>
+</td></tr>
+<tr><td><code id="NVC_frequentist_+3A_x">X</code></td>
+<td>
+<p><code class="reqn">N \times p</code> design matrix with columns <code class="reqn">[X_1, ..., X_p]</code>, where the <code class="reqn">k</code>th column contains the entries <code class="reqn">x_{ik}(t_{ij})</code>'s</p>
+</td></tr>
+<tr><td><code id="NVC_frequentist_+3A_n_basis">n_basis</code></td>
+<td>
+<p>number of basis functions to use. Default is <code>n_basis=8</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_frequentist_+3A_penalty">penalty</code></td>
+<td>
+<p>string specifying which penalty function to use. Specify <code>"gLASSO"</code> for group lasso, <code>"gSCAD"</code> for group SCAD, or <code>"gMCP"</code> for group MCP.</p>
+</td></tr>
+<tr><td><code id="NVC_frequentist_+3A_lambda">lambda</code></td>
+<td>
+<p>grid of tuning parameters. If <code>lambda</code> is not specified (i.e. <code>lambda=NULL</code>), then the program automatically chooses a grid for <code>lambda</code>. Note that since the objective function is scaled by <code class="reqn">1/N</code>, the automatically chosen grid for <code>lambda</code> typically consists of smaller values than the default grid for <code>lambda0</code> used by the function <code>NVC_SSL</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_frequentist_+3A_include_intercept">include_intercept</code></td>
+<td>
+<p>Boolean variable for whether or not to include an intercept function <code class="reqn">\beta_0(t)</code> in the estimation. Default is <code>include_intercept=TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list containing the following components:
+</p>
+<table>
+<tr><td><code>t_ordered</code></td>
+<td>
+<p>all <code class="reqn">N</code> time points ordered from smallest to largest. Needed for plotting.</p>
+</td></tr>
+<tr><td><code>classifications</code></td>
+<td>
+<p><code class="reqn">p \times 1</code> vector of indicator variables, where <code>"1"</code> indicates that the covariate is selected and <code>"0"</code> indicates that it is not selected. These classifications are determined by the optimal <code>lambda</code> chosen from BIC. Note that this vector does not include an intercept function.</p>
+</td></tr>
+<tr><td><code>beta_hat</code></td>
+<td>
+<p><code class="reqn">N \times p</code> matrix of the estimates for varying coefficient functions <code class="reqn">\beta_k(t), k = 1, ..., p</code>, using the optimal <code>lambda</code> chosen from BIC. The <code class="reqn">k</code>th column in the matrix is the <code class="reqn">k</code>th estimated function at the observation times in <code>t_ordered</code>.</p>
+</td></tr>
+<tr><td><code>beta0_hat</code></td>
+<td>
+<p>estmate of the intercept function <code class="reqn">\beta_0(t)</code> at the observation times in <code>t_ordered</code> for the optimal <code>lambda</code> chosen from BIC. This is not returned if <code>include_intercept = FALSE</code>.</p>
+</td></tr>
+<tr><td><code>gamma_hat</code></td>
+<td>
+<p>estimated basis coefficients (needed for prediction) for the optimal <code>lambda</code>.</p>
+</td></tr>
+<tr><td><code>lambda_min</code></td>
+<td>
+<p>the individual <code>lambda</code> which minimizes the BIC. If only one value was originally passed for <code>lambda</code>, then this just returns that <code>lambda</code>.</p>
+</td></tr>
+<tr><td><code>lambda0_all</code></td>
+<td>
+<p>grid of all <code class="reqn">L</code> regularization parameters in <code>lambda</code>.  Note that since the objective function is scaled by <code class="reqn">1/N</code> for the penalized frequentist methods in the <code>NVC_frequentist</code> function, the <code>lambda_all</code> grid that is chosen automatically by <code>NVC_frequentist</code> typically consists of smaller values than the default values in the <code>lambda0_all</code> grid for <code>NVC_SSL</code>.</p>
+</td></tr> 
+<tr><td><code>BIC_all</code></td>
+<td>
+<p><code class="reqn">L \times 1</code> vector of BIC values corresponding to all <code class="reqn">L</code> entries in <code>lambda_all</code>. The <code class="reqn">l</code>th entry corresponds to the <code class="reqn">l</code>th entry in <code>lambda_all</code>.</p>
+</td></tr>
+<tr><td><code>beta_est_all_lambda</code></td>
+<td>
+<p>list of length <code class="reqn">L</code> of the estimated varying coefficients <code class="reqn">\beta_k(t), k = 1, ..., p</code>, corresponding to all <code class="reqn">L</code> lambdas in <code>lambda_all</code>. The <code class="reqn">l</code>th entry corresponds to the <code class="reqn">l</code>th entry in <code>lambda_all</code>.</p>
+</td></tr>
+<tr><td><code>beta0_est_all_lambda</code></td>
+<td>
+<p><code class="reqn">N \times L</code> matrix of estimated intercept function <code class="reqn">\beta_0(t)</code> corresponding to all <code class="reqn">L</code> entries in <code>lambda_all</code>. The <code class="reqn">l</code>th column corresponds to the <code class="reqn">l</code>th entry in <code>lambda_all</code>. This is not returned if <code>include_intercept=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>gamma_est_all_lambda</code></td>
+<td>
+<p><code class="reqn">dp \times L</code> matrix of estimated basis coefficients corresponding to all entries in <code>lambda_all</code>. The <code class="reqn">l</code>th column corresponds to the <code class="reqn">l</code>th entry in <code>lambda_all</code>.</p>
+</td></tr>
+<tr><td><code>classifications_all_lambda</code></td>
+<td>
+<p><code class="reqn">p \times L</code> matrix of classifications corresponding to all the entries in <code>lambda_all</code>. The <code class="reqn">l</code>th column corresponds to the <code class="reqn">l</code>th entry in <code>lambda_all</code>.</p>
+</td></tr>
+<tr><td><code>iters_to_converge</code></td>
+<td>
+<p>number of iterations it took for the group ascent algorithm to converge for each entry in <code>lambda_all</code>. The <code class="reqn">l</code>th entry corresponds to the <code class="reqn">l</code>th entry in <code>lambda_all</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Bai, R., Boland, M. R., and Chen, Y. (2023). &quot;Scalable high-dimensional Bayesian varying coefficient models with unknown within-subject covariance.&quot; <em>arXiv pre-print arXiv:arXiv:1907.06477</em>.
+</p>
+<p>Breheny, P. and Huang, J. (2015). &quot;Group descent algorithms for nonconvex penalized linear and logistic regression models with grouped predictors.&quot; <em>Statistics and Computing</em>, <b>25</b>:173-187.
+</p>
+<p>Wei, F., Huang, J., and Li, H. (2011). &quot;Variable selection and estimation in high-dimensional varying coefficient models.&quot; <em>Statistica Sinica</em>, <b>21</b>:1515-1540.  
+</p>
+<p>Yuan, M. and Lin, Y. (2006). &quot;Model selection and estimation in regression with grouped variables.&quot; <em>Journal of the Royal Statistical Society: Series B (Statistical Methodology)</em>, <b>68</b>:49-67.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Load data
+data(SimulatedData)
+attach(SimulatedData)
+y = SimulatedData$y
+t = SimulatedData$t
+id = SimulatedData$id
+X = SimulatedData[,4:103]
+
+## Fit frequentist penalized NVC model with the SCAD penalty. 
+## Can set penalty as "gLASSO", "gSCAD", or "gMCP". 
+## No need to specify an 'id' argument when using NVC_frequentist() function
+
+NVC_gSCAD_mod = NVC_frequentist(y, t, X, penalty="gSCAD")
+
+## Classifications. First varying coefficients are selected as nonzero
+NVC_gSCAD_mod$classifications
+
+## Optimal lambda chosen from BIC
+NVC_gSCAD_mod$lambda_min
+
+## Plot first estimated varying coefficient function
+t_ordered = NVC_gSCAD_mod$t_ordered
+beta_hat= NVC_gSCAD_mod$beta_hat
+plot(t_ordered, beta_hat[,1], lwd=3, type='l', col='blue',
+     xlab="Time", ylim = c(-12,12), ylab=expression(beta[1]))
+
+## Plot third estimated varying coefficient function
+plot(t_ordered, beta_hat[,3], lwd=3, type='l', col='blue',
+     xlab="Time", ylim = c(-4,2), ylab=expression(beta[3]))
+
+## Plot fifth estimated varying coefficient function
+plot(t_ordered, beta_hat[,5], lwd=3, type='l', col='blue',
+     xlab="Time", ylim = c(0,15), ylab=expression(beta[5]))
+</code></pre>
+
+<hr>
+<h2 id='NVC_predict'>Prediction for nonparametric varying coefficient (NVC) models</h2><span id='topic+NVC_predict'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to predict the responses <code class="reqn">y(t_{new})</code> for new subjects
+at new time points <code class="reqn">t_{new}</code> with new covariates <code class="reqn">X_{new}</code>. The function accepts an estimated NVC model that was fit using either the <code>NVC_SSL</code> or <code>NVC_frequentist</code> functions and returns the predicted <code class="reqn">y(t)</code>'s. This function can be used for either out-of-sample predictions or for in-sample predictions if the &quot;new&quot; subjects are the same as the ones used to obtain the fitted NVC model.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NVC_predict(NVC_mod, t_new, id_new, X_new) 
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NVC_predict_+3A_nvc_mod">NVC_mod</code></td>
+<td>
+<p>an object with a fitted NVC model returned by the <code>NVC_SSL</code> or <code>NVC_frequentist</code> function</p>
+</td></tr>
+<tr><td><code id="NVC_predict_+3A_t_new">t_new</code></td>
+<td>
+<p>vector of new observation times</p>
+</td></tr>
+<tr><td><code id="NVC_predict_+3A_id_new">id_new</code></td>
+<td>
+<p>vector of new labels, where a label corresponds to one of the new subjects</p>
+</td></tr>
+<tr><td><code id="NVC_predict_+3A_x_new">X_new</code></td>
+<td>
+<p>new design matrix with columns <code class="reqn">[X_1, \ldots, X_p]</code> where the <code class="reqn">k</code>th column corresponds to the <code class="reqn">k</code>th covariate. <code>X_new</code> must have the <code class="reqn">p</code> columns, i.e. the same number of varying coefficients estimated by <code>NVC_mod</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list containing the following components:
+</p>
+<table>
+<tr><td><code>id</code></td>
+<td>
+<p>vector of each <code class="reqn">i</code>th subject's label</p>
+</td></tr>
+<tr><td><code>time</code></td>
+<td>
+<p>vector of each <code class="reqn">j</code>th observation time for each <code class="reqn">i</code>th subject</p>
+</td></tr>
+<tr><td><code>y_pred</code></td>
+<td>
+<p>vector of predicted responses corresponding to each <code class="reqn">j</code>th observation time for each <code class="reqn">i</code>th subject</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Bai, R., Boland, M. R., and Chen, Y. (2023). &quot;Scalable high-dimensional Bayesian varying coefficient models with unknown within-subject covariance.&quot; <em>arXiv pre-print arXiv:arXiv:1907.06477</em>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Load simulated data
+data(SimulatedData)
+attach(SimulatedData)
+y = SimulatedData$y
+t = SimulatedData$t
+id = SimulatedData$id
+X = SimulatedData[,4:103]
+
+## Fit frequentist penalized NVC model with the group lasso penalty. 
+## No need to specify an 'id' argument when using NVC_frequentist() function.
+
+NVC_gLASSO_mod = NVC_frequentist(y=y, t=t, X=X, penalty="gLASSO")
+
+## Make in-sample predictions. Here, we DO need to specify 'id' argument
+
+NVC_gLASSO_predictions = NVC_predict(NVC_gLASSO_mod, t_new=t, id_new=id, X_new=X)
+
+## Subjects
+NVC_gLASSO_predictions$id
+
+## Observation times
+NVC_gLASSO_predictions$time
+
+## Predicted responses
+NVC_gLASSO_predictions$y_pred
+
+
+
+## Fit NVC-SSL model to the data instead. Here, we do need to specify id
+
+NVC_SSL_mod = NVC_SSL(y=y, t=t, id=id, X=X)
+NVC_SSL_predictions = NVC_predict(NVC_SSL_mod, t_new = t, id_new=id, X_new=X)
+
+## Subjects
+NVC_SSL_predictions$id
+
+## Observation times
+NVC_SSL_predictions$time
+
+## Predicted responses
+NVC_SSL_predictions$y_pred
+
+</code></pre>
+
+<hr>
+<h2 id='NVC_SSL'>Nonparametric Varying Coefficient Spike-and-Slab Lasso (NVC-SSL)</h2><span id='topic+NVC_SSL'></span>
+
+<h3>Description</h3>
+
+<p>This function implements the Nonparametric Varying Coefficient Spike-and-Slab Lasso (NVC-SSL) model of Bai et al. (2023) for high-dimensional NVC models. The function returns the MAP estimator for the varying coefficients <code class="reqn">\beta_k(t), k = 1, ..., p,</code> obtained from the ECM algorithm described in Bai et al. (2023). The BIC criterion is used to select the optimal spike hyperparameter <code class="reqn">lambda_0</code>.  
+</p>
+<p>If the user specifies <code>return_CI=TRUE</code>, then this function will also return the 95 percent pointwise posterior credible intervals for the varying coefficients <code class="reqn">\beta_k(t), k = 1, ..., p,</code> obtained from Gibbs sampling. If the number of covariates <code class="reqn">p</code> is large, then the user can additionally use the approximate MCMC algorithm introduced in Bai et al. (2023) (<code>approx_MCMC=TRUE</code>) which is much faster than the exact Gibbs sampler and gives higher simultaneous coverage.
+</p>
+<p>Finally, this function returns the number of iterations and the runtime for the ECM algorithms and MCMC algorithms which can be used for benchmarking and timing comparisons.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NVC_SSL(y, t, id, X, n_basis=8, 
+        lambda0=seq(from=300,to=10,by=-10), lambda1=1, 
+        a=1, b=ncol(X), c0=1, d0=1, nu=n_basis+2, Phi=diag(n_basis),
+        include_intercept=TRUE, tol=1e-6, max_iter=100, 
+        return_CI=FALSE, approx_MCMC=FALSE,
+        n_samples=1500, burn=500, print_iter=TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NVC_SSL_+3A_y">y</code></td>
+<td>
+<p><code class="reqn">N \times 1</code> vector of response observations <code class="reqn">y_{11}, ..., y_{1m_1}, ..., y_{n1}, ..., y_{nm_n}</code></p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_t">t</code></td>
+<td>
+<p><code class="reqn">N \times 1</code> vector of observation times <code class="reqn">t_{11}, ..., t_{1m_1}, ..., t_{n1}, ..., t_{nm_n}</code></p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_id">id</code></td>
+<td>
+<p><code class="reqn">N \times 1</code> vector of labels, where each unique label corresponds to one of the subjects</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_x">X</code></td>
+<td>
+<p><code class="reqn">N \times p</code> design matrix with columns <code class="reqn">[X_1, ..., X_p]</code>, where the <code class="reqn">k</code>th column contains the entries <code class="reqn">x_{ik}(t_{ij})</code>'s</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_n_basis">n_basis</code></td>
+<td>
+<p>number of basis functions to use. Default is <code>n_basis=8</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_lambda0">lambda0</code></td>
+<td>
+<p>grid of spike hyperparameters. Default is to tune <code>lambda0</code> from the grid of decreasing values <code class="reqn">(300, 290, ..., 20, 10)</code>.</p>
+</td></tr> 
+<tr><td><code id="NVC_SSL_+3A_lambda1">lambda1</code></td>
+<td>
+<p>slab hyperparameter. Default is <code>lambda1=1</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_a">a</code></td>
+<td>
+<p>hyperparameter in <code class="reqn">B(a,b)</code> prior on mixing proportion <code class="reqn">\theta</code>. Default is <code class="reqn">a=1</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_b">b</code></td>
+<td>
+<p>hyperparameter in <code class="reqn">B(a,b)</code> prior on mixing proportion <code class="reqn">\theta</code>. Default is <code class="reqn">b=p</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_c0">c0</code></td>
+<td>
+<p>hyperparameter in Inverse-Gamma<code class="reqn">(c_0/2,d_0/2)</code> prior on measurement error variance <code class="reqn">\sigma^2</code>. Default is <code class="reqn">c_0=1</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_d0">d0</code></td>
+<td>
+<p>hyperparameter in Inverse-Gamma<code class="reqn">(c_0/2,d_0/2)</code> prior on measurement error variance <code class="reqn">\sigma^2</code>. Default is <code class="reqn">d_0=1</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_nu">nu</code></td>
+<td>
+<p>degrees of freedom for Inverse-Wishart prior on <code class="reqn">\Omega</code>. Default is <code>n_basis+2</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_phi">Phi</code></td>
+<td>
+<p>scale matrix in the Inverse-Wishart prior on <code class="reqn">\Omega</code>. Default is the identity matrix.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_include_intercept">include_intercept</code></td>
+<td>
+<p>Boolean variable for whether or not to include an intercept function <code class="reqn">\beta_0(t)</code> in the estimation. Default is <code>include_intercept=TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_tol">tol</code></td>
+<td>
+<p>convergence criteria for the ECM algorithm. Default is <code>tol=1e-6</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_max_iter">max_iter</code></td>
+<td>
+<p>maximum number of iterations to run ECM algorithm. Default is <code>max_iter=100</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_return_ci">return_CI</code></td>
+<td>
+<p>Boolean variable for whether or not to return the 95 percent pointwise credible bands. Set <code>return_CI=TRUE</code> if posterior credible bands are desired.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_approx_mcmc">approx_MCMC</code></td>
+<td>
+<p>Boolean variable for whether or not to run the approximate MCMC algorithm instead of the exact MCMC algorithm. If <code>approx_MCMC=TRUE</code>, then an approximate MCMC algorithm isused. Otherwise, if <code>approx_MCMC=FALSE</code>, the exact MCMC algorithm is used. This argument is ignored if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_n_samples">n_samples</code></td>
+<td>
+<p>number of MCMC samples to save for posterior inference. The default is to save <code>n_samples=1500</code>. This is ignored if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_burn">burn</code></td>
+<td>
+<p>number of initial MCMC samples to discard during the warm-up period. Default is <code>burn=500</code>. This is ignored if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="NVC_SSL_+3A_print_iter">print_iter</code></td>
+<td>
+<p>Boolean variable for whether or not to print the progress of the algorithms. Default is <code>print_iter=TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list containing the following components:
+</p>
+<table>
+<tr><td><code>t_ordered</code></td>
+<td>
+<p>all <code class="reqn">N</code> time points ordered from smallest to largest. Needed for plotting</p>
+</td></tr>
+<tr><td><code>classifications</code></td>
+<td>
+<p><code class="reqn">p \times 1</code> vector of indicator variables, where <code>"1"</code> indicates that the covariate is selected and <code>"0"</code> indicates that it is not selected. These classifications are determined by the optimal <code>lambda0</code> chosen from BIC. Note that this vector does not include an intercept function.</p>
+</td></tr>
+<tr><td><code>beta_hat</code></td>
+<td>
+<p><code class="reqn">N \times p</code> matrix of the MAP estimates for varying coefficient functions <code class="reqn">\beta_k(t), k = 1, ..., p</code>, using the optimal <code>lambda0</code> chosen from BIC. The <code class="reqn">k</code>th column in the matrix is the <code class="reqn">k</code>th estimated function at the observation times in <code>t_ordered</code>.</p>
+</td></tr>
+<tr><td><code>beta0_hat</code></td>
+<td>
+<p>MAP estimate of the intercept function <code class="reqn">\beta_0(t)</code> at the observation times in <code>t_ordered</code> for the optimal <code>lambda0</code> chosen from BIC. This is not returned if <code>include_intercept = FALSE</code>.</p>
+</td></tr>
+<tr><td><code>gamma_hat</code></td>
+<td>
+<p>MAP estimates of the basis coefficients (needed for prediction) for the optimal <code>lambda0</code>.</p>
+</td></tr>
+<tr><td><code>beta_post_mean</code></td>
+<td>
+<p><code class="reqn">N \times p</code> matrix of the posterior mean estimates of the varying coefficient functions. The <code class="reqn">k</code>th column in the matrix is the <code class="reqn">k</code>th posterior mean estimate for <code class="reqn">\beta_k(t)</code> at the observation times in <code>t_ordered</code>. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>beta_CI_lower</code></td>
+<td>
+<p><code class="reqn">N \times p</code> matrix of the lower endpoints of the 95 percent pointwise posterior credible interval (CI) for the varying coefficient functions. The <code class="reqn">k</code>th column in the matrix is the lower endpoint for the CI of <code class="reqn">\beta_k(t)</code> at the observation times in <code>t_ordered</code>. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>beta_CI_upper</code></td>
+<td>
+<p><code class="reqn">N \times p</code> matrix of the upper endpoints of the 95 percent pointwise posterior credible interval (CI) for the varying coefficient functions. The <code class="reqn">k</code>th column in the matrix is the upper endpoint for the CI of <code class="reqn">\beta_k(t)</code> at the observation times in <code>t_ordered</code>. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>beta0_post_mean</code></td>
+<td>
+<p>Posterior mean estimate of the intercept function <code class="reqn">\beta_0(t)</code> at the observation times in <code>t_ordered</code>. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr> 
+<tr><td><code>beta0_CI_lower</code></td>
+<td>
+<p>Lower endpoints of the 95 percent pointwise posterior credible intervals (CIs) for the intercept function <code class="reqn">\beta_0(t)</code> at the observation times in <code>t_ordered</code>. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr> 
+<tr><td><code>beta0_CI_upper</code></td>
+<td>
+<p>Upper endpoints of the 95 percent pointwise posterior credible intervals (CIs) for the intercept function <code class="reqn">\beta_0(t)</code> at the observation times in <code>t_ordered</code>. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr> 
+<tr><td><code>gamma_post_mean</code></td>
+<td>
+<p>Posterior mean estimates of all the basis coefficients. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>gamma_CI_lower</code></td>
+<td>
+<p>Lower endpoints of the 95 percent posterior credible intervals for the basis coefficients. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>gamma_CI_upper</code></td>
+<td>
+<p>Upper endpoints of the 95 percent posterior credible intervals for the basis coefficients. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>post_incl</code></td>
+<td>
+<p><code class="reqn">p \times 1</code> vector of estimated posterior inclusion probabilities (PIPs) for each of the varying coefficients. The <code class="reqn">k</code>th entry in <code>post_incl</code> is the PIP for <code class="reqn">\beta_k</code>. This is not returned if <code>return_CI=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>lambda0_min</code></td>
+<td>
+<p>the individual <code>lambda0</code> which minimizes the BIC. If only one value was originally passed for <code>lambda0</code>, then this just returns that <code>lambda0</code>.</p>
+</td></tr>
+<tr><td><code>lambda0_all</code></td>
+<td>
+<p>grid of all <code class="reqn">L</code> regularization parameters in <code>lambda0</code>.  Note that since the objective function is scaled by <code class="reqn">1/N</code> for the penalized frequentist methods in the <code>NVC_frequentist</code> function, the <code>lambda_all</code> grid that is chosen automatically by <code>NVC_frequentist</code> typically consists of smaller values than the default values in the <code>lambda0_all</code> grid for <code>NVC_SSL</code>.</p>
+</td></tr> 
+<tr><td><code>BIC_all</code></td>
+<td>
+<p><code class="reqn">L \times 1</code> vector of BIC values corresponding to all <code class="reqn">L</code> entries in <code>lambda0_all</code>. The <code class="reqn">l</code>th entry corresponds to the <code class="reqn">l</code>th entry in <code>lambda0_all</code>.</p>
+</td></tr>
+<tr><td><code>beta_est_all_lambda0</code></td>
+<td>
+<p>list of length <code class="reqn">L</code> of the estimated varying coefficients <code class="reqn">\beta_k(t), k = 1, ..., p</code>, corresponding to all <code class="reqn">L</code> lambdas in <code>lambda0_all</code>. The <code class="reqn">l</code>th entry corresponds to the <code class="reqn">l</code>th entry in <code>lambda0_all</code>.</p>
+</td></tr>
+<tr><td><code>beta0_est_all_lambda0</code></td>
+<td>
+<p><code class="reqn">N \times L</code> matrix of estimated intercept function <code class="reqn">\beta_0(t)</code> corresponding to all <code class="reqn">L</code> entries in <code>lambda0_all</code>. The <code class="reqn">l</code>th column corresponds to the <code class="reqn">l</code>th entry in <code>lambda0_all</code>. This is not returned if <code>include_intercept=FALSE</code>.</p>
+</td></tr>
+<tr><td><code>gamma_est_all_lambda0</code></td>
+<td>
+<p><code class="reqn">dp \times L</code> matrix of estimated basis coefficients corresponding to all entries in <code>lambda0_all</code>. The <code class="reqn">l</code>th column corresponds to the <code class="reqn">l</code>th entry in <code>lambda0_all</code>.</p>
+</td></tr>
+<tr><td><code>classifications_all_lambda0</code></td>
+<td>
+<p><code class="reqn">p \times L</code> matrix of classifications corresponding to all the entries in <code>lambda0_all</code>. The <code class="reqn">l</code>th column corresponds to the <code class="reqn">l</code>th entry in <code>lambda0_all</code>.</p>
+</td></tr>
+<tr><td><code>ECM_iters_to_converge</code></td>
+<td>
+<p>number of iterations it took for the ECM algorithm to converge for each entry in <code>lambda0_all</code>. The <code class="reqn">l</code>th entry corresponds to the <code class="reqn">l</code>th entry in <code>lambda0_all</code>.</p>
+</td></tr>
+<tr><td><code>ECM_runtimes</code></td>
+<td>
+<p><code class="reqn">L \times 1</code> vector of the number of seconds it took for the ECM algorithm to converge for each entry in <code>lambda0_all</code>. The <code class="reqn">l</code>th entry corresponds to the <code class="reqn">l</code>th entry in <code>lambda0_all</code>.</p>
+</td></tr>
+<tr><td><code>gibbs_runtime</code></td>
+<td>
+<p>number of minutes it took for the Gibbs sampling algorithm to run for the total number of MCMC iterations given in <code>gibbs_iters</code></p>
+</td></tr>
+<tr><td><code>gibbs_iters</code></td>
+<td>
+<p>total number of MCMC iterations run for posterior inference</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Bai, R., Boland, M. R., and Chen, Y. (2023). &quot;Scalable high-dimensional Bayesian varying coefficient models with unknown within-subject covariance.&quot; <em>arXiv pre-print arXiv:arXiv:1907.06477</em>.
+</p>
+<p>Bai, R., Moran, G. E., Antonelli, J. L., Chen, Y., and Boland, M.R. (2022). &quot;Spike-and-slab group lassos for grouped regression and sparse generalized additive models.&quot; <em>Journal of the American Statistical Association</em>, <b>117</b>:184-197.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Load data
+data(SimulatedData)
+attach(SimulatedData)
+y = SimulatedData$y
+t = SimulatedData$t
+id = SimulatedData$id
+X = SimulatedData[,4:103]
+
+## Fit NVC-SSL model. Default implementation uses a grid of 30 lambdas.
+## Below illustration uses just two well-chosen lambdas
+
+NVC_SSL_mod = NVC_SSL(y, t, id, X, lambda0=c(60,50))
+
+## NOTE: Should use default, which will search for lambda0 from a bigger grid
+# NVC_SSL_mod = NVC_SSL(y, t, id, X)
+
+## Classifications. First 6 varying coefficients are selected as nonzero
+NVC_SSL_mod$classifications
+
+## Optimal lambda chosen from BIC
+NVC_SSL_mod$lambda0_min
+
+## Plot first estimated varying coefficient function
+t_ordered = NVC_SSL_mod$t_ordered
+beta_hat= NVC_SSL_mod$beta_hat
+plot(t_ordered, beta_hat[,1], lwd=3, type='l', col='blue',
+     xlab="Time", ylim = c(-12,12), ylab=expression(beta[1]))
+
+## Plot third estimated varying coefficient function
+plot(t_ordered, beta_hat[,3], lwd=3, type='l', col='blue',
+     xlab="Time", ylim = c(-4,2), ylab=expression(beta[3]))
+
+## Plot fifth estimated varying coefficient function
+plot(t_ordered, beta_hat[,5], lwd=3, type='l', col='blue',
+     xlab="Time", ylim = c(0,15), ylab=expression(beta[5]))
+
+
+## If you want credible intervals, then set return_CI=TRUE to also run Gibbs sampler.
+## Below, we run a total of 1000 MCMC iterations, discarding the first 500 as burnin
+## and keeping the final 500 samples for inference.
+
+NVC_SSL_mod_2 = NVC_SSL(y, t, id, X, return_CI=TRUE, approx_MCMC=FALSE, 
+                        n_samples=500, burn=500)
+
+## Note that NVC_SSL() always computes a MAP estimator first and then
+## initializes the Gibbs sampler with the MAP estimator.
+
+## Plot third varying coefficient function and its credible bands
+t_ordered = NVC_SSL_mod_2$t_ordered
+beta_MAP = NVC_SSL_mod_2$beta_hat
+beta_mean = NVC_SSL_mod_2$beta_post_mean
+beta_CI_lower = NVC_SSL_mod_2$beta_CI_lower
+beta_CI_upper = NVC_SSL_mod_2$beta_CI_upper
+
+plot(t_ordered, beta_MAP[,3], lwd=3, type='l', col='blue', xlab="Time", ylim=c(-5,3), lty=1, 
+     ylab=expression(beta[3]), cex.lab=1.5)
+lines(t_ordered, beta_mean[,3], lwd=3, type='l', col='red', lty=4)
+lines(t_ordered, beta_CI_lower[,3], lwd=4, type='l', col='purple', lty=3)
+lines(t_ordered, beta_CI_upper[,3], lwd=4, type='l', col='purple', lty=3)
+legend("bottomleft", c("MAP", "Mean", "95 percent CI"), lty=c(1,4,3), lwd=c(2,2,3), 
+       col=c("blue","red","purple"), inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n")
+
+## Plot fifth varying coefficient function and its credible bands
+plot(t_ordered, beta_MAP[,5], lwd=3, type='l', col='blue', xlab="Time", ylim=c(-1,14), lty=1, 
+     ylab=expression(beta[5]), cex.lab=1.5)
+lines(t_ordered, beta_mean[,5], lwd=3, type='l', col='red', lty=4)
+lines(t_ordered, beta_CI_lower[,5], lwd=4, type='l', col='purple', lty=3)
+lines(t_ordered, beta_CI_upper[,5], lwd=4, type='l', col='purple', lty=3)
+legend("bottomleft", c("MAP", "Mean", "95 percent CI"), lty=c(1,4,3), lwd=c(2,2,3), 
+       col=c("blue","red","purple"), inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n")
+
+</code></pre>
+
+<hr>
+<h2 id='SimulatedData'>Simulated data for illustration</h2><span id='topic+SimulatedData'></span>
+
+<h3>Description</h3>
+
+<p>This is a simulated dataset for illustration. It contains a total of <code class="reqn">N=436</code> observations at irregularly spaced time points for <code class="reqn">n=50</code> subjects. There are <code class="reqn">p=100</code> covariates. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(SimulatedData)</code></pre>
+
+
+<h3>Details</h3>
+
+<p>This simulated dataset contains <code class="reqn">N=436</code> observations for <code class="reqn">n=50</code> subjects, with <code class="reqn">p=100</code> covariates. The first column <code>y</code> gives the response variables, the second column <code>t</code> gives the observation times, the third column <code>id</code> gives the unique IDs for each of the 50 subjects, and columns 4-103 (<code>x1</code>, ..., <code>x100</code>) give the covariate values.
+</p>
+<p>This synthetic dataset is a slight modification from Experiment 2 in Section 5.1 of Bai et al. (2023). We use <code class="reqn">p=100</code> for illustration, instead of <code class="reqn">p=500</code> as in the paper.
+</p>
+
+
+<h3>References</h3>
+
+<p>Bai, R., Boland, M. R., and Chen, Y. (2023). &quot;Scalable high-dimensional Bayesian varying coefficient models with unknown within-subject covariance.&quot; <em>arXiv pre-print arXiv:1907.06477</em>.
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

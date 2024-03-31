@@ -1,0 +1,504 @@
+<!DOCTYPE html><html><head><title>Help for package prrd</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {prrd}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#dequeueJobs'><p>Dequeue and run reverse-dependency checks, possibly in parallel</p></a></li>
+<li><a href='#enqueueJobs'><p>Enqueues reverse-dependent packages</p></a></li>
+<li><a href='#getDatabaseConnection'><p>Database Helper Functions</p></a></li>
+<li><a href='#prrd-package'><p>Parallel Runs of Reverse Depends</p></a></li>
+<li><a href='#runSanityChecks'><p>Various Helper Functions</p></a></li>
+<li><a href='#summariseQueue'><p>Summarisse results from a reverse-dependency check</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Parallel Runs of Reverse Depends</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.0.6</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2024-03-06</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Dirk Eddelbuettel</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Dirk Eddelbuettel &lt;edd@debian.org&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Reverse depends for a given package are queued such that multiple
+ workers can run the reverse-dependency tests in parallel.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a> | <a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a> [expanded from: GPL (&ge; 2)]</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>config, liteq, data.table, crayon, DBI, RSQLite</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>docopt, foghorn, anytime</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="https://github.com/eddelbuettel/prrd">https://github.com/eddelbuettel/prrd</a>,
+<a href="https://dirk.eddelbuettel.com/code/prrd.html">https://dirk.eddelbuettel.com/code/prrd.html</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/eddelbuettel/prrd/issues">https://github.com/eddelbuettel/prrd/issues</a></td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>6.0.1</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2024-03-06 13:18:39 UTC; edd</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2024-03-06 13:50:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='dequeueJobs'>Dequeue and run reverse-dependency checks, possibly in parallel</h2><span id='topic+dequeueJobs'></span><span id='topic+dequeueDepends'></span>
+
+<h3>Description</h3>
+
+<p>Dequeue package for (potentially parallel) reverse-dependency check
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>dequeueJobs(package, directory, exclude = NULL, date = format(Sys.Date()))
+
+dequeueDepends(package, directory)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="dequeueJobs_+3A_package">package</code></td>
+<td>
+<p>A character variable denoting a package</p>
+</td></tr>
+<tr><td><code id="dequeueJobs_+3A_directory">directory</code></td>
+<td>
+<p>A character variable denoting a directory for the queuefile</p>
+</td></tr>
+<tr><td><code id="dequeueJobs_+3A_exclude">exclude</code></td>
+<td>
+<p>An optional character variable denoting an exclusion set csv file.</p>
+</td></tr>
+<tr><td><code id="dequeueJobs_+3A_date">date</code></td>
+<td>
+<p>Optional character variable describing a date (as part of the queue
+file, default is current date.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function consumes previously enqueued jobs for reverse dependency checks.
+It is set up in such a way that multiple distinct and independent process can
+run checks in parallel without effecting each other. If the underlying queue
+file is on a network drive, this should may also work across multiple machines.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A queue is create as a side effect, its elements are returned invisibly
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk Eddelbuettel
+</p>
+
+<hr>
+<h2 id='enqueueJobs'>Enqueues reverse-dependent packages</h2><span id='topic+enqueueJobs'></span><span id='topic+enqueueDepends'></span>
+
+<h3>Description</h3>
+
+<p>Enqueue package for subsequent reverse-dependency check
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>enqueueJobs(package, directory, dbfile = "", addfailed = FALSE)
+
+enqueueDepends(package, directory)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="enqueueJobs_+3A_package">package</code></td>
+<td>
+<p>A character variable denoting a package</p>
+</td></tr>
+<tr><td><code id="enqueueJobs_+3A_directory">directory</code></td>
+<td>
+<p>A character variable denoting a directory</p>
+</td></tr>
+<tr><td><code id="enqueueJobs_+3A_dbfile">dbfile</code></td>
+<td>
+<p>Optional character with path to previous runs db file</p>
+</td></tr>
+<tr><td><code id="enqueueJobs_+3A_addfailed">addfailed</code></td>
+<td>
+<p>Optional logical swith to add previous failures</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function relies on the <code><a href="utils.html#topic+available.packages">available.packages</a></code> function from R
+along with the <code>liteq</code> package. The <code>getQueueFile</code> function is used to
+determine the queue file directory and name.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A queue is create as a side effect, its elements are returned invisibly
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk Eddelbuettel
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+td &lt;- tempdir()
+options(repos=c(CRAN="https://cloud.r-project.org"))
+jobsdf &lt;- enqueueJobs(package="digest", directory=td)
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='getDatabaseConnection'>Database Helper Functions</h2><span id='topic+getDatabaseConnection'></span><span id='topic+createTable'></span><span id='topic+insertRow'></span><span id='topic+createRunDataTable'></span>
+
+<h3>Description</h3>
+
+<p>Several Database Connection Helper Functions
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getDatabaseConnection(file)
+
+createTable(con)
+
+insertRow(con, df)
+
+createRunDataTable(con)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getDatabaseConnection_+3A_file">file</code></td>
+<td>
+<p>A character variable pointing to a sqlite3 file</p>
+</td></tr>
+<tr><td><code id="getDatabaseConnection_+3A_con">con</code></td>
+<td>
+<p>A database connection object</p>
+</td></tr>
+<tr><td><code id="getDatabaseConnection_+3A_df">df</code></td>
+<td>
+<p>A one-row data.frame with results to be appended</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>These functions return a connection, create a table and insert
+a row of data, respectively.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A connection object
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk Eddelbuettel
+</p>
+
+<hr>
+<h2 id='prrd-package'>Parallel Runs of Reverse Depends</h2><span id='topic+prrd-package'></span><span id='topic+prrd'></span>
+
+<h3>Description</h3>
+
+<p>Reverse depends for a given package are queued such that multiple
+ workers can run the reverse-dependency tests in parallel.</p>
+
+
+<h3>Package Content</h3>
+
+
+<p>Index of help topics:
+</p>
+<pre>
+dequeueJobs             Dequeue and run reverse-dependency checks,
+                        possibly in parallel
+enqueueJobs             Enqueues reverse-dependent packages
+getDatabaseConnection   Database Helper Functions
+prrd-package            Parallel Runs of Reverse Depends
+runSanityChecks         Various Helper Functions
+summariseQueue          Summarisse results from a reverse-dependency
+                        check
+</pre>
+
+<h3>Maintainer</h3>
+
+<p>Dirk Eddelbuettel &lt;edd@debian.org&gt;</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk Eddelbuettel</p>
+
+<hr>
+<h2 id='runSanityChecks'>Various Helper Functions</h2><span id='topic+runSanityChecks'></span><span id='topic+runEnqueueSanityChecks'></span><span id='topic+getDataDirectory'></span><span id='topic+getQueueFile'></span><span id='topic+getConfig'></span><span id='topic+getExclusionSet'></span>
+
+<h3>Description</h3>
+
+<p>These functions create a data directory name given a package name
+and additional optional arguments which can be used to store test
+meta-data and results, return a queue file name, return the
+configuration object (retrieved from several standard locations)
+and load the exclusion set.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>runSanityChecks()
+
+runEnqueueSanityChecks()
+
+getDataDirectory(package, date = format(Sys.Date()), path = ".",
+  sep = "_")
+
+getQueueFile(package, date = format(Sys.Date()), path = ".", sep = "_")
+
+getConfig(debug = FALSE)
+
+getExclusionSet(exclusionfile)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="runSanityChecks_+3A_package">package</code></td>
+<td>
+<p>Character variable providing the package name.</p>
+</td></tr>
+<tr><td><code id="runSanityChecks_+3A_date">date</code></td>
+<td>
+<p>Optional character variable describing a date, default
+is current date.</p>
+</td></tr>
+<tr><td><code id="runSanityChecks_+3A_path">path</code></td>
+<td>
+<p>Optional path, default is current directory.</p>
+</td></tr>
+<tr><td><code id="runSanityChecks_+3A_sep">sep</code></td>
+<td>
+<p>Optional character with component separator, default is &ldquo;_&rdquo;.</p>
+</td></tr>
+<tr><td><code id="runSanityChecks_+3A_debug">debug</code></td>
+<td>
+<p>Optional boolean</p>
+</td></tr>
+<tr><td><code id="runSanityChecks_+3A_exclusionfile">exclusionfile</code></td>
+<td>
+<p>Character variable with path and file for an optional
+exclusion set.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Additional helper functions get particular directories, config settings or
+check some assumptions about files in <code>PATH</code> and alike,
+</p>
+
+
+<h3>Value</h3>
+
+<p>For <code>getDataDirectory</code>, a directory name. For <code>getQueueFile</code>, a queue
+database file name (used only internally). For <code>getConfig</code>, a named vector with config
+entries. For <code>getExclusionSet</code> a character vector of package names. Nothing is returned
+by <code>runSanityChecks</code> which is invoked for its side effect of validation (currently only
+if <code>run-xvfb-safe</code> is in the PATH).
+</p>
+
+
+<h3>Config File</h3>
+
+<p>An optional config file can be used to set several configuration variables.
+Currently supported are
+</p>
+
+<dl>
+<dt>setup</dt><dd><p>The path to an R file that will be <code>source</code>'ed.</p>
+</dd>
+<dt>workdir</dt><dd><p>The directory used for the parallel run of reverse depends.
+May be an absolute or relative path.</p>
+</dd>
+<dt>libdir</dt><dd><p>The directory passed to <code>.libPaths</code> allow for additional
+build-dependencies. May be an absolute or relative path. </p>
+</dd>
+<dt>debug</dt><dd><p>A boolean switch to enable more debugging output.</p>
+</dd>
+<dt>verbose</dt><dd><p>A boolean switch to enable more verbose output.</p>
+</dd>
+</dl>
+
+<p>The <code>setup</code> field is particularly useful as the file being sourced
+can contain other R expressions setting environment variables or options.
+It is (currently) searched in the four locations &ldquo;.prrd.yaml&rdquo;,
+&ldquo;~/.R/prrd.yaml&rdquo;, &ldquo;~/.prrd.yaml&rdquo;,  and &ldquo;/etc/R/prrd.yaml&rdquo;.
+The first file found ends the search and is used, content is not merged from
+several files.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk Eddelbuettel
+</p>
+
+<hr>
+<h2 id='summariseQueue'>Summarisse results from a reverse-dependency check</h2><span id='topic+summariseQueue'></span>
+
+<h3>Description</h3>
+
+<p>Summarise results from (potentially parallel) reverse-dependency check
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>summariseQueue(package, directory, dbfile = "", extended = FALSE,
+  foghorn = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summariseQueue_+3A_package">package</code></td>
+<td>
+<p>A character variable denoting a package</p>
+</td></tr>
+<tr><td><code id="summariseQueue_+3A_directory">directory</code></td>
+<td>
+<p>A character variable denoting a directory</p>
+</td></tr>
+<tr><td><code id="summariseQueue_+3A_dbfile">dbfile</code></td>
+<td>
+<p>A character variable for an optional override which, if
+present, is used over &lsquo;package&rsquo; and &lsquo;directory&rsquo;.</p>
+</td></tr>
+<tr><td><code id="summariseQueue_+3A_extended">extended</code></td>
+<td>
+<p>A boolean variable to select extended analysis of
+failures, default is <code>FALSE</code> which skips this.</p>
+</td></tr>
+<tr><td><code id="summariseQueue_+3A_foghorn">foghorn</code></td>
+<td>
+<p>A boolean variable to invoke the <a href="https://CRAN.R-project.org/package=foghorn"><span class="pkg">foghorn</span></a> to
+retrieve and review CRAN result status, default is <code>FALSE</code> which
+skips this.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>NULL, invisibly
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Dirk Eddelbuettel
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

@@ -1,0 +1,563 @@
+<!DOCTYPE html><html><head><title>Help for package depcache</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {depcache}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#cache'><p>Evaluate an expression and cache its results</p></a></li>
+<li><a href='#depcache-package'><p>Cache R Expressions, Taking Their Dependencies into Account</p></a></li>
+<li><a href='#depcache.options'><p>Caching options</p></a></li>
+<li><a href='#setCached'><p>Cache-tracking assignment</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Cache R Expressions, Taking Their Dependencies into Account</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>codetools, methods</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.1-2</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Hash an expression with its dependencies and store its
+	value, reloading it from a file as long as both the expression and
+	its dependencies stay the same.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL (&ge; 3)</a></td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2022-06-17 14:13:14 UTC; ivan</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Ivan Krylov [aut, cre]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Ivan Krylov &lt;krylov.r00t@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2022-06-21 08:50:03 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='cache'>Evaluate an expression and cache its results</h2><span id='topic+cache'></span>
+
+<h3>Description</h3>
+
+<p>This function extracts all dependencies of an R expression, hashes
+them together with the expression itself and either loads the
+already-existing file, or evaluates the expression and stores the
+result in that file.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  cache(expr, extra = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="cache_+3A_expr">expr</code></td>
+<td>
+
+<p>An expression to evaluate or load from cache, unquoted.
+</p>
+</td></tr>
+<tr><td><code id="cache_+3A_extra">extra</code></td>
+<td>
+
+<p>Any R value that should be considered part of the state deciding
+whether the expression should be re-computed. For example, if
+<code>expr</code> reads a file, consider using <code><a href="base.html#topic+file.mtime">file.mtime</a></code> or
+<code><a href="tools.html#topic+md5sum">md5sum</a></code> to check for changes in it.
+</p>
+</td></tr>
+<tr><td><code id="cache_+3A_...">...</code></td>
+<td>
+
+<p>Additional options, see <code><a href="#topic+depcache.options">depcache.options</a></code>.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Currently, the hash is obtained by means of serialisation. In order to
+make semantically same values have same hashes on a wide range of R
+versions, the following steps were taken: </p>
+
+<ul>
+<li><p> When computing the hash of the serialized data (only the XDR
+format version 2 or 3 is supported), the first 14 bytes containing
+the header (including the version of R that serialized the data) are
+ignored.
+</p>
+</li>
+<li><p> Every function is &ldquo;rebuilt&rdquo; from its body before
+hashing, forcing R to discard the bytecode and the source references
+from the copy of the function before it's hashed.
+</p>
+</li>
+<li><p> Strings are converted to UTF-8 before hashing.
+</p>
+</li>
+<li><p> All this is done recursively.
+</p>
+</li></ul>
+
+<p>The exact algorithm used and the way hash is obtained are
+implementation details and may eventually change, though not without a
+good reason.
+</p>
+<p>Other aspects of R data structures are currently not handled:
+</p>
+
+<ul>
+<li><p> Nothing is done about environments. Due to them being
+reference objects, any fix-up must re-create them from scratch,
+taking potentially recursive dependencies into account, which is
+likely expensive.
+</p>
+</li>
+<li><p> Some S4 classes (like reference class implementations) just
+have different representations in different versions of <span class="rlang"><b>R</b></span> and
+third-party packages. They may mean the same thing, but they
+serialize to different byte sequences.
+</p>
+</li></ul>
+
+
+
+<h3>Value</h3>
+
+<p>The result of evaluating <code>expr</code>, either directly, or loaded from
+cache.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+setCached">setCached</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  
+  a &lt;- 1
+  # will evaluate the expression the first time
+  cache({ message('evaluating expression'); a + 1 }) # 2
+  # saved value of the expression will be used
+  cache({
+    message('evaluating expression')
+    # even if written a bit differently
+    a + 1
+  }) # 2
+  a &lt;- -1
+  # expression evaluated again because dependencies changed
+  cache({ message('evaluating expression'); a + 1 }) # 0
+  
+</code></pre>
+
+<hr>
+<h2 id='depcache-package'>Cache R Expressions, Taking Their Dependencies into Account</h2><span id='topic+depcache-package'></span><span id='topic+depcache'></span>
+
+<h3>Description</h3>
+
+<p>Hash an expression with its dependencies and store its
+	value, reloading it from a file as long as both the expression and
+	its dependencies stay the same.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The functions in this package take an expression, walk its code to
+find its dependencies and calculate a hash of them. If a corresponding
+file already exists, it is loaded; otherwise, the expression is
+evaluated and its value is saved in the file. Optionally, this check
+may be performed every time a variable is accessed.
+</p>
+<p>By default, a subdirectory of the current directory is used to store
+the cache files.
+</p>
+
+<p>Index of help topics:
+</p>
+<pre>
+cache                   Evaluate an expression and cache its results
+depcache-package        Cache R Expressions, Taking Their Dependencies
+                        into Account
+depcache.options        Caching options
+setCached               Cache-tracking assignment
+</pre>
+
+
+<h3>Author(s)</h3>
+
+<p>Ivan Krylov</p>
+
+
+<h3>References</h3>
+
+<p>FNV-1a hash: <a href="http://www.isthe.com/chongo/tech/comp/fnv/">http://www.isthe.com/chongo/tech/comp/fnv/</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cache">cache</a></code>, <code><a href="#topic++25+3C-+25">%&lt;-%</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  
+  a &lt;- 1
+  # will evaluate expression
+  cache({ message('evaluating expression'); a + 1 }) # 2
+  # will reuse cached value
+  x %&lt;-% { message('evaluating expression'); a + 1 } # 2
+  x
+  a &lt;- 2
+  # will recalculate the value
+  x # 3
+  
+</code></pre>
+
+<hr>
+<h2 id='depcache.options'>Caching options</h2><span id='topic+depcache.options'></span>
+
+<h3>Description</h3>
+
+<p>Control how the dependencies are gathered and hashed to locate the
+determine the file name to load the cached object from.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>depcache.options(
+  defaults = getOption("depcache.version", '0.1'),
+  skip = getOption("depcache.skip", NULL),
+  dir, compress, local.only, format.version
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="depcache.options_+3A_defaults">defaults</code></td>
+<td>
+
+<p>A string containing the version of <span class="pkg">depcache</span> to get other
+defaults from. If not set, takes the value from the
+<code style="white-space: pre;">&#8288;depcache.version&#8288;</code> option (see <code><a href="base.html#topic+options">options</a></code>), falling
+back to the current version of the package.
+</p>
+<p>To make the caching more reproducible against package updates, call
+<code><a href="base.html#topic+options">options</a>(depcache.version = <var>something</var>)</code> once at the
+top of your scripts.
+</p>
+<p>Currently, only version <code style="white-space: pre;">&#8288;0.1&#8288;</code> is accepted. When a new version
+of the package changes the defaults or adds new settings, the range
+of the accepted values will expand.
+</p>
+</td></tr>
+<tr><td><code id="depcache.options_+3A_skip">skip</code></td>
+<td>
+
+<p>A character vector of variables to omit from automatically-gathered
+dependencies. Variables carrying unintended or unimportant state,
+which would otherwise interfere with obtaining a reproducible hash,
+should be listed here. This may be useful when a symbol encountered
+in the expression doesn't signify a variable in the evaluation frame
+(e.g. non-standard evaluation when plotting with <span class="pkg">lattice</span>), or
+when the variable is being assigned to as part of the expression.
+</p>
+<p>Defaults to the <code style="white-space: pre;">&#8288;depcache.skip&#8288;</code> option, or <code>NULL</code> if unset.
+</p>
+</td></tr>
+<tr><td><code id="depcache.options_+3A_dir">dir</code></td>
+<td>
+
+<p>The directory to store the cache files inside. Defaults to the
+<code style="white-space: pre;">&#8288;depcache.dir&#8288;</code> option, or &lsquo;<span class="file">.depcache</span>&rsquo; in <span class="pkg">depcache</span>
+version 0.1.
+</p>
+</td></tr>
+<tr><td><code id="depcache.options_+3A_compress">compress</code></td>
+<td>
+
+<p>Passed as the <code>compress</code> option to <code><a href="base.html#topic+saveRDS">saveRDS</a></code> when
+saving the cached objects. Defaults to the <code style="white-space: pre;">&#8288;depcache.compress&#8288;</code>
+option, or <code>TRUE</code> in <span class="pkg">depcache</span> version 0.1.
+</p>
+</td></tr>
+<tr><td><code id="depcache.options_+3A_local.only">local.only</code></td>
+<td>
+
+<p>If <code>TRUE</code>, only variables available in the same environment
+where the caching function has been called from are considered as
+dependencies; parent environments are ignored. Typically, this means
+taking local variables as parts of the hash that determines the file
+name, but not loaded packages or <code><a href="base.html#topic+attach">attach</a></code>ed datasets.
+Setting this to <code>FALSE</code> may invalidate the cache next time a
+package or <span class="rlang"><b>R</b></span> itself is updated.
+</p>
+<p>Defaults to the <code style="white-space: pre;">&#8288;depcache.local.only&#8288;</code> option, or <code>TRUE</code> in
+<span class="pkg">depcache</span> version 0.1.
+</p>
+</td></tr>
+<tr><td><code id="depcache.options_+3A_format.version">format.version</code></td>
+<td>
+
+<p>Passed as the <code>version</code> argument to <code><a href="base.html#topic+saveRDS">saveRDS</a></code> and
+also used when serialising any objects to hash them. Only versions
+<code style="white-space: pre;">&#8288;2&#8288;</code> and <code style="white-space: pre;">&#8288;3&#8288;</code> are supported. Defaults to the
+<code style="white-space: pre;">&#8288;depcache.format.version&#8288;</code> option, or <code style="white-space: pre;">&#8288;2&#8288;</code> in <span class="pkg">depcache</span>
+version 0.1.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>In all cases, explicitly passed arguments override settings from the
+<code><a href="base.html#topic+options">options</a>()</code>, which override the defaults. Depending on the
+<code>defaults</code> argument or the <code style="white-space: pre;">&#8288;depcache.version&#8288;</code> option, the
+defaults may change; setting it explicitly will help your scripts stay
+forward-compatible.
+</p>
+<p>This function shouldn't be normally called by the user (except,
+perhaps, to verify the parameters about to be passed to the caching
+functions), but it is automatically invoked on every call to
+<code><a href="#topic+cache">cache</a></code>, <code><a href="#topic+setCached">setCached</a></code>, or the use of
+cache-tracking assignment operators <code><a href="#topic++25+3C-+25">%&lt;-%</a></code> and
+<code><a href="#topic++25-+3E+25">%-&gt;%</a></code>. Any additional options passed to the functions
+as <code>...</code> are handled here, and so are the global
+<code><a href="base.html#topic+options">options</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing the settings to be used by the caching system.
+</p>
+<table>
+<tr><td><code>dir</code></td>
+<td>
+<p>The directory used for storage of the cache files.</p>
+</td></tr>
+<tr><td><code>compress</code></td>
+<td>
+<p>Passed to <code><a href="base.html#topic+saveRDS">saveRDS</a></code>.</p>
+</td></tr>
+<tr><td><code>skip</code></td>
+<td>
+
+<p>Variables to skip when hashing the dependencies of the
+expressions.
+</p>
+</td></tr>
+<tr><td><code>local.only</code></td>
+<td>
+<p>Whether to ignore non-local dependencies.</p>
+</td></tr>
+<tr><td><code>format.version</code></td>
+<td>
+
+<p>Passed to <code><a href="base.html#topic+saveRDS">saveRDS</a></code> as the <code>version</code> argument. Also
+determines the format version when serialising the variables to hash
+them.
+</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cache">cache</a></code>, <code><a href="#topic+setCached">setCached</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  
+  # The output is affected by the user's use of options(...) and the
+  # current version of the package
+  options(depcache.local.only = FALSE)
+  print(depcache.options(format.version = 3))
+  options(depcache.local.only = TRUE)
+  print(depcache.options())
+
+  # "skip" makes it possible to avoid mistaking arguments evaluated in a
+  # non-standard way for local variables
+  speed &lt;- 1
+  options(depcache.skip = 'speed')
+  x %&lt;-% { message('fitting the model'); lm(dist ~ speed, cars) }
+  speed &lt;- 0
+  # not fitted again despite change in local variable "speed"
+  summary(x)
+  
+</code></pre>
+
+<hr>
+<h2 id='setCached'>Cache-tracking assignment</h2><span id='topic++25-+3E+25'></span><span id='topic++25+3C-+25'></span><span id='topic+setCached'></span>
+
+<h3>Description</h3>
+
+<p>Cache expression values and automatically recalculate them when their
+dependencies change
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  symbol %&lt;-% expr
+  expr %-&gt;% symbol
+  setCached(symbol, expr, extra = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="setCached_+3A_symbol">symbol</code></td>
+<td>
+
+<p>A variable name to associate with the expression, unquoted.
+</p>
+</td></tr>
+<tr><td><code id="setCached_+3A_expr">expr</code></td>
+<td>
+
+<p>The expression to cache, taking dependencies into account.
+</p>
+</td></tr>
+<tr><td><code id="setCached_+3A_extra">extra</code></td>
+<td>
+
+<p>An unquoted expression to be considered an extra part of the state,
+in addition to the automatically determined dependencies. Will be
+evaluated every time the variable is accessed to determine whether
+it should be recalculated.
+</p>
+</td></tr>
+<tr><td><code id="setCached_+3A_...">...</code></td>
+<td>
+
+<p>Additional settings, see <code><a href="#topic+depcache.options">depcache.options</a></code>.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Sets up the variable <var>symbol</var> to automatically recalculate the
+value of <code>expr</code> any time its dependencies change, using
+<code><a href="base.html#topic+makeActiveBinding">makeActiveBinding</a></code> and the same mechanisms that power
+<code><a href="#topic+cache">cache</a></code>.
+</p>
+<p>Initially, <code>expr</code> is loaded from <code><a href="#topic+cache">cache</a></code> or
+evaluated, and the hash is remembered. When the variable named by
+<var>symbol</var> is accessed, its dependencies are hashed together with
+<code>expr</code> (this may be done recursively if the dependencies are
+themselves active bindings set up the same way). If the hash changes,
+the value of <code>expr</code> is again loaded from <code><a href="#topic+cache">cache</a></code> (if
+available) or evaluated anew.
+</p>
+<p>To prevent infinite loops during dependency calculation, <var>symbol</var>
+is automatically skipped, but a self-dependent <code>expr</code> is probably
+a bad idea anyway.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Returns the value of <code>expr</code>, invisibly. Called for the side
+effect of creating an active binding with a name specified by
+<code>symbol</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cache">cache</a></code>, <code><a href="base.html#topic+makeActiveBinding">makeActiveBinding</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  
+  a &lt;- 1
+  # will evaluate the expression first
+  x %&lt;-% { message('evaluating expression "x"'); a + 1 }
+  x # 2
+  # will reuse cached value
+  {
+    message('evaluating expression "y"')
+    a + 1
+    # even if written a bit differently
+  } %-&gt;% y
+  y # 2
+  a &lt;- -1
+  # will evaluate the expression again
+  x # 0
+  # will load the new cached value
+  y # 0
+  setCached(z, x + y)
+  a &lt;- 0
+  z # recalculates all three
+  
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

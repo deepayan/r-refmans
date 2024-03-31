@@ -1,0 +1,2735 @@
+<!DOCTYPE html><html><head><title>Help for package ring</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {ring}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#ring_buffer_bytes'><p>Byte array based ring buffer</p></a></li>
+<li><a href='#ring_buffer_bytes_translate'><p>Translating bytes ring buffer</p></a></li>
+<li><a href='#ring_buffer_bytes_typed'><p>Typed bytes ring buffer</p></a></li>
+<li><a href='#ring_buffer_env'><p>Environment-based ring buffer</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Circular / Ring Buffers</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0.5</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Circular / ring buffers in R and C.  There are a couple
+    of different buffers here with different implementations that
+    represent different trade-offs.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="https://github.com/mrc-ide/ring">https://github.com/mrc-ide/ring</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/mrc-ide/ring/issues">https://github.com/mrc-ide/ring/issues</a></td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>R6</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>knitr, rmarkdown, testthat</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.2.3</td>
+</tr>
+<tr>
+<td>VignetteBuilder:</td>
+<td>knitr</td>
+</tr>
+<tr>
+<td>Language:</td>
+<td>en-GB</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-11-28 13:54:22 UTC; rfitzjoh</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Rich FitzJohn [aut, cre],
+  Imperial College of Science, Technology and Medicine [cph]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Rich FitzJohn &lt;rich.fitzjohn@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2023-11-29 11:40:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='ring_buffer_bytes'>Byte array based ring buffer</h2><span id='topic+ring_buffer_bytes'></span>
+
+<h3>Description</h3>
+
+<p>Construct a ring buffer where the buffer holds a stream of bytes.
+Optionally, the buffer can be &quot;strided&quot; so that the bytes
+naturally fall into chunks of exactly the same size.  It is
+implemented in C in the hope that it will be fast, with the
+limitation that any data transfer to or from R will always involve
+copies.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ring_buffer_bytes(size, stride = 1L, on_overflow = "overwrite")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ring_buffer_bytes_+3A_size">size</code></td>
+<td>
+<p>Number of elements in the buffer, each of which will
+be <code>stride</code> bytes long.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_+3A_stride">stride</code></td>
+<td>
+<p>Number of bytes per buffer element.  Defaults to 1
+byte.  If you want to store anything other than a bytestream in
+the buffer, you will probably want more than one byte per
+element; for example, on most R platforms an integer takes 4
+bytes and a double takes 8 (see <code><a href="base.html#topic+.Machine">.Machine</a></code>, and also
+<code><a href="#topic+ring_buffer_bytes_typed">ring_buffer_bytes_typed</a></code>).</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_+3A_on_overflow">on_overflow</code></td>
+<td>
+<p>Behaviour on buffer overflow.  The default is
+to overwrite the oldest elements in the buffer
+(<code>"overwrite"</code>).  Alternative actions are <code>"error"</code>
+which will throw an error if a function tries to add more
+elements than there are space for, or <code>"grow"</code> which will
+grow the buffer to accept the new elements (this uses an
+approximately golden ratio approach; see details below).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>In contrast with <code><a href="#topic+ring_buffer_env">ring_buffer_env</a></code>, every element of
+this buffer has the same size; this makes it less flexible
+(because you have to decide ahead of time what you will be
+storing), but at the same time this can make using the buffer
+easier to think about (because you decided ahead of time what you
+are storing).
+</p>
+<p>If you want to use this to store fixed-size arrays of integers,
+numerics, etc, see <code><a href="#topic+ring_buffer_bytes_typed">ring_buffer_bytes_typed</a></code> which
+wraps this with fast conversion functions.
+</p>
+<p>If the <code>on_overflow</code> action is <code>"grow"</code> and the buffer overflows,
+then the size of the buffer will grow geometrically (this is also
+the case if you manually <code style="white-space: pre;">&#8288;$grow()&#8288;</code> the buffer with <code>exact = FALSE</code>.  When used this way, let <code>n</code> is the number of <em>additional</em>
+elements that space is needed for; <code>ring</code> then looks at the total
+needed capacity (used plus <code>n</code> relative to <code>size()</code>).  <em>If</em> the
+buffer needs to be made larger to fit <code>n</code> elements in then it is
+grown by a factor of phi (the golden ratio, approximately 1.6).
+So if to fit <code>n</code> elements in the buffer needs to be increased in
+size by <code>m</code> then the smallest of <code>size * phi</code>, <code>size * phi^2</code>,
+<code>size * phi^3</code>, ... will be used as the new size.
+</p>
+<p>In contrast, using the <code>grow()</code> method with <code>exact = TRUE</code> will
+<em>always</em> increase the size of the buffer so long as <code>n</code> is
+positive.
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Note that this methods reference section is repeated verbatim between
+the three main ring buffer classes; <code>ring_buffer_env</code>
+(&quot;env&quot;), <code>ring_buffer_bytes</code> (&quot;bytes&quot;) and
+<code>ring_buffer_bytes_typed</code> (&quot;typed&quot;).  Almost all methods have
+the same arguments and behaviour, but hopefully by listing everything together,
+the differences between implementations will be a bit more apparent.
+</p>
+
+<dl>
+<dt><code>reset</code></dt><dd>
+<p>Reset the state of the buffer.  This &quot;zeros&quot; the head and tail pointer (and may or may not actually reset the data) so that the buffer can be used as if fresh.
+</p>
+<p><em>Usage:</em>
+<code>reset(clear = FALSE)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>clear</code>:   Logical, indicating if the memory should also be cleared. Generally this is not necessary, but with environment buffers this can let the garbage collector clean up large elements.  For the bytes buffer this zeros the memory.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>duplicate</code></dt><dd>
+<p>Clone the ring buffer, creating a copy.  Copies both the underlying data and the position of the head and tail.
+</p>
+<p><em>Usage:</em>
+<code>duplicate()</code>
+</p>
+<p><em>Return value</em>:
+A new ring buffer object
+</p>
+</dd>
+<dt><code>grow</code></dt><dd>
+<p>Increase the size of the buffer by <code>n</code> elements.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>bytes, typed: <code>grow(n)</code>
+</p>
+</li>
+<li><p>env: <code>grow(n, exact = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of additional elements that space should be reserved for (scalar non-negative integer).
+
+</p>
+<div class="sourceCode"><pre>\item{\code{exact}:   (For bytes buffer only) Logical scalar indicating if growth should increase the size by \emph{exactly} \code{n} elements (if \code{TRUE}) or so that \emph{at least} \code{n} additional elements will fit (growing the buffer geometrically if needed).
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>size</code></dt><dd>
+<p>Return the capacity (maximum size) of the ring buffer
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>size()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>size(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>bytes_data</code></dt><dd>
+<p>Return the total size of the data storage used in this object.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>bytes_data()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>stride</code></dt><dd>
+<p>Length of each element in the ring buffer, in bytes.  Only implemented (and meaningful) for the bytes buffer; the environment buffer does not support this function as it makes no sense there.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>stride()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>used</code></dt><dd>
+<p>Return the amount of space used in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>used()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>used(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>free</code></dt><dd>
+<p>Return the amount of space free in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>free()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>free(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>is_empty</code></dt><dd>
+<p>Test if the ring buffer is empty
+</p>
+<p><em>Usage:</em>
+<code>is_empty()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>is_full</code></dt><dd>
+<p>Test if the ring buffer is full
+</p>
+<p><em>Usage:</em>
+<code>is_full()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>head_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the head is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>head_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>head_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>tail_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the tail is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>tail_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>tail_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>head</code></dt><dd>
+<p>Return the contents of the head (the most recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>head()</code>
+</p>
+<p><em>Return value</em>:
+It depends a little here.  For <code>ring_buffer_env</code> this is a single R object.  For <code>ring_buffer_bytes</code> it is a raw vector, the same length as the stride of the ring buffer.  For <code>ring_buffer_bytes_typed</code>, a single R object that has been translated from raw.
+</p>
+</dd>
+<dt><code>tail</code></dt><dd>
+<p>Return the contents of the tail (the least recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>tail()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>set</code></dt><dd>
+<p>Set a number of ring entries to the same value.  The exact behaviour here varies depending on the type of ring buffer.  This function may overflow the ring buffer; in this case the tail will be moved.
+</p>
+<p><em>Usage:</em>
+<code>set(data, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   The data to set each ring element to.  For an environment buffer, this may be any R object.  For a bytes buffer it may be either a single byte (in which case each ring element will be set to that byte, repeated <code>stride</code> times), or a raw vector of length <code>stride</code>.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of entries to set to \code{data}
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Invisibly returns the number of elements actually written (which may be less than <code>n</code> if the buffer overflows).  Primarily called for its side effect.
+</p>
+</dd>
+<dt><code>push</code></dt><dd>
+<p>Push elements onto the ring buffer head.  This may overflow the ring buffer, destroying the oldest elements in the buffer (and moving the position of the tail).
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>push(data, iterate = TRUE)</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>push(data)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to push onto the ring buffer.  For <code>ring_buffer_bytes</code>, this must be a raw vector with a length that is a multiple of the buffer stride.  For <code>ring_buffer_bytes_typed</code> it must be a vector of the appropriate type.  For <code>ring_buffer_env</code> it may be an arbitrary R object (but see <code>iterate</code> .
+
+</p>
+<div class="sourceCode"><pre>\item{\code{iterate}:   For \code{ring_buffer_env} only, changes the behaviour with vectors and lists.  Because each element of a \code{ring_buffer_env} can b an arbitrary R object, for a list \code{x} it is ambiguous if \code{push(x)} should push one object onto the buffer, or \code{length(x)} objects (i.e. equivalent to \code{push(x[[1]])}, \code{push(x[[2]])}, etc.  The \code{iterate} argument switches between interpretations; if \code{TRUE} (the default) the push will iterate over the object using \code{for (el in x)} (with appropriate S3 dispatch).  If \code{iterate = FALSE}, then the entire object is pushed at once, so always updating only by a single element.
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_bytes</code>, the data invisibly.  For <code>ring_buffer_bytes</code> and <code>ring_buffer_bytes_typed</code>, the position of the head pointer (relative to the beginning of the storage region).
+</p>
+</dd>
+<dt><code>take</code></dt><dd>
+<p>Destructively take elements from the ring buffer.  This consumes from the tail (the least recently added elements).  It is not possibly to underflow the buffer; if more elements are requested than can be supplied then an error will be thrown and the state of the buffer unmodified.
+</p>
+<p><em>Usage:</em>
+<code>take(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>read</code></dt><dd>
+<p>Nondestructively read elements from the ring buffer.  This is identical to <code>take</code> except that the state of the buffer is not modified.
+</p>
+<p><em>Usage:</em>
+<code>read(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>copy</code></dt><dd>
+<p>Copy from <em>this</em> ring buffer into a different ring buffer. This is destructive with respect to both ring buffers; the tail pointer will be moved in this ring buffer as data are taken, and if the destination ring buffer overflows, the tail pointer will be moved too.
+</p>
+<p><em>Usage:</em>
+<code>copy(dest, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of elements to copy
+}
+</pre></div>
+</li></ul>
+
+</dd>
+<dt><code>mirror</code></dt><dd>
+<p>Mirror the contents of <em>this</em> ring buffer into a different ring buffer.  This differs from <code>copy</code> in that <em>this</em> ring buffer is unaffected and in that <em>all</em> of this ring buffer is copied over (including head/tail positions).  This provides an alternative way of duplicating state to <code>duplicate</code> if you already have an appropriately sized ring buffer handy.  No allocations will be done.
+</p>
+<p><em>Usage:</em>
+<code>mirror(dest)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>head</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>head_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Head offset.  This moves away from the most recently added item. An offset of 0 reads the most recently added element, 1 reads the element added before that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>tail_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>tail</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>tail_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Tail offset.  This moves away from the oldest item.  An offset of 0 reads the oldest element, 1 reads the element added after that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>tail</code> (see <code>head</code>)
+</p>
+</dd>
+<dt><code>take_head</code></dt><dd>
+<p>As for <code>take</code>, but operating on the head rather than the tail.  This is destructive with respect to the head.
+</p>
+<p><em>Usage:</em>
+<code>take_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>take</code>
+</p>
+</dd>
+<dt><code>read_head</code></dt><dd>
+<p>As for <code>read</code>, but operating on the head rather than the tail.  This is not destructive with respect to the tail.
+</p>
+<p><em>Usage:</em>
+<code>read_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>read</code>
+</p>
+</dd>
+<dt><code>head_set</code></dt><dd>
+<p>Set data to the head <em>without advancing</em>.  This is useful in cases where the head data will be set and advanced separately (with <code>head_advance</code>).  This is unlikely to be useful for all users.  It is used extensively in dde (but called from C).
+</p>
+<p><em>Usage:</em>
+<code>head_set(data)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to set into the head.  For the bytes buffer this must be exactly <code>stride</code> bytes long, and for the environment buffer it corresponds to a single &quot;element&quot;.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_data</code></dt><dd>
+<p>Retrieve the current data stored in the head but not advanced. For many cases this may be junk - if the byte buffer has looped then it will be the bytes that will be overwritten on the next write.  However, when using <code>head_set</code> it will be the data that have been set into the buffer but not yet committed with <code>head_advance</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_data()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>head_advance</code></dt><dd>
+<p>Shift the head around one position.  This commits any data written by <code>head_set</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_advance()</code>
+</p>
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+</dl>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Create a ring buffer of 100 bytes
+b &lt;- ring_buffer_bytes(100)
+
+# Get the length, number of used and number of free bytes:
+b$size()
+b$used()
+b$free()
+
+# Nothing is used because we're empty:
+b$is_empty()
+
+# To work with a bytes buffer you need to use R's raw vectors;
+# here are 30 random bytes:
+bytes &lt;- as.raw(as.integer(sample(256, 30, TRUE) - 1L))
+bytes
+
+# Push these onto the bytes buffer:
+b$push(bytes)
+b$used()
+
+# The head of the buffer points at the most recently added item
+b$head()
+bytes[[length(bytes)]]
+
+# ...and the tail at the oldest (first added in this case)
+b$tail()
+bytes[[1]]
+
+# Elements are taken from the tail; these will be the oldest items:
+b$take(8)
+bytes[1:8]
+b$used()
+
+# To read from the buffer without removing elements, use read:
+b$read(8)
+bytes[9:16]
+
+# It is not possible to take or read more elements than are
+# present in the buffer; it will throw an error:
+## Not run: 
+b$read(50) # error because there are only 22 bytes present
+
+## End(Not run)
+
+# More elements can be pushed on:
+b$push(as.raw(rep(0, 50)))
+b$used()
+b$read(b$used())
+
+# If many new elements are added, they will displace the old elements:
+b$push(as.raw(1:75))
+b$read(b$used())
+</code></pre>
+
+<hr>
+<h2 id='ring_buffer_bytes_translate'>Translating bytes ring buffer</h2><span id='topic+ring_buffer_bytes_translate'></span>
+
+<h3>Description</h3>
+
+<p>This ring buffer is based on <a href="#topic+ring_buffer_bytes">ring_buffer_bytes</a> but
+performs conversion to/from bytes to something useful as data is
+stored/retrieved from the buffer.  This is the interface through
+which <a href="#topic+ring_buffer_bytes_typed">ring_buffer_bytes_typed</a> is implemented.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ring_buffer_bytes_translate(size, stride, to, from, on_overflow = "overwrite")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ring_buffer_bytes_translate_+3A_size">size</code></td>
+<td>
+<p>Number of elements in the buffer, each of which will
+be <code>stride</code> bytes long.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_translate_+3A_stride">stride</code></td>
+<td>
+<p>Number of bytes per buffer element.  Defaults to 1
+byte.  If you want to store anything other than a bytestream in
+the buffer, you will probably want more than one byte per
+element; for example, on most R platforms an integer takes 4
+bytes and a double takes 8 (see <code><a href="base.html#topic+.Machine">.Machine</a></code>, and also
+<code><a href="#topic+ring_buffer_bytes_typed">ring_buffer_bytes_typed</a></code>).</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_translate_+3A_to">to</code></td>
+<td>
+<p>Function to convert an R object to a set of exactly
+<code>stride</code> bytes.  It must take one argument (being an R
+object) and return a raw vector of a length that is a multiple
+of <code>stride</code> (including zero).  It may throw an error if it
+is not possible to convert an object to a bytes vector.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_translate_+3A_from">from</code></td>
+<td>
+<p>Function to convert a set of bytes to an R object.  It
+must take one argument (being a raw vector of a length that is a
+multiple of <code>stride</code>, including zero).  It should not throw
+an error as all data added to the buffer will have passed
+through <code>to</code> on the way in to the buffer.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_translate_+3A_on_overflow">on_overflow</code></td>
+<td>
+<p>Behaviour on buffer overflow.  The default is
+to overwrite the oldest elements in the buffer
+(<code>"overwrite"</code>).  Alternative actions are <code>"error"</code>
+which will throw an error if a function tries to add more
+elements than there are space for, or <code>"grow"</code> which will
+grow the buffer to accept the new elements (this uses an
+approximately golden ratio approach; see details below).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The idea here is that manually working with raw vectors can get
+tedious, and if you are planning on using a bytes-based buffer
+while working in R you may have a way of doing conversion from
+and to R objects.  This interface lets you specify the functions
+once and then will apply your conversion function in every case
+where they are needed.
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Note that this methods reference section is repeated verbatim between
+the three main ring buffer classes; <code>ring_buffer_env</code>
+(&quot;env&quot;), <code>ring_buffer_bytes</code> (&quot;bytes&quot;) and
+<code>ring_buffer_bytes_typed</code> (&quot;typed&quot;).  Almost all methods have
+the same arguments and behaviour, but hopefully by listing everything together,
+the differences between implementations will be a bit more apparent.
+</p>
+
+<dl>
+<dt><code>reset</code></dt><dd>
+<p>Reset the state of the buffer.  This &quot;zeros&quot; the head and tail pointer (and may or may not actually reset the data) so that the buffer can be used as if fresh.
+</p>
+<p><em>Usage:</em>
+<code>reset(clear = FALSE)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>clear</code>:   Logical, indicating if the memory should also be cleared. Generally this is not necessary, but with environment buffers this can let the garbage collector clean up large elements.  For the bytes buffer this zeros the memory.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>duplicate</code></dt><dd>
+<p>Clone the ring buffer, creating a copy.  Copies both the underlying data and the position of the head and tail.
+</p>
+<p><em>Usage:</em>
+<code>duplicate()</code>
+</p>
+<p><em>Return value</em>:
+A new ring buffer object
+</p>
+</dd>
+<dt><code>grow</code></dt><dd>
+<p>Increase the size of the buffer by <code>n</code> elements.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>bytes, typed: <code>grow(n)</code>
+</p>
+</li>
+<li><p>env: <code>grow(n, exact = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of additional elements that space should be reserved for (scalar non-negative integer).
+
+</p>
+<div class="sourceCode"><pre>\item{\code{exact}:   (For bytes buffer only) Logical scalar indicating if growth should increase the size by \emph{exactly} \code{n} elements (if \code{TRUE}) or so that \emph{at least} \code{n} additional elements will fit (growing the buffer geometrically if needed).
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>size</code></dt><dd>
+<p>Return the capacity (maximum size) of the ring buffer
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>size()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>size(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>bytes_data</code></dt><dd>
+<p>Return the total size of the data storage used in this object.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>bytes_data()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>stride</code></dt><dd>
+<p>Length of each element in the ring buffer, in bytes.  Only implemented (and meaningful) for the bytes buffer; the environment buffer does not support this function as it makes no sense there.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>stride()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>used</code></dt><dd>
+<p>Return the amount of space used in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>used()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>used(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>free</code></dt><dd>
+<p>Return the amount of space free in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>free()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>free(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>is_empty</code></dt><dd>
+<p>Test if the ring buffer is empty
+</p>
+<p><em>Usage:</em>
+<code>is_empty()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>is_full</code></dt><dd>
+<p>Test if the ring buffer is full
+</p>
+<p><em>Usage:</em>
+<code>is_full()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>head_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the head is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>head_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>head_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>tail_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the tail is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>tail_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>tail_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>head</code></dt><dd>
+<p>Return the contents of the head (the most recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>head()</code>
+</p>
+<p><em>Return value</em>:
+It depends a little here.  For <code>ring_buffer_env</code> this is a single R object.  For <code>ring_buffer_bytes</code> it is a raw vector, the same length as the stride of the ring buffer.  For <code>ring_buffer_bytes_typed</code>, a single R object that has been translated from raw.
+</p>
+</dd>
+<dt><code>tail</code></dt><dd>
+<p>Return the contents of the tail (the least recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>tail()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>set</code></dt><dd>
+<p>Set a number of ring entries to the same value.  The exact behaviour here varies depending on the type of ring buffer.  This function may overflow the ring buffer; in this case the tail will be moved.
+</p>
+<p><em>Usage:</em>
+<code>set(data, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   The data to set each ring element to.  For an environment buffer, this may be any R object.  For a bytes buffer it may be either a single byte (in which case each ring element will be set to that byte, repeated <code>stride</code> times), or a raw vector of length <code>stride</code>.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of entries to set to \code{data}
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Invisibly returns the number of elements actually written (which may be less than <code>n</code> if the buffer overflows).  Primarily called for its side effect.
+</p>
+</dd>
+<dt><code>push</code></dt><dd>
+<p>Push elements onto the ring buffer head.  This may overflow the ring buffer, destroying the oldest elements in the buffer (and moving the position of the tail).
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>push(data, iterate = TRUE)</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>push(data)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to push onto the ring buffer.  For <code>ring_buffer_bytes</code>, this must be a raw vector with a length that is a multiple of the buffer stride.  For <code>ring_buffer_bytes_typed</code> it must be a vector of the appropriate type.  For <code>ring_buffer_env</code> it may be an arbitrary R object (but see <code>iterate</code> .
+
+</p>
+<div class="sourceCode"><pre>\item{\code{iterate}:   For \code{ring_buffer_env} only, changes the behaviour with vectors and lists.  Because each element of a \code{ring_buffer_env} can b an arbitrary R object, for a list \code{x} it is ambiguous if \code{push(x)} should push one object onto the buffer, or \code{length(x)} objects (i.e. equivalent to \code{push(x[[1]])}, \code{push(x[[2]])}, etc.  The \code{iterate} argument switches between interpretations; if \code{TRUE} (the default) the push will iterate over the object using \code{for (el in x)} (with appropriate S3 dispatch).  If \code{iterate = FALSE}, then the entire object is pushed at once, so always updating only by a single element.
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_bytes</code>, the data invisibly.  For <code>ring_buffer_bytes</code> and <code>ring_buffer_bytes_typed</code>, the position of the head pointer (relative to the beginning of the storage region).
+</p>
+</dd>
+<dt><code>take</code></dt><dd>
+<p>Destructively take elements from the ring buffer.  This consumes from the tail (the least recently added elements).  It is not possibly to underflow the buffer; if more elements are requested than can be supplied then an error will be thrown and the state of the buffer unmodified.
+</p>
+<p><em>Usage:</em>
+<code>take(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>read</code></dt><dd>
+<p>Nondestructively read elements from the ring buffer.  This is identical to <code>take</code> except that the state of the buffer is not modified.
+</p>
+<p><em>Usage:</em>
+<code>read(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>copy</code></dt><dd>
+<p>Copy from <em>this</em> ring buffer into a different ring buffer. This is destructive with respect to both ring buffers; the tail pointer will be moved in this ring buffer as data are taken, and if the destination ring buffer overflows, the tail pointer will be moved too.
+</p>
+<p><em>Usage:</em>
+<code>copy(dest, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of elements to copy
+}
+</pre></div>
+</li></ul>
+
+</dd>
+<dt><code>mirror</code></dt><dd>
+<p>Mirror the contents of <em>this</em> ring buffer into a different ring buffer.  This differs from <code>copy</code> in that <em>this</em> ring buffer is unaffected and in that <em>all</em> of this ring buffer is copied over (including head/tail positions).  This provides an alternative way of duplicating state to <code>duplicate</code> if you already have an appropriately sized ring buffer handy.  No allocations will be done.
+</p>
+<p><em>Usage:</em>
+<code>mirror(dest)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>head</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>head_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Head offset.  This moves away from the most recently added item. An offset of 0 reads the most recently added element, 1 reads the element added before that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>tail_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>tail</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>tail_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Tail offset.  This moves away from the oldest item.  An offset of 0 reads the oldest element, 1 reads the element added after that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>tail</code> (see <code>head</code>)
+</p>
+</dd>
+<dt><code>take_head</code></dt><dd>
+<p>As for <code>take</code>, but operating on the head rather than the tail.  This is destructive with respect to the head.
+</p>
+<p><em>Usage:</em>
+<code>take_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>take</code>
+</p>
+</dd>
+<dt><code>read_head</code></dt><dd>
+<p>As for <code>read</code>, but operating on the head rather than the tail.  This is not destructive with respect to the tail.
+</p>
+<p><em>Usage:</em>
+<code>read_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>read</code>
+</p>
+</dd>
+<dt><code>head_set</code></dt><dd>
+<p>Set data to the head <em>without advancing</em>.  This is useful in cases where the head data will be set and advanced separately (with <code>head_advance</code>).  This is unlikely to be useful for all users.  It is used extensively in dde (but called from C).
+</p>
+<p><em>Usage:</em>
+<code>head_set(data)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to set into the head.  For the bytes buffer this must be exactly <code>stride</code> bytes long, and for the environment buffer it corresponds to a single &quot;element&quot;.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_data</code></dt><dd>
+<p>Retrieve the current data stored in the head but not advanced. For many cases this may be junk - if the byte buffer has looped then it will be the bytes that will be overwritten on the next write.  However, when using <code>head_set</code> it will be the data that have been set into the buffer but not yet committed with <code>head_advance</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_data()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>head_advance</code></dt><dd>
+<p>Shift the head around one position.  This commits any data written by <code>head_set</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_advance()</code>
+</p>
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+</dl>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Rich FitzJohn
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># The "typed" ring buffers do not allow for character vectors to
+# be stored, because strings are generally hard and have unknown
+# lengths.  But if you wanted to store strings that are *always*
+# the same length, this is straightforward to do.
+
+# You can convert from string to bytes with charToRaw (or
+# as.raw(utf8ToInt(x))):
+bytes &lt;- charToRaw("hello!")
+bytes
+
+# And back again with rawToChar (or intToUtf8(as.integer(x)))
+rawToChar(bytes)
+
+# So with these functions we can make a buffer for storing
+# fixed-length strings:
+b &lt;- ring_buffer_bytes_translate(100, 8, charToRaw, rawToChar)
+
+# And with this we can store 8 character strings:
+b$push("abcdefgh")
+b$tail()
+
+# Other length strings cannot be added:
+try(
+  b$push("hello!")
+) # error
+
+# Because the 'from' and 'to' arguments can be arbitrary R
+# functions we could tweak this to pad the character vector with
+# null bytes, and strip these off on return:
+char_to_raw &lt;- function(x, max_len) {
+  if (!(is.character(x) &amp;&amp; length(x) == 1L)) {
+    stop("Expected a single string")
+  }
+  n &lt;- nchar(x)
+  if (n &gt; max_len) {
+    stop("String is too long")
+  }
+  c(charToRaw(x), rep(raw(1), max_len - n))
+}
+char_from_raw &lt;- function(x) {
+  rawToChar(x[x != raw(1)])
+}
+
+# Because max_len is the same thing as stride, wrap this all up a
+# little:
+char_buffer &lt;- function(size, max_len) {
+  to &lt;- function(x) char_to_raw(x, max_len)
+  ring_buffer_bytes_translate(size, max_len, to, char_from_raw)
+}
+
+b &lt;- char_buffer(100, 30) # 100 elements of up to 30 characters each
+b$push("x")
+b$tail()
+
+b$push("hello world!")
+b$head()
+
+try(
+  b$push("supercalafragalisticexpealadocious")
+) # error: string is too long
+</code></pre>
+
+<hr>
+<h2 id='ring_buffer_bytes_typed'>Typed bytes ring buffer</h2><span id='topic+ring_buffer_bytes_typed'></span>
+
+<h3>Description</h3>
+
+<p>Create a ring buffer, backed by a <code><a href="#topic+ring_buffer_bytes">ring_buffer_bytes</a></code>,
+where each element corresponds to a fixed-size vector of one of
+R's atomic numeric types (logical, integer, double, and complex).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ring_buffer_bytes_typed(size, what, len = NULL, on_overflow = "overwrite")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ring_buffer_bytes_typed_+3A_size">size</code></td>
+<td>
+<p>The maximum number of elements the buffer can hold.
+Each element will be multiple bytes long.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_typed_+3A_what">what</code></td>
+<td>
+<p>Either a vector on the style of <code><a href="base.html#topic+vapply">vapply</a></code> (e.g.,
+<code>integer(4)</code> to indicate that each element of the buffer is a
+4-element integer, or the <code>name</code> of a storage mode if <code>len</code> is
+also provided.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_typed_+3A_len">len</code></td>
+<td>
+<p>If given, then the length of the storage.  If it is
+given, then if <code>length(what)</code> is zero, the storage mode of
+<code>what</code> is used as the type.  Otherwise <code>what</code> is interpreted as
+the <em>name</em> of the storage mode (one of &quot;logical&quot;, &quot;integer&quot;,
+&quot;double&quot; or &quot;complex&quot;.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_bytes_typed_+3A_on_overflow">on_overflow</code></td>
+<td>
+<p>Behaviour on buffer overflow.  The default is
+to overwrite the oldest elements in the buffer
+(<code>"overwrite"</code>).  Alternative actions are <code>"error"</code>
+which will throw an error if a function tries to add more
+elements than there are space for, or <code>"grow"</code> which will
+grow the buffer to accept the new elements (this uses an
+approximately golden ratio approach; see details below).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Note that a logical ring buffer and an integer ring buffer take
+the same number of bytes because a logical vector is stored as an
+integer (4 bytes per element) to deal with missing values; see
+&quot;writing R extensions&quot;.
+</p>
+<p>Note that it is not possible to store character vectors in a ring
+buffer of this type because each element of a character vector can
+be any number of bytes.
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Note that this methods reference section is repeated verbatim between
+the three main ring buffer classes; <code>ring_buffer_env</code>
+(&quot;env&quot;), <code>ring_buffer_bytes</code> (&quot;bytes&quot;) and
+<code>ring_buffer_bytes_typed</code> (&quot;typed&quot;).  Almost all methods have
+the same arguments and behaviour, but hopefully by listing everything together,
+the differences between implementations will be a bit more apparent.
+</p>
+
+<dl>
+<dt><code>reset</code></dt><dd>
+<p>Reset the state of the buffer.  This &quot;zeros&quot; the head and tail pointer (and may or may not actually reset the data) so that the buffer can be used as if fresh.
+</p>
+<p><em>Usage:</em>
+<code>reset(clear = FALSE)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>clear</code>:   Logical, indicating if the memory should also be cleared. Generally this is not necessary, but with environment buffers this can let the garbage collector clean up large elements.  For the bytes buffer this zeros the memory.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>duplicate</code></dt><dd>
+<p>Clone the ring buffer, creating a copy.  Copies both the underlying data and the position of the head and tail.
+</p>
+<p><em>Usage:</em>
+<code>duplicate()</code>
+</p>
+<p><em>Return value</em>:
+A new ring buffer object
+</p>
+</dd>
+<dt><code>grow</code></dt><dd>
+<p>Increase the size of the buffer by <code>n</code> elements.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>bytes, typed: <code>grow(n)</code>
+</p>
+</li>
+<li><p>env: <code>grow(n, exact = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of additional elements that space should be reserved for (scalar non-negative integer).
+
+</p>
+<div class="sourceCode"><pre>\item{\code{exact}:   (For bytes buffer only) Logical scalar indicating if growth should increase the size by \emph{exactly} \code{n} elements (if \code{TRUE}) or so that \emph{at least} \code{n} additional elements will fit (growing the buffer geometrically if needed).
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>size</code></dt><dd>
+<p>Return the capacity (maximum size) of the ring buffer
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>size()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>size(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>bytes_data</code></dt><dd>
+<p>Return the total size of the data storage used in this object.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>bytes_data()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>stride</code></dt><dd>
+<p>Length of each element in the ring buffer, in bytes.  Only implemented (and meaningful) for the bytes buffer; the environment buffer does not support this function as it makes no sense there.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>stride()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>used</code></dt><dd>
+<p>Return the amount of space used in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>used()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>used(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>free</code></dt><dd>
+<p>Return the amount of space free in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>free()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>free(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>is_empty</code></dt><dd>
+<p>Test if the ring buffer is empty
+</p>
+<p><em>Usage:</em>
+<code>is_empty()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>is_full</code></dt><dd>
+<p>Test if the ring buffer is full
+</p>
+<p><em>Usage:</em>
+<code>is_full()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>head_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the head is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>head_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>head_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>tail_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the tail is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>tail_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>tail_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>head</code></dt><dd>
+<p>Return the contents of the head (the most recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>head()</code>
+</p>
+<p><em>Return value</em>:
+It depends a little here.  For <code>ring_buffer_env</code> this is a single R object.  For <code>ring_buffer_bytes</code> it is a raw vector, the same length as the stride of the ring buffer.  For <code>ring_buffer_bytes_typed</code>, a single R object that has been translated from raw.
+</p>
+</dd>
+<dt><code>tail</code></dt><dd>
+<p>Return the contents of the tail (the least recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>tail()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>set</code></dt><dd>
+<p>Set a number of ring entries to the same value.  The exact behaviour here varies depending on the type of ring buffer.  This function may overflow the ring buffer; in this case the tail will be moved.
+</p>
+<p><em>Usage:</em>
+<code>set(data, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   The data to set each ring element to.  For an environment buffer, this may be any R object.  For a bytes buffer it may be either a single byte (in which case each ring element will be set to that byte, repeated <code>stride</code> times), or a raw vector of length <code>stride</code>.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of entries to set to \code{data}
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Invisibly returns the number of elements actually written (which may be less than <code>n</code> if the buffer overflows).  Primarily called for its side effect.
+</p>
+</dd>
+<dt><code>push</code></dt><dd>
+<p>Push elements onto the ring buffer head.  This may overflow the ring buffer, destroying the oldest elements in the buffer (and moving the position of the tail).
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>push(data, iterate = TRUE)</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>push(data)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to push onto the ring buffer.  For <code>ring_buffer_bytes</code>, this must be a raw vector with a length that is a multiple of the buffer stride.  For <code>ring_buffer_bytes_typed</code> it must be a vector of the appropriate type.  For <code>ring_buffer_env</code> it may be an arbitrary R object (but see <code>iterate</code> .
+
+</p>
+<div class="sourceCode"><pre>\item{\code{iterate}:   For \code{ring_buffer_env} only, changes the behaviour with vectors and lists.  Because each element of a \code{ring_buffer_env} can b an arbitrary R object, for a list \code{x} it is ambiguous if \code{push(x)} should push one object onto the buffer, or \code{length(x)} objects (i.e. equivalent to \code{push(x[[1]])}, \code{push(x[[2]])}, etc.  The \code{iterate} argument switches between interpretations; if \code{TRUE} (the default) the push will iterate over the object using \code{for (el in x)} (with appropriate S3 dispatch).  If \code{iterate = FALSE}, then the entire object is pushed at once, so always updating only by a single element.
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_bytes</code>, the data invisibly.  For <code>ring_buffer_bytes</code> and <code>ring_buffer_bytes_typed</code>, the position of the head pointer (relative to the beginning of the storage region).
+</p>
+</dd>
+<dt><code>take</code></dt><dd>
+<p>Destructively take elements from the ring buffer.  This consumes from the tail (the least recently added elements).  It is not possibly to underflow the buffer; if more elements are requested than can be supplied then an error will be thrown and the state of the buffer unmodified.
+</p>
+<p><em>Usage:</em>
+<code>take(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>read</code></dt><dd>
+<p>Nondestructively read elements from the ring buffer.  This is identical to <code>take</code> except that the state of the buffer is not modified.
+</p>
+<p><em>Usage:</em>
+<code>read(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>copy</code></dt><dd>
+<p>Copy from <em>this</em> ring buffer into a different ring buffer. This is destructive with respect to both ring buffers; the tail pointer will be moved in this ring buffer as data are taken, and if the destination ring buffer overflows, the tail pointer will be moved too.
+</p>
+<p><em>Usage:</em>
+<code>copy(dest, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of elements to copy
+}
+</pre></div>
+</li></ul>
+
+</dd>
+<dt><code>mirror</code></dt><dd>
+<p>Mirror the contents of <em>this</em> ring buffer into a different ring buffer.  This differs from <code>copy</code> in that <em>this</em> ring buffer is unaffected and in that <em>all</em> of this ring buffer is copied over (including head/tail positions).  This provides an alternative way of duplicating state to <code>duplicate</code> if you already have an appropriately sized ring buffer handy.  No allocations will be done.
+</p>
+<p><em>Usage:</em>
+<code>mirror(dest)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>head</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>head_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Head offset.  This moves away from the most recently added item. An offset of 0 reads the most recently added element, 1 reads the element added before that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>tail_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>tail</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>tail_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Tail offset.  This moves away from the oldest item.  An offset of 0 reads the oldest element, 1 reads the element added after that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>tail</code> (see <code>head</code>)
+</p>
+</dd>
+<dt><code>take_head</code></dt><dd>
+<p>As for <code>take</code>, but operating on the head rather than the tail.  This is destructive with respect to the head.
+</p>
+<p><em>Usage:</em>
+<code>take_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>take</code>
+</p>
+</dd>
+<dt><code>read_head</code></dt><dd>
+<p>As for <code>read</code>, but operating on the head rather than the tail.  This is not destructive with respect to the tail.
+</p>
+<p><em>Usage:</em>
+<code>read_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>read</code>
+</p>
+</dd>
+<dt><code>head_set</code></dt><dd>
+<p>Set data to the head <em>without advancing</em>.  This is useful in cases where the head data will be set and advanced separately (with <code>head_advance</code>).  This is unlikely to be useful for all users.  It is used extensively in dde (but called from C).
+</p>
+<p><em>Usage:</em>
+<code>head_set(data)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to set into the head.  For the bytes buffer this must be exactly <code>stride</code> bytes long, and for the environment buffer it corresponds to a single &quot;element&quot;.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_data</code></dt><dd>
+<p>Retrieve the current data stored in the head but not advanced. For many cases this may be junk - if the byte buffer has looped then it will be the bytes that will be overwritten on the next write.  However, when using <code>head_set</code> it will be the data that have been set into the buffer but not yet committed with <code>head_advance</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_data()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>head_advance</code></dt><dd>
+<p>Shift the head around one position.  This commits any data written by <code>head_set</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_advance()</code>
+</p>
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+</dl>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Rich FitzJohn
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Create a ring buffer of 30 integers:
+b &lt;- ring_buffer_bytes_typed(30, integer(1))
+
+# Alternatively you can create the same buffer this way:
+b &lt;- ring_buffer_bytes_typed(30, "integer", 1)
+
+# The buffer is empty to start with
+b$is_empty()
+
+# Note that the buffer has a stride of 4 (see ?ring_buffer_bytes)
+b$stride()
+
+# Push some numbers into the buffer:
+b$push(as.integer(1:10))
+
+# Report the number of elements used:
+b$used()
+
+# Get the first added element:
+b$tail()
+
+# The buffer behaves basically the same way now as
+# "ring_buffer_env" but will typecheck all inputs:
+## Not run: 
+  b$push(pi) # error because not an integer
+  b$push(1)  # error because not an integer (you must convert to int)
+
+## End(Not run)
+
+# Recycling: the typed buffer operates by converting the input
+# vector to a set of bytes and then pushing them onto the buffer;
+# this works so long as the vector of bytes has the correct
+# length.
+b &lt;- ring_buffer_bytes_typed(30, integer(3))
+
+# These both fail because 2 and 4 do not end up as multiples of 3:
+## Not run: 
+  b$push(c(1L, 2L))
+  b$push(c(1L, 2L, 3L, 4L))
+
+## End(Not run)
+
+# But this is fine:
+b$push(seq_len(6))
+b$tail()
+b$tail_offset(1)
+</code></pre>
+
+<hr>
+<h2 id='ring_buffer_env'>Environment-based ring buffer</h2><span id='topic+ring_buffer_env'></span>
+
+<h3>Description</h3>
+
+<p>An environment based ring buffer.  In contrast with
+<code><a href="#topic+ring_buffer_bytes">ring_buffer_bytes</a></code>, this ring buffer is truly
+circular, implemented as a doubly linked list that loops back on
+itself.  Each element of the ring buffer can hold an arbitrary R
+object, and no checking is done to make sure that objects are
+similar types; in this way they are most similar to a circular
+version of an R <code><a href="base.html#topic+list">list</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ring_buffer_env(size, on_overflow = "overwrite")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ring_buffer_env_+3A_size">size</code></td>
+<td>
+<p>The (maximum) number of entries the buffer can
+contain.</p>
+</td></tr>
+<tr><td><code id="ring_buffer_env_+3A_on_overflow">on_overflow</code></td>
+<td>
+<p>Behaviour on buffer overflow.  The default is
+to overwrite the oldest elements in the buffer
+(<code>"overwrite"</code>).  Alternative actions are <code>"error"</code>
+which will throw an error if a function tries to add more
+elements than there are space for, or <code>"grow"</code> which will
+grow the buffer to accept the new elements.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>When pushing objects onto the buffer, you must be careful about
+the <code>iterate</code> argument.  By default if the object has a
+<code>length()</code> greater than 1 then <code style="white-space: pre;">&#8288;$push()&#8288;</code> will iterate
+over the object (equivalent to <code style="white-space: pre;">&#8288;$push(data[[1]], iterate=FALSE)&#8288;</code>, <code style="white-space: pre;">&#8288;$push(data[[2]], iterate=FALSE)&#8288;</code>, and so
+on).
+</p>
+<p>For more information and usage examples, see the vignette
+(<code>vignette("ring")</code>).
+</p>
+<p>On underflow (and overflow if <code>on_overflow = "error"</code>)
+<code>ring</code> will raise custom exceptions that can be caught
+specially by <code>tryCatch</code>.  These will have class
+<code>ring_underflow</code> (and <code>ring_overflow</code> for overflow).  This
+is not supported in the bytes buffer yet.  See the examples for
+usage.
+</p>
+
+
+<h3>Methods</h3>
+
+<p>Note that this methods reference section is repeated verbatim between
+the three main ring buffer classes; <code>ring_buffer_env</code>
+(&quot;env&quot;), <code>ring_buffer_bytes</code> (&quot;bytes&quot;) and
+<code>ring_buffer_bytes_typed</code> (&quot;typed&quot;).  Almost all methods have
+the same arguments and behaviour, but hopefully by listing everything together,
+the differences between implementations will be a bit more apparent.
+</p>
+
+<dl>
+<dt><code>reset</code></dt><dd>
+<p>Reset the state of the buffer.  This &quot;zeros&quot; the head and tail pointer (and may or may not actually reset the data) so that the buffer can be used as if fresh.
+</p>
+<p><em>Usage:</em>
+<code>reset(clear = FALSE)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>clear</code>:   Logical, indicating if the memory should also be cleared. Generally this is not necessary, but with environment buffers this can let the garbage collector clean up large elements.  For the bytes buffer this zeros the memory.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>duplicate</code></dt><dd>
+<p>Clone the ring buffer, creating a copy.  Copies both the underlying data and the position of the head and tail.
+</p>
+<p><em>Usage:</em>
+<code>duplicate()</code>
+</p>
+<p><em>Return value</em>:
+A new ring buffer object
+</p>
+</dd>
+<dt><code>grow</code></dt><dd>
+<p>Increase the size of the buffer by <code>n</code> elements.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>bytes, typed: <code>grow(n)</code>
+</p>
+</li>
+<li><p>env: <code>grow(n, exact = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of additional elements that space should be reserved for (scalar non-negative integer).
+
+</p>
+<div class="sourceCode"><pre>\item{\code{exact}:   (For bytes buffer only) Logical scalar indicating if growth should increase the size by \emph{exactly} \code{n} elements (if \code{TRUE}) or so that \emph{at least} \code{n} additional elements will fit (growing the buffer geometrically if needed).
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>size</code></dt><dd>
+<p>Return the capacity (maximum size) of the ring buffer
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>size()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>size(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>bytes_data</code></dt><dd>
+<p>Return the total size of the data storage used in this object.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>bytes_data()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>stride</code></dt><dd>
+<p>Length of each element in the ring buffer, in bytes.  Only implemented (and meaningful) for the bytes buffer; the environment buffer does not support this function as it makes no sense there.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <em>(not supported)</em>
+</p>
+</li>
+<li><p>bytes, typed: <code>stride()</code>
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>used</code></dt><dd>
+<p>Return the amount of space used in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>used()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>used(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>free</code></dt><dd>
+<p>Return the amount of space free in the ring buffer.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>free()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>free(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the size should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>is_empty</code></dt><dd>
+<p>Test if the ring buffer is empty
+</p>
+<p><em>Usage:</em>
+<code>is_empty()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>is_full</code></dt><dd>
+<p>Test if the ring buffer is full
+</p>
+<p><em>Usage:</em>
+<code>is_full()</code>
+</p>
+<p><em>Return value</em>:
+A scalar logical
+</p>
+</dd>
+<dt><code>head_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the head is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>head_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>head_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>tail_pos</code></dt><dd>
+<p>Return the number of entries from the &quot;start&quot; of the ring buffer the tail is.  This is mostly useful for debugging.
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>tail_pos()</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>tail_pos(bytes = FALSE)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>bytes</code>:   (for <code>ring_buffer_bytes</code> only) Logical, indicating if the position should be returned in bytes (rather than logical entries, which is the default).
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+A scalar integer
+</p>
+</dd>
+<dt><code>head</code></dt><dd>
+<p>Return the contents of the head (the most recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>head()</code>
+</p>
+<p><em>Return value</em>:
+It depends a little here.  For <code>ring_buffer_env</code> this is a single R object.  For <code>ring_buffer_bytes</code> it is a raw vector, the same length as the stride of the ring buffer.  For <code>ring_buffer_bytes_typed</code>, a single R object that has been translated from raw.
+</p>
+</dd>
+<dt><code>tail</code></dt><dd>
+<p>Return the contents of the tail (the least recently written element in the ring buffer).
+</p>
+<p><em>Usage:</em>
+<code>tail()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>set</code></dt><dd>
+<p>Set a number of ring entries to the same value.  The exact behaviour here varies depending on the type of ring buffer.  This function may overflow the ring buffer; in this case the tail will be moved.
+</p>
+<p><em>Usage:</em>
+<code>set(data, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   The data to set each ring element to.  For an environment buffer, this may be any R object.  For a bytes buffer it may be either a single byte (in which case each ring element will be set to that byte, repeated <code>stride</code> times), or a raw vector of length <code>stride</code>.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of entries to set to \code{data}
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+Invisibly returns the number of elements actually written (which may be less than <code>n</code> if the buffer overflows).  Primarily called for its side effect.
+</p>
+</dd>
+<dt><code>push</code></dt><dd>
+<p>Push elements onto the ring buffer head.  This may overflow the ring buffer, destroying the oldest elements in the buffer (and moving the position of the tail).
+</p>
+<p><em>Usage:</em>
+</p>
+
+<ul>
+<li><p>env: <code>push(data, iterate = TRUE)</code>
+</p>
+</li>
+<li><p>bytes, typed: <code>push(data)</code>
+</p>
+</li></ul>
+
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to push onto the ring buffer.  For <code>ring_buffer_bytes</code>, this must be a raw vector with a length that is a multiple of the buffer stride.  For <code>ring_buffer_bytes_typed</code> it must be a vector of the appropriate type.  For <code>ring_buffer_env</code> it may be an arbitrary R object (but see <code>iterate</code> .
+
+</p>
+<div class="sourceCode"><pre>\item{\code{iterate}:   For \code{ring_buffer_env} only, changes the behaviour with vectors and lists.  Because each element of a \code{ring_buffer_env} can b an arbitrary R object, for a list \code{x} it is ambiguous if \code{push(x)} should push one object onto the buffer, or \code{length(x)} objects (i.e. equivalent to \code{push(x[[1]])}, \code{push(x[[2]])}, etc.  The \code{iterate} argument switches between interpretations; if \code{TRUE} (the default) the push will iterate over the object using \code{for (el in x)} (with appropriate S3 dispatch).  If \code{iterate = FALSE}, then the entire object is pushed at once, so always updating only by a single element.
+}
+</pre></div>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_bytes</code>, the data invisibly.  For <code>ring_buffer_bytes</code> and <code>ring_buffer_bytes_typed</code>, the position of the head pointer (relative to the beginning of the storage region).
+</p>
+</dd>
+<dt><code>take</code></dt><dd>
+<p>Destructively take elements from the ring buffer.  This consumes from the tail (the least recently added elements).  It is not possibly to underflow the buffer; if more elements are requested than can be supplied then an error will be thrown and the state of the buffer unmodified.
+</p>
+<p><em>Usage:</em>
+<code>take(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>read</code></dt><dd>
+<p>Nondestructively read elements from the ring buffer.  This is identical to <code>take</code> except that the state of the buffer is not modified.
+</p>
+<p><em>Usage:</em>
+<code>read(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   The number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+For <code>ring_buffer_env</code> a <code>list</code> of <code>n</code> elements. For <code>ring_buffer_bytes</code>, a raw vector of <code>n * stride</code> bytes.  For <code>ring_buffer_bytes_typed</code>, an vector of <code>n</code> elements of the storage mode of the ring.
+</p>
+</dd>
+<dt><code>copy</code></dt><dd>
+<p>Copy from <em>this</em> ring buffer into a different ring buffer. This is destructive with respect to both ring buffers; the tail pointer will be moved in this ring buffer as data are taken, and if the destination ring buffer overflows, the tail pointer will be moved too.
+</p>
+<p><em>Usage:</em>
+<code>copy(dest, n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+<div class="sourceCode"><pre>\item{\code{n}:   The number of elements to copy
+}
+</pre></div>
+</li></ul>
+
+</dd>
+<dt><code>mirror</code></dt><dd>
+<p>Mirror the contents of <em>this</em> ring buffer into a different ring buffer.  This differs from <code>copy</code> in that <em>this</em> ring buffer is unaffected and in that <em>all</em> of this ring buffer is copied over (including head/tail positions).  This provides an alternative way of duplicating state to <code>duplicate</code> if you already have an appropriately sized ring buffer handy.  No allocations will be done.
+</p>
+<p><em>Usage:</em>
+<code>mirror(dest)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>dest</code>:   The destination ring buffer - will be modified by this call.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>head</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>head_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Head offset.  This moves away from the most recently added item. An offset of 0 reads the most recently added element, 1 reads the element added before that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>tail_offset</code></dt><dd>
+<p>Nondestructively read the contents of the <code>tail</code> of the buffer, offset by <code>n</code> entries.
+</p>
+<p><em>Usage:</em>
+<code>tail_offset(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Tail offset.  This moves away from the oldest item.  An offset of 0 reads the oldest element, 1 reads the element added after that.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>tail</code> (see <code>head</code>)
+</p>
+</dd>
+<dt><code>take_head</code></dt><dd>
+<p>As for <code>take</code>, but operating on the head rather than the tail.  This is destructive with respect to the head.
+</p>
+<p><em>Usage:</em>
+<code>take_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to take.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>take</code>
+</p>
+</dd>
+<dt><code>read_head</code></dt><dd>
+<p>As for <code>read</code>, but operating on the head rather than the tail.  This is not destructive with respect to the tail.
+</p>
+<p><em>Usage:</em>
+<code>read_head(n)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>n</code>:   Number of elements to read.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+As for <code>read</code>
+</p>
+</dd>
+<dt><code>head_set</code></dt><dd>
+<p>Set data to the head <em>without advancing</em>.  This is useful in cases where the head data will be set and advanced separately (with <code>head_advance</code>).  This is unlikely to be useful for all users.  It is used extensively in dde (but called from C).
+</p>
+<p><em>Usage:</em>
+<code>head_set(data)</code>
+</p>
+<p><em>Arguments:</em>
+</p>
+
+<ul>
+<li><p><code>data</code>:   Data to set into the head.  For the bytes buffer this must be exactly <code>stride</code> bytes long, and for the environment buffer it corresponds to a single &quot;element&quot;.
+
+</p>
+</li></ul>
+
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+<dt><code>head_data</code></dt><dd>
+<p>Retrieve the current data stored in the head but not advanced. For many cases this may be junk - if the byte buffer has looped then it will be the bytes that will be overwritten on the next write.  However, when using <code>head_set</code> it will be the data that have been set into the buffer but not yet committed with <code>head_advance</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_data()</code>
+</p>
+<p><em>Return value</em>:
+As for <code>head</code>
+</p>
+</dd>
+<dt><code>head_advance</code></dt><dd>
+<p>Shift the head around one position.  This commits any data written by <code>head_set</code>.
+</p>
+<p><em>Usage:</em>
+<code>head_advance()</code>
+</p>
+<p><em>Return value</em>:
+Nothing; called for the side effect only.
+</p>
+</dd>
+</dl>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Rich FitzJohn
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>buf &lt;- ring_buffer_env(10)
+buf$push(1:10)
+buf$take(3)
+buf$push(11:15)
+buf$take(2)
+
+# The "on_overflow" argument by default allows for the buffer to
+# overwrite on overflow.
+buf &lt;- ring_buffer_env(10)
+buf$push(1:10)
+unlist(buf$read(buf$used())) # 1:10
+# Over-write the first 5
+buf$push(11:15)
+unlist(buf$read(buf$used())) # 6:15
+
+# Unlike ring_buffer_bytes, these ring buffers can hold any R
+# object.  However, you must be careful about use of iterate!
+buf$push(lm(mpg ~ cyl, mtcars), iterate = FALSE)
+buf$take(1)
+
+# Alternatively, grow the buffer as overwriting happens
+buf &lt;- ring_buffer_env(10, "grow")
+buf$push(1:10)
+buf$push(11:15)
+unlist(buf$read(buf$used())) # 1:15
+
+# Or throw an error on overflow
+buf &lt;- ring_buffer_env(10, "error")
+buf$push(1:10)
+try(buf$push(11:15))
+
+# The errors that are thrown on underflow / overflow are typed so
+# can be caught by tryCatch:
+tryCatch(buf$read(100),
+         ring_underflow = function(e) message("nope"))
+tryCatch(buf$push(100),
+         ring_overflow = function(e) message("nope again"))
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

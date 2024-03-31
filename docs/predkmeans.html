@@ -1,0 +1,1307 @@
+<!DOCTYPE html><html><head><title>Help for package predkmeans</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {predkmeans}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#assignCluster'><p>Make Cluster Assignments</p></a></li>
+<li><a href='#createCVgroups'><p>Creating k-fold Cross-Validation Groups</p></a></li>
+<li><a href='#createPCAmodelmatrix'><p>Create Principal Component Analysis (PCA) scores matrix</p></a></li>
+<li><a href='#createTPRSmodelmatrix'><p>Create matrix of Thin-Plate Regression Splines (TPRS)</p></a></li>
+<li><a href='#mlogit'><p>Multinomial Logistic Regression</p></a></li>
+<li><a href='#predictionMetrics'><p>Measures of Prediction Performance</p></a></li>
+<li><a href='#predictML.predkmeans'><p>Prediction of Cluster Membership</p></a></li>
+<li><a href='#predkmeans'><p>Predictive K-means Clustering</p></a></li>
+<li><a href='#predkmeans-package'><p>Covariate Adaptive Clustering</p></a></li>
+<li><a href='#predkmeansCVest'><p>Cross-validation of Predictive K-means Clustering</p></a></li>
+<li><a href='#relevel.predkmeans'><p>Re-order cluster labels</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Covariate Adaptive Clustering</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.1.1</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Joshua Keller</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Joshua Keller &lt;joshua.keller@colostate.edu&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implements the predictive k-means method for clustering observations, using a mixture of experts model to allow covariates to influence cluster centers. Motivated by air pollution epidemiology settings, where cluster membership needs to be predicted across space. Includes functions for predicting cluster membership using spatial splines and principal component analysis (PCA) scores using either multinomial logistic regression or support vector machines (SVMs). For method details see Keller et al. (2017) &lt;<a href="https://doi.org/10.1214%2F16-AOAS992">doi:10.1214/16-AOAS992</a>&gt;.</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>Rcpp (&ge; 0.11.5), maxLik, e1071, mgcv</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a> | file LICENSE</td>
+</tr>
+<tr>
+<td>LinkingTo:</td>
+<td>Rcpp, RcppArmadillo</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.0.2</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2019-12-16 18:47:11 UTC; Josh</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2019-12-16 23:50:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='assignCluster'>Make Cluster Assignments</h2><span id='topic+assignCluster'></span>
+
+<h3>Description</h3>
+
+<p>Assigns observation to the nearest cluster center, using squared Euclidean distance.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>assignCluster(X, centers)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="assignCluster_+3A_x">X</code></td>
+<td>
+<p>matrix of observations</p>
+</td></tr>
+<tr><td><code id="assignCluster_+3A_centers">centers</code></td>
+<td>
+<p>matrix of cluster centers</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of cluster labels
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>X &lt;- matrix(rnorm(100*5), nrow=100, ncol=5)
+centers &lt;- matrix(runif(3*5), nrow=3, ncol=5)
+
+cl &lt;- assignCluster(X, centers)
+table(cl)
+</code></pre>
+
+<hr>
+<h2 id='createCVgroups'>Creating k-fold Cross-Validation Groups</h2><span id='topic+createCVgroups'></span>
+
+<h3>Description</h3>
+
+<p>Splits a vector of observation names or indices into a list of k groups, to be used as cross-validation (CV) test groups.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>createCVgroups(x = NULL, n = length(x), k = 10, useNames = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="createCVgroups_+3A_x">x</code></td>
+<td>
+<p>vector of observation ID's (character or numeric) to split into cv groups.</p>
+</td></tr>
+<tr><td><code id="createCVgroups_+3A_n">n</code></td>
+<td>
+<p>number of observations to split into cv groups. Defaults to the length of <code>x</code>, but can also be provided instead of <code>x</code>.</p>
+</td></tr>
+<tr><td><code id="createCVgroups_+3A_k">k</code></td>
+<td>
+<p>number of cross-validation groups. Must be less than or equal to <code>n</code>.</p>
+</td></tr>
+<tr><td><code id="createCVgroups_+3A_usenames">useNames</code></td>
+<td>
+<p>logical indicator of whether the names of 'x' should be used to identify observations within cv groups.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of length <code>k</code> giving the IDs of observations within each test group.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>See Also</h3>
+
+<p>predkmeansCVest predkmeansCVpred
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># 5-fold groups
+cv5 &lt;- createCVgroups(n=100, k=5)
+cv5
+
+# Leave-one-out
+cvLOO &lt;- createCVgroups(n=100, k=0)
+cvLOO
+</code></pre>
+
+<hr>
+<h2 id='createPCAmodelmatrix'>Create Principal Component Analysis (PCA) scores matrix</h2><span id='topic+createPCAmodelmatrix'></span>
+
+<h3>Description</h3>
+
+<p>Wrapper function for creating PCA scores to be used
+in a regression analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>createPCAmodelmatrix(
+  data,
+  ncomps,
+  covarnames = colnames(data),
+  center = TRUE,
+  scale = TRUE,
+  matrixonly = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="createPCAmodelmatrix_+3A_data">data</code></td>
+<td>
+<p>Matrix or data frame of data</p>
+</td></tr>
+<tr><td><code id="createPCAmodelmatrix_+3A_ncomps">ncomps</code></td>
+<td>
+<p>Number of PCA components to return.</p>
+</td></tr>
+<tr><td><code id="createPCAmodelmatrix_+3A_covarnames">covarnames</code></td>
+<td>
+<p>Names of variables or column numbers in <code>data</code>
+on which the PCA is to be run.</p>
+</td></tr>
+<tr><td><code id="createPCAmodelmatrix_+3A_center">center</code></td>
+<td>
+<p>Logical indicator of whether <code>data</code> should be centered. Passed to <code><a href="stats.html#topic+prcomp">prcomp</a></code>.</p>
+</td></tr>
+<tr><td><code id="createPCAmodelmatrix_+3A_scale">scale</code></td>
+<td>
+<p>Logical indicator of whether <code>data</code> should be scaled. Passed to <code><a href="stats.html#topic+prcomp">prcomp</a></code>.</p>
+</td></tr>
+<tr><td><code id="createPCAmodelmatrix_+3A_matrixonly">matrixonly</code></td>
+<td>
+<p>Logical indicator of whether only the model matrix should
+be returned, or the full output from <code><a href="stats.html#topic+prcomp">prcomp</a></code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This is a wrapper around <code><a href="stats.html#topic+prcomp">prcomp</a></code>, which does 
+the necessary computation.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If <code>matrixonly=TRUE</code>, a matrix of PCA scores. Otherwise a list containing two elements: <code>X</code>,  a matrix of scores, and <code>pca</code>, the output from <code>prcomp</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+createTPRSmodelmatrix">createTPRSmodelmatrix</a></code>, <code><a href="#topic+predkmeansCVest">predkmeansCVest</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 100
+d &lt;- 15
+X &lt;- matrix(rnorm(n*d), ncol=d, nrow=n)
+X &lt;- as.data.frame(X)
+mx &lt;- createPCAmodelmatrix(data=X, ncomps=2)
+</code></pre>
+
+<hr>
+<h2 id='createTPRSmodelmatrix'>Create matrix of Thin-Plate Regression Splines (TPRS)</h2><span id='topic+createTPRSmodelmatrix'></span>
+
+<h3>Description</h3>
+
+<p>Wrapper function for creating a matrix of thin-plate regression splines (TPRS)
+to be used in a regression analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>createTPRSmodelmatrix(
+  data,
+  df = 5,
+  covarnames = NULL,
+  xname = "x",
+  yname = "y",
+  TPRSfx = TRUE,
+  matrixonly = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="createTPRSmodelmatrix_+3A_data">data</code></td>
+<td>
+<p>Matrix or data frame of data</p>
+</td></tr>
+<tr><td><code id="createTPRSmodelmatrix_+3A_df">df</code></td>
+<td>
+<p>Degrees of freedom for thinplate splines. This does not include an intercept, so the <code>k</code> argument of <code>s()</code> is <code class="reqn">k = df + 1</code>.</p>
+</td></tr>
+<tr><td><code id="createTPRSmodelmatrix_+3A_covarnames">covarnames</code></td>
+<td>
+<p>Names of other covariates to be included in the model
+matrix.</p>
+</td></tr>
+<tr><td><code id="createTPRSmodelmatrix_+3A_xname">xname</code></td>
+<td>
+<p>Name of variable the provides the x-coordinate of location.</p>
+</td></tr>
+<tr><td><code id="createTPRSmodelmatrix_+3A_yname">yname</code></td>
+<td>
+<p>Name of variable the provides the y-coordinate of location.</p>
+</td></tr>
+<tr><td><code id="createTPRSmodelmatrix_+3A_tprsfx">TPRSfx</code></td>
+<td>
+<p>Should the TPRS degrees of freedom be fixed. Passed as the <code>fx</code> argument to <code>s()</code>.</p>
+</td></tr>
+<tr><td><code id="createTPRSmodelmatrix_+3A_matrixonly">matrixonly</code></td>
+<td>
+<p>Logical indicator of whether only the model matrix should
+be returned, or the full output from <code><a href="mgcv.html#topic+gam">gam</a></code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+createPCAmodelmatrix">createPCAmodelmatrix</a></code>, <code><a href="#topic+predkmeansCVest">predkmeansCVest</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 200
+x &lt;- runif(n=n, 0, 100)
+y &lt;- runif(n=n, 0, 100)
+d &lt;- data.frame(x=x, y=y)
+mx &lt;- createTPRSmodelmatrix(data=d, df=5)
+</code></pre>
+
+<hr>
+<h2 id='mlogit'>Multinomial Logistic Regression</h2><span id='topic+mlogit'></span>
+
+<h3>Description</h3>
+
+<p>Solves a multinomial logistic problem using 
+Newton-Raphson method
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mlogit(
+  Y,
+  X,
+  beta = NULL,
+  add.intercept = FALSE,
+  betaOnly = FALSE,
+  tol.zero = 1e-08,
+  verbose = T,
+  suppressFittedWarning = FALSE,
+  maxNR.print.level = 0,
+  iterlim = 150,
+  checkY = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mlogit_+3A_y">Y</code></td>
+<td>
+<p>A matrix of the outcomes, with K columns for 
+the K groups.  Row sums of the matrix should be equal
+to one, but entries do not have to be 0/1 (but they
+should be positive). i.e. this is a matrix of hard or
+soft assignments to K categories. The first column is
+used as the reference category.</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_x">X</code></td>
+<td>
+<p>matrix of covariates for regression. Should have
+the same number of rows (observations) as Y. Coefficients
+for all parameters in X are computed for K-1 groups. 
+The coefficients  corresponding to the first column of Y
+are assumed to be zero.</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_beta">beta</code></td>
+<td>
+<p>starting values for the optimziation.  Should be
+given as a matrix of column vectors, each vector a
+different starting value.  If null, defaults to zeros.</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_add.intercept">add.intercept</code></td>
+<td>
+<p>a logical indicator of whether an
+intercept column should be added to X</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_betaonly">betaOnly</code></td>
+<td>
+<p>logical indicator of whether only the
+parameter estimates beta should be returned. Otherwise,
+beta is returned along with fitted objects. See Output.</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_tol.zero">tol.zero</code></td>
+<td>
+<p>the tolerance threshold for considering a
+fitted value as equal to zero.  Used for warning about
+fitted values of 0/1.  Is NOT part of the optimization
+control parameters.</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_verbose">verbose</code></td>
+<td>
+<p>logical indicator that controls whether text
+indicating progress is output to display</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_suppressfittedwarning">suppressFittedWarning</code></td>
+<td>
+<p>indicator of whether or not
+warnings about fitted values of 1 are returned</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_maxnr.print.level">maxNR.print.level</code></td>
+<td>
+<p>numeric value giving the level of
+output produced by maxNR.  see <code>?maxNR</code> for details.
+Defaults to 0.</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_iterlim">iterlim</code></td>
+<td>
+<p>iteration limit for maxNR. Defaults to 150.</p>
+</td></tr>
+<tr><td><code id="mlogit_+3A_checky">checkY</code></td>
+<td>
+<p>indicator for whether Y should be checked to be a valid assignment matrix.  Set to <code>FALSE</code> if using decimal values in Y.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The optimization is done using the <code>maxNR</code> function from the <code>maxLik</code> package.  The log-likehood function, along with its gradient and hessian, are implemented as C++ functions (via the <code>RcppArmadillo</code> package).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following:
+</p>
+<table>
+<tr><td><code>beta</code></td>
+<td>
+<p> a p x K matrix of parameter estimates corresponding to the K columns of Y and p covariates in X</p>
+</td></tr>
+<tr><td><code>fitted01</code></td>
+<td>
+<p>indicator of whether fitted values of 1 were present.</p>
+</td></tr>
+<tr><td><code>fitted</code></td>
+<td>
+<p>the fitted probabilities</p>
+</td></tr>
+<tr><td><code>res.best</code></td>
+<td>
+<p> the best result from the maxNR fit</p>
+</td></tr>
+<tr><td><code>status</code></td>
+<td>
+<p> small data frame summarizing the status of the fits</p>
+</td></tr>
+<tr><td><code>res. all</code></td>
+<td>
+<p> a list containing the results from all maxNR fits</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+predkmeans">predkmeans</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 2000
+X &lt;- cbind(1,
+           matrix(rnorm(2*n), nrow=n, ncol=2),
+           rbinom(n, size=1, prob=0.3))
+beta &lt;- cbind(rep(0, 4),
+              c(0.5, 1, 0, -1),
+              c(0, 2, 2, 0))
+probs &lt;- exp(X %*% beta)
+probs &lt;- probs/rowSums(probs)
+Y &lt;- t(apply(probs, 1, function(p) rmultinom(1, 1, p)))
+mfit &lt;- mlogit(Y=Y, X=X, betaOnly=TRUE)
+mfit
+</code></pre>
+
+<hr>
+<h2 id='predictionMetrics'>Measures of Prediction Performance</h2><span id='topic+predictionMetrics'></span>
+
+<h3>Description</h3>
+
+<p>Computes several measures of performance for cluster label prediction.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>predictionMetrics(centers, cluster.pred, X, labels = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="predictionMetrics_+3A_centers">centers</code></td>
+<td>
+<p>Matrix of Cluster centers</p>
+</td></tr>
+<tr><td><code id="predictionMetrics_+3A_cluster.pred">cluster.pred</code></td>
+<td>
+<p>Vector of predicted cluster membership. Should be integers
+or names corresponding to rows of <code>centers</code>.</p>
+</td></tr>
+<tr><td><code id="predictionMetrics_+3A_x">X</code></td>
+<td>
+<p>Matrix of observations at prediction locations.</p>
+</td></tr>
+<tr><td><code id="predictionMetrics_+3A_labels">labels</code></td>
+<td>
+<p>Logical indicating whether cluster prediction and</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list with the following elements:
+</p>
+<table>
+<tr><td><code>MSPE</code></td>
+<td>
+<p>Mean squared prediction error. Sum of squared distances between observations and predicted cluster centers.</p>
+</td></tr>
+<tr><td><code>wSS</code></td>
+<td>
+<p>Within-cluster sum-of-squares.  Sum of squared distances between observations at prediction locations and best (i.e. closest) cluster center.</p>
+</td></tr>
+<tr><td><code>MSME</code></td>
+<td>
+<p>Mean squared misclassification error.  Sum of squared distances between predicted cluster center and best (i.e. closest) cluster center.</p>
+</td></tr>
+<tr><td><code>pred.acc</code></td>
+<td>
+<p>Proportion of cluster labels correctly predicted.</p>
+</td></tr>
+<tr><td><code>cluster.pred</code></td>
+<td>
+<p>Predicted cluster assignments (same as argument provided).</p>
+</td></tr>
+<tr><td><code>cluster.assign</code></td>
+<td>
+<p>Integer vector of 'best' cluster assignments (i.e. assignment to closest cluster center)</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>References</h3>
+
+<p>Keller, J.P., Drton, M., Larson, T., Kaufman, J.D., Sandler, D.P., and Szpiro, A.A. (2017). Covariate-adaptive clustering of exposures for air pollution epidemiology cohorts. <em>Annals of Applied Statistics</em>, 11(1):93&ndash;113.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+predictML">predictML</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 100
+d &lt;- 5 # Dimension of exposure
+K &lt;- 3 # Number of clusters
+X &lt;- matrix(rnorm(n*d), ncol=d, nrow=n)
+centers &lt;- matrix(runif(d*K), nrow=K, ncol=d)
+cluster_pred &lt;- sample(1:K, size=n, replace=TRUE)
+metrics &lt;- predictionMetrics(centers, cluster.pred=cluster_pred, X=X)
+metrics[c("MSPE", "wSS", "MSME", "pred.acc")]
+</code></pre>
+
+<hr>
+<h2 id='predictML.predkmeans'>Prediction of Cluster Membership</h2><span id='topic+predictML.predkmeans'></span><span id='topic+predictML'></span><span id='topic+predictSVM.predkmeans'></span><span id='topic+predictSVM'></span><span id='topic+predictMixExp.predkmeans'></span><span id='topic+predictMixExp'></span>
+
+<h3>Description</h3>
+
+<p>Predicts cluster membership using either multinomial logistic
+regression or SVMs.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'predkmeans'
+predictML(
+  object = NULL,
+  centers = object$centers,
+  K = nrow(centers),
+  R,
+  Rstar,
+  Xstar = NULL,
+  tr.assign = object$cluster,
+  muStart = "random",
+  maxitMlogit = 500,
+  verbose = 1,
+  nMlogitStarts = 1,
+  mlogit.control = list(suppressFittedWarning = TRUE),
+  ...
+)
+
+## S3 method for class 'predkmeans'
+predictSVM(
+  object = NULL,
+  centers = object$centers,
+  R,
+  Rstar,
+  K = nrow(centers),
+  Xstar = NULL,
+  tr.assign = object$cluster,
+  svm.control = list(gamma = c(1/(2:1), 2), cost = seq(20, 100, by = 20)),
+  ...
+)
+
+## S3 method for class 'predkmeans'
+predictMixExp(object, R, Rstar = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="predictML.predkmeans_+3A_object">object</code></td>
+<td>
+<p>A predkmeans object, from which the cluster centers will be extracted.</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_centers">centers</code></td>
+<td>
+<p>Matrix of cluster centers, assumed to be K-by-p</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_k">K</code></td>
+<td>
+<p>Number of clusters</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_r">R</code></td>
+<td>
+<p>matrix of covariates for observations to be predicted at.</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_rstar">Rstar</code></td>
+<td>
+<p>matrix of covariates at training locations</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_xstar">Xstar</code></td>
+<td>
+<p>matrix of observation at training locations.  Either this or <code>tr.assign</code> is required.</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_tr.assign">tr.assign</code></td>
+<td>
+<p>vector of cluster assignments at training locations.  By default, extracted from <code>object</code>.</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_mustart">muStart</code></td>
+<td>
+<p>starting value for cluster centers in mlogit optimization (IDEA: change to pull from predkmeans object?).  If not provided, starting values are selected randomly.</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_maxitmlogit">maxitMlogit</code></td>
+<td>
+<p>Maximum number of iterations for <code>mlogit</code> in prediction</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_verbose">verbose</code></td>
+<td>
+<p>integer indicating amount of output to be displayed</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_nmlogitstarts">nMlogitStarts</code></td>
+<td>
+<p>number of mlogit starts to use in estimation of parameters</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_mlogit.control">mlogit.control</code></td>
+<td>
+<p>list of control parameters to be passes to <code>mlogit</code></p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_...">...</code></td>
+<td>
+<p>Unused additional arguments</p>
+</td></tr>
+<tr><td><code id="predictML.predkmeans_+3A_svm.control">svm.control</code></td>
+<td>
+<p>list of options for <code>best.svm</code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Function for predicting cluster membership in clusters identified by k-means or predictive k-means using multinomial logistic regression or support vector machines (SVMs).  For multinomial logitic regression, parameter estimation is handled by <code>mlogit</code>.  The SVMs are fit using <code>best.svm</code> from <code>e1071</code> package.
+</p>
+<p>Because this prediction includes return information about cluster assignment
+and prediction model parameters, this method is deliberately distinct from
+the generic <code>predict</code> functions.
+</p>
+<p>The <code>predictMixExp</code> funciton provides predictions from 
+the 'working' cluster assignments created as part of the 
+mixture of experts algorithm from <code>predkmeans</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing some or all of the following elements:
+</p>
+<table>
+<tr><td><code>tr.assign</code></td>
+<td>
+<p>Cluster assignments at training locations</p>
+</td></tr>
+<tr><td><code>mlfit</code></td>
+<td>
+<p>A subset of the mlogit object returned by the function of that name</p>
+</td></tr>
+<tr><td><code>beta</code></td>
+<td>
+<p>Estimated model parameters</p>
+</td></tr>
+<tr><td><code>test.pred</code></td>
+<td>
+<p>Predicted cluster assignments at test locations</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+mlogit">mlogit</a></code>, <code><a href="#topic+predkmeans">predkmeans</a></code>, <code><a href="#topic+predictionMetrics">predictionMetrics</a></code>
+</p>
+<p>Other methods for predkmeans objects: 
+<code><a href="#topic+relevel.predkmeans">relevel.predkmeans</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 200
+r1 &lt;- rnorm(n)
+r2 &lt;- rnorm(n)
+u1 &lt;- rbinom(n, size=1,prob=0)
+cluster &lt;- ifelse(r1&lt;0, ifelse(u1, "A", "B"), ifelse(r2&lt;0, "C", "D"))
+mu1 &lt;- c(A=2, B=2, C=-2, D=-2)
+mu2 &lt;- c(A=1, B=-1, C=-1, D=-1)
+x1 &lt;- rnorm(n, mu1[cluster], 4)
+x2 &lt;- rnorm(n, mu2[cluster], 4)
+R &lt;- cbind(1, r1, r2)
+X &lt;- cbind(x1, x2)
+pkm &lt;- predkmeans(X=cbind(x1, x2), R=R, K=4)
+n_pred &lt;- 50
+Rnew &lt;- cbind(1, r1=rnorm(n_pred), r2=rnorm(n_pred))
+pkmPred &lt;- predictML(pkm, R=Rnew, Rstar=R)
+pkmPred$test.pred 
+</code></pre>
+
+<hr>
+<h2 id='predkmeans'>Predictive K-means Clustering</h2><span id='topic+predkmeans'></span>
+
+<h3>Description</h3>
+
+<p>Uses a Mixture-of-experts algorithm to find 
+cluster centers that are influenced by prediction covariates.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>predkmeans(
+  X,
+  R,
+  K,
+  mu = NULL,
+  muStart = c("kmeans", "random"),
+  sigma2 = 0,
+  sigma2fixed = FALSE,
+  maxitEM = 100,
+  tol = 1e-05,
+  convEM = c("both", "mu", "gamma"),
+  nStarts = 1,
+  maxitMlogit = 500,
+  verbose = 0,
+  muRestart = 1000,
+  returnAll = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="predkmeans_+3A_x">X</code></td>
+<td>
+<p>An <code>n</code> by <code>p</code> matrix or data frame of data to be clustered.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_r">R</code></td>
+<td>
+<p>Covariates used for clustering. Required unless doing k-means
+clustering (i.e. <code>sigma2=0</code> and <code>sigma2fixed=TRUE</code>).</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_k">K</code></td>
+<td>
+<p>Number of clusters</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_mu">mu</code></td>
+<td>
+<p>starting values for cluster centers. If NULL (default), 
+then value is chosen according to <code>muStart</code>.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_mustart">muStart</code></td>
+<td>
+<p>Character string indicating how initial value
+of mu should be selected. Only used if mu=NULL.  Possible
+values are <code>"random"</code> or <code>"kmeans"</code> (default).</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_sigma2">sigma2</code></td>
+<td>
+<p>starting value of sigma2. If set to <code>0</code> and
+<code>sigma2fixed=TRUE</code>, the standard k-means is done
+instead of predictive k-means.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_sigma2fixed">sigma2fixed</code></td>
+<td>
+<p>Logical indicating whether sigma2
+should be held fixed.  If FALSE, then
+sigma2 is estimated using Maximum Likelihood.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_maxitem">maxitEM</code></td>
+<td>
+<p>Maximum number of EM iterations for
+finding the Mixture of Experts solution. If doing regular
+k-means, this is passed as <code>iter.max</code>.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_tol">tol</code></td>
+<td>
+<p>convergence criterion</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_convem">convEM</code></td>
+<td>
+<p>controls the measure of convergence for the 
+EM algorithm.  Should be one of &quot;mu&quot;, &quot;gamma&quot;, or
+&quot;both&quot;.  Defaults to &quot;both.&quot;  The EM algorithm 
+stops when the Frobenius norm of the change in mu,
+the change in gamma, or the change in mu and the change in gamma
+is less than 'tol'.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_nstarts">nStarts</code></td>
+<td>
+<p>number of times to perform EM algorithm</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_maxitmlogit">maxitMlogit</code></td>
+<td>
+<p>Maximum number of iterations in the
+mlogit optimization (nested within EM algorithm)</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_verbose">verbose</code></td>
+<td>
+<p>numeric vector indicating how much output to produce</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_murestart">muRestart</code></td>
+<td>
+<p>Gives max number of attempts at picking
+starting values. Only used when muStart='random'.
+If selected starting values for mu are constant
+within each cluster, then the starting values
+are re-selected up to muRestart times.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_returnall">returnAll</code></td>
+<td>
+<p>A list containing all <code>nStarts</code> solutions is
+included in the output.</p>
+</td></tr>
+<tr><td><code id="predkmeans_+3A_...">...</code></td>
+<td>
+<p>Additional arguments passed to <code><a href="#topic+mlogit">mlogit</a></code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>A thorough description of this method is provided in Keller et al. (2017).
+The algorithm for sovling the mixture of Experts model is 
+based upon the approach presented by Jordan and Jacobs (1994). 
+</p>
+<p>If <code>sigma2</code> is 0 and <code>sigm2fixed</code> is TRUE, then standard k-means clustering (using <code><a href="stats.html#topic+kmeans">kmeans</a></code>) is done instead.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>predkmeans</code>, containing the following elements:
+</p>
+<table>
+<tr><td><code>res.best</code></td>
+<td>
+<p>A list containing the results from the best-fitting solution to the Mixture of Experts problem: 
+</p>
+
+<dl>
+<dt>mu</dt><dd><p>Maximum-likelihood estimate of intercepts from normal mixture model. These are the cluster centers.</p>
+</dd>
+<dt>gamma</dt><dd><p>Maximum-likelihood estimates of the mixture coefficeints.</p>
+</dd>
+<dt>sigma2</dt><dd><p>If <code>sigma2fixed=FALSE</code>, the maximum likelihood estimate of <code>sigma2</code></p>
+</dd>
+<dt>conv</dt><dd><p>Indicator of covergence.</p>
+</dd>
+<dt>objective</dt><dd><p>Value of the log-likelihood.</p>
+</dd>
+<dt>iter</dt><dd><p>Number of iterations.</p>
+</dd>
+<dt>mfit</dt><dd><p>A subset of output from <code><a href="#topic+mlogit">mlogit</a></code>.</p>
+</dd>
+</dl>
+</td></tr>
+<tr><td><code>center</code></td>
+<td>
+<p>Matrix of cluster centers</p>
+</td></tr>
+<tr><td><code>cluster</code></td>
+<td>
+<p>Vector of cluster labels assigned to observations</p>
+</td></tr>
+<tr><td><code>K</code></td>
+<td>
+<p>Number of clusters</p>
+</td></tr>
+<tr><td><code>sigma2</code></td>
+<td>
+<p>Final value of sigma^2.</p>
+</td></tr>
+<tr><td><code>wSS</code></td>
+<td>
+<p>Mean within-cluster sum-of-squares</p>
+</td></tr>
+<tr><td><code>sigma2fixed</code></td>
+<td>
+<p>Logical indicator of whether sigma2 was held fixed</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>References</h3>
+
+<p>Keller, J.P., Drton, M., Larson, T., Kaufman, J.D., Sandler, D.P., and Szpiro, A.A. (2017). Covariate-adaptive clustering of exposures for air pollution epidemiology cohorts. <em>Annals of Applied Statistics</em>, 11(1):93&ndash;113.
+</p>
+<p>Jordan M. and Jacobs R. (1994). Hierarchical mixtures of
+experts and the EM algorithm. <em>Neural computation 6</em>(2),
+181-214.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+predictML.predkmeans">predictML.predkmeans</a>, <a href="#topic+predkmeansCVest">predkmeansCVest</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 200
+r1 &lt;- rnorm(n)
+r2 &lt;- rnorm(n)
+u1 &lt;- rbinom(n, size=1,prob=0)
+cluster &lt;- ifelse(r1&lt;0, ifelse(u1, "A", "B"), ifelse(r2&lt;0, "C", "D"))
+mu1 &lt;- c(A=2, B=2, C=-2, D=-2)
+mu2 &lt;- c(A=1, B=-1, C=-1, D=-1)
+x1 &lt;- rnorm(n, mu1[cluster], 4)
+x2 &lt;- rnorm(n, mu2[cluster], 4)
+R &lt;- model.matrix(~r1 + r2)
+X &lt;- cbind(x1, x2)
+pkm &lt;- predkmeans(X=cbind(x1, x2), R=R, K=4)
+summary(pkm)
+</code></pre>
+
+<hr>
+<h2 id='predkmeans-package'>Covariate Adaptive Clustering</h2><span id='topic+predkmeans-package'></span>
+
+<h3>Description</h3>
+
+<p>Clusters multivariate exposures, using a mixture of experts model to allow covariates to influence cluster centers. Motivated by air pollution epidemiology settings, where cluster membership needs to be predicted across space. Includes functions for predicting cluster membership using spatial splines and principal component analysis (PCA) scores using either multinomial logistic regression or support vector machines (SVMs). For method details see Keller et al. (2017) &lt;doi:10.1214/16-AOAS992&gt;
+</p>
+
+<hr>
+<h2 id='predkmeansCVest'>Cross-validation of Predictive K-means Clustering</h2><span id='topic+predkmeansCVest'></span><span id='topic+predkmeansCVpred'></span>
+
+<h3>Description</h3>
+
+<p>Performs cross-validation of predictive k-means clustering and cluster prediction.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>predkmeansCVest(
+  X,
+  R,
+  K,
+  cv.groups = 10,
+  sigma2 = 0,
+  sigma2fixed = FALSE,
+  scale = TRUE,
+  covarnames = colnames(R),
+  PCA = FALSE,
+  PCAcontrol = list(covarnames = colnames(R), ncomps = 5),
+  TPRS = FALSE,
+  TPRScontrol = list(df = 5, xname = "x", yname = "y"),
+  returnAll = FALSE,
+  ...
+)
+
+predkmeansCVpred(
+  object,
+  X = object$X,
+  R = object$R,
+  method = c("ML", "MixExp", "SVM"),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="predkmeansCVest_+3A_x">X</code></td>
+<td>
+<p>Outcome data</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_r">R</code></td>
+<td>
+<p>Covariates. Coerced to data frame.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_k">K</code></td>
+<td>
+<p>Number of clusters</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_cv.groups">cv.groups</code></td>
+<td>
+<p>A list providing the cross-validation
+groups for splitting the data. groups for splitting the data.
+Alternatively, a single number giving the number of groups into
+which the data are randomly split. A value of '0' implies leave-one-out.
+Defaults to 10.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_sigma2">sigma2</code></td>
+<td>
+<p>starting value of sigma2. Setting <code>sigma2=0</code> and 
+<code>sigma2fixed=TRUE</code> results in regular k-means clustering.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_sigma2fixed">sigma2fixed</code></td>
+<td>
+<p>Logical indicating whether sigma2
+should be held fixed.  If FALSE, then
+sigma2 is estimated using Maximum Likelihood.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_scale">scale</code></td>
+<td>
+<p>Should the outcomes be re-scaled within each training
+group?</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_covarnames">covarnames</code></td>
+<td>
+<p>Names of covariates to be included directly.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_pca">PCA</code></td>
+<td>
+<p>Logical indicator for whether PCA components should be computed
+from R.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_pcacontrol">PCAcontrol</code></td>
+<td>
+<p>Arguments passed to <code><a href="#topic+createPCAmodelmatrix">createPCAmodelmatrix</a></code>. This includes <code>ncomps</code>.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_tprs">TPRS</code></td>
+<td>
+<p>Logical indicator for whether thin-plate regression
+splines should be created and added to covariates.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_tprscontrol">TPRScontrol</code></td>
+<td>
+<p>Arguments passed to <code><a href="#topic+createTPRSmodelmatrix">createTPRSmodelmatrix</a></code>. This includes <code>df</code>.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_returnall">returnAll</code></td>
+<td>
+<p>A list containing all <code>nStarts</code> solutions is
+included in the output.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_...">...</code></td>
+<td>
+<p>Additional arguments passed to either <code><a href="#topic+predkmeans">predkmeans</a></code> or the prediction method.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_object">object</code></td>
+<td>
+<p>A <code>predkmeansCVest</code> object.</p>
+</td></tr>
+<tr><td><code id="predkmeansCVest_+3A_method">method</code></td>
+<td>
+<p>Character string indicating which prediciton method should be used. Optins are <code>ML</code>, <code>MixExp</code>, and <code>SVM</code>. See <code><a href="#topic+predictML">predictML</a></code> for more information.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>These wrappers are designed to simplify cross-validation of a dataset. For models including thin-plate regression splines (TPRS) or principal component analysis (PCA) scores, these functions will re-evaluate the TPRS basis or PCA decomposition on each training set.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+predkmeans">predkmeans</a></code>, <code><a href="#topic+createPCAmodelmatrix">createPCAmodelmatrix</a></code>, <code><a href="#topic+createTPRSmodelmatrix">createTPRSmodelmatrix</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 200
+r1 &lt;- rnorm(n)
+r2 &lt;- rnorm(n)
+u1 &lt;- rbinom(n, size=1,prob=0)
+cluster &lt;- ifelse(r1&lt;0, ifelse(u1, "A", "B"), ifelse(r2&lt;0, "C", "D"))
+mu1 &lt;- c(A=2, B=2, C=-2, D=-2)
+mu2 &lt;- c(A=1, B=-1, C=-1, D=-1)
+x1 &lt;- rnorm(n, mu1[cluster], 4)
+x2 &lt;- rnorm(n, mu2[cluster], 4)
+R &lt;- model.matrix(~r1 + r2)
+X &lt;- cbind(x1, x2)
+pkmcv &lt;- predkmeansCVest(X=cbind(x1, x2),
+                         R=R, K=4, nStarts=4, cv.groups= 5,
+                         TPRS=FALSE, PCA=FALSE, covarnames=colnames(R))
+pkmcv
+</code></pre>
+
+<hr>
+<h2 id='relevel.predkmeans'>Re-order cluster labels</h2><span id='topic+relevel.predkmeans'></span>
+
+<h3>Description</h3>
+
+<p>Function for re-ordering the order of clusters in a predkmeans object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'predkmeans'
+relevel(x, ref = NULL, order = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="relevel.predkmeans_+3A_x">x</code></td>
+<td>
+<p>object of class <code>predkmeans</code></p>
+</td></tr>
+<tr><td><code id="relevel.predkmeans_+3A_ref">ref</code></td>
+<td>
+<p>New reference group (&quot;Cluster 1&quot;). Only used if <code>order</code> is NULL.</p>
+</td></tr>
+<tr><td><code id="relevel.predkmeans_+3A_order">order</code></td>
+<td>
+<p>New order of clusters.</p>
+</td></tr>
+<tr><td><code id="relevel.predkmeans_+3A_...">...</code></td>
+<td>
+<p>Ignored additional arguments.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The elements of the <code>order</code> argument should refer
+to the current position of clusters, with the position
+giving the new order. So <code>c(3, 1, 2)</code> moves 1 to 2, 2 to 3, and 3 to 1.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Joshua Keller
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other methods for predkmeans objects: 
+<code><a href="#topic+predictML.predkmeans">predictML.predkmeans</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 200
+r1 &lt;- rnorm(n)
+r2 &lt;- rnorm(n)
+u1 &lt;- rbinom(n, size=1,prob=0)
+cluster &lt;- ifelse(r1&lt;0, ifelse(u1, "A", "B"), ifelse(r2&lt;0, "C", "D"))
+mu1 &lt;- c(A=2, B=2, C=-2, D=-2)
+mu2 &lt;- c(A=1, B=-1, C=-1, D=-1)
+x1 &lt;- rnorm(n, mu1[cluster], 4)
+x2 &lt;- rnorm(n, mu2[cluster], 4)
+R &lt;- model.matrix(~r1 + r2)
+X &lt;- cbind(x1, x2)
+pkm &lt;- predkmeans(X=cbind(x1, x2), R=R, K=4)
+table(pkm$cluster)
+
+# Move cluster '4' to be first
+pkm2 &lt;- relevel(pkm, ref=4)
+table(pkm2$cluster)
+# Re-order based upon number of observations in each cluster
+pkm3 &lt;- relevel(pkm, order=order(table(pkm$cluster), decreasing=TRUE))
+table(pkm3$cluster)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

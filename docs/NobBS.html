@@ -1,0 +1,352 @@
+<!DOCTYPE html><html><head><title>Help for package NobBS</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {NobBS}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#denguedat'><p>denguedat: Dengue fever reporting data from Puerto Rico</p></a></li>
+<li><a href='#NobBS'><p>Produce smooth Bayesian nowcasts of incomplete, time-stamped reporting data.</p></a></li>
+<li><a href='#NobBS.strat'><p>Stratified nowcasts of incomplete, time-stamped reporting data.</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Nowcasting by Bayesian Smoothing</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0.0</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>A Bayesian approach to estimate the number of occurred-but-not-yet-reported cases from incomplete, time-stamped reporting data for disease outbreaks. 'NobBS' learns the reporting delay distribution and the time evolution of the epidemic curve to produce smoothed nowcasts in both stable and time-varying case reporting settings, as described in McGough et al. (2020) &lt;<a href="https://doi.org/10.1371%2Fjournal.pcbi.1007735">doi:10.1371/journal.pcbi.1007735</a>&gt;.  </td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.3.0)</td>
+</tr>
+<tr>
+<td>SystemRequirements:</td>
+<td>JAGS (http://mcmc-jags.sourceforge.net/) for
+analysis of Bayesian hierarchical models</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>dplyr, rlang, rjags, coda, magrittr</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.2.3</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-12-22 03:55:49 UTC; mcgoughs</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Sarah McGough [aut, cre],
+  Nicolas Menzies [aut],
+  Marc Lipsitch [aut],
+  Michael Johansson [aut]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Sarah McGough &lt;sfm341@mail.harvard.edu&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2024-01-08 10:50:15 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='denguedat'>denguedat: Dengue fever reporting data from Puerto Rico</h2><span id='topic+denguedat'></span>
+
+<h3>Description</h3>
+
+<p>Surveillance data from CDC Division of Vector-Borne Diseases.
+1990-2010 case reporting data included.
+The first column, <code>onset_week</code>, indicates the week of symptom onset.
+The second column, <code>report_week</code>, indicates the week of case report.
+The third column, <code>gender</code>, indicates the gender of the infected individual (randomly assigned with 0.5:0.5 probability of &quot;Male&quot;/&quot;Female&quot;). This column may be used to produce stratified nowcasts using the function <code>NobBS.strat</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(denguedat)
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(denguedat)
+nowcast &lt;- NobBS(denguedat, as.Date("1990-04-09"),units="1 week",onset_date="onset_week",
+report_date="report_week")
+nowcast$estimates
+</code></pre>
+
+<hr>
+<h2 id='NobBS'>Produce smooth Bayesian nowcasts of incomplete, time-stamped reporting data.</h2><span id='topic+NobBS'></span>
+
+<h3>Description</h3>
+
+<p>Nowcasting is useful to estimate the true number of cases when they are unknown or incomplete
+in the present because of reporting delays. 'NobBS' is a Bayesian nowcasting approach that learns from the
+reporting delay distribution as well as the temporal evolution of the epidemic curve to estimate the number of
+occurred but not yet reported cases for a given date.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NobBS(
+  data,
+  now,
+  units,
+  onset_date,
+  report_date,
+  moving_window = NULL,
+  max_D = NULL,
+  cutoff_D = NULL,
+  proportion_reported = 1,
+  quiet = TRUE,
+  specs = list(dist = c("Poisson", "NB"), alpha1.mean.prior = 0, alpha1.prec.prior =
+    0.001, alphat.shape.prior = 0.001, alphat.rate.prior = 0.001, beta.priors = NULL,
+    param_names = NULL, conf = 0.95, dispersion.prior = NULL, nAdapt = 1000, nChains = 1,
+    nBurnin = 1000, nThin = 1, nSamp = 10000)
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NobBS_+3A_data">data</code></td>
+<td>
+<p>A time series of reporting data in line list format (one row per case), with a column <code>onset_date</code> indicating date of case onset, and a column <code>report_date</code> indicating date of case report.</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_now">now</code></td>
+<td>
+<p>An object of datatype <code>Date</code> indicating the date at which to perform the nowcast.</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_units">units</code></td>
+<td>
+<p>Time scale of reporting. Options: &quot;1 day&quot;, &quot;1 week&quot;.</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_onset_date">onset_date</code></td>
+<td>
+<p>In quotations, the name of the column of datatype <code>Date</code> designating the date of case onset. e.g. &quot;onset_week&quot;</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_report_date">report_date</code></td>
+<td>
+<p>In quotations, the name of the column of datatype <code>Date</code> designating the date of case report. e.g. &quot;report_week&quot;</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_moving_window">moving_window</code></td>
+<td>
+<p>Size of moving window for estimation of cases (numeric). The moving window size should be specified in the same date units as the reporting data (i.e. specify 7 to indicate 7 days, 7 weeks, etc). Default: NULL, i.e. takes all historical dates into consideration.</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_max_d">max_D</code></td>
+<td>
+<p>Maximum possible delay observed or considered for estimation of the delay distribution (numeric). Default: (length of unique dates in time series)-1 ; or, if a moving window is specified, (size of moving window)-1</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_cutoff_d">cutoff_D</code></td>
+<td>
+<p>Consider only delays d&lt;=<code>max_D</code>? Default: TRUE. If <code>cutoff_D=TRUE</code>, delays beyond <code>max_D</code> are ignored. If <code>cutoff_D=FALSE</code>, <code>max_D</code> is interpreted as delays&gt;=<code>max_D</code> but within the moving window given by <code>moving_window</code>.</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_proportion_reported">proportion_reported</code></td>
+<td>
+<p>A decimal greater than 0 and less than or equal to 1 representing the proportion of all cases expected to be reported. Default: 1, e.g. 100 percent of all cases will eventually be reported. For asymptomatic diseases where not all cases will ever be reported, or for outbreaks in which severe under-reporting is expected, change this to less than 1.</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_quiet">quiet</code></td>
+<td>
+<p>Suppress all output and progress bars from the JAGS process. Default: TRUE.</p>
+</td></tr>
+<tr><td><code id="NobBS_+3A_specs">specs</code></td>
+<td>
+<p>A list with arguments specifying the Bayesian model used: <code>dist</code> (Default: &quot;Poisson&quot;), <code>beta.priors</code> (Default: 0.1 for each delay d), <code>nSamp</code> (Default: 10000), <code>nBurnin</code> (Default: 1000), <code>nAdapt</code> (Default: 1000), <code>nChains</code> (Default: 1), <code>nThin</code> (Default: 1), <code>alphat.shape.prior</code> (Default: 0.001), <code>alphat.rate.prior</code> (Default: 0.001), <code>alpha1.mean.prior</code> (Default: 0), <code>alpha1.prec.prior</code> (Default: 0.001), <code>dispersion.prior</code> (Default: NULL, i.e. no dispersion. Otherwise, enter c(shape,rate) for a Gamma distribution.), <code>conf</code> (Default: 0.95), <code>param_names</code> (Default: NULL, i.e. output for all parameters is provided: c(&quot;lambda&quot;,&quot;alpha&quot;,&quot;beta.logged&quot;,&quot;tau2.alpha&quot;). See McGough et al. 2019 (https://www.biorxiv.org/content/10.1101/663823v1) for detailed explanation of these parameters.).</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list with the following elements: <code>estimates</code>, a 5-column data frame containing estimates for each date in the window of predictions (up to &quot;now&quot;) with corresponding date of case onset, lower and upper bounds of the prediction interval, and the number of cases for that onset date reported up to 'now'; <code>estimates.inflated</code>, a Tx4 data frame containing estimates inflated by the proportion_reported for each date in the time series (up to &quot;now&quot;) with corresponding date of case onset, lower and upper bounds of the prediction interval, and the number of cases for that onset date reported up to 'now'; <code>nowcast.post.samples</code>, vector of 10,000 samples from the posterior predictive distribution of the nowcast, and <code>params.post</code>, a 10,000xN dataframe containing 10,000 posterior samples for the &quot;N&quot; parameters specified in specs[[&quot;param_names&quot;]]. See McGough et al. 2019 (https://www.biorxiv.org/content/10.1101/663823v1) for detailed explanation of parameters.
+</p>
+
+
+<h3>Notes</h3>
+
+<p>'NobBS' requires that JAGS (Just Another Gibbs Sampler) is downloaded to the system.
+JAGS can be downloaded at &lt;http://mcmc-jags.sourceforge.net/&gt;.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Load the data
+data(denguedat)
+# Perform default 'NobBS' assuming Poisson distribution, vague priors, and default specifications.
+nowcast &lt;- NobBS(denguedat, as.Date("1990-04-09"),units="1 week",onset_date="onset_week",
+report_date="report_week")
+nowcast$estimates
+</code></pre>
+
+<hr>
+<h2 id='NobBS.strat'>Stratified nowcasts of incomplete, time-stamped reporting data.</h2><span id='topic+NobBS.strat'></span>
+
+<h3>Description</h3>
+
+<p>Produces nowcasts stratified by a single variable of interest, e.g. by geographic unit (province/state/region) or by age group.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NobBS.strat(
+  data,
+  now,
+  units,
+  onset_date,
+  report_date,
+  strata,
+  moving_window = NULL,
+  max_D = NULL,
+  cutoff_D = NULL,
+  quiet = TRUE,
+  proportion_reported = 1,
+  specs = list(dist = c("Poisson", "NB"), alpha1.mean.prior = 0, alpha1.prec.prior =
+    0.001, alphat.shape.prior = 0.001, alphat.rate.prior = 0.001, beta.priors = NULL,
+    param_names = NULL, conf = 0.95, dispersion.prior = NULL, nAdapt = 1000, nChains = 1,
+    nBurnin = 1000, nThin = 1, nSamp = 10000)
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NobBS.strat_+3A_data">data</code></td>
+<td>
+<p>A time series of reporting data in line list format (one row per case), with a column <code>onset_date</code> indicating date of case onset, and a column <code>report_date</code> indicating date of case report.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_now">now</code></td>
+<td>
+<p>An object of datatype <code>Date</code> indicating the date at which to perform the nowcast.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_units">units</code></td>
+<td>
+<p>Time scale of reporting. Options: &quot;1 day&quot;, &quot;1 week&quot;.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_onset_date">onset_date</code></td>
+<td>
+<p>In quotations, the name of the column of datatype <code>Date</code> designating the date of case onset. e.g. &quot;onset_week&quot;</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_report_date">report_date</code></td>
+<td>
+<p>In quotations, the name of the column of datatype <code>Date</code> designating the date of case report. e.g. &quot;report_week&quot;</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_strata">strata</code></td>
+<td>
+<p>In quotations, the name of the column indicating the stratifying variable.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_moving_window">moving_window</code></td>
+<td>
+<p>Size of moving window for estimation of cases (numeric). The moving window size should be specified in the same date units as the reporting data (i.e. specify 7 to indicate 7 days, 7 weeks, etc). Default: NULL, i.e. takes all historical dates into consideration.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_max_d">max_D</code></td>
+<td>
+<p>Maximum possible delay observed or considered for estimation of the delay distribution (numeric). Default: (length of unique dates in time series)-1 ; or, if a moving window is specified, (size of moving window)-1</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_cutoff_d">cutoff_D</code></td>
+<td>
+<p>Consider only delays d&lt;=<code>max_D</code>? Default: TRUE. If <code>cutoff_D=TRUE</code>, delays beyond <code>max_D</code> are ignored. If <code>cutoff_D=FALSE</code>, <code>max_D</code> is interpreted as delays&gt;=<code>max_D</code> but within the moving window given by <code>moving_window</code>.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_quiet">quiet</code></td>
+<td>
+<p>Suppress all output and progress bars from the JAGS process. Default: TRUE.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_proportion_reported">proportion_reported</code></td>
+<td>
+<p>A decimal greater than 0 and less than or equal to 1 representing the proportion of all cases expected to be reported. Default: 1, e.g. 100 percent of all cases will eventually be reported. For asymptomatic diseases where not all cases will ever be reported, or for outbreaks in which severe under-reporting is expected, change this to less than 1.</p>
+</td></tr>
+<tr><td><code id="NobBS.strat_+3A_specs">specs</code></td>
+<td>
+<p>A list with arguments specifying the Bayesian model used: <code>dist</code> (Default: &quot;Poisson&quot;), <code>beta.priors</code> (Default: 0.1 for each delay d), <code>nSamp</code> (Default: 10000), <code>nBurnin</code> (Default: 1000), <code>nAdapt</code> (Default: 1000), <code>nChains</code> (Default: 1), <code>nThin</code> (Default: 1), <code>alphat.shape.prior</code> (Default: 0.001), <code>alphat.rate.prior</code> (Default: 0.001), <code>alpha1.mean.prior</code> (Default: 0), <code>alpha1.prec.prior</code> (Default: 0.001), <code>dispersion.prior</code> (Default: NULL, i.e. no dispersion. Otherwise, enter c(shape,rate) for a Gamma distribution.), <code>conf</code> (Default: 0.95), <code>param_names</code> (Default: NULL, i.e. output for all parameters is provided: c(&quot;lambda&quot;,&quot;alpha&quot;,&quot;beta.logged&quot;,&quot;tau2.alpha&quot;). See McGough et al. 2019 (https://www.biorxiv.org/content/10.1101/663823v1) for detailed explanation of these parameters.).</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list with the following elements: <code>estimates</code>, a 5-column data frame containing estimates for each date in the window of predictions (up to &quot;now&quot;) with corresponding date of case onset, lower and upper bounds of the prediction interval, and the number of cases for that onset date reported up to 'now'; <code>estimates.inflated</code>, a Tx4 data frame containing estimates inflated by the proportion_reported for each date in the time series (up to &quot;now&quot;) with corresponding date of case onset, lower and upper bounds of the prediction interval, and the number of cases for that onset date reported up to 'now'; <code>nowcast.post.samples</code>, vector of 10,000 samples from the posterior predictive distribution of the nowcast, and <code>params.post</code>, a 10,000xN dataframe containing 10,000 posterior samples for the &quot;N&quot; parameters specified in specs[[&quot;param_names&quot;]]. See McGough et al. 2019 (https://www.biorxiv.org/content/10.1101/663823v1) for detailed explanation of parameters.
+</p>
+
+
+<h3>Notes</h3>
+
+<p>'NobBS' requires that JAGS (Just Another Gibbs Sampler) is downloaded to the system.
+JAGS can be downloaded at &lt;http://mcmc-jags.sourceforge.net/&gt;.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Load the data
+data(denguedat)
+# Perform stratified 'NobBS' assuming Poisson distribution, vague priors, and default
+# specifications.
+nowcast &lt;- NobBS.strat(denguedat, as.Date("1990-02-05"),units="1 week",onset_date="onset_week",
+report_date="report_week",strata="gender")
+nowcast$estimates
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html><html><head><title>Help for package flock</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {flock}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#flock-package'>
+<p>Process synchronization using file locks.</p></a></li>
+<li><a href='#is.locked'><p>Locking/Unlocking</p></a></li>
+<li><a href='#lock'><p>Locking/Unlocking</p></a></li>
+<li><a href='#unlock'><p>Locking/Unlocking</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Process Synchronization Using File Locks</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.7</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2016-11-10</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Ivan Popivanov</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Ivan Popivanov &lt;ivan.popivanov@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implements synchronization between R processes (spawned by using the "parallel" package for instance) using file locks. Supports both exclusive and shared locking.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a></td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>Rcpp (&ge; 0.11.3), methods</td>
+</tr>
+<tr>
+<td>LinkingTo:</td>
+<td>Rcpp</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2016-11-12 06:59:02 UTC; ivpop</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2016-11-12 16:23:32</td>
+</tr>
+</table>
+<hr>
+<h2 id='flock-package'>
+Process synchronization using file locks.
+</h2><span id='topic+flock-package'></span><span id='topic+flock'></span>
+
+<h3>Description</h3>
+
+<p>Enables synchronization between R processes using a file
+lock. Supports both exclusive (writer) and shared (readers)
+locks.
+</p>
+<p>On UNIX, the implementation relies on the <code>fcntl</code> system
+call. While on Windows, the <code>LockFileEx</code>/<code>UnlockFileEx</code>
+APIs are used.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> flock</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 0.6</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2014-11-24</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> Apache License 2.0</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Ivan Popivanov
+</p>
+<p>Maintainer: Ivan Popivanov &lt;ivan.popivanov@gmail.com&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+require(DBI)
+require(flock)
+require(RSQLite)
+require(parallel)
+
+dbpath &lt;- tempfile()
+con &lt;- dbConnect(RSQLite::SQLite(), dbname=dbpath)
+df &lt;- data.frame(value = 0)
+dbWriteTable(con, "test", df)
+dbDisconnect(con)
+
+write.one.value &lt;- function(val, lock.name=NULL) {
+   if(!is.null(lock.name)) {
+      file.lock = lock(lock.name)
+   }
+   
+   # The three lines below are the "critical section"
+   con &lt;- dbConnect(RSQLite::SQLite(), dbname = dbpath)
+   dbWriteTable(con, "test", data.frame(value = val), append = TRUE)
+   dbDisconnect(con)
+   
+   if(!is.null(lock.name)) {
+      unlock(file.lock)
+   }
+}
+
+lock.name = tempfile()
+
+# Run the parallel database updates with two cores
+mclapply(1:100, write.one.value, mc.cores=2, lock.name=lock.name)
+
+# To see the failing scenario, run (on a multi-core system):
+# mclapply(1:100, write.one.value, mc.cores=2)
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='is.locked'>Locking/Unlocking</h2><span id='topic+is.locked'></span><span id='topic+is.locked+2CFileLock-method'></span>
+
+<h3>Description</h3>
+
+<p>Checks whether a lock has been obtained.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>is.locked(file.lock)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="is.locked_+3A_file.lock">file.lock</code></td>
+<td>
+<p>The lock as an object of type <code>FileLock</code>.</p>
+</td></tr></table>
+
+
+<h3>Author(s)</h3>
+
+<p>Ivan Popivanov</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+require(flock)
+
+file.lock = lock("~/file.lock")
+# Critical section code goes between here and the unlock call
+if(is.locked(file.lock)) {
+   print("Got the lock!")
+}
+unlock(file.lock)
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='lock'>Locking/Unlocking</h2><span id='topic+lock'></span>
+
+<h3>Description</h3>
+
+<p>Locks a file in exclusive or shared mode.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>lock(path, exclusive = TRUE)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="lock_+3A_path">path</code></td>
+<td>
+<p>Character. The path.</p>
+</td></tr>
+<tr><td><code id="lock_+3A_exclusive">exclusive</code></td>
+<td>
+<p>Logical. The lock type, exclusive or shared.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The file is created if it doesn't exist.</p>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of type <code>FileLock</code>, which is to be
+used for the <code>unlock</code> call.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ivan Popivanov
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+require(flock)
+
+file.lock = lock("~/file.lock")
+# Critical section code goes here
+unlock(file.lock)
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='unlock'>Locking/Unlocking</h2><span id='topic+unlock'></span><span id='topic+unlock+2CFileLock-method'></span>
+
+<h3>Description</h3>
+
+<p>Unlocks a file previously locked via <code>lock</code>.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>unlock(file.lock)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="unlock_+3A_file.lock">file.lock</code></td>
+<td>
+<p>The <code>FileLock</code> object returned by <code>lock</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Ivan Popivanov</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+lock">lock</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+require(flock)
+
+file.lock = lock("~/file.lock")
+# Critical section code goes here
+unlock(file.lock)
+
+## End(Not run)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

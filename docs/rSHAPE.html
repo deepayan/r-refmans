@@ -1,0 +1,4241 @@
+<!DOCTYPE html><html><head><title>Help for package rSHAPE</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {rSHAPE}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#addDrift'><p>This is a simple little function used to represent drift by introducing stochasticity to the vector passed</p>
+by making poisson distribution calls.  At present it forces values to integers because I've not been able to
+implement an appropriate continuous distribution for such calls that works with tested models and expected outcome.</a></li>
+<li><a href='#addQuotes'><p>This is a function to add quotation marks around each element of a character string vector</p></a></li>
+<li><a href='#adjustBirths'><p>This function ensures that a vector of values will sum to a given number.  It's implemented in certain growth forms</p>
+(curently: <strong>constant</strong> and <strong>logistic</strong>)</a></li>
+<li><a href='#birthFunction'><p>This function calculates the number of births for the vector of populations which are expected to be passed.</p>
+The number of parameters which can be passed may be more than the number required to use one of the growth forms.</a></li>
+<li><a href='#buildPedigree'><p>This is a convenience script to build an named list of empty lists, where the names are based</p>
+on the genotype IDs being passed.</a></li>
+<li><a href='#calc_relativeFitness'><p>This is a function to calculate the relative fitness for a vector of fitnesses.  As a frame of reference</p>
+it can use either an ancestral fitness value or the mean fitness of the passed vector.  If the frame of
+reference is a value of zero - OR - the func_absDistance is set to TRUE then instead the vector is centered
+around a value of 1 where negative values will be set to zero.</a></li>
+<li><a href='#compute_distGrowth'><p>This function is used to calculate the effect size and timing of the next stochastic population disturbance in a SHAPE run.</p></a></li>
+<li><a href='#create_genotypeFrame'><p>This is a convenience function to ensure that we have a standard shaped data.frame.  It is used to initiate</p>
+a new table for the fitness landscape.</a></li>
+<li><a href='#createGenotypes'><p>This function searches the nearby mutational space of a focal genotype, identifies which genotypes in that space have not</p>
+yet been identified, and create new database entries for any new genotypes.</a></li>
+<li><a href='#deathFunction'><p>This allows SHAPE to simulate the death process as a deterministic value, and may be density dependent.</p></a></li>
+<li><a href='#defineNeighbours'><p>The function will identify the binary string of all possible neighbours to a focal genotype.  It is important when querrying the fitness landscape.</p></a></li>
+<li><a href='#defineSHAPE'><p>These are some global reference options that SHAPE will use and I consider the defaults.</p>
+SHAPE parameters can be changed by calling this function and changing values OR
+by using the accessory SHAPE_parameters script, called in the SHAPE_runBody script.
+This second approach is considered more practical for building and running experiments.</a></li>
+<li><a href='#expGrowth'><p>This function uses the exponential growth model and can either calculated the expected growth for a single time step</p>
+OR it can work backwards to calculated what was the expected starting population size prior to a step of exponential growth.</a></li>
+<li><a href='#extract_popDemographics'><p>This is a function that steps forward through time steps of a SHAPE run and extracts population demographic</p>
+information.  This includes Fitness, Number of Lineages, and Transitions between dominant genotypes.
+Most important it will also return the information related to which lineages will eventually establish in the population,
+a piece of information that will be critical for downstream lineage specific information extraction.</a></li>
+<li><a href='#extractInfo_focalID'><p>This is a function to extract genotype/lineage specific information.  This info will be mostly through time style of information</p>
+but will also include information about it's line of descent, growth pressures pre-establishment, and population size.</a></li>
+<li><a href='#find_neededNeighbours'><p>This function querries if a suite of genotypes exist within the fitness landscape database.</p></a></li>
+<li><a href='#findParent'><p>This function will look through a pedigree data.frame and recursively continue building that back through the history of the SHAPE run being processed.</p></a></li>
+<li><a href='#fitnessDist'><p>This is the function that will call for draws from distributions.</p></a></li>
+<li><a href='#fitnessLandscape'><p>This function will calculate the fitness values for genotypes being newly recorded to the fitness landscape.</p></a></li>
+<li><a href='#growthFunction'><p>This is a wrapper function where the birth and death related parameters of a SHAPE run are passed before the</p>
+appropriate functions (and their associated methods) are called.  This function will be called once per time step
+of a SHAPE run.</a></li>
+<li><a href='#logisticGrowth'><p>This function is simply an implementation of the logistic growth equation where:</p>
+f(x) = K / (1 + ((K - N_0)/N_0) *exp-k(x-x_0))  ; Where x_0 is an adjustment to the position of the midpoint of the curve's maximum value
+K = the curves maximum value, k = the steepness of the curve (growth rate), and N_0 is the starting population
+it includes parameters to change the midpoint as well as change the natural exponent (ie: exp) to some other value.
+NOTE: This is for continuous growth, and since SHAPE is discrete at present this is an unused function.</a></li>
+<li><a href='#logisticMap'><p>This is the discrete time logistic growth function known as the logistic map.  It calculates the amount of growth expected</p>
+in a step of time given by:  N_t+1 = N_t + r * (N_t (K - N_t)/K);
+where N_t is community size at a time point, r is the per step growth rate, and K is the environmental carrying capacity.</a></li>
+<li><a href='#lossSampling'><p>This function actually calculates the stochastic loss to populations.</p></a></li>
+<li><a href='#mutationFunction'><p>This allows SHAPE to simulate the mutation process as a deterministic value.  At present, values must be tracked as integer results</p>
+for reasons of how I am passing to functions which identify what mutant genotype(s) are created.</a></li>
+<li><a href='#name_batchString'><p>This function is used to build or split character string to be used for naming batches of SHAPE runs.</p></a></li>
+<li><a href='#name_batchSubmit'><p>This is a function to programatically create R batch submission script names</p></a></li>
+<li><a href='#name_bodyScript'><p>This is a function to programatically create R script names</p></a></li>
+<li><a href='#name_parameterScript'><p>This is a function to programatically create R script names</p></a></li>
+<li><a href='#name_subScript'><p>This is a function to programatically create R batch submission script names</p></a></li>
+<li><a href='#nameEnviron'><p>This quick little function is a means for me to create the strings of</p>
+environments and subsequently extract information back out.</a></li>
+<li><a href='#nameObject'><p>This quick little function is a means for me to create the strings of</p>
+environments and subsequently extract information back out.</a></li>
+<li><a href='#nameTable'><p>This is a standardising function which allows SHAPE to programatiically name tables for the fitness landscape OR split</p>
+a named table and extract the embedded information from its naming.</a></li>
+<li><a href='#nameTable_neighbourhood'><p>This is a standardising function which allows SHAPE to programatiically name tables for the neighbourhood record OR split</p>
+a named table and extract the embedded information from its naming.</a></li>
+<li><a href='#nameTable_step'><p>This is a standardising function which allows SHAPE to programatiically name tables for the step-wise record OR split</p>
+a named table and extract the embedded information from its naming.</a></li>
+<li><a href='#querryEstablished'><p>This function is used to find which elements of a population matrix are deemed as established.  Established is determined</p>
+by having a number of individuals greater than or equal to a definable proportion of the summed community size.</a></li>
+<li><a href='#reportPopulations'><p>This is a convenience function to ensure that our population demographics are stored in a data frame</p>
+and exists because R's standard functions can collapse single row frames to named vectors.  It requires that
+all passed vectors be of the same length</a></li>
+<li><a href='#reset_shapeDB'><p>This is a convenience function to refresh connections to database files.</p></a></li>
+<li><a href='#retrieve_binaryString'><p>This is a function to search our mutational database and then find the binary string of the genotypeID passed.</p>
+This function is more efficient when the number of mutations for each genotypeID be passed as this helps reduce
+the tables of the mutational space that are searched.  This matters when large genotypes are simulated.</a></li>
+<li><a href='#runProcessing'><p>This is a wrapper function to process a SHAPE run and extract meaningful summary information.</p></a></li>
+<li><a href='#runReplicate'><p>This is the function that runs the main body, or meaningful execution, of SHAPE experiments.</p>
+In other words this is the main work-horse function that calls all the other parts and will
+execute you simulation run.  It has the main parts of:
+1. Stochastic Events;
+2. Deaths;
+3. Births;
+4. Mutations;
+and during mutations this is where the mutational landscape is queried and updated as required.
+NOTE: Many of its internal operations are controlled by options with the suffix &quot;shape_&quot; and are
+not explicitly passed as arguments at call to this function.</a></li>
+<li><a href='#runSHAPE'><p>This is the actual running of shape, it will initialise objects and values which are calculated from</p>
+the parameters that have been set - see the options with the suffix 'shape_'.  It will establish the
+database output files and other initial conditions and then perform replicate simulations as appropriately defined.
+In essense this is the master wrapper function for all other functions. If you want to test/see SHAPE's default run
+then simply call this function after loading the library you'll see an experiment built under your root directory.
+It at least requires that defineSHAPE have been run, else this is going to fail.</a></li>
+<li><a href='#set_const_NK_interactionsMat'><p>This is a function to just return a matrix that defines the sitewise dependencies</p>
+for an NK fitness landscape.  If K == 0 or, this is not an NK simulation, it return NULL</a></li>
+<li><a href='#set_const_RMF_globalOptima'><p>This function samples the space of all possible genotypes and then defines</p>
+one that will be considered as the independent fitness contribution global optima.</a></li>
+<li><a href='#set_DepbySite_ancestFitness'><p>This is a convenience function for setting the dependent fitness values of sites in</p>
+an NK fitness landscape model.  This allows the dependent fitness of sites to be calculated
+once and then referenced as mutations occur.  It makes exploring this style of fitness landscape
+a bit more computationally friendly - as it generally isn't.</a></li>
+<li><a href='#set_RMF_indWeight'><p>In a RMF fitness landscape model, there is a weighting value applied to the independent</p>
+fitness contribution term.  This function calculates that value for the run</a></li>
+<li><a href='#set_siteByState_fitnessMat'><p>This function is designed to establish an initial object which maps the fitness values</p>
+of genome positions based on the state of that site.  At present, this has no meaning
+if the model of simulation is no NK, Additive, or Fixed.  Where the first is Kauffman's NK
+model and form of calculations, Additive is what that word would make you think for fitness
+effects of mutations at sites, and Fixed is when user supplied a defined fitness matrix that
+describes the entire fitness landscape.  NOTE: This function should likely be called without
+supplying any non-default arguments as it will use the shape_ options defined.</a></li>
+<li><a href='#shapeCombinations'><p>This is a function to take the input parameters and build the parameter combinations</p></a></li>
+<li><a href='#shapeExperiment'><p>This is a function used to read the SHAPE_experimentalDesign type input file</p>
+and then build a SHAPE experiment by creating all the folder structure, .R and .sh scripts
+required to programatically run your experiment &ndash; excluding post-analysis, that's a you problem.</a></li>
+<li><a href='#stopError'><p>This is a convenience wrapper for sending an error and ending the SHAPE run as well as the R environment.</p>
+It will print a message and then traceback() report before pausing and quiting the R session.  This exists
+to help debugging when SHAPE is run in batch-mode.</a></li>
+<li><a href='#summarise_evolRepeatability'><p>This function will use output from summarise_experimentFiles and summarise_experimentParameters</p>
+to help with expectations concerning run output and handling.  This will save an RData file which
+will contain one object: all_popSets, which is a list of relevant control information about I/O
+and then a series of other RData files which contain the demographics information as a matrix with the
+mean and standard deviation of demographics for all replicates.</a></li>
+<li><a href='#summarise_experimentFiles'><p>This function will find all initially processed output files from individual replicates and return summary information.</p>
+That information is saved to an RData file which will contain 3 objects: all_proccessedFiles, all_jobInfo, all_dividedFiles</a></li>
+<li><a href='#summarise_experimentParameters'><p>This function will use output from summarise_experimentFiles to locate all parameter files and then</p>
+report on all those parameters for the jobs that were run.  This will save an RData file which will
+contain one object: all_parmInfo</a></li>
+<li><a href='#summarise_popDemographics'><p>This function will use output from summarise_experimentFiles and summarise_experimentParameters</p>
+to help with expectations concerning run output and handling.  This will save an RData file which
+will contain one object: all_popSets, which is a list of relevant control information about I/O
+and then a series of other RData files which contain the demographics information as a matrix with the
+mean and standard deviation of demographics for all replicates.</a></li>
+<li><a href='#summariseExperiment'><p>This function is a wrapper for getting a summary of the results of an rSHAPE run and/or experiment as a whole.  The</p>
+former is presumed to be of greater use but either is fine as per your needs.  This wrapper will cause
+RData files to be created which contain the summarised experimental details that you can then use more easily
+for analysis.</a></li>
+<li><a href='#trimQuotes'><p>This is a function to trim a string by removing the first and last character, it's used to trim quotation marks</p>
+used in the parameter input</a></li>
+<li><a href='#updateLines'><p>This is a function which is used to update lines that are searched and replace in a manner conditional to this script's circumstances</p>
+The input lines can be a vector of any length, and the search patterns can be a list of any length where each list vector is used together.
+The values should be a list of information used as replacement info.</a></li>
+<li><a href='#write_subScript'><p>This function is used to programatically take vectors of paramters and write suites of R parameter scripts</p>
+that will form part of a SHAPE experiment that is being built for running.  This is a wrapper for writting out
+the suite of necessary scripts to form a run.</a></li>
+<li><a href='#writeParameters'><p>This is a file for updating the post analysis plotting script and creating an updated copy in the experiment's folder</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Simulated Haploid Asexual Population Evolution</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.3.2</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Jonathan Dench</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Jonathan Dench &lt;jdenc017@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>In silico experimental evolution offers a cost-and-time effective means to test evolutionary hypotheses.  Existing evolutionary simulation tools focus on simulations in a limited experimental framework, and tend to report on only the results presumed of interest by the tools designer.  The R-package for Simulated Haploid Asexual Population Evolution ('rSHAPE') addresses these concerns by implementing a robust simulation framework that outputs complete population demographic and genomic information for in silico evolving communities.  Allowing more than 60 parameters to be specified, 'rSHAPE'	simulates evolution across discrete time-steps for an evolving community of haploid asexual populations with binary state genomes.  These settings are for the current state of 'rSHAPE' and future steps will be to increase the breadth of evolutionary conditions permitted.  At present, most effort was placed into permitting varied growth models to be simulated (such as constant size, exponential growth, and logistic growth) as well as various fitness landscape models to reflect the evolutionary landscape (e.g.: Additive, House of Cards - Stuart Kauffman and Simon Levin (1987) &lt;<a href="https://doi.org/10.1016%2FS0022-5193%2887%2980029-2">doi:10.1016/S0022-5193(87)80029-2</a>&gt;, NK - Stuart A. Kauffman and Edward D. Weinberger (1989) &lt;<a href="https://doi.org/10.1016%2FS0022-5193%2889%2980019-0">doi:10.1016/S0022-5193(89)80019-0</a>&gt;, Rough Mount Fuji - Neidhart, Johannes and Szendro, Ivan G and Krug, Joachim (2014) &lt;<a href="https://doi.org/10.1534%2Fgenetics.114.167668">doi:10.1534/genetics.114.167668</a>&gt;). This package includes numerous functions though users will only need defineSHAPE(), runSHAPE(), shapeExperiment() and summariseExperiment().  All other functions are called by these main functions and are likely only to be on interest for someone wishing to develop 'rSHAPE'.  Simulation results will be stored in files which are exported to the directory referenced by the shape_workDir option (defaults to tempdir() but do change this by passing a folderpath argument for workDir when calling defineSHAPE() if you plan to make use of your results beyond your current session).  'rSHAPE' will generate numerous replicate simulations for your defined range of experimental parameters.  The experiment will be built under the experimental working directory (i.e.: referenced by the option shape_workDir set using defineSHAPE() ) where individual replicate simulation results will be stored as well as processed results which I have made in an effort to facilitate analyses by automating collection and processing of the potentially thousands of files which will be created. On that note, 'rSHAPE' implements a robust and flexible framework with highly detailed output at the cost of computational efficiency and potentially requiring significant disk space (generally gigabytes but up to tera-bytes for very large simulation efforts).  So, while 'rSHAPE' offers a single framework in which we can simulate evolution and directly compare the impacts of a wide range of parameters, it is not as quick to run as other in silico simulation tools which focus on a single scenario with limited output. There you have it, 'rSHAPE' offers you a less restrictive in silico evolutionary playground than other tools and I hope you enjoy testing your hypotheses.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a></td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.2)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>abind, graphics, sn, VGAM, evd, stats, utils, RSQLite, DBI,
+foreach, parallel, doParallel</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>6.1.1</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2019-07-19 01:58:31 UTC; Jonathan</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2019-07-19 09:40:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='addDrift'>This is a simple little function used to represent drift by introducing stochasticity to the vector passed
+by making poisson distribution calls.  At present it forces values to integers because I've not been able to
+implement an appropriate continuous distribution for such calls that works with tested models and expected outcome.</h2><span id='topic+addDrift'></span>
+
+<h3>Description</h3>
+
+<p>This is a simple little function used to represent drift by introducing stochasticity to the vector passed
+by making poisson distribution calls.  At present it forces values to integers because I've not been able to
+implement an appropriate continuous distribution for such calls that works with tested models and expected outcome.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>addDrift(func_inVector, func_integerValues = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="addDrift_+3A_func_invector">func_inVector</code></td>
+<td>
+<p>A vector of value to which stochasticity is to be added, integer values will be returned.</p>
+</td></tr>
+<tr><td><code id="addDrift_+3A_func_integervalues">func_integerValues</code></td>
+<td>
+<p>Logical toggle if a discrete or continous distribution is to be used for draws. DISABLED - as
+testing could not identify a continuous distribution which works for obtaining expected results from established models.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of values, with same length as func_inVector
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This adds drift by making draws from the Poisson distribution with a location parameter based on
+# the elements to which drift is to be added.
+replicate(10,addDrift(c(0.5,1,5,10,14.1)))
+
+</code></pre>
+
+<hr>
+<h2 id='addQuotes'>This is a function to add quotation marks around each element of a character string vector</h2><span id='topic+addQuotes'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to add quotation marks around each element of a character string vector
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>addQuotes(funcIn)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="addQuotes_+3A_funcin">funcIn</code></td>
+<td>
+<p>a vector of character strings which you want padded by quotation marks</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>character vector of length equal to the input
+</p>
+
+<hr>
+<h2 id='adjustBirths'>This function ensures that a vector of values will sum to a given number.  It's implemented in certain growth forms
+(curently: <strong>constant</strong> and <strong>logistic</strong>)</h2><span id='topic+adjustBirths'></span>
+
+<h3>Description</h3>
+
+<p>This function ensures that a vector of values will sum to a given number.  It's implemented in certain growth forms
+(curently: <strong>constant</strong> and <strong>logistic</strong>)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>adjustBirths(func_adjVector, func_sumTotal,
+  func_roundValues = getOption("shape_track_asWhole"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="adjustBirths_+3A_func_adjvector">func_adjVector</code></td>
+<td>
+<p>Vector of values which must sum to the func_sumTotal.</p>
+</td></tr>
+<tr><td><code id="adjustBirths_+3A_func_sumtotal">func_sumTotal</code></td>
+<td>
+<p>A single integer value which is to be the target summed value.</p>
+</td></tr>
+<tr><td><code id="adjustBirths_+3A_func_roundvalues">func_roundValues</code></td>
+<td>
+<p>Logical toggle to control in values must be rounded to integers.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of values adjusted to sum to a single value.  These may have been forced to be rounded or could still
+contain decimals.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># In the event we're enforcing a vector to sum to a particular value, this function will
+# force that vector to the sum and adjust proportionally to elements.  You can force values
+# to become integers.
+adjustBirths(func_adjVector = c(9,70,20), func_sumTotal = 100, func_roundValues = FALSE)
+# When rounding, this is stochastic
+replicate(10,adjustBirths(func_adjVector = c(9,70,20),
+                          func_sumTotal = 100,
+                          func_roundValues = TRUE))
+# Same idea, different input vectors
+adjustBirths(func_adjVector = c(10,75,20), func_sumTotal = 100, func_roundValues = FALSE)
+replicate(10,adjustBirths(func_adjVector = c(10,75,20),
+                             func_sumTotal = 100,
+                             func_roundValues = TRUE))
+
+</code></pre>
+
+<hr>
+<h2 id='birthFunction'>This function calculates the number of births for the vector of populations which are expected to be passed.
+The number of parameters which can be passed may be more than the number required to use one of the growth forms.</h2><span id='topic+birthFunction'></span>
+
+<h3>Description</h3>
+
+<p>This function calculates the number of births for the vector of populations which are expected to be passed.
+The number of parameters which can be passed may be more than the number required to use one of the growth forms.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>birthFunction(func_inSize, func_inFitness, func_bProb, func_sizeStep,
+  func_growthForm = c("logistic", "exponential", "constant", "poisson"),
+  func_deaths = NULL, func_carryingCapacity = NULL,
+  func_basalRate = NULL, func_deathScale = FALSE, func_drift = TRUE,
+  func_roundValues = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="birthFunction_+3A_func_insize">func_inSize</code></td>
+<td>
+<p>This is the vector of population sizes within the community</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_infitness">func_inFitness</code></td>
+<td>
+<p>This is the vector of fitness value for the community</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_bprob">func_bProb</code></td>
+<td>
+<p>This is the general bith probability defined for this run of SHAPE</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_sizestep">func_sizeStep</code></td>
+<td>
+<p>This is a proportional scalar that will control what proportion of a standard
+&quot;generation&quot; is simulated for each step within a SHAPE run.  NOTE: This parameter is not perfectly
+validated to run as may be expected with all models.  For now, it should be left as a value of &quot;1&quot;,
+but exists for future implementation and testing.</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_growthform">func_growthForm</code></td>
+<td>
+<p>This is the implemeted growth model to be simulated in this run.  Currently
+this can be one of <strong>&quot;logistic&quot;,&quot;exponential&quot;,&quot;constant&quot;,&quot;poisson&quot;</strong>.</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_deaths">func_deaths</code></td>
+<td>
+<p>This is the vector of deaths for the genotypes within the community</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_carryingcapacity">func_carryingCapacity</code></td>
+<td>
+<p>This is the maximum community size supported by tge simulated environment.</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_basalrate">func_basalRate</code></td>
+<td>
+<p>This is the basal growth rate, otherwise definable as the number of offspring
+an individual will produce from a single birth event.</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_deathscale">func_deathScale</code></td>
+<td>
+<p>This is a logical toggle to define if the number of births should be scaled
+by the number of deaths.  The exact interpretation of this varies by growth model, but in general
+it forces growth to follow rates expected by standard pure birth models while still simulating
+deaths within the community.</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_drift">func_drift</code></td>
+<td>
+<p>This is a logical toggle as to whether or not stochasticity is introduced into
+the deterministic calculations that may be encountered within the growth function.  Its exact
+implementation varies based on the growth model being simulated.</p>
+</td></tr>
+<tr><td><code id="birthFunction_+3A_func_roundvalues">func_roundValues</code></td>
+<td>
+<p>This is a logical toggle to define if the number of births and deaths are
+forced to be tracked as integer values.  If TRUE, then any fractional amounts will be stochastically
+rounded to the nearest integer with a probability of being rounded up equal to the decimal value
+&ndash; ie: 0.32 means 32% chance of being rounded up &ndash;</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of births with the same length as the vector of population sizes passed.
+</p>
+<p># Imagine you've got an evolving community of three populations where in each time step individuals with
+# relateive fitness of 1 produce 2 offspring.
+birthFunction(func_inSize = c(100,100,100), func_inFitness = c(1,2,1.05), func_bProb = 1,
+func_sizeStep = 1, func_growthForm = &quot;exponential&quot;, func_drift = FALSE)
+# Now with evolutionary drift
+birthFunction(func_inSize = c(100,100,100), func_inFitness = c(1,2,1.05), func_bProb = 1,
+func_sizeStep = 1, func_growthForm = &quot;exponential&quot;, func_drift = TRUE)
+</p>
+
+<hr>
+<h2 id='buildPedigree'>This is a convenience script to build an named list of empty lists, where the names are based
+on the genotype IDs being passed.</h2><span id='topic+buildPedigree'></span>
+
+<h3>Description</h3>
+
+<p>This is a convenience script to build an named list of empty lists, where the names are based
+on the genotype IDs being passed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>buildPedigree(func_focalID)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="buildPedigree_+3A_func_focalid">func_focalID</code></td>
+<td>
+<p>This should be any vector, that can be interpreted as character, and faithfully represent
+the genotype IDs of interest for your pedigree.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a named list of empty lists.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># this creates a named list, this trivial function exists for future flexibility and method design.
+buildPedigree(c(1,"zebra","walrus",4))
+
+</code></pre>
+
+<hr>
+<h2 id='calc_relativeFitness'>This is a function to calculate the relative fitness for a vector of fitnesses.  As a frame of reference
+it can use either an ancestral fitness value or the mean fitness of the passed vector.  If the frame of
+reference is a value of zero - OR - the func_absDistance is set to TRUE then instead the vector is centered
+around a value of 1 where negative values will be set to zero.</h2><span id='topic+calc_relativeFitness'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to calculate the relative fitness for a vector of fitnesses.  As a frame of reference
+it can use either an ancestral fitness value or the mean fitness of the passed vector.  If the frame of
+reference is a value of zero - OR - the func_absDistance is set to TRUE then instead the vector is centered
+around a value of 1 where negative values will be set to zero.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>calc_relativeFitness(func_fitVector, func_ancestFit = NULL,
+  func_weights = NULL, func_absDistance = (getOption("shape_simModel")
+  == "RMF"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="calc_relativeFitness_+3A_func_fitvector">func_fitVector</code></td>
+<td>
+<p>a numeric vector of values to be interpreted as fitnesses</p>
+</td></tr>
+<tr><td><code id="calc_relativeFitness_+3A_func_ancestfit">func_ancestFit</code></td>
+<td>
+<p>An optional single numeric value to be used as a frame of reference
+for calculating relative fitness.</p>
+</td></tr>
+<tr><td><code id="calc_relativeFitness_+3A_func_weights">func_weights</code></td>
+<td>
+<p>An optional vector of weights to be used for calculating relative fitness
+as an absolute distance from the mean of the func_fitVector vector.</p>
+</td></tr>
+<tr><td><code id="calc_relativeFitness_+3A_func_absdistance">func_absDistance</code></td>
+<td>
+<p>A logical toggle to override if relative fitnesses are to be calculated as the absolute
+distance from 1.  Will be overrode if either the mean of func_fitVector or func_ancestFit are zero.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of relative fitness values of length equal to the input vector.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This calculates relative fitness values either based on the mean of the community or
+# based on an ancestral fitness value.
+defineSHAPE()
+calc_relativeFitness(c(0.9,1,1.1))
+calc_relativeFitness(c(0.9,1,1.1),func_ancestFit = 0)
+calc_relativeFitness(c(0.9,1,1.1),func_ancestFit = 1)
+calc_relativeFitness(c(0.95,1,1.1))
+
+</code></pre>
+
+<hr>
+<h2 id='compute_distGrowth'>This function is used to calculate the effect size and timing of the next stochastic population disturbance in a SHAPE run.</h2><span id='topic+compute_distGrowth'></span>
+
+<h3>Description</h3>
+
+<p>This function is used to calculate the effect size and timing of the next stochastic population disturbance in a SHAPE run.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>compute_distGrowth(func_distFactor, func_growthType, func_distType,
+  func_growthRate, func_popSize, func_focalSize,
+  func_manualGenerations = NULL, func_stepDivs)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="compute_distGrowth_+3A_func_distfactor">func_distFactor</code></td>
+<td>
+<p>This is the expected effect size of the disturbance, it should be a named vector with elements
+<strong>factor, random</strong> which are each used as per the func_distType</p>
+</td></tr>
+<tr><td><code id="compute_distGrowth_+3A_func_growthtype">func_growthType</code></td>
+<td>
+<p>This is the growth model of the SHAPE run</p>
+</td></tr>
+<tr><td><code id="compute_distGrowth_+3A_func_disttype">func_distType</code></td>
+<td>
+<p>This is the type of disturbance to be simulated.  Currently I've implemented
+<strong>bottleneck, random</strong> options for constant bottlenecks or normally distributed random effect sizes</p>
+</td></tr>
+<tr><td><code id="compute_distGrowth_+3A_func_growthrate">func_growthRate</code></td>
+<td>
+<p>This is the basal growth rate of the SHAPE run</p>
+</td></tr>
+<tr><td><code id="compute_distGrowth_+3A_func_popsize">func_popSize</code></td>
+<td>
+<p>This is a vector of the number of individuals in each of the populations</p>
+</td></tr>
+<tr><td><code id="compute_distGrowth_+3A_func_focalsize">func_focalSize</code></td>
+<td>
+<p>This only matters if the growth model is exponential in which case the disturbance
+is always such that the community size is reduced to the func_focalSize value</p>
+</td></tr>
+<tr><td><code id="compute_distGrowth_+3A_func_manualgenerations">func_manualGenerations</code></td>
+<td>
+<p>If not NULL, it will be rounded to an integer value and taken as the manually
+controlled number of generations between disturbances.  Otherwise, the disturbance factor and growth rate are
+used to estimate the number of steps required for a community with relative fitness 1 to rebound.</p>
+</td></tr>
+<tr><td><code id="compute_distGrowth_+3A_func_stepdivs">func_stepDivs</code></td>
+<td>
+<p>This is the value that controls what proportion of a standard biological &quot;generation&quot; is
+simulated in each step of a SHAPE run.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A named vector with three elements describing the simulated reduction factor of populations,
+the number of individuals lost, and the number of steps estimated until the next disturbance.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This calculates the information for the next planned stochastic disturbance event.
+# Consider a situation where there is a disturbance reducing populations 100 fold,
+# and it occurs either in a proscriptive number of steps, or we calculate it based
+# on recovery time as per the growth rate and growth model parameters.
+compute_distGrowth("bottleneck","exponential","bottleneck",
+                     2,1e4,1e2,5,1)
+compute_distGrowth("bottleneck","exponential","bottleneck",
+                   2,1e4,1e2,NULL,1)
+# If growth is constant or Poisson, then disturbances are effectively supressed
+compute_distGrowth("bottleneck","poisson","bottleneck",
+                   2,1e4,1e2,NULL,1)
+
+</code></pre>
+
+<hr>
+<h2 id='create_genotypeFrame'>This is a convenience function to ensure that we have a standard shaped data.frame.  It is used to initiate
+a new table for the fitness landscape.</h2><span id='topic+create_genotypeFrame'></span>
+
+<h3>Description</h3>
+
+<p>This is a convenience function to ensure that we have a standard shaped data.frame.  It is used to initiate
+a new table for the fitness landscape.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>create_genotypeFrame(tmpID, tmpStrings, tmpFitnesses)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="create_genotypeFrame_+3A_tmpid">tmpID</code></td>
+<td>
+<p>A numeric vector of the unqiue identifiers for genotypes</p>
+</td></tr>
+<tr><td><code id="create_genotypeFrame_+3A_tmpstrings">tmpStrings</code></td>
+<td>
+<p>A vector of the character strings that represent the binary string of genotypes</p>
+</td></tr>
+<tr><td><code id="create_genotypeFrame_+3A_tmpfitnesses">tmpFitnesses</code></td>
+<td>
+<p>A vector of the numeric fitness values to be input</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A 4 column data frame with column names of genotypeID, binaryString, fitness, isExplored
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This is just a convenience function for outputting vectors in a data.frame with
+# standard named columns.
+create_genotypeFrame(c(1,10,50),c("1","1_7","6_12"),c(1,0.25,1.57))
+</code></pre>
+
+<hr>
+<h2 id='createGenotypes'>This function searches the nearby mutational space of a focal genotype, identifies which genotypes in that space have not
+yet been identified, and create new database entries for any new genotypes.</h2><span id='topic+createGenotypes'></span>
+
+<h3>Description</h3>
+
+<p>This function searches the nearby mutational space of a focal genotype, identifies which genotypes in that space have not
+yet been identified, and create new database entries for any new genotypes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>createGenotypes(tmp_focalGenotype, tmp_focalFitness, maxHamming,
+  tmp_landModel = "HoC", tmp_sepString = getOption("shape_sepString"),
+  tmpDirection = getOption("shape_allow_backMutations"),
+  tmp_relativeFitness = getOption("shape_const_relativeFitness"),
+  tmp_currNeighbours = NULL, tmp_genCon,
+  tmp_tableSplit = getOption("shape_db_splitTables"),
+  tmp_maxRows = getOption("shape_maxRows"),
+  tmp_genomeLength = getOption("shape_genomeLength"),
+  tmp_distAsS = getOption("shape_const_distAsS"), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="createGenotypes_+3A_tmp_focalgenotype">tmp_focalGenotype</code></td>
+<td>
+<p>This is the focal genotype for which we want to create missing mutational neighbours.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_focalfitness">tmp_focalFitness</code></td>
+<td>
+<p>This is the fitness value of the tmp_focalGenotype.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_maxhamming">maxHamming</code></td>
+<td>
+<p>The maximum number of sites that could be changed by mutation of the tmp_focalGenotype.
+NOTE: At present I've not made the code work for anything other than a value of 1.  So do not update
+without updating associated code. where appropriate.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_landmodel">tmp_landModel</code></td>
+<td>
+<p>This is the character string that defines the fitness landscape model being simulated in this SHAPE run.
+At present it can be one of: <strong>Additive, Fixed, HoC, NK, RMF</strong></p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_sepstring">tmp_sepString</code></td>
+<td>
+<p>This is a character string used to collapse vectors of characters.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmpdirection">tmpDirection</code></td>
+<td>
+<p>This is a logical which controls if reversions are allowed (ie: if TRUE sites can revert from mutated to WT)</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_relativefitness">tmp_relativeFitness</code></td>
+<td>
+<p>This is a logical which controls if fitness values are to be calculated as relative and no absolute values
+that would otherwise be calculated via calls to the fitness landscape model.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_currneighbours">tmp_currNeighbours</code></td>
+<td>
+<p>This is an optinal vector that would define the genotype of all neighbours within the 1 step mutational
+neighbourhood of the tmp_focalGenotype genotype.  If NULL then this vector will be calculated within the function.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_gencon">tmp_genCon</code></td>
+<td>
+<p>This is the filepath for the database file that contains the fitness landscape information.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_tablesplit">tmp_tableSplit</code></td>
+<td>
+<p>This is a logical which controls if the tables which report on all genotypes with X mutations should be
+forced into a single table or it SHAPE is allowed to split them into multiple tables.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_maxrows">tmp_maxRows</code></td>
+<td>
+<p>The maximum number of rows allowed in a database table before a new table is created.  This has no meaning
+if tmp_tableSplit is FALSE.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_genomelength">tmp_genomeLength</code></td>
+<td>
+<p>The length of the genomes, or number of mutable sites/positions, being simulated.</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_tmp_distass">tmp_distAsS</code></td>
+<td>
+<p>This arugment is passed through to downstream function, but will control if the stochastic portion of
+fitness effect will be considered as selection coefficients (meaning subtracting 1 from the initially drawn value).</p>
+</td></tr>
+<tr><td><code id="createGenotypes_+3A_...">...</code></td>
+<td>
+<p>Additional arguments that may get passed to internal functions.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>This invisibly returns NULL, this function is to perform work on databases.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='deathFunction'>This allows SHAPE to simulate the death process as a deterministic value, and may be density dependent.</h2><span id='topic+deathFunction'></span>
+
+<h3>Description</h3>
+
+<p>This allows SHAPE to simulate the death process as a deterministic value, and may be density dependent.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>deathFunction(func_inSize, func_inProb = 0, func_roundValues = TRUE,
+  func_depDensity = FALSE, func_densityMax = NULL,
+  func_densityPower = 4)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="deathFunction_+3A_func_insize">func_inSize</code></td>
+<td>
+<p>This is the vector of population sizes within the community</p>
+</td></tr>
+<tr><td><code id="deathFunction_+3A_func_inprob">func_inProb</code></td>
+<td>
+<p>This is the general death probability defined for this run of SHAPE</p>
+</td></tr>
+<tr><td><code id="deathFunction_+3A_func_roundvalues">func_roundValues</code></td>
+<td>
+<p>This is a logical toggle to define if the number of births and deaths are
+forced to be tracked as integer values.  If TRUE, then any fractional amounts will be stochastically
+rounded to the nearest integer with a probability of being rounded up equal to the decimal value
+&ndash; ie: 0.32 means 32% chance of being rounded up &ndash;</p>
+</td></tr>
+<tr><td><code id="deathFunction_+3A_func_depdensity">func_depDensity</code></td>
+<td>
+<p>This is a logical toggle as to whether or not the calculation is density dependent.
+If TRUE, then func_densityMax reuqires a value.</p>
+</td></tr>
+<tr><td><code id="deathFunction_+3A_func_densitymax">func_densityMax</code></td>
+<td>
+<p>This is the community size at which maximum density dependent deaths
+(ie: 100% of func_inSize) occur.</p>
+</td></tr>
+<tr><td><code id="deathFunction_+3A_func_densitypower">func_densityPower</code></td>
+<td>
+<p>This is a scaling factor that controls the rate of transition between
+minimal and maximal values of the density dependent deaths.  Higher values mean a steeper transition
+such that there are fewer deaths until higher densities are reached.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of the number of deaths caluclated for each of the populations represented by the func_inSize vector
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Imagine you've got an evolving community of three populations where in each time step
+# 100% of individuals die.
+deathFunction(func_inSize = c(100,50,200), func_inProb = 1)
+# What if their deaths were scaled based on population density,
+# or an environmental carrying capacity?
+deathFunction(func_inSize = c(100,50,200), func_inProb = 1,
+              func_depDensity = TRUE, func_densityMax = 400)
+deathFunction(func_inSize = c(100,50,200), func_inProb = 1,
+              func_depDensity = TRUE, func_densityMax = 500)
+deathFunction(func_inSize = c(100,50,200), func_inProb = 1,
+              func_depDensity = TRUE, func_densityMax = 350)
+
+</code></pre>
+
+<hr>
+<h2 id='defineNeighbours'>The function will identify the binary string of all possible neighbours to a focal genotype.  It is important when querrying the fitness landscape.</h2><span id='topic+defineNeighbours'></span>
+
+<h3>Description</h3>
+
+<p>The function will identify the binary string of all possible neighbours to a focal genotype.  It is important when querrying the fitness landscape.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>defineNeighbours(func_tmpGenotype, func_tmpDirection,
+  func_maxHamming = getOption("shape_max_numMutations"),
+  func_sepString = getOption("shape_sepString"),
+  func_genomeLength = getOption("shape_genomeLength"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="defineNeighbours_+3A_func_tmpgenotype">func_tmpGenotype</code></td>
+<td>
+<p>This is the binary string of the focal genotype for which we want to define possible neighbours.</p>
+</td></tr>
+<tr><td><code id="defineNeighbours_+3A_func_tmpdirection">func_tmpDirection</code></td>
+<td>
+<p>This is a logical which controls if reversions are allowed (ie: if TRUE sites can revert from mutated to WT)</p>
+</td></tr>
+<tr><td><code id="defineNeighbours_+3A_func_maxhamming">func_maxHamming</code></td>
+<td>
+<p>The maximum number of sites that could be changed by mutation of the tmp_focalGenotype.
+NOTE: At present I've not made the code work for anything other than a value of 1.  So do not update
+without updating associated code, where appropriate.</p>
+</td></tr>
+<tr><td><code id="defineNeighbours_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is a character string used to collapse vectors of characters.</p>
+</td></tr>
+<tr><td><code id="defineNeighbours_+3A_func_genomelength">func_genomeLength</code></td>
+<td>
+<p>The length of the genomes, or number of mutable sites/positions, being simulated.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Vector of all the genotypes in the neighbouring mutational space accessible within 1 mutation event
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># If you had some individuals with a genome length of 10 sites, and an
+# individual with no mutations, as well as one with a single mutation at
+# position 7, each had a mutant.  This would define the possible one step
+# mutational neighbours.  I also allow back mutations
+defineNeighbours(c(""), func_tmpDirection = FALSE, func_maxHamming = 1,
+                 func_sepString = "_", func_genomeLength = 10)
+defineNeighbours(c("7"), func_tmpDirection = FALSE, func_maxHamming = 1,
+                 func_sepString = "_", func_genomeLength = 10)
+#' # Same idea, but if we allow back-mutations (ie: reversions)
+defineNeighbours(c("7"), func_tmpDirection = TRUE, func_maxHamming = 1,
+                 func_sepString = "_", func_genomeLength = 10)
+
+</code></pre>
+
+<hr>
+<h2 id='defineSHAPE'>These are some global reference options that SHAPE will use and I consider the defaults.
+SHAPE parameters can be changed by calling this function and changing values OR
+by using the accessory SHAPE_parameters script, called in the SHAPE_runBody script.
+This second approach is considered more practical for building and running experiments.</h2><span id='topic+defineSHAPE'></span>
+
+<h3>Description</h3>
+
+<p>These are some global reference options that SHAPE will use and I consider the defaults.
+SHAPE parameters can be changed by calling this function and changing values OR
+by using the accessory SHAPE_parameters script, called in the SHAPE_runBody script.
+This second approach is considered more practical for building and running experiments.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>defineSHAPE(shape_allow_backMutations = TRUE,
+  shape_collapseString = "__:__", shape_constDist = "exp",
+  shape_const_relativeFitness = TRUE,
+  shape_const_hoodDepth = "limited",
+  shape_const_focal_popValue = 1e+05, shape_const_mutProb = 0.001,
+  shape_const_distParameters = 20, shape_const_distAsS = FALSE,
+  shape_const_RMF_initiDistance = 5, shape_const_RMF_theta = 0.35,
+  shape_const_numInteractions = 4, shape_const_fixedFrame = NULL,
+  shape_const_birthProb = 1, shape_const_deathProb = 1,
+  shape_const_ancestFitness = 0, shape_const_estProp = 0.001,
+  shape_const_hoodThresh = 1000, shape_const_distType = "bottleneck",
+  shape_const_growthForm = "logistic", shape_const_growthRate = 2,
+  shape_const_growthGenerations = NULL, shape_db_splitTables = TRUE,
+  shape_death_byDensity = TRUE, shape_death_densityCorrelation = 4,
+  shape_death_densityCap = NULL, shape_envString = "shapeEnvir",
+  shape_externalSelfing = FALSE,
+  shape_external_stopFile = "someNamed.file", shape_finalDir = NULL,
+  shape_genomeLength = 100, shape_includeDrift = TRUE,
+  shape_init_distPars = c(factor = 100, random = 1),
+  shape_maxReplicates = 30, shape_maxRows = 2.5e+07,
+  shape_muts_onlyBirths = FALSE, shape_nextID = 0,
+  shape_numGenerations = 100, shape_objectStrings = c(popDemographics =
+  "popDemo", repeatability = "evoRepeat"), shape_postDir = NULL,
+  shape_recycle_repStart = 1, shape_results_removeSteps = TRUE,
+  shape_run_isRecycling = c(Landscape = TRUE, Steps = FALSE, Parameters =
+  TRUE, Neighbourhood = FALSE), shape_save_batchBase = "yourJob",
+  shape_save_batchSet = 1, shape_save_batchJob = 1,
+  shape_scaleGrowth_byDeaths = TRUE, shape_sepString = "_",
+  shape_sepLines = "__and__", shape_serverFarm = FALSE,
+  shape_simModel = "HoC", shape_size_timeStep = 1,
+  shape_stringsAsFactors = FALSE, shape_string_lineDescent = "_-&gt;_",
+  shape_string_tableNames = "numMutations", shape_thisRep = 1,
+  shape_tmpGenoTable = NULL,
+  shape_tmp_selfScript = "~/random_nullFile.txt", shape_use_sigFig = 4,
+  shape_toggle_forceCompletion = FALSE, shape_track_asWhole = FALSE,
+  shape_track_distSize = NULL, shape_workDir = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="defineSHAPE_+3A_shape_allow_backmutations">shape_allow_backMutations</code></td>
+<td>
+<p>This is a logical toggle controlling if revertant mutants are allowed.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_collapsestring">shape_collapseString</code></td>
+<td>
+<p>This is a string to collapse the progenitor and number of mutants pieces of information.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_constdist">shape_constDist</code></td>
+<td>
+<p>This is a character string to control the distribution used for drawing fitness value random components.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_relativefitness">shape_const_relativeFitness</code></td>
+<td>
+<p>This is a logical toggle which controls if the absolute fitness values calculated should be reinterpreted as relative fitness values.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_hooddepth">shape_const_hoodDepth</code></td>
+<td>
+<p>shape_const_hoodDepth This is an object to control which strains we get deep neighbourhood information for
+It should be one of <strong>&quot;none&quot;,&quot;limited&quot;,&quot;priority&quot;,&quot;full&quot;</strong>
+setting this higher will cost more and more in post analysis runtime.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_focal_popvalue">shape_const_focal_popValue</code></td>
+<td>
+<p>This is the focal population value which has different meanings based on the growth model implemented.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_mutprob">shape_const_mutProb</code></td>
+<td>
+<p>This is the probability of a mutation event - occuring relative to the number of mutable events - in a standard biological generation.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_distparameters">shape_const_distParameters</code></td>
+<td>
+<p>This allows a single parameter to be passed for use in the distribution of fitness fitness effects.  NOTE: you are likely going to
+want to pass multiple values in which case simply set this value prior to a run's start but after loading the library.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_distass">shape_const_distAsS</code></td>
+<td>
+<p>This is a logical toggle controlling if fitness landscape values calculated should be interpreted as selection coefficients rather than relative
+fitness values.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_rmf_initidistance">shape_const_RMF_initiDistance</code></td>
+<td>
+<p>This is the distance of the independent global fitness optima away from the WT genotype.  It matters for the Rough Mount Fuji landscapes.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_rmf_theta">shape_const_RMF_theta</code></td>
+<td>
+<p>This is the Rough Mount Fuji value that controls the scalar of the independent fitness contribution.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_numinteractions">shape_const_numInteractions</code></td>
+<td>
+<p>This is the number of sites which interact with respect to fitness calculations in models such as the NK.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_fixedframe">shape_const_fixedFrame</code></td>
+<td>
+<p>This defines the fitness landscape when our model is &quot;Fixed&quot;, it must be user defined and be explicit to all genotypes possible.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_birthprob">shape_const_birthProb</code></td>
+<td>
+<p>This is the proportion of individuals with fitness == 1 having births events in a standard biological generation.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_deathprob">shape_const_deathProb</code></td>
+<td>
+<p>This is the proportion of individuals having a death event in a standard biological generation.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_ancestfitness">shape_const_ancestFitness</code></td>
+<td>
+<p>This is the fitness value of the ancestral genotype.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_estprop">shape_const_estProp</code></td>
+<td>
+<p>This is the value controlling when SHAPE considers a population to be established.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_hoodthresh">shape_const_hoodThresh</code></td>
+<td>
+<p>This is the numeric value controlling when a population is of sufficient size for SHAPE to consider
+it worth having the genotype's mutational neighbourhood to be stored in a convenience DB for easier access - ie: this can save
+computational time but will cost diskspace during the run.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_disttype">shape_const_distType</code></td>
+<td>
+<p>This is the type of stochastic disturbance events to be simulated.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_growthform">shape_const_growthForm</code></td>
+<td>
+<p>This is the growth form model to be simulated</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_growthrate">shape_const_growthRate</code></td>
+<td>
+<p>This is the number of offspring from every division event where 1 would mean replacement,
+2 is normal binary fission, etc....</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_const_growthgenerations">shape_const_growthGenerations</code></td>
+<td>
+<p>This is an optional integer value controlling if you want a standard number of time steps between
+each stochastic disturbance function call.  Not defining this means it will be calculated based on other paratmerts defined.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_db_splittables">shape_db_splitTables</code></td>
+<td>
+<p>This is a logical toggle as to whether or not fitness landscape tables - for genotypes with the same number
+of mutations - are allowed to be split into sub-tables.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_death_bydensity">shape_death_byDensity</code></td>
+<td>
+<p>This is the logical toggle controlling if deaths are density dependent.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_death_densitycorrelation">shape_death_densityCorrelation</code></td>
+<td>
+<p>This is a positive numeric controlling the rate at which density dependent deaths increase from
+minimal to maximal effect.  Where 1 is linear, &gt; 1 creates an exponential form of curve and values &lt; 1 will create a root function curve.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_death_densitycap">shape_death_densityCap</code></td>
+<td>
+<p>If deaths are density dependent this is the maximal community size for when deaths are 100% expected.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_envstring">shape_envString</code></td>
+<td>
+<p>This is a string used for programatically creating workspace environments for rSHAPE</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_externalselfing">shape_externalSelfing</code></td>
+<td>
+<p>This is the logical toggle controlling if replicates are to be handled as individual external calls
+rather than through the normal internal for loop.  It has limited value and was desgined for when you work on compute nodes with
+limited wall time.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_external_stopfile">shape_external_stopFile</code></td>
+<td>
+<p>This is the filename for a file which is used to control self-replciation of SHAPE when selfing is external.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_finaldir">shape_finalDir</code></td>
+<td>
+<p>This is the directory where file from a remote server's compute node are to be back ported regularly.  Only matters
+under the correct conditions.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_genomelength">shape_genomeLength</code></td>
+<td>
+<p>This is the length of a simulant's genome, or in other words the number of sites where mutations can occur.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_includedrift">shape_includeDrift</code></td>
+<td>
+<p>This is a logical toggle as to whether or not we should add stochasticity to the growth function
+calculations.  It is meant to simulate drift in calculations that would otherwise be deterministic.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_init_distpars">shape_init_distPars</code></td>
+<td>
+<p>This is the vector of initial values of the dilution factor and random component of the stochastic disturbance function.
+It needs to be set with a number and range of values approriate to the distribution to be simulated.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_maxreplicates">shape_maxReplicates</code></td>
+<td>
+<p>This is the number of replicates to be run.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_maxrows">shape_maxRows</code></td>
+<td>
+<p>This is the integer number of rows stored in a single table of the fitness landscape DB.  Only
+matters is tables are aplit/</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_muts_onlybirths">shape_muts_onlyBirths</code></td>
+<td>
+<p>This is a logical flag to control if mutants only appear as a result of birth events.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_nextid">shape_nextID</code></td>
+<td>
+<p>This is the next genotype ID to be assigned for a genotype that get's created.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_numgenerations">shape_numGenerations</code></td>
+<td>
+<p>This is the number of generations to be simulated in the run.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_objectstrings">shape_objectStrings</code></td>
+<td>
+<p>This is a named character vector which are the string prefixes used when programatically naming objects.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_postdir">shape_postDir</code></td>
+<td>
+<p>This is the filepath to the directory where post-analysis results will be stored.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_recycle_repstart">shape_recycle_repStart</code></td>
+<td>
+<p>This is the first replicate being simulated once a SHAPE call is made.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_results_removesteps">shape_results_removeSteps</code></td>
+<td>
+<p>This is a logical flag controlling if the steps log is removed after being processed.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_run_isrecycling">shape_run_isRecycling</code></td>
+<td>
+<p>This is a named vector of four logicals which control which parts of a run is meant to be recycled between replicates.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_save_batchbase">shape_save_batchBase</code></td>
+<td>
+<p>This is a character string for naming your experiment.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_save_batchset">shape_save_batchSet</code></td>
+<td>
+<p>This is an integer value for the set of this experiment associated to this job.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_save_batchjob">shape_save_batchJob</code></td>
+<td>
+<p>This is an integer value for the batch of this experiment associated to this job.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_scalegrowth_bydeaths">shape_scaleGrowth_byDeaths</code></td>
+<td>
+<p>This is a logical flag that controls if growth is scaled by deaths so that the growth
+form follows standard expectations.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_sepstring">shape_sepString</code></td>
+<td>
+<p>This is a string character that is used for collpasing vectors of information into a single
+character string, and subsequently splitting that information back out.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_seplines">shape_sepLines</code></td>
+<td>
+<p>This is a string character that is used in collapsing multiple elements into a single character string
+though namely employed in the summariseExperiment function.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_serverfarm">shape_serverFarm</code></td>
+<td>
+<p>This is a logical flag of whether or not your simulations are going to be run on a remote server
+or other situation with compute and host nodes where you might want to handle particularities I experienced and thus accounted for.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_simmodel">shape_simModel</code></td>
+<td>
+<p>This is the fitness landscape model to be simulated.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_size_timestep">shape_size_timeStep</code></td>
+<td>
+<p>This is the proportion of a standard biological generation to be simulated in a single time step
+of a SHAPE run.  Values greater than 1 are not guaranteed to work as expected.  Negative numbers will cause errors.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_stringsasfactors">shape_stringsAsFactors</code></td>
+<td>
+<p>I don't like strings to be factors and so SHAPE will avoid treating them as so.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_string_linedescent">shape_string_lineDescent</code></td>
+<td>
+<p>This is a string that will be used to collapse vectors of character strings into a single string
+It get's used when we are tracking sequential genotypes through the line of descent</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_string_tablenames">shape_string_tableNames</code></td>
+<td>
+<p>This is a string value used as the prefix when naming table in the fitness landscape DB.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_thisrep">shape_thisRep</code></td>
+<td>
+<p>This is the replicate number of the first replicate processed in the called run.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_tmpgenotable">shape_tmpGenoTable</code></td>
+<td>
+<p>This is a temporary object of a table of genotype information that is to be passed along
+different functions of SHAPE.  It's stored as an option since it can be build within a function where it is not returned
+as an object but then used later.  There is little value in setting this manually.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_tmp_selfscript">shape_tmp_selfScript</code></td>
+<td>
+<p>This is an optionally defined filepath location for a file that will exist to signal that
+an externally replicating SHAPE run can stop.  This only matters if selfing is external.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_use_sigfig">shape_use_sigFig</code></td>
+<td>
+<p>This is the number of significant figures that will be kept for processed output.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_toggle_forcecompletion">shape_toggle_forceCompletion</code></td>
+<td>
+<p>This is a logical toggle controlling if a run crashes when it is ended prior to the
+maximum number of replicates being completed.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_track_aswhole">shape_track_asWhole</code></td>
+<td>
+<p>This is a logical toggle controlling if population sizes must be tracked as integer values</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_track_distsize">shape_track_distSize</code></td>
+<td>
+<p>This is a numeric, the size of a disturbance caused by stochastic events.  It is the dilution factor
+or the divisor of the community size.  It must be &gt; 1 or is forced to that value.</p>
+</td></tr>
+<tr><td><code id="defineSHAPE_+3A_shape_workdir">shape_workDir</code></td>
+<td>
+<p>This is the main working directory relative to which your SHAPE experiment will be built and run.  It defaults
+to the &ndash; tempdir &ndash; of R when this value is NULL, I strongly recommend</p>
+</td></tr>
+</table>
+
+
+<h3>Warning</h3>
+
+<p>Please pass a directory filepath to the argument of shape_workDir, rSHAPE will create this so it needn't exist yet.
+If you leave it as the default &ndash; ie NULL &ndash; whatever is created will simply be lost in the temporary folder
+of this R sessions' workspace.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This function builds the basic parameters for a run of SHAPE and I recommend as
+# the most convenient wayfor setting your own parameters since this function will
+# make appropriate derived settings based on values passed.
+# You must at least call it before using runSHAPE() or shapeExperiment().
+
+# You can see there are a lot of parameters for SHAPE
+args(defineSHAPE)
+# Here are some default values that were just loaded as options
+sapply(c("shape_workDir","shape_save_batchJob","shape_save_batchBase", "shape_simModel"),getOption)
+# As an exmaple we change your working directory, the ID of the job and the fitness landscape model
+options(list("shape_workDir" = paste(tempdir(),"~/alternativeFolder/",sep=""),
+                "shape_save_batchJob" = 3, "shape_save_batchBase" = "non_default_Experiment",
+                "shape_simModel" = "NK"))
+sapply(c("shape_workDir","shape_save_batchJob","shape_save_batchBase", "shape_simModel"),getOption)
+# NOTE: that manually setting the options will not create a new working directory for rSHAPE,
+# you would need to do this yourself or could simply pass these arguments through a call
+# to defineSHAPE().
+
+</code></pre>
+
+<hr>
+<h2 id='expGrowth'>This function uses the exponential growth model and can either calculated the expected growth for a single time step
+OR it can work backwards to calculated what was the expected starting population size prior to a step of exponential growth.</h2><span id='topic+expGrowth'></span>
+
+<h3>Description</h3>
+
+<p>This function uses the exponential growth model and can either calculated the expected growth for a single time step
+OR it can work backwards to calculated what was the expected starting population size prior to a step of exponential growth.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>expGrowth(func_rate, func_step, func_startPop = NULL,
+  func_endPop = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="expGrowth_+3A_func_rate">func_rate</code></td>
+<td>
+<p>This is the number of offpsring expected to be produced by an individual.  When calculating the expected
+population size after a time step, we force this rate to be no less than 1 since this function has meaning only in the birth
+function and so we do not want to calculate negative births (which would mean deaths).</p>
+</td></tr>
+<tr><td><code id="expGrowth_+3A_func_step">func_step</code></td>
+<td>
+<p>This is a proportional scalar that will control what proportion of a standard
+&quot;generation&quot; is simulated for each step within a SHAPE run.  NOTE: This parameter is not perfectly
+validated to run as may be expected with all models.  For now, it should be left as a value of &quot;1&quot;,
+but exists for future implementation and testing.</p>
+</td></tr>
+<tr><td><code id="expGrowth_+3A_func_startpop">func_startPop</code></td>
+<td>
+<p>This is the initial population size(s) for which you want to calculate a final size.  Leave NULL
+if trying to calculated the expected initial size from a final population.</p>
+</td></tr>
+<tr><td><code id="expGrowth_+3A_func_endpop">func_endPop</code></td>
+<td>
+<p>This is the final population size(s) for which you want to calculate a initial size.  Leave NULL
+if trying to calculated the expected final size from an initial population.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>numeric value
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Exponential growth equation implemented but allowing either the final or initial population
+# to be calculated based on whethere the initial or final community size is input.
+expGrowth(func_rate = 2, func_step = 1,func_startPop = 100)
+expGrowth(func_rate = 2, func_step = 1,func_endPop = 200)
+expGrowth(func_rate = 2, func_step = 7,func_startPop = 100)
+# You cannot set a growth rate less than 1 as this would then simulate deaths which is not
+# allowed in this calculation.
+expGrowth(func_rate = c(0.9,1,1.1), func_step = 1,func_startPop = 100)
+</code></pre>
+
+<hr>
+<h2 id='extract_popDemographics'>This is a function that steps forward through time steps of a SHAPE run and extracts population demographic
+information.  This includes Fitness, Number of Lineages, and Transitions between dominant genotypes.
+Most important it will also return the information related to which lineages will eventually establish in the population,
+a piece of information that will be critical for downstream lineage specific information extraction.</h2><span id='topic+extract_popDemographics'></span>
+
+<h3>Description</h3>
+
+<p>This is a function that steps forward through time steps of a SHAPE run and extracts population demographic
+information.  This includes Fitness, Number of Lineages, and Transitions between dominant genotypes.
+Most important it will also return the information related to which lineages will eventually establish in the population,
+a piece of information that will be critical for downstream lineage specific information extraction.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>extract_popDemographics(func_stepsCon, func_estValue, func_landscapeCon,
+  func_hoodCon, func_size_timeStep)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="extract_popDemographics_+3A_func_stepscon">func_stepsCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for the stepwise changes of a SHAPE run.</p>
+</td></tr>
+<tr><td><code id="extract_popDemographics_+3A_func_estvalue">func_estValue</code></td>
+<td>
+<p>This value is used to define the threshold size required for a population before it is considered established.</p>
+</td></tr>
+<tr><td><code id="extract_popDemographics_+3A_func_landscapecon">func_landscapeCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for the complete explored and neighbouring fitness landscape of a SHAPE run.</p>
+</td></tr>
+<tr><td><code id="extract_popDemographics_+3A_func_hoodcon">func_hoodCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for high priority mutational neighbourhood information
+(which is simply a subset of the full mutational landscape).</p>
+</td></tr>
+<tr><td><code id="extract_popDemographics_+3A_func_size_timestep">func_size_timeStep</code></td>
+<td>
+<p>This is the proportion of a standard biological generation which is to be simulated in a single time step.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>This return a list object that contains various pieces of usefull summary demographic information.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='extractInfo_focalID'>This is a function to extract genotype/lineage specific information.  This info will be mostly through time style of information
+but will also include information about it's line of descent, growth pressures pre-establishment, and population size.</h2><span id='topic+extractInfo_focalID'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to extract genotype/lineage specific information.  This info will be mostly through time style of information
+but will also include information about it's line of descent, growth pressures pre-establishment, and population size.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>extractInfo_focalID(func_focalID, func_estValue, func_stepsCon,
+  func_landscapeCon, func_hoodCon, func_refMatrix, func_subNaming,
+  func_genomeLength = getOption("shape_genomeLength"),
+  func_max_numMutations = getOption("shape_max_numMutations"),
+  func_allow_backMutations = getOption("shape_allow_backMutations"),
+  func_descentSep = getOption("shape_string_lineDescent"),
+  func_hoodExplore = getOption("shape_const_hoodDepth"),
+  func_stringSep = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="extractInfo_focalID_+3A_func_focalid">func_focalID</code></td>
+<td>
+<p>This is the vector of genotype ID(s) of the focal lineage(s) for which information is to be extracted.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_estvalue">func_estValue</code></td>
+<td>
+<p>This value is used to define the threshold size required for a population before it is considered established.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_stepscon">func_stepsCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for the stepwise changes of a SHAPE run.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_landscapecon">func_landscapeCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for the complete explored and neighbouring fitness landscape of a SHAPE run.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_hoodcon">func_hoodCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for high priority mutational neighbourhood information</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_refmatrix">func_refMatrix</code></td>
+<td>
+<p>Is a matrix of a SHAPE run's population demographics at a step in time.  I will be querried for
+information regarding a genotype's number of mutations and fitness value.
+of genotypes, but is not required but is also required</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_subnaming">func_subNaming</code></td>
+<td>
+<p>This is a logical which controls if the tables which report on all genotypes with X mutations should be
+forced into a single table or it SHAPE is allowed to split them into multiple tables.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_genomelength">func_genomeLength</code></td>
+<td>
+<p>The number of positions simulated within the individual's genomes.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_max_nummutations">func_max_numMutations</code></td>
+<td>
+<p>The maximum number of mutations that could occur in a single mutation event &ndash; CAUTION: This should never
+be anything other than 1 as per how SHAPE is currently implemented.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_allow_backmutations">func_allow_backMutations</code></td>
+<td>
+<p>This is a logical toggle controlling if reversions are allowed &ndash; meaning loss of mutations.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_descentsep">func_descentSep</code></td>
+<td>
+<p>This is the standard string used to collapse line of descent information.</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_hoodexplore">func_hoodExplore</code></td>
+<td>
+<p>This is an object to control which strains we get deep neighbourhood information for
+It should be one of <strong>&quot;none&quot;,&quot;limited&quot;,&quot;priority&quot;,&quot;full&quot;</strong>
+setting this higher will cost more and more in post analysis runtime.
+NOTE: That use of <strong>limited</strong> requires that you pass a func_refMatrix of expected shape (has a &quot;genotypeID&quot; column)!</p>
+</td></tr>
+<tr><td><code id="extractInfo_focalID_+3A_func_stringsep">func_stringSep</code></td>
+<td>
+<p>A common string separator used to merge information.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>This returns a list object with several pieces of summary information for the focal genotype ID.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='find_neededNeighbours'>This function querries if a suite of genotypes exist within the fitness landscape database.</h2><span id='topic+find_neededNeighbours'></span>
+
+<h3>Description</h3>
+
+<p>This function querries if a suite of genotypes exist within the fitness landscape database.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>find_neededNeighbours(tmp_possibleNeighbours, tmp_focal_numMuts,
+  tmp_refTables, maxHamming = getOption("shape_max_numMutations"),
+  tmp_tableSplit = getOption("shape_db_splitTables"),
+  tmp_genomeLength = getOption("shape_genomeLength"),
+  tmpDirection = getOption("shape_allow_backMutations"),
+  tmpRange_numMuts = NULL, tmp_genCon)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="find_neededNeighbours_+3A_tmp_possibleneighbours">tmp_possibleNeighbours</code></td>
+<td>
+<p>This is a vector of all possible mutants that we're trying to querry within the fitness landscape database.</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_tmp_focal_nummuts">tmp_focal_numMuts</code></td>
+<td>
+<p>This is the number of mutations in the focal genotype, it controls - along with other parameters -
+what tables of the fitness landscape database are querried.</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_tmp_reftables">tmp_refTables</code></td>
+<td>
+<p>This is the a vector of named tables that exist within the fitness landscape.  It can not be passed
+in which case the database at tmp_genCon is querried for this information.</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_maxhamming">maxHamming</code></td>
+<td>
+<p>The maximum number of sites that could be changed by mutation of the tmp_focalGenotype.</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_tmp_tablesplit">tmp_tableSplit</code></td>
+<td>
+<p>This is a logical which controls if the tables which report on all genotypes with X mutations should be
+forced into a single table or it SHAPE is allowed to split them into multiple tables.</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_tmp_genomelength">tmp_genomeLength</code></td>
+<td>
+<p>The length of the genomes, or number of mutable sites/positions, being simulated.</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_tmpdirection">tmpDirection</code></td>
+<td>
+<p>This is a logical which controls if reversions are allowed (ie: if TRUE sites can revert from mutated to WT)</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_tmprange_nummuts">tmpRange_numMuts</code></td>
+<td>
+<p>This is the range of number of mutations which a mutant neighbour may posses.  If not supplied that will
+be calculated in line via other parameters passed to the function.</p>
+</td></tr>
+<tr><td><code id="find_neededNeighbours_+3A_tmp_gencon">tmp_genCon</code></td>
+<td>
+<p>This is the filepath for the database file that contains the fitness landscape information.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of the genotypes that need to be created as they've not yet been defined within the fitness landscape.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='findParent'>This function will look through a pedigree data.frame and recursively continue building that back through the history of the SHAPE run being processed.</h2><span id='topic+findParent'></span>
+
+<h3>Description</h3>
+
+<p>This function will look through a pedigree data.frame and recursively continue building that back through the history of the SHAPE run being processed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>findParent(func_focalGenotype, func_startStep, func_stepMatrix,
+  func_progenitorList, func_demoArray, func_pedigreeAll,
+  func_lineString = getOption("shape_string_lineDescent"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="findParent_+3A_func_focalgenotype">func_focalGenotype</code></td>
+<td>
+<p>a vector of genotype IDs whose lineage you wish to identify.</p>
+</td></tr>
+<tr><td><code id="findParent_+3A_func_startstep">func_startStep</code></td>
+<td>
+<p>this is the first step in the SHAPE run from which you wish to consider re-tracing the lineage.</p>
+</td></tr>
+<tr><td><code id="findParent_+3A_func_stepmatrix">func_stepMatrix</code></td>
+<td>
+<p>this is the matrix that represent what happened at each step in the SHAPE run.</p>
+</td></tr>
+<tr><td><code id="findParent_+3A_func_progenitorlist">func_progenitorList</code></td>
+<td>
+<p>this is a list of the known progenitor(s) for our func_focalGenotypes</p>
+</td></tr>
+<tr><td><code id="findParent_+3A_func_demoarray">func_demoArray</code></td>
+<td>
+<p>this is the whole array of step-wise SHAPE records for population demographics and feeds func_stepMatrix.</p>
+</td></tr>
+<tr><td><code id="findParent_+3A_func_pedigreeall">func_pedigreeAll</code></td>
+<td>
+<p>this is a data.frame which contains all currently known pedigree information and informs our step-wise focus.</p>
+</td></tr>
+<tr><td><code id="findParent_+3A_func_linestring">func_lineString</code></td>
+<td>
+<p>this is the string that will be used to collapse the vector of progenitor genotype's into a single
+charater string.  This collapse is done as a convenience for storage and retrieval.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of character strings, each of which is the found lineage of the func_focalGenotypes
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='fitnessDist'>This is the function that will call for draws from distributions.</h2><span id='topic+fitnessDist'></span>
+
+<h3>Description</h3>
+
+<p>This is the function that will call for draws from distributions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fitnessDist(tmpDraws, tmpDistribution, tmpParameters)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fitnessDist_+3A_tmpdraws">tmpDraws</code></td>
+<td>
+<p>This is the number of draws sought from the distribution being called</p>
+</td></tr>
+<tr><td><code id="fitnessDist_+3A_tmpdistribution">tmpDistribution</code></td>
+<td>
+<p>This is the character string that represents the implemented distribution you want called.
+It must be one of: <strong>Fixed, Gamma, Uniform, Normal, Chi2, beta, exp, evd, rweibull, frechet, skewNorm</strong></p>
+</td></tr>
+<tr><td><code id="fitnessDist_+3A_tmpparameters">tmpParameters</code></td>
+<td>
+<p>This is the ordered vector of parameters to be passed in order to parameterise the distribution from which
+you want to draw</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of values with length equal to tmpDraws
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This draws from distributions
+fitnessDist(10, "Uniform", c(0,1))
+fitnessDist(10, "Normal", c(0,1))
+fitnessDist(10, "exp", 1)
+
+</code></pre>
+
+<hr>
+<h2 id='fitnessLandscape'>This function will calculate the fitness values for genotypes being newly recorded to the fitness landscape.</h2><span id='topic+fitnessLandscape'></span>
+
+<h3>Description</h3>
+
+<p>This function will calculate the fitness values for genotypes being newly recorded to the fitness landscape.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fitnessLandscape(tmpGenotypes, tmp_focalFitness, landscapeModel = "HoC",
+  tmp_ancestralFitness = getOption("shape_const_ancestFitness"),
+  tmp_weightsRMF = getOption("shape_const_RMF_theta"),
+  tmp_optimaRMF = getOption("shape_const_RMF_globalOptima"),
+  tmp_correlationsNK = getOption("shape_const_NK_interactionMat"),
+  tmp_const_numInteractionsNK = getOption("shape_const_numInteractions"),
+  tmp_NK_ancestDep = getOption("shape_const_DepbySite_ancestFitness"),
+  relativeFitness = TRUE,
+  func_genomeLength = getOption("shape_genomeLength"),
+  func_distribution = getOption("shape_constDist"),
+  func_distParameters = getOption("shape_const_distParameters"),
+  func_distAsS = getOption("shape_const_distAsS"),
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fitnessLandscape_+3A_tmpgenotypes">tmpGenotypes</code></td>
+<td>
+<p>This is a vector of the binaryString values that represent the genotype(s) for which you want
+to calculate new fitness values.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_tmp_focalfitness">tmp_focalFitness</code></td>
+<td>
+<p>This argument has different meaning depending upon the fitness landscape model being simulated.
+It can be a vector of fitness values, a matrix, a single value, etc...</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_landscapemodel">landscapeModel</code></td>
+<td>
+<p>This is the character string that defines the fitness landscape model being simulated in this SHAPE run.
+At present it can be one of: <strong>Additive, Fixed, HoC, NK, RMF</strong></p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_tmp_ancestralfitness">tmp_ancestralFitness</code></td>
+<td>
+<p>This is the fitness value of the pure WT genotype, it does not always have meaning.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_tmp_weightsrmf">tmp_weightsRMF</code></td>
+<td>
+<p>This is the weighting of the constant/deterministic term calculated in the RMF fitness landscape equation.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_tmp_optimarmf">tmp_optimaRMF</code></td>
+<td>
+<p>This is the binary string genotype of the optimal genotype in the current RMF fitness landscape.  It needn't yet have
+been yet explored, it is simply the genotype that will be the deterministic global optimum.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_tmp_correlationsnk">tmp_correlationsNK</code></td>
+<td>
+<p>This is the matrix of fitness values and interactions between mutational states for the NK fitness lanscape model</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_tmp_const_numinteractionsnk">tmp_const_numInteractionsNK</code></td>
+<td>
+<p>This is the &quot;K&quot; value of the NK fitness landscape value and represents the number of other sites
+correlated to the fitness of a focal site.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_tmp_nk_ancestdep">tmp_NK_ancestDep</code></td>
+<td>
+<p>This is the fitness value of the WT mutant for an NK fitness landscape, it is passed as a computational
+ease so that it needn't be calculated each time this function is called.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_relativefitness">relativeFitness</code></td>
+<td>
+<p>This is a logical toggle controlling if the fitness values returned should be relative fitness values</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_func_genomelength">func_genomeLength</code></td>
+<td>
+<p>This is the genome length of individuals.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_func_distribution">func_distribution</code></td>
+<td>
+<p>This is a character string representing which of the allowed distribution functions can be called
+for draws of stochastic values when calculating fitness values.  See fitnessDist for those implemented.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_func_distparameters">func_distParameters</code></td>
+<td>
+<p>This is a vector of the ordered distribution parameters expected by the distribution
+referenced by func_distribution</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_func_distass">func_distAsS</code></td>
+<td>
+<p>This is a logical toggle to control in the final returned values should be considered as selection coefficients,
+which is achieved by subtracting the calculated value by 1.</p>
+</td></tr>
+<tr><td><code id="fitnessLandscape_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is a character string used for collapsing vectors of information, and expanding the collpased information back into
+a vector of values.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of fitness values to be assgined for each of the newly explored genotypes defined in the vector tmpGenotypes
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this does not have meaning outisde of a runSHAPE call.
+</p>
+
+<hr>
+<h2 id='growthFunction'>This is a wrapper function where the birth and death related parameters of a SHAPE run are passed before the
+appropriate functions (and their associated methods) are called.  This function will be called once per time step
+of a SHAPE run.</h2><span id='topic+growthFunction'></span>
+
+<h3>Description</h3>
+
+<p>This is a wrapper function where the birth and death related parameters of a SHAPE run are passed before the
+appropriate functions (and their associated methods) are called.  This function will be called once per time step
+of a SHAPE run.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>growthFunction(func_inSize, func_inFitness, func_bProb, func_dProb,
+  func_deathDen_logical = FALSE, func_deathDen_max = NULL,
+  func_deathDen_power = 4, func_sizeStep,
+  func_growthForm = c("logistic", "exponential", "constant", "poisson"),
+  func_carryingCapacity = NULL, func_basalRate = NULL,
+  func_deathScale = FALSE, func_drift = TRUE,
+  func_roundValues = FALSE, func_inIDs = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="growthFunction_+3A_func_insize">func_inSize</code></td>
+<td>
+<p>This is the vector of population sizes within the community</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_infitness">func_inFitness</code></td>
+<td>
+<p>This is the vector of fitness value for the community</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_bprob">func_bProb</code></td>
+<td>
+<p>This is the general bith probability defined for this run of SHAPE</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_dprob">func_dProb</code></td>
+<td>
+<p>This is the general death probability defined for this run of SHAPE</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_deathden_logical">func_deathDen_logical</code></td>
+<td>
+<p>This is a logical toggle to define if deaths are calculated
+in a density dependent manner.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_deathden_max">func_deathDen_max</code></td>
+<td>
+<p>This is the community size at which maximum density dependent deaths
+(ie: 100% of func_inSize) occur.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_deathden_power">func_deathDen_power</code></td>
+<td>
+<p>This is a scaling factor that controls the rate of transition between
+minimal and maximal values of the density dependent deaths.  Higher values mean a steeper transition
+such that there are fewer deaths until higher densities are reached.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_sizestep">func_sizeStep</code></td>
+<td>
+<p>This is a proportional scalar that will control what proportion of a standard
+&quot;generation&quot; is simulated for each step within a SHAPE run.  NOTE: This parameter is not perfectly
+validated to run as may be expected with all models.  For now, it should be left as a value of &quot;1&quot;,
+but exists for future implementation and testing.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_growthform">func_growthForm</code></td>
+<td>
+<p>This is the implemeted growth model to be simulated in this run.  Currently
+this can be one of <strong>&quot;logistic&quot;,&quot;exponential&quot;,&quot;constant&quot;,&quot;poisson&quot;</strong>.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_carryingcapacity">func_carryingCapacity</code></td>
+<td>
+<p>This is the maximum community size supported by tge simulated environment.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_basalrate">func_basalRate</code></td>
+<td>
+<p>This is the basal growth rate, otherwise definable as the number of offspring
+an individual will produce from a single birth event.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_deathscale">func_deathScale</code></td>
+<td>
+<p>This is a logical toggle to define if the number of births should be scaled
+by the number of deaths.  The exact interpretation of this varies by growth model, but in general
+it forces growth to follow rates expected by standard pure birth models while still simulating
+deaths within the community.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_drift">func_drift</code></td>
+<td>
+<p>This is a logical toggle as to whether or not stochasticity is introduced into
+the deterministic calculations that may be encountered within the growth function.  Its exact
+implementation varies based on the growth model being simulated.</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_roundvalues">func_roundValues</code></td>
+<td>
+<p>This is a logical toggle to define if the number of births and deaths are
+forced to be tracked as integer values.  If TRUE, then any fractional amounts will be stochastically
+rounded to the nearest integer with a probability of being rounded up equal to the decimal value
+&ndash; ie: 0.32 means 32% chance of being rounded up &ndash;</p>
+</td></tr>
+<tr><td><code id="growthFunction_+3A_func_inids">func_inIDs</code></td>
+<td>
+<p>This is a vector of the genotype IDs passed to this function, its order should
+be representative of the ordered genotypeIDs passed for func_inSize and func_inFitness.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A 2 column matrix of numeric values with columns &quot;births&quot; and &quot;deaths&quot;, and rownames equal
+to func_inIDs (as.character).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Imagine you've got an evolving community of three populations where
+# in each time step 100% of individuals die and individuals with relateive
+# fitness of 1 produce 2 offspring.  This growth function calculates the births
+# and deaths of that community.
+# First I show you when births are deterministic (proof of implementation):
+growthFunction(func_inSize = c(100,100,100), func_inFitness = c(1,2,1.05),
+                  func_bProb = 1, func_dProb = 1,
+                  func_sizeStep = 1, func_growthForm = "exponential",
+                  func_drift = FALSE, func_deathScale = TRUE)
+# Now same things but with evolutionary drift thrown in
+growthFunction(func_inSize = c(100,100,100), func_inFitness = c(1,2,1.05),
+               func_bProb = 1, func_dProb = 1, func_sizeStep = 1,
+               func_growthForm = "exponential", func_drift = TRUE,
+               func_deathScale = TRUE)
+# Now technically the values in the birth column is really the net population
+# size and I'd previously set the births to be scaled by deaths but if this were
+# not the case you'd get final population sizes of:
+growthFunction(func_inSize = c(100,100,100), func_inFitness = c(1,2,1.05),
+                   func_bProb = 1, func_dProb = 1, func_sizeStep = 1,
+                   func_growthForm = "exponential", func_drift = TRUE,
+                   func_deathScale = FALSE)
+
+</code></pre>
+
+<hr>
+<h2 id='logisticGrowth'>This function is simply an implementation of the logistic growth equation where:
+f(x) = K / (1 + ((K - N_0)/N_0) *exp-k(x-x_0))  ; Where x_0 is an adjustment to the position of the midpoint of the curve's maximum value
+K = the curves maximum value, k = the steepness of the curve (growth rate), and N_0 is the starting population
+it includes parameters to change the midpoint as well as change the natural exponent (ie: exp) to some other value.
+NOTE: This is for continuous growth, and since SHAPE is discrete at present this is an unused function.</h2><span id='topic+logisticGrowth'></span>
+
+<h3>Description</h3>
+
+<p>This function is simply an implementation of the logistic growth equation where:
+f(x) = K / (1 + ((K - N_0)/N_0) *exp-k(x-x_0))  ; Where x_0 is an adjustment to the position of the midpoint of the curve's maximum value
+K = the curves maximum value, k = the steepness of the curve (growth rate), and N_0 is the starting population
+it includes parameters to change the midpoint as well as change the natural exponent (ie: exp) to some other value.
+NOTE: This is for continuous growth, and since SHAPE is discrete at present this is an unused function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>logisticGrowth(func_rate, func_step, func_startPop = NULL,
+  func_maxPop = NULL, func_midAdjust = 0,
+  func_basalExponent = exp(1))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="logisticGrowth_+3A_func_rate">func_rate</code></td>
+<td>
+<p>The basal growth rate of individuals in the SHAPE run.</p>
+</td></tr>
+<tr><td><code id="logisticGrowth_+3A_func_step">func_step</code></td>
+<td>
+<p>This is the number of steps forward for which you wish to calculate the growth expected.</p>
+</td></tr>
+<tr><td><code id="logisticGrowth_+3A_func_startpop">func_startPop</code></td>
+<td>
+<p>The sum of the populations in the evolving community.</p>
+</td></tr>
+<tr><td><code id="logisticGrowth_+3A_func_maxpop">func_maxPop</code></td>
+<td>
+<p>The carrying capacity of the enviromment being simulated.</p>
+</td></tr>
+<tr><td><code id="logisticGrowth_+3A_func_midadjust">func_midAdjust</code></td>
+<td>
+<p>The midpoint which controls the point of inflection for the logistic equation.  Beware, change this at your own risk
+as its impact will varrying based on the population sizes being simulated.  Ideally, don't change this value from its default.</p>
+</td></tr>
+<tr><td><code id="logisticGrowth_+3A_func_basalexponent">func_basalExponent</code></td>
+<td>
+<p>This defaults as the natural exponent &quot;e&quot; / &quot;exp&quot;.  Change it at your own risk.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns a single value representing the amount of logistic growth expected by the community
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This calculates logistic growth based on the mathematical continuous time algorithm
+logisticGrowth(func_rate = 2, func_step = 1, func_startPop = 1e2, func_maxPop = 1e4)
+# It normally takes log2(D) steps for a binary fission population to reach carrying capacity,
+# where D is max/start, in this case D = 100 and so it should take ~ 6.64 turns
+logisticGrowth(func_rate = 2, func_step = c(1,2,3,6,6.64,7), func_startPop = 1e2, func_maxPop = 1e4)
+
+</code></pre>
+
+<hr>
+<h2 id='logisticMap'>This is the discrete time logistic growth function known as the logistic map.  It calculates the amount of growth expected
+in a step of time given by:  N_t+1 = N_t + r * (N_t (K - N_t)/K);
+where N_t is community size at a time point, r is the per step growth rate, and K is the environmental carrying capacity.</h2><span id='topic+logisticMap'></span>
+
+<h3>Description</h3>
+
+<p>This is the discrete time logistic growth function known as the logistic map.  It calculates the amount of growth expected
+in a step of time given by:  N_t+1 = N_t + r * (N_t (K - N_t)/K);
+where N_t is community size at a time point, r is the per step growth rate, and K is the environmental carrying capacity.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>logisticMap(func_rate, func_startPop, func_maxPop)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="logisticMap_+3A_func_rate">func_rate</code></td>
+<td>
+<p>Per time step intrinsic growth rate of individuals</p>
+</td></tr>
+<tr><td><code id="logisticMap_+3A_func_startpop">func_startPop</code></td>
+<td>
+<p>The initial summed size of the evolving community</p>
+</td></tr>
+<tr><td><code id="logisticMap_+3A_func_maxpop">func_maxPop</code></td>
+<td>
+<p>The carrying capacity of the simulated environment</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A single value as to the expected summed size of evolving populations in the considered environment.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This is the discrete time step form of the logistic equation, known as the logistic map.
+# It takes a growth rate starting and max possible community size.
+stepwise_Size &lt;- 100
+for(thisStep in 1:7){
+  stepwise_Size &lt;- c(stepwise_Size,
+                     logisticMap(2,stepwise_Size[length(stepwise_Size)],1e4))
+}
+stepwise_Size
+# When a population overshoots, it will loose members.
+</code></pre>
+
+<hr>
+<h2 id='lossSampling'>This function actually calculates the stochastic loss to populations.</h2><span id='topic+lossSampling'></span>
+
+<h3>Description</h3>
+
+<p>This function actually calculates the stochastic loss to populations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>lossSampling(func_inPopulation, func_dilutionFactor)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="lossSampling_+3A_func_inpopulation">func_inPopulation</code></td>
+<td>
+<p>This is a vector of the number of individuals in the populations within the community.</p>
+</td></tr>
+<tr><td><code id="lossSampling_+3A_func_dilutionfactor">func_dilutionFactor</code></td>
+<td>
+<p>This is expected proportion of the current population sizes that should remain.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of the resultant population sizes remaining.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># A vector of population sizes is randomly sampled to be around the product of size and factor
+replicate(5,lossSampling(c(1e4,2e4,3e4),0.01))
+
+</code></pre>
+
+<hr>
+<h2 id='mutationFunction'>This allows SHAPE to simulate the mutation process as a deterministic value.  At present, values must be tracked as integer results
+for reasons of how I am passing to functions which identify what mutant genotype(s) are created.</h2><span id='topic+mutationFunction'></span>
+
+<h3>Description</h3>
+
+<p>This allows SHAPE to simulate the mutation process as a deterministic value.  At present, values must be tracked as integer results
+for reasons of how I am passing to functions which identify what mutant genotype(s) are created.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mutationFunction(func_inSize, func_inProb = 0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mutationFunction_+3A_func_insize">func_inSize</code></td>
+<td>
+<p>This is the vector of the population sizes, or perhaps number of births, or sum of both, within the community.  Which vector
+gets passed will depend on which growth form and other parameters are being implemented by SHAPE.</p>
+</td></tr>
+<tr><td><code id="mutationFunction_+3A_func_inprob">func_inProb</code></td>
+<td>
+<p>This is the general mutation rate (probability) defined for this run of SHAPE. It is a per individual considered value, by
+which I mean that each mutant will have a single new mutation (or reversion if allowed - handled elsewhere) and so this probability is based
+on the vector of individuals passed and any context of if it is a &quot;per generation&quot; value relates to how time steps and birth probabilities are handled in the run.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of the number of mutants produced by each of the populations represented by the func_inSize vector
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># The number of mutants generated is forcibly integer but is based
+# on the stochastic rounding of the product of the number of potentially
+# mutable individuals and their probability of mutation.
+mutationFunction(c(10,50,100),func_inProb = 0.3)
+replicate(5,mutationFunction(c(10,50,100),func_inProb = 0.35))
+
+</code></pre>
+
+<hr>
+<h2 id='name_batchString'>This function is used to build or split character string to be used for naming batches of SHAPE runs.</h2><span id='topic+name_batchString'></span>
+
+<h3>Description</h3>
+
+<p>This function is used to build or split character string to be used for naming batches of SHAPE runs.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>name_batchString(funcBase, func_setID = NULL, func_jobID = NULL,
+  func_repID = NULL, funcSplit = FALSE,
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="name_batchString_+3A_funcbase">funcBase</code></td>
+<td>
+<p>If building names this is the basal string element prefixing the name.  If splitting, it is the vector of names to be split.</p>
+</td></tr>
+<tr><td><code id="name_batchString_+3A_func_setid">func_setID</code></td>
+<td>
+<p>If building names, a vector of the unique set IDs to be named, otherwise a logical of whether or not the batch naming structure includes sets</p>
+</td></tr>
+<tr><td><code id="name_batchString_+3A_func_jobid">func_jobID</code></td>
+<td>
+<p>If building names, a vector of the unique job IDs to be named, otherwise a logical of whether or not the batch naming structure includes jobs</p>
+</td></tr>
+<tr><td><code id="name_batchString_+3A_func_repid">func_repID</code></td>
+<td>
+<p>If building names, a vector of the unique replicate IDs to be named, otherwise a logical of whether or not the batch naming structure includes replicates</p>
+</td></tr>
+<tr><td><code id="name_batchString_+3A_funcsplit">funcSplit</code></td>
+<td>
+<p>Logical toggle TRUE if splitting names, FALSE to build string characters</p>
+</td></tr>
+<tr><td><code id="name_batchString_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is the standard string separator for the SHAPE run</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Either a vector of character strings for the created batch names, or a matrix with the decomposed
+elements of the split batch name strings
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This simply produces or splits a standard named string.
+name_batchString("myTest",1,9,3,FALSE,"_")
+name_batchString("myTest_1_9_3",TRUE,TRUE,TRUE,TRUE,"_")
+
+</code></pre>
+
+<hr>
+<h2 id='name_batchSubmit'>This is a function to programatically create R batch submission script names</h2><span id='topic+name_batchSubmit'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to programatically create R batch submission script names
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>name_batchSubmit(inVar)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="name_batchSubmit_+3A_invar">inVar</code></td>
+<td>
+<p>This is the vector of character string(s) to be used for naming</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of character string of length equal to input.
+</p>
+
+<hr>
+<h2 id='name_bodyScript'>This is a function to programatically create R script names</h2><span id='topic+name_bodyScript'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to programatically create R script names
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>name_bodyScript(inVar)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="name_bodyScript_+3A_invar">inVar</code></td>
+<td>
+<p>This is the vector of character string(s) to be used for naming</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of character string of length equal to input.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Returns a standard named string
+name_bodyScript(c("myJob","otherContent"))
+
+</code></pre>
+
+<hr>
+<h2 id='name_parameterScript'>This is a function to programatically create R script names</h2><span id='topic+name_parameterScript'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to programatically create R script names
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>name_parameterScript(inVar)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="name_parameterScript_+3A_invar">inVar</code></td>
+<td>
+<p>This is the vector of character string(s) to be used for naming</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of character string of length equal to input.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Returns a standard named string
+name_parameterScript(c("myJob","otherContent"))
+
+</code></pre>
+
+<hr>
+<h2 id='name_subScript'>This is a function to programatically create R batch submission script names</h2><span id='topic+name_subScript'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to programatically create R batch submission script names
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>name_subScript(inVar)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="name_subScript_+3A_invar">inVar</code></td>
+<td>
+<p>This is the vector of character string(s) to be used for naming</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of character string of length equal to input.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Returns a standard named string
+name_subScript(c("myJob","otherContent"))
+
+</code></pre>
+
+<hr>
+<h2 id='nameEnviron'>This quick little function is a means for me to create the strings of
+environments and subsequently extract information back out.</h2><span id='topic+nameEnviron'></span>
+
+<h3>Description</h3>
+
+<p>This quick little function is a means for me to create the strings of
+environments and subsequently extract information back out.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>nameEnviron(func_Index, funcSplit = FALSE,
+  funcBase = getOption("shape_envString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="nameEnviron_+3A_func_index">func_Index</code></td>
+<td>
+<p>This is the vector of numeric, or otherwise unique ID values for the
+environments to be created.  Or if funcSplit == TRUE, then these are the names to be split.</p>
+</td></tr>
+<tr><td><code id="nameEnviron_+3A_funcsplit">funcSplit</code></td>
+<td>
+<p>A logical toggle of whether you are building or splitting the name</p>
+</td></tr>
+<tr><td><code id="nameEnviron_+3A_funcbase">funcBase</code></td>
+<td>
+<p>This is the character string used as a prefix to identify environment objects</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of character string of length equal to input.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Returns a standard named string
+test_envNames &lt;- nameEnviron(1:10)
+nameEnviron(test_envNames, funcSplit = TRUE)
+</code></pre>
+
+<hr>
+<h2 id='nameObject'>This quick little function is a means for me to create the strings of
+environments and subsequently extract information back out.</h2><span id='topic+nameObject'></span>
+
+<h3>Description</h3>
+
+<p>This quick little function is a means for me to create the strings of
+environments and subsequently extract information back out.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>nameObject(func_inString, func_inPrefix, func_splitStr = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="nameObject_+3A_func_instring">func_inString</code></td>
+<td>
+<p>This is the vector of numeric, or otherwise unique ID values for the
+environments to be created.  Or if funcSplit == TRUE, then these are the names to be split.</p>
+</td></tr>
+<tr><td><code id="nameObject_+3A_func_inprefix">func_inPrefix</code></td>
+<td>
+<p>This is the character string used as a prefix to identify environment objects</p>
+</td></tr>
+<tr><td><code id="nameObject_+3A_func_splitstr">func_splitStr</code></td>
+<td>
+<p>A logical toggle of whether you are building or splitting the name</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of character string of length equal to input.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Returns a standard named string
+test_objectNames &lt;- nameObject(1:10, "testObject")
+nameObject(test_objectNames, "testObject", func_splitStr = TRUE)
+</code></pre>
+
+<hr>
+<h2 id='nameTable'>This is a standardising function which allows SHAPE to programatiically name tables for the fitness landscape OR split
+a named table and extract the embedded information from its naming.</h2><span id='topic+nameTable'></span>
+
+<h3>Description</h3>
+
+<p>This is a standardising function which allows SHAPE to programatiically name tables for the fitness landscape OR split
+a named table and extract the embedded information from its naming.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>nameTable(func_tmpMutations, func_tmpIndex = NULL,
+  func_baseString = getOption("shape_string_tableNames"),
+  func_sepString = getOption("shape_sepString"),
+  func_splitName = FALSE,
+  func_subNaming = getOption("shape_db_splitTables"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="nameTable_+3A_func_tmpmutations">func_tmpMutations</code></td>
+<td>
+<p>Integer value(s) for the number of mutations to be expected in mutants stored within the named tables.</p>
+</td></tr>
+<tr><td><code id="nameTable_+3A_func_tmpindex">func_tmpIndex</code></td>
+<td>
+<p>An optinal element that will be used to insert a unique vector ID</p>
+</td></tr>
+<tr><td><code id="nameTable_+3A_func_basestring">func_baseString</code></td>
+<td>
+<p>This is the standard prefix character string used in table naming.</p>
+</td></tr>
+<tr><td><code id="nameTable_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is a character string used to collapse vectors of characters.</p>
+</td></tr>
+<tr><td><code id="nameTable_+3A_func_splitname">func_splitName</code></td>
+<td>
+<p>A logical toggle to control if this function is splitting a named table or not.  So, FALSE (default)
+means we're creating a table name whereas TRUE is splitting a named table into it's parts.</p>
+</td></tr>
+<tr><td><code id="nameTable_+3A_func_subnaming">func_subNaming</code></td>
+<td>
+<p>This is a logical which controls if the tables which report on all genotypes with X mutations should be
+forced into a single table or it SHAPE is allowed to split them into multiple tables.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>If func_splitName is TRUE, then a vector of table names is returned, it would be best practice to not assume recycling of passed
+elements and so pass equally lengthed vectors as input.  If FALSE, we split the table and return the data detailing the number of mutations
+which ought to be present for genotypes stored in the named table.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This creates a table name in a standard way, it can also split table names to extract info.
+defineSHAPE()
+nameTable(2,1,"myTest","_",FALSE,FALSE)
+nameTable("myTest_2",func_splitName = TRUE)
+
+</code></pre>
+
+<hr>
+<h2 id='nameTable_neighbourhood'>This is a standardising function which allows SHAPE to programatiically name tables for the neighbourhood record OR split
+a named table and extract the embedded information from its naming.</h2><span id='topic+nameTable_neighbourhood'></span>
+
+<h3>Description</h3>
+
+<p>This is a standardising function which allows SHAPE to programatiically name tables for the neighbourhood record OR split
+a named table and extract the embedded information from its naming.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>nameTable_neighbourhood(func_Index, funcSplit = FALSE,
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="nameTable_neighbourhood_+3A_func_index">func_Index</code></td>
+<td>
+<p>Integer value(s) for the unique genotype ID whose neighbourhood which will be recorded by the named table</p>
+</td></tr>
+<tr><td><code id="nameTable_neighbourhood_+3A_funcsplit">funcSplit</code></td>
+<td>
+<p>A logical toggle to control if this function is splitting a named table or not.  So, FALSE (default)
+means we're creating a table name whereas TRUE is splitting a named table into it's parts.</p>
+</td></tr>
+<tr><td><code id="nameTable_neighbourhood_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is a character string used to collapse vectors of characters.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>If funcSplit is TRUE, then a vector of table names is returned.  If FALSE, we split the table and return the
+data detailing the genotype ID whose neighbourhood is being recorded on the named table.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This creates a table name in a standard way, it can also split table names to extract info.
+defineSHAPE()
+nameTable_neighbourhood(2,FALSE)
+nameTable_neighbourhood("Step_2",TRUE)
+
+</code></pre>
+
+<hr>
+<h2 id='nameTable_step'>This is a standardising function which allows SHAPE to programatiically name tables for the step-wise record OR split
+a named table and extract the embedded information from its naming.</h2><span id='topic+nameTable_step'></span>
+
+<h3>Description</h3>
+
+<p>This is a standardising function which allows SHAPE to programatiically name tables for the step-wise record OR split
+a named table and extract the embedded information from its naming.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>nameTable_step(func_Index, funcSplit = FALSE,
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="nameTable_step_+3A_func_index">func_Index</code></td>
+<td>
+<p>Integer value(s) for the step of a SHAPE run which will be recorded by this table</p>
+</td></tr>
+<tr><td><code id="nameTable_step_+3A_funcsplit">funcSplit</code></td>
+<td>
+<p>A logical toggle to control if this function is splitting a named table or not.  So, FALSE (default)
+means we're creating a table name whereas TRUE is splitting a named table into it's parts.</p>
+</td></tr>
+<tr><td><code id="nameTable_step_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is a character string used to collapse vectors of characters.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>If funcSplit is TRUE, then a vector of table names is returned.  If FALSE, we split the table and return the
+data detailing the step number being recorded on the named table.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This creates a table name in a standard way, it can also split table names to extract info.
+defineSHAPE()
+nameTable_step(2,FALSE)
+nameTable_step("Step_2",TRUE)
+
+</code></pre>
+
+<hr>
+<h2 id='querryEstablished'>This function is used to find which elements of a population matrix are deemed as established.  Established is determined
+by having a number of individuals greater than or equal to a definable proportion of the summed community size.</h2><span id='topic+querryEstablished'></span>
+
+<h3>Description</h3>
+
+<p>This function is used to find which elements of a population matrix are deemed as established.  Established is determined
+by having a number of individuals greater than or equal to a definable proportion of the summed community size.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>querryEstablished(func_inMatrix, func_sizeCol = "popSize",
+  func_fitCol = "fitness", func_estProp = 0.01)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="querryEstablished_+3A_func_inmatrix">func_inMatrix</code></td>
+<td>
+<p>This is a matrix which must contain at least one column named as func_sizeCol which contains
+the number of individuals in the communities' populations.  But it may also be required to include a column
+func_fitCol if func_estProp is &quot;Desai&quot;.</p>
+</td></tr>
+<tr><td><code id="querryEstablished_+3A_func_sizecol">func_sizeCol</code></td>
+<td>
+<p>DO NOT MODIFY - this is the column name that is querried to find population sizes</p>
+</td></tr>
+<tr><td><code id="querryEstablished_+3A_func_fitcol">func_fitCol</code></td>
+<td>
+<p>DO NOT MODIFY - this is the column name that is querried to find population fitness -
+only important if func_estProp is set to &quot;Desai&quot;</p>
+</td></tr>
+<tr><td><code id="querryEstablished_+3A_func_estprop">func_estProp</code></td>
+<td>
+<p>If this value is less than 1 - This is the proportion of the current community size which
+is used to define a population as established it returns the rows of.  If this value is greater than 1, it is
+the minimum number of individuals required before a population is considered as established.
+Lastly, it can be the character string &quot;Desai&quot;, at which point - as per Desai 2007 - a lineage is established
+once it has 1/s individuals.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A subset form of the input func_inMatrix matrix object containing the populations which are calculated
+as established.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='reportPopulations'>This is a convenience function to ensure that our population demographics are stored in a data frame
+and exists because R's standard functions can collapse single row frames to named vectors.  It requires that
+all passed vectors be of the same length</h2><span id='topic+reportPopulations'></span>
+
+<h3>Description</h3>
+
+<p>This is a convenience function to ensure that our population demographics are stored in a data frame
+and exists because R's standard functions can collapse single row frames to named vectors.  It requires that
+all passed vectors be of the same length
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>reportPopulations(func_numMuts, func_genotypeID, func_popSizes,
+  func_fitnesses, func_births, func_deaths, func_mutants, func_progenitor,
+  func_reportMat_colnames = getOption("shape_reportMat_colnames"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="reportPopulations_+3A_func_nummuts">func_numMuts</code></td>
+<td>
+<p>This is a vector of the number of mutations held within each tracked genotype.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_genotypeid">func_genotypeID</code></td>
+<td>
+<p>This is a vector of the unique genotype ID for each tracked population in the community.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_popsizes">func_popSizes</code></td>
+<td>
+<p>This is a vector of the number of individuals for each population of genotypes in the community.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_fitnesses">func_fitnesses</code></td>
+<td>
+<p>This is a vector of the fitness for each genotpe being tracked.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_births">func_births</code></td>
+<td>
+<p>This is a vector of the number of births produced by each population in this time step.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_deaths">func_deaths</code></td>
+<td>
+<p>This is a vector of the number of deaths in each population in this time step.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_mutants">func_mutants</code></td>
+<td>
+<p>This is a vector of the number of mutants produced by each population in this time step.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_progenitor">func_progenitor</code></td>
+<td>
+<p>This is a vector of character strings expressing any progenitor genotypes which generated a mutant
+that fed into each genotype's population in this time step.</p>
+</td></tr>
+<tr><td><code id="reportPopulations_+3A_func_reportmat_colnames">func_reportMat_colnames</code></td>
+<td>
+<p>DO NOT MODIFY - This is the vector of character strings to be assigned as the column names.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data frame with columns named as per func_reportMat_colnames.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This returns a data.frame with a standard format
+defineSHAPE()
+reportPopulations(1:3,2:4,c(10,50,100),rep(1,3),
+                 rep(0,3),c(10,10,10),c(1,2,0),c("","0_-&gt;_1","2"))
+</code></pre>
+
+<hr>
+<h2 id='reset_shapeDB'>This is a convenience function to refresh connections to database files.</h2><span id='topic+reset_shapeDB'></span>
+
+<h3>Description</h3>
+
+<p>This is a convenience function to refresh connections to database files.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>reset_shapeDB(func_conName, func_existingCon = NULL,
+  func_type = "connect")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="reset_shapeDB_+3A_func_conname">func_conName</code></td>
+<td>
+<p>The filepath to which an SQLite connection is sought.</p>
+</td></tr>
+<tr><td><code id="reset_shapeDB_+3A_func_existingcon">func_existingCon</code></td>
+<td>
+<p>If any value other than NULL, then any existing connection is first dropped
+prior to attempting to form a connection to the func_conName filepath.</p>
+</td></tr>
+<tr><td><code id="reset_shapeDB_+3A_func_type">func_type</code></td>
+<td>
+<p>This should be a character string of either <strong>connect</strong>, in which case a
+connection is made/refreshed to the filepath in func_conName&quot;, or any other value will cause disconnection</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An SQLite connection object to an SQLite database.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This function can be called to set, resset SQL connections
+fileName_testCon &lt;- paste(tempdir(),"/testCon.sqlite",sep="")
+testCon &lt;- reset_shapeDB(fileName_testCon)
+reset_shapeDB(testCon, func_type = "disconnect")
+
+</code></pre>
+
+<hr>
+<h2 id='retrieve_binaryString'>This is a function to search our mutational database and then find the binary string of the genotypeID passed.
+This function is more efficient when the number of mutations for each genotypeID be passed as this helps reduce
+the tables of the mutational space that are searched.  This matters when large genotypes are simulated.</h2><span id='topic+retrieve_binaryString'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to search our mutational database and then find the binary string of the genotypeID passed.
+This function is more efficient when the number of mutations for each genotypeID be passed as this helps reduce
+the tables of the mutational space that are searched.  This matters when large genotypes are simulated.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>retrieve_binaryString(func_genotypeID, func_numMuts = NULL,
+  func_subNaming, func_landscapeCon)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="retrieve_binaryString_+3A_func_genotypeid">func_genotypeID</code></td>
+<td>
+<p>This is a vector of the unique genotype ID for each tracked population in the community.</p>
+</td></tr>
+<tr><td><code id="retrieve_binaryString_+3A_func_nummuts">func_numMuts</code></td>
+<td>
+<p>This is a vector of the number of mutations held within each tracked genotype.</p>
+</td></tr>
+<tr><td><code id="retrieve_binaryString_+3A_func_subnaming">func_subNaming</code></td>
+<td>
+<p>This is a logical which controls if the tables which report on all genotypes with X mutations should be
+forced into a single table or it SHAPE is allowed to split them into multiple tables.</p>
+</td></tr>
+<tr><td><code id="retrieve_binaryString_+3A_func_landscapecon">func_landscapeCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for the complete explored and neighbouring fitness landscape of a SHAPE run.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>This returns a vector of character strings that represent the binary strings of the genotypes
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='runProcessing'>This is a wrapper function to process a SHAPE run and extract meaningful summary information.</h2><span id='topic+runProcessing'></span>
+
+<h3>Description</h3>
+
+<p>This is a wrapper function to process a SHAPE run and extract meaningful summary information.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>runProcessing(func_saveFile, func_subNaming, func_stepsCon,
+  func_landscapeCon, func_hoodCon, func_estProp, func_size_timeStep,
+  func_processObjects = getOption("shape_processedObjects"),
+  func_hoodPriority = getOption("shape_const_hoodDepth"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="runProcessing_+3A_func_savefile">func_saveFile</code></td>
+<td>
+<p>This is the filepath where the SHAPE run processed objects are to be saved.</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_subnaming">func_subNaming</code></td>
+<td>
+<p>This is a logical which controls if the tables which report on all genotypes with X mutations should be
+forced into a single table or it SHAPE is allowed to split them into multiple tables.</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_stepscon">func_stepsCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for the stepwise changes of a SHAPE run.</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_landscapecon">func_landscapeCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for the complete explored and neighbouring fitness landscape of a SHAPE run.</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_hoodcon">func_hoodCon</code></td>
+<td>
+<p>This is the filepath to an SQLite database storing information for high priority mutational neighbourhood information</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_estprop">func_estProp</code></td>
+<td>
+<p>This value is used to define the threshold size required for a population before it is considered established.</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_size_timestep">func_size_timeStep</code></td>
+<td>
+<p>This is the proportion of a standard biological generation being considered to be within a single time step.</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_processobjects">func_processObjects</code></td>
+<td>
+<p>This is a vector of character strings which define the names of what objects will be produced and creates a global objects.  DO NOT CHANGE THESE VALUES.</p>
+</td></tr>
+<tr><td><code id="runProcessing_+3A_func_hoodpriority">func_hoodPriority</code></td>
+<td>
+<p>This is an object to control which strains we get deep neighbourhood information for
+It should be one of <strong>&quot;none&quot;,&quot;limited&quot;,&quot;priority&quot;,&quot;full&quot;</strong>
+setting this higher will cost more and more in post analysis runtime.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>This returns a string vector stating the result of trying to process for the specified filepath.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='runReplicate'>This is the function that runs the main body, or meaningful execution, of SHAPE experiments.
+In other words this is the main work-horse function that calls all the other parts and will
+execute you simulation run.  It has the main parts of:
+1. Stochastic Events;
+2. Deaths;
+3. Births;
+4. Mutations;
+and during mutations this is where the mutational landscape is queried and updated as required.
+NOTE: Many of its internal operations are controlled by options with the suffix &quot;shape_&quot; and are
+not explicitly passed as arguments at call to this function.</h2><span id='topic+runReplicate'></span>
+
+<h3>Description</h3>
+
+<p>This is the function that runs the main body, or meaningful execution, of SHAPE experiments.
+In other words this is the main work-horse function that calls all the other parts and will
+execute you simulation run.  It has the main parts of:
+1. Stochastic Events;
+2. Deaths;
+3. Births;
+4. Mutations;
+and during mutations this is where the mutational landscape is queried and updated as required.
+NOTE: Many of its internal operations are controlled by options with the suffix &quot;shape_&quot; and are
+not explicitly passed as arguments at call to this function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>runReplicate(func_inputFrames, func_currStep, func_stepCounter,
+  func_growthModel = getOption("shape_const_growthForm"),
+  func_growthRate = getOption("shape_const_growthRate"),
+  func_landscapeModel = getOption("shape_simModel"),
+  func_fileName_dataBase = getOption("shape_fileName_dataBase"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="runReplicate_+3A_func_inputframes">func_inputFrames</code></td>
+<td>
+<p>This is a list of data.frames, either 1 or 2 elements, reporting on the last
+one or two steps in the simulation.</p>
+</td></tr>
+<tr><td><code id="runReplicate_+3A_func_currstep">func_currStep</code></td>
+<td>
+<p>This is an integer value counting the absolute step in the simulation, its value is never reset.</p>
+</td></tr>
+<tr><td><code id="runReplicate_+3A_func_stepcounter">func_stepCounter</code></td>
+<td>
+<p>This is an integer value which is a counter in the most tradititional sense.
+It's job is to track if it's time for a Stochastic event to trigger and its value is reset at that point.</p>
+</td></tr>
+<tr><td><code id="runReplicate_+3A_func_growthmodel">func_growthModel</code></td>
+<td>
+<p>This is the growth model of the SHAPE run, it is passed here as a computational
+convenience since it is used numerous times in the function</p>
+</td></tr>
+<tr><td><code id="runReplicate_+3A_func_growthrate">func_growthRate</code></td>
+<td>
+<p>This is the growth rate of the SHAPE run, it is passed here as a computational
+convenience since it is used numerous times in the function</p>
+</td></tr>
+<tr><td><code id="runReplicate_+3A_func_landscapemodel">func_landscapeModel</code></td>
+<td>
+<p>This is the fitness landscape model of the SHAPE run, it is passed here as a computational
+convenience since it is used numerous times in the function</p>
+</td></tr>
+<tr><td><code id="runReplicate_+3A_func_filename_database">func_fileName_dataBase</code></td>
+<td>
+<p>This is the filepaths of DBs of the SHAPE run, it is passed here as a computational
+convenience since it is used numerous times in the function</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns a new list of 2 data.frames reporting on the state of SHAPE community for the last 2 time steps -
+ie: the one just run, and the most prior step.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='runSHAPE'>This is the actual running of shape, it will initialise objects and values which are calculated from
+the parameters that have been set - see the options with the suffix 'shape_'.  It will establish the
+database output files and other initial conditions and then perform replicate simulations as appropriately defined.
+In essense this is the master wrapper function for all other functions. If you want to test/see SHAPE's default run
+then simply call this function after loading the library you'll see an experiment built under your root directory.
+It at least requires that defineSHAPE have been run, else this is going to fail.</h2><span id='topic+runSHAPE'></span>
+
+<h3>Description</h3>
+
+<p>This is the actual running of shape, it will initialise objects and values which are calculated from
+the parameters that have been set - see the options with the suffix 'shape_'.  It will establish the
+database output files and other initial conditions and then perform replicate simulations as appropriately defined.
+In essense this is the master wrapper function for all other functions. If you want to test/see SHAPE's default run
+then simply call this function after loading the library you'll see an experiment built under your root directory.
+It at least requires that defineSHAPE have been run, else this is going to fail.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>runSHAPE(loop_thisRep = getOption("shape_thisRep"),
+  workingReplicates = seq(getOption("shape_thisRep"),
+  getOption("shape_maxReplicates"), by = 1),
+  tmpEnvir_recycleParms = new.env())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="runSHAPE_+3A_loop_thisrep">loop_thisRep</code></td>
+<td>
+<p>This is the first replicate value to be simulated in this run, it is standard 1 but can be changed
+to help with recovery in the middle of a series of replicates.</p>
+</td></tr>
+<tr><td><code id="runSHAPE_+3A_workingreplicates">workingReplicates</code></td>
+<td>
+<p>This is the maximum replicate number to to simulated in this call.  It is meaningfully different
+from the number of replicates to be run only when loop_thisRep != 1.</p>
+</td></tr>
+<tr><td><code id="runSHAPE_+3A_tmpenvir_recycleparms">tmpEnvir_recycleParms</code></td>
+<td>
+<p>This is an environment used to temporarily store loaded RData file objects so that parameters
+from previous runs, that were stored in RData, can be read back in as required.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># First step is to set parameters for the run, this could be done manually but I
+# recommend using the defineSHAPE function which has a default setting for all
+# possible parameters and will calculate the value of derived/conditional parameters.
+defineSHAPE()
+# Now you can run the simulations, you should get printout to your stdout.
+ runSHAPE() 
+# Now go and check the SHAPE working directory, which can be found at:
+getOption("shape_workDir")
+list.files(getOption("shape_workDir"))
+# You'll have an experiment folder as well as post-analysis folder
+# created each with appropriate output!
+</code></pre>
+
+<hr>
+<h2 id='set_const_NK_interactionsMat'>This is a function to just return a matrix that defines the sitewise dependencies
+for an NK fitness landscape.  If K == 0 or, this is not an NK simulation, it return NULL</h2><span id='topic+set_const_NK_interactionsMat'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to just return a matrix that defines the sitewise dependencies
+for an NK fitness landscape.  If K == 0 or, this is not an NK simulation, it return NULL
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+  set_const_NK_interactionsMat(func_simModel = getOption("shape_simModel"),
+  func_genomeLength = getOption("shape_genomeLength"),
+  func_numInteractions = getOption("shape_const_numInteractions"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_const_NK_interactionsMat_+3A_func_simmodel">func_simModel</code></td>
+<td>
+<p>This is the fitness landscape model being simulated</p>
+</td></tr>
+<tr><td><code id="set_const_NK_interactionsMat_+3A_func_genomelength">func_genomeLength</code></td>
+<td>
+<p>This is the number of sites in the genome being simulated</p>
+</td></tr>
+<tr><td><code id="set_const_NK_interactionsMat_+3A_func_numinteractions">func_numInteractions</code></td>
+<td>
+<p>An integer value defining the number of sites
+that interact with each other site</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Either NULL, or a matrix with K + 1 columns, detailing the sites
+interacting with a focal site - identified by the row number and the
+cell values of the columns.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='set_const_RMF_globalOptima'>This function samples the space of all possible genotypes and then defines
+one that will be considered as the independent fitness contribution global optima.</h2><span id='topic+set_const_RMF_globalOptima'></span>
+
+<h3>Description</h3>
+
+<p>This function samples the space of all possible genotypes and then defines
+one that will be considered as the independent fitness contribution global optima.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_const_RMF_globalOptima(func_simModel = getOption("shape_simModel"),
+  func_genomeLength = getOption("shape_genomeLength"),
+  func_initDistance = getOption("shape_const_RMF_initiDistance"),
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_const_RMF_globalOptima_+3A_func_simmodel">func_simModel</code></td>
+<td>
+<p>This is the fitness landscape model being simulated</p>
+</td></tr>
+<tr><td><code id="set_const_RMF_globalOptima_+3A_func_genomelength">func_genomeLength</code></td>
+<td>
+<p>The number of sites in the genome being simulated</p>
+</td></tr>
+<tr><td><code id="set_const_RMF_globalOptima_+3A_func_initdistance">func_initDistance</code></td>
+<td>
+<p>This is the number of mutations found in the global optimal genotype</p>
+</td></tr>
+<tr><td><code id="set_const_RMF_globalOptima_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is the string collapse separator used in the run</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A character string of genome positions at which there ought to be mutations to be optimal
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='set_DepbySite_ancestFitness'>This is a convenience function for setting the dependent fitness values of sites in
+an NK fitness landscape model.  This allows the dependent fitness of sites to be calculated
+once and then referenced as mutations occur.  It makes exploring this style of fitness landscape
+a bit more computationally friendly - as it generally isn't.</h2><span id='topic+set_DepbySite_ancestFitness'></span>
+
+<h3>Description</h3>
+
+<p>This is a convenience function for setting the dependent fitness values of sites in
+an NK fitness landscape model.  This allows the dependent fitness of sites to be calculated
+once and then referenced as mutations occur.  It makes exploring this style of fitness landscape
+a bit more computationally friendly - as it generally isn't.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_DepbySite_ancestFitness(func_simModel = getOption("shape_simModel"),
+  func_const_siteBystate_fitnessMat = getOption("shape_const_siteBystate_fitnessMat"),
+  func_const_NK_interactionMat = getOption("shape_const_NK_interactionMat"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_DepbySite_ancestFitness_+3A_func_simmodel">func_simModel</code></td>
+<td>
+<p>This is the fitness landscape model being simulated</p>
+</td></tr>
+<tr><td><code id="set_DepbySite_ancestFitness_+3A_func_const_sitebystate_fitnessmat">func_const_siteBystate_fitnessMat</code></td>
+<td>
+<p>This is the sitewise independent fitness contributions in the fitness landscape</p>
+</td></tr>
+<tr><td><code id="set_DepbySite_ancestFitness_+3A_func_const_nk_interactionmat">func_const_NK_interactionMat</code></td>
+<td>
+<p>This defines the sitewise dependencies based on the K interactions.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Either the dependent sitewise fitness contributions in an NK fitness landscape, or NA.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='set_RMF_indWeight'>In a RMF fitness landscape model, there is a weighting value applied to the independent
+fitness contribution term.  This function calculates that value for the run</h2><span id='topic+set_RMF_indWeight'></span>
+
+<h3>Description</h3>
+
+<p>In a RMF fitness landscape model, there is a weighting value applied to the independent
+fitness contribution term.  This function calculates that value for the run
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_RMF_indWeight(func_simModel = getOption("shape_simModel"),
+  func_numDraws = 1e+08, func_distType = getOption("shape_constDist"),
+  func_distParms = getOption("shape_const_distParameters"),
+  func_const_RMF_theta = getOption("shape_const_RMF_theta"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_RMF_indWeight_+3A_func_simmodel">func_simModel</code></td>
+<td>
+<p>This is the model of fitness landscape being considered</p>
+</td></tr>
+<tr><td><code id="set_RMF_indWeight_+3A_func_numdraws">func_numDraws</code></td>
+<td>
+<p>This is the number of draws taken from the independent term's distribution
+so that we can identify the amount of variance in that distribution.  It should be a large integer &ndash; eg 5e7</p>
+</td></tr>
+<tr><td><code id="set_RMF_indWeight_+3A_func_disttype">func_distType</code></td>
+<td>
+<p>This is the distribution string reference for this run</p>
+</td></tr>
+<tr><td><code id="set_RMF_indWeight_+3A_func_distparms">func_distParms</code></td>
+<td>
+<p>These are the parameters for this runs distribution function</p>
+</td></tr>
+<tr><td><code id="set_RMF_indWeight_+3A_func_const_rmf_theta">func_const_RMF_theta</code></td>
+<td>
+<p>This is the theta value which is multiplied to the variance in the distribution.
+The value returned will be a product of this numeric and the variance calulated.
+From Neidhart 2014 theta is measured as:  theta = c / sqrt var random_component
+and so if we want to calculate &quot;c&quot; we return the product of theta and sqrt of variance in the distribution</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A single numeric value, which may be NA if a non Rough Mount Fuji model is being simulated
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='set_siteByState_fitnessMat'>This function is designed to establish an initial object which maps the fitness values
+of genome positions based on the state of that site.  At present, this has no meaning
+if the model of simulation is no NK, Additive, or Fixed.  Where the first is Kauffman's NK
+model and form of calculations, Additive is what that word would make you think for fitness
+effects of mutations at sites, and Fixed is when user supplied a defined fitness matrix that
+describes the entire fitness landscape.  NOTE: This function should likely be called without
+supplying any non-default arguments as it will use the shape_ options defined.</h2><span id='topic+set_siteByState_fitnessMat'></span>
+
+<h3>Description</h3>
+
+<p>This function is designed to establish an initial object which maps the fitness values
+of genome positions based on the state of that site.  At present, this has no meaning
+if the model of simulation is no NK, Additive, or Fixed.  Where the first is Kauffman's NK
+model and form of calculations, Additive is what that word would make you think for fitness
+effects of mutations at sites, and Fixed is when user supplied a defined fitness matrix that
+describes the entire fitness landscape.  NOTE: This function should likely be called without
+supplying any non-default arguments as it will use the shape_ options defined.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_siteByState_fitnessMat(func_simModel = getOption("shape_simModel"),
+  func_const_fixedFrame = getOption("shape_const_fixedFrame"),
+  func_const_siteStates = getOption("shape_const_siteStates"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_siteByState_fitnessMat_+3A_func_simmodel">func_simModel</code></td>
+<td>
+<p>This is the fitness landscape model being simulated</p>
+</td></tr>
+<tr><td><code id="set_siteByState_fitnessMat_+3A_func_const_fixedframe">func_const_fixedFrame</code></td>
+<td>
+<p>This is a contextual object that described constant fitness effects</p>
+</td></tr>
+<tr><td><code id="set_siteByState_fitnessMat_+3A_func_const_sitestates">func_const_siteStates</code></td>
+<td>
+<p>These are the posibble states for genome sites, at present this
+ought to be &quot;0&quot; and/or &quot;1&quot;</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A contextually meaningful matrix describing fitness effects of mutations/genotypes,
+where based on the context NULL may be returned.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='shapeCombinations'>This is a function to take the input parameters and build the parameter combinations</h2><span id='topic+shapeCombinations'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to take the input parameters and build the parameter combinations
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>shapeCombinations(func_inLines, func_comboRef, func_indepRef, func_condRef)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="shapeCombinations_+3A_func_inlines">func_inLines</code></td>
+<td>
+<p>These are the template lines of text to be updated.</p>
+</td></tr>
+<tr><td><code id="shapeCombinations_+3A_func_comboref">func_comboRef</code></td>
+<td>
+<p>This is the reference identifiers for grouped as pairwise parameter combinations</p>
+</td></tr>
+<tr><td><code id="shapeCombinations_+3A_func_indepref">func_indepRef</code></td>
+<td>
+<p>This is the reference identifiers for independent parameter values not to be done pairwise</p>
+</td></tr>
+<tr><td><code id="shapeCombinations_+3A_func_condref">func_condRef</code></td>
+<td>
+<p>This is the reference indetifiers for grouped parameter combinations which are conditional on others.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A table of parameter combinations which represents the combination of experimental parameters for a SHAPE experiment.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='shapeExperiment'>This is a function used to read the SHAPE_experimentalDesign type input file
+and then build a SHAPE experiment by creating all the folder structure, .R and .sh scripts
+required to programatically run your experiment &ndash; excluding post-analysis, that's a you problem.</h2><span id='topic+shapeExperiment'></span>
+
+<h3>Description</h3>
+
+<p>This is a function used to read the SHAPE_experimentalDesign type input file
+and then build a SHAPE experiment by creating all the folder structure, .R and .sh scripts
+required to programatically run your experiment &ndash; excluding post-analysis, that's a you problem.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>shapeExperiment(func_filepath_toDesign, func_templateDir,
+  func_maxGrouped_perShell = 2, func_filePath_R = NULL,
+  func_baseCall = "CMD BATCH",
+  func_rArgs = "\"--args shape_thisRep=1 shape_outDir='fake_serverPath/fakeDir/'\"",
+  func_remoteLocation = "$TMPDISK", func_submitArgs = c(number_ofCores
+  = "-c 1", memory = "--mem=8192", jobName = "-J fakeJob", wallTime =
+  "-t 14-00:00:00", fileOut = "-o fakeOut"), func_processingCores = 1,
+  func_suppressOld_summaryFiles = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="shapeExperiment_+3A_func_filepath_todesign">func_filepath_toDesign</code></td>
+<td>
+<p>This is the absolute filepath which points to the SHAPE_experimentalDesign like
+template you'd like used to identify parameter combinations for building your experiment.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_templatedir">func_templateDir</code></td>
+<td>
+<p>This is the absolute filepath to a directory on your machine where the SHAPE template
+scripts/files have been saved.  They are used by this function to help build your experiment.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_maxgrouped_pershell">func_maxGrouped_perShell</code></td>
+<td>
+<p>Integer value defining the maximal number of jobs that an output shell script
+will try to have run in parallel once executed.  This is related to your parallel computing potential.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_filepath_r">func_filePath_R</code></td>
+<td>
+<p>This is the absolute path to the R application on the system where SHAPE would be run
+via BATCH MODE, its value is applied in shell scripts written for running the experiment.  If left NULL then
+this function will try to use standard R install paths of which I'm aware.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_basecall">func_baseCall</code></td>
+<td>
+<p>This is a string element of arguments when calling BATCH MODE if R via shell script.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_rargs">func_rArgs</code></td>
+<td>
+<p>This is a character string which represent additional arguments to be passed via shell
+script BATCH mode call of R.  I consider it most practicable to set the replicate and output directory of SHAPE.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_remotelocation">func_remoteLocation</code></td>
+<td>
+<p>The filepath of the compute node on a remote server where your job would be run.  The default
+is based on the environment variable value used in CAC's SLURM submission system.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_submitargs">func_submitArgs</code></td>
+<td>
+<p>This is information concerning sheel script lines for automatic submission of jobs to
+a remote server's submission system.  I'm basing this off of the SLURM system of the Center for Advanced Computing
+Queen's University computing platform.  If your system is different you may need to tweak this.  Sorry?
+This should be a vector of arguments passed for job submissions on a remote server
+The example here would call 1 core with 8 Gb RAM and a wall time of 14 days and an outFile be named
+You can add more arguments if your server requires this, they'll get used.
+BUT where the job's name MUST be identified as &mdash;  fakeJob   &mdash;-  and the output log as  &mdash; fakeOut &mdash;, you can change the argument queues
+I also assume your remote server will create a local directory on the compute nodes whre your job once submitted,
+and that there will be the location defined by func_remoteLocation.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_processingcores">func_processingCores</code></td>
+<td>
+<p>This is the number of parallel cores you would like the summairseExperiment() to call
+when trying to process your experimental output.</p>
+</td></tr>
+<tr><td><code id="shapeExperiment_+3A_func_suppressold_summaryfiles">func_suppressOld_summaryFiles</code></td>
+<td>
+<p>Logical flag controlling if your summariseExperiment() will delete old output
+summary files.  setting to FALSE (default) is ideal if you could ever expect you might need to restart whereas
+TRUE becomes practical if you are worried you'd have updated output to process and you want to ensure a fresh processing start.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>If no error is encountered, a message will be returned suggesting the build was successful.  SHAPE makes
+no effort to perform validation of this effort to build the experiment and presumes no fatal errors is sufficient evidence.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># This function relies on script templates which can be found at:
+# 'https://github.com/JDench/SHAPE_library/tree/master/SHAPE_templates'
+# Once these have been downloaded you can pass the appropriate filepath values
+# to the first two arguments. For this example, I'll assume you've installed
+# them to a folder position that is now just under the root of your
+# R-environment working directory.
+# However, before runing the function we need to parameterise your run of SHAPE,
+# here I call the default parameters:
+defineSHAPE()
+# Now using the default templates we design an experiment folder complete with
+# shell scripts to submit our work programatically.
+# NOTE: Again, this example assumes you've downloaded the templates and placed
+#        them at the next filepath and directory-path locations
+shapeExperiment(func_filepath_toDesign = "~/SHAPE_templates/SHAPE_experimentalDesign.v.1.r",
+                             func_templateDir = "~/SHAPE_templates/")
+# You should be greeted with a message suggesting your experiment is built.
+# You can find the files now at that script's SHAPE workingDirectory.
+list.files(getOption("shape_workDir"))
+# Voila!  You can go see the spread of variable evolutionary parameters that were
+# considered by looking at -- yourJob_parameterCombos.table -- which is a tab
+# delimated file.
+# Lastly, you may have R installed elsewhere and so want to have that noted while
+# your experiment is built because the shell scripts will need to point to the correct place.
+shapeExperiment(func_filepath_toDesign = "~/SHAPE_templates/SHAPE_experimentalDesign.v.1.r",
+                             func_templateDir = "~/SHAPE_templates/",
+                             func_filePath_R = "~/your_R_folder/R_app/bin/R")
+# Now obviously the above location likely is not where you installed R,
+# but ideally you get the point. The difference is in how the shell scripts were written.
+
+</code></pre>
+
+<hr>
+<h2 id='stopError'>This is a convenience wrapper for sending an error and ending the SHAPE run as well as the R environment.
+It will print a message and then traceback() report before pausing and quiting the R session.  This exists
+to help debugging when SHAPE is run in batch-mode.</h2><span id='topic+stopError'></span>
+
+<h3>Description</h3>
+
+<p>This is a convenience wrapper for sending an error and ending the SHAPE run as well as the R environment.
+It will print a message and then traceback() report before pausing and quiting the R session.  This exists
+to help debugging when SHAPE is run in batch-mode.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>stopError(func_message)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="stopError_+3A_func_message">func_message</code></td>
+<td>
+<p>The message to be sent to screen prior to ending the R session.</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this functions role is to print a message
+and then quit the R run.
+</p>
+
+<hr>
+<h2 id='summarise_evolRepeatability'>This function will use output from summarise_experimentFiles and summarise_experimentParameters
+to help with expectations concerning run output and handling.  This will save an RData file which
+will contain one object: all_popSets, which is a list of relevant control information about I/O
+and then a series of other RData files which contain the demographics information as a matrix with the
+mean and standard deviation of demographics for all replicates.</h2><span id='topic+summarise_evolRepeatability'></span>
+
+<h3>Description</h3>
+
+<p>This function will use output from summarise_experimentFiles and summarise_experimentParameters
+to help with expectations concerning run output and handling.  This will save an RData file which
+will contain one object: all_popSets, which is a list of relevant control information about I/O
+and then a series of other RData files which contain the demographics information as a matrix with the
+mean and standard deviation of demographics for all replicates.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>summarise_evolRepeatability(funcSave_jobExpression,
+  func_saveFile = getOption("shape_procExp_filenames")["repeatability"],
+  func_experimentDir = getOption("shape_workDir"),
+  func_saveDir = getOption("shape_postDir"),
+  func_refFile = getOption("shape_procExp_filenames")[c("fileList",
+  "parameters")], func_workEnvir = new.env(),
+  func_objPrefix = "Repeat_",
+  func_sepString = getOption("shape_sepString"),
+  func_string_line_ofDescent = getOption("shape_string_lineDescent"),
+  func_processedPattern = getOption("shape_processedData_filePattern"),
+  func_sepLines = getOption("shape_sepLines"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summarise_evolRepeatability_+3A_funcsave_jobexpression">funcSave_jobExpression</code></td>
+<td>
+<p>This is a string expression that can be used to find elements of the experiment
+being analysed.  It should be some robust unique string or regular expression.</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_savefile">func_saveFile</code></td>
+<td>
+<p>This is the filepath and filename (ending in .RData please) to which the results of this
+step will be saved.</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_experimentdir">func_experimentDir</code></td>
+<td>
+<p>This is the filepath to the root directoy under which all your experimental files can
+be found.</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_savedir">func_saveDir</code></td>
+<td>
+<p>This is the directory to which output will be saved.</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_reffile">func_refFile</code></td>
+<td>
+<p>This is the filepath to the reference file that contains information regarding all the
+processed files for the rSHAPE experiment.</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_workenvir">func_workEnvir</code></td>
+<td>
+<p>This is an environment used to load files with the load function.  It's used to encapsulate
+the loaded information to a controlled space.</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_objprefix">func_objPrefix</code></td>
+<td>
+<p>This is a character string for programatic naming of objects of this type.</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is rSHAPE's sepString option but here to be passed into foreach</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_string_line_ofdescent">func_string_line_ofDescent</code></td>
+<td>
+<p>This is rSHAPE's option of similar name to be passed into foreach</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_processedpattern">func_processedPattern</code></td>
+<td>
+<p>This is rSHAPE's option of the similar name to be passed into foreach</p>
+</td></tr>
+<tr><td><code id="summarise_evolRepeatability_+3A_func_seplines">func_sepLines</code></td>
+<td>
+<p>This is rSHAPE's option of the similar name passed into foreach</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work without a complete rSHAPE experiment to be analysed.
+</p>
+
+<hr>
+<h2 id='summarise_experimentFiles'>This function will find all initially processed output files from individual replicates and return summary information.
+That information is saved to an RData file which will contain 3 objects: all_proccessedFiles, all_jobInfo, all_dividedFiles</h2><span id='topic+summarise_experimentFiles'></span>
+
+<h3>Description</h3>
+
+<p>This function will find all initially processed output files from individual replicates and return summary information.
+That information is saved to an RData file which will contain 3 objects: all_proccessedFiles, all_jobInfo, all_dividedFiles
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+  summarise_experimentFiles(func_experimentDir = getOption("shape_workDir"),
+  func_saveFile = getOption("shape_procExp_filenames")["fileList"],
+  func_search_filePattern = getOption("shape_processedData_filePattern"),
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summarise_experimentFiles_+3A_func_experimentdir">func_experimentDir</code></td>
+<td>
+<p>This is the filepath to the root directoy under which all your experimental files can
+be found.</p>
+</td></tr>
+<tr><td><code id="summarise_experimentFiles_+3A_func_savefile">func_saveFile</code></td>
+<td>
+<p>This is the filepath and filename (ending in .RData please) to which the results of this
+step will be saved.</p>
+</td></tr>
+<tr><td><code id="summarise_experimentFiles_+3A_func_search_filepattern">func_search_filePattern</code></td>
+<td>
+<p>This is a string which can be used to search and find the files which relate to
+the processed output of individual replicates rSHAPE runs.</p>
+</td></tr>
+<tr><td><code id="summarise_experimentFiles_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is the character string which was used for commonly collapsing elements in the rSHAPE run.</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work without a complete rSHAPE experiment to be analysed.
+</p>
+
+<hr>
+<h2 id='summarise_experimentParameters'>This function will use output from summarise_experimentFiles to locate all parameter files and then
+report on all those parameters for the jobs that were run.  This will save an RData file which will
+contain one object: all_parmInfo</h2><span id='topic+summarise_experimentParameters'></span>
+
+<h3>Description</h3>
+
+<p>This function will use output from summarise_experimentFiles to locate all parameter files and then
+report on all those parameters for the jobs that were run.  This will save an RData file which will
+contain one object: all_parmInfo
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>summarise_experimentParameters(func_workEnvir = new.env(),
+  func_saveFile = getOption("shape_procExp_filenames")["parameters"],
+  func_experimentDir = getOption("shape_workDir"),
+  func_refFile = getOption("shape_procExp_filenames")["fileList"])
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summarise_experimentParameters_+3A_func_workenvir">func_workEnvir</code></td>
+<td>
+<p>This is an environment used to load files with the load function.  It's used to encapsulate
+the loaded information to a controlled space.</p>
+</td></tr>
+<tr><td><code id="summarise_experimentParameters_+3A_func_savefile">func_saveFile</code></td>
+<td>
+<p>This is the filepath and filename (ending in .RData please) to which the results of this
+step will be saved.</p>
+</td></tr>
+<tr><td><code id="summarise_experimentParameters_+3A_func_experimentdir">func_experimentDir</code></td>
+<td>
+<p>This is the filepath to the root directoy under which all your experimental files can
+be found.</p>
+</td></tr>
+<tr><td><code id="summarise_experimentParameters_+3A_func_reffile">func_refFile</code></td>
+<td>
+<p>This is the filepath to the reference file that contains information regarding all the
+processed files for the rSHAPE experiment.</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work without a complete rSHAPE experiment to be analysed.
+</p>
+
+<hr>
+<h2 id='summarise_popDemographics'>This function will use output from summarise_experimentFiles and summarise_experimentParameters
+to help with expectations concerning run output and handling.  This will save an RData file which
+will contain one object: all_popSets, which is a list of relevant control information about I/O
+and then a series of other RData files which contain the demographics information as a matrix with the
+mean and standard deviation of demographics for all replicates.</h2><span id='topic+summarise_popDemographics'></span>
+
+<h3>Description</h3>
+
+<p>This function will use output from summarise_experimentFiles and summarise_experimentParameters
+to help with expectations concerning run output and handling.  This will save an RData file which
+will contain one object: all_popSets, which is a list of relevant control information about I/O
+and then a series of other RData files which contain the demographics information as a matrix with the
+mean and standard deviation of demographics for all replicates.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>summarise_popDemographics(funcSave_jobExpression,
+  func_saveFile = getOption("shape_procExp_filenames")["popDemographics"],
+  func_experimentDir = getOption("shape_workDir"),
+  func_saveDir = getOption("shape_postDir"),
+  func_refFile = getOption("shape_procExp_filenames")[c("fileList",
+  "parameters")], func_workEnvir = new.env(),
+  func_objPrefix = "popDemo_")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summarise_popDemographics_+3A_funcsave_jobexpression">funcSave_jobExpression</code></td>
+<td>
+<p>This is a string expression that can be used to find elements of the experiment
+being analysed.  It should be some robust unique string or regular expression.</p>
+</td></tr>
+<tr><td><code id="summarise_popDemographics_+3A_func_savefile">func_saveFile</code></td>
+<td>
+<p>This is the filepath and filename (ending in .RData please) to which the results of this
+step will be saved.</p>
+</td></tr>
+<tr><td><code id="summarise_popDemographics_+3A_func_experimentdir">func_experimentDir</code></td>
+<td>
+<p>This is the filepath to the root directoy under which all your experimental files can
+be found.</p>
+</td></tr>
+<tr><td><code id="summarise_popDemographics_+3A_func_savedir">func_saveDir</code></td>
+<td>
+<p>This is the directory to which output will be saved.</p>
+</td></tr>
+<tr><td><code id="summarise_popDemographics_+3A_func_reffile">func_refFile</code></td>
+<td>
+<p>This is the filepath to the reference file that contains information regarding all the
+processed files for the rSHAPE experiment.</p>
+</td></tr>
+<tr><td><code id="summarise_popDemographics_+3A_func_workenvir">func_workEnvir</code></td>
+<td>
+<p>This is an environment used to load files with the load function.  It's used to encapsulate
+the loaded information to a controlled space.</p>
+</td></tr>
+<tr><td><code id="summarise_popDemographics_+3A_func_objprefix">func_objPrefix</code></td>
+<td>
+<p>This is a character string for programatic naming of objects of this type.</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work without a complete rSHAPE experiment to be analysed.
+</p>
+
+<hr>
+<h2 id='summariseExperiment'>This function is a wrapper for getting a summary of the results of an rSHAPE run and/or experiment as a whole.  The
+former is presumed to be of greater use but either is fine as per your needs.  This wrapper will cause
+RData files to be created which contain the summarised experimental details that you can then use more easily
+for analysis.</h2><span id='topic+summariseExperiment'></span>
+
+<h3>Description</h3>
+
+<p>This function is a wrapper for getting a summary of the results of an rSHAPE run and/or experiment as a whole.  The
+former is presumed to be of greater use but either is fine as per your needs.  This wrapper will cause
+RData files to be created which contain the summarised experimental details that you can then use more easily
+for analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>summariseExperiment(func_processingTypes = c("fileList", "parameters",
+  "popDemographics", "repeatability"), func_numCores = 1,
+  func_suppressOld = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summariseExperiment_+3A_func_processingtypes">func_processingTypes</code></td>
+<td>
+<p>A vector of character strings which define the type of processing to be performed
+when callign this experimental analysis wrapper function.  At present, the types include:
+&quot;fileList&quot;, &quot;parameters&quot;, &quot;popDemographics&quot;,&quot;repeatability&quot; as per the rSHAPE option - shape_procExp_filenames</p>
+</td></tr>
+<tr><td><code id="summariseExperiment_+3A_func_numcores">func_numCores</code></td>
+<td>
+<p>Integer number of computer cores to be requested for performing parallel processing
+of experiment files.  It defaults as 1, which effectively means in tandem - ie: not parallel.</p>
+</td></tr>
+<tr><td><code id="summariseExperiment_+3A_func_suppressold">func_suppressOld</code></td>
+<td>
+<p>This is a logical toggle if files which exist in the expected location should be deleted.
+Default is FALSE and the function will simply not process alraedy processed output.  TRUE might be useful as a means
+to forcibly re-run the summary fresh.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A message detailing if the requested processed files can be found, either affirmative for all
+or a note when at least one is missing.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work without a complete rSHAPE experiment to be analysed.
+</p>
+
+<hr>
+<h2 id='trimQuotes'>This is a function to trim a string by removing the first and last character, it's used to trim quotation marks
+used in the parameter input</h2><span id='topic+trimQuotes'></span>
+
+<h3>Description</h3>
+
+<p>This is a function to trim a string by removing the first and last character, it's used to trim quotation marks
+used in the parameter input
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>trimQuotes(funcIn)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="trimQuotes_+3A_funcin">funcIn</code></td>
+<td>
+<p>a vector of character strings which you want trimmed</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>character vector of length equal to the input
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># It removes leading and trailing string positions, use when quotations are known to exist.
+trimQuotes(c('"someWords"','otherwords"',"is_changed"))
+
+</code></pre>
+
+<hr>
+<h2 id='updateLines'>This is a function which is used to update lines that are searched and replace in a manner conditional to this script's circumstances
+The input lines can be a vector of any length, and the search patterns can be a list of any length where each list vector is used together.
+The values should be a list of information used as replacement info.</h2><span id='topic+updateLines'></span>
+
+<h3>Description</h3>
+
+<p>This is a function which is used to update lines that are searched and replace in a manner conditional to this script's circumstances
+The input lines can be a vector of any length, and the search patterns can be a list of any length where each list vector is used together.
+The values should be a list of information used as replacement info.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>updateLines(func_inLines, func_searchPattern, func_values)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="updateLines_+3A_func_inlines">func_inLines</code></td>
+<td>
+<p>These are the lines that are to be updated before output</p>
+</td></tr>
+<tr><td><code id="updateLines_+3A_func_searchpattern">func_searchPattern</code></td>
+<td>
+<p>These are the string-s- to be searched for replacement</p>
+</td></tr>
+<tr><td><code id="updateLines_+3A_func_values">func_values</code></td>
+<td>
+<p>These are the values that are to replace the searched strings.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A vector of character strings that has now been updated.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='write_subScript'>This function is used to programatically take vectors of paramters and write suites of R parameter scripts
+that will form part of a SHAPE experiment that is being built for running.  This is a wrapper for writting out
+the suite of necessary scripts to form a run.</h2><span id='topic+write_subScript'></span>
+
+<h3>Description</h3>
+
+<p>This function is used to programatically take vectors of paramters and write suites of R parameter scripts
+that will form part of a SHAPE experiment that is being built for running.  This is a wrapper for writting out
+the suite of necessary scripts to form a run.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>write_subScript(func_subScipt, func_outDir, func_inCombos, func_inParms,
+  func_maxJobs, func_appLocation, func_commonArgs, func_submitArgs,
+  func_remoteLocation, func_passedArgs,
+  func_externalStopper = getOption("shape_external_stopFile"),
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="write_subScript_+3A_func_subscipt">func_subScipt</code></td>
+<td>
+<p>This is the template script that needs to be replicated</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_outdir">func_outDir</code></td>
+<td>
+<p>This is the filepath directory where output should be placed</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_incombos">func_inCombos</code></td>
+<td>
+<p>This is the combinations of parameters that are to be used in the experiment.</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_inparms">func_inParms</code></td>
+<td>
+<p># These are additional parameters to be implemented in writing out combinations.</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_maxjobs">func_maxJobs</code></td>
+<td>
+<p>This is the maximum number of individual R jobs that should be called at once
+by the shell submission scripts, it can affect both local and remote server calls.</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_applocation">func_appLocation</code></td>
+<td>
+<p>This is the filepath for R so that batch mode runs can be called.</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_commonargs">func_commonArgs</code></td>
+<td>
+<p>These are common arguments important when running the batch mode</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_submitargs">func_submitArgs</code></td>
+<td>
+<p>These are common arguments important when submitting the batch mode</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_remotelocation">func_remoteLocation</code></td>
+<td>
+<p>This is a remote server location where an experiment built is to be run
+it affects the filepathing called by submission scripts and the associated batch mode runs performed.</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_passedargs">func_passedArgs</code></td>
+<td>
+<p>These are arguments passed through this wrapper to inner functions.</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_externalstopper">func_externalStopper</code></td>
+<td>
+<p>This is a file which exists as a flag for stopping SHAPE from trying to create
+additional replicates.</p>
+</td></tr>
+<tr><td><code id="write_subScript_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is the common string used to collapse information.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A character string that should indicate the experiment has been created.  Otheriwse this has failed.
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+<hr>
+<h2 id='writeParameters'>This is a file for updating the post analysis plotting script and creating an updated copy in the experiment's folder</h2><span id='topic+writeParameters'></span>
+
+<h3>Description</h3>
+
+<p>This is a file for updating the post analysis plotting script and creating an updated copy in the experiment's folder
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>writeParameters(func_infile, func_inParms, func_inCombos, func_outDir,
+  func_bodyScript, func_ExternalStopper,
+  func_sepString = getOption("shape_sepString"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="writeParameters_+3A_func_infile">func_infile</code></td>
+<td>
+<p>This is the filepath location for the template script to be writte in.</p>
+</td></tr>
+<tr><td><code id="writeParameters_+3A_func_inparms">func_inParms</code></td>
+<td>
+<p>These are the parameters to be updated in the plotting file</p>
+</td></tr>
+<tr><td><code id="writeParameters_+3A_func_incombos">func_inCombos</code></td>
+<td>
+<p>This is the combination of parameters to be written</p>
+</td></tr>
+<tr><td><code id="writeParameters_+3A_func_outdir">func_outDir</code></td>
+<td>
+<p>This is the director filepath to which output should be written.</p>
+</td></tr>
+<tr><td><code id="writeParameters_+3A_func_bodyscript">func_bodyScript</code></td>
+<td>
+<p>This is a run body of SHAPE script to be read in as template</p>
+</td></tr>
+<tr><td><code id="writeParameters_+3A_func_externalstopper">func_ExternalStopper</code></td>
+<td>
+<p>This is a file placed externally used as a logical flag that SHAPE should
+stop trying to seed new replicates to be run.</p>
+</td></tr>
+<tr><td><code id="writeParameters_+3A_func_sepstring">func_sepString</code></td>
+<td>
+<p>This is the common string for collapsing information.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A character string indicating that the plotting file-s- have been written
+</p>
+
+
+<h3>Note</h3>
+
+<p>There is no example as this cannot work outisde of a runSHAPE call, it requires data produced by the simulation experiment.
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

@@ -1,0 +1,649 @@
+<!DOCTYPE html><html><head><title>Help for package LCF</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {LCF}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#bkg_corr'><p>Background correction function</p></a></li>
+<li><a href='#fit_athena'><p>Porting of 'ATHENA' linear combination fitting</p></a></li>
+<li><a href='#fit_float'><p>Central fitting function with float environment</p></a></li>
+<li><a href='#initial_load'><p>Initial loading of spectra</p></a></li>
+<li><a href='#LC_fit'><p>Linear combination fitting function</p></a></li>
+<li><a href='#LCF_solve_QP'><p>Linear combination fitting solve function</p></a></li>
+<li><a href='#plot_LCF'><p>Plot sample data, linear combination fit and residual spectrum</p></a></li>
+<li><a href='#read_raw_spec'><p>Read raw spectra</p></a></li>
+<li><a href='#specdat'><p>Phosphorus K-edge XANES spectral data for LCF</p></a></li>
+<li><a href='#std_df'><p>Create a data frame of all standards</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Linear Combination Fitting</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.7.0</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2017-11-22</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Florian Werner [aut, cre]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Florian Werner &lt;florian.werner@wzw.tum.de&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Baseline correction, normalization and linear combination fitting (LCF) 
+    of X-ray absorption near edge structure (XANES) spectra.
+    The package includes data loading of .xmu files exported from 'ATHENA' (Ravel and Newville, 2005) &lt;<a href="https://doi.org/10.1107%2FS0909049505012719">doi:10.1107/S0909049505012719</a>&gt;. 
+    Loaded spectra can be background corrected and all standards can be fitted at once.
+    Two linear combination fitting functions can be used:
+    (1) fit_athena(): Simply fitting combinations of standards as in ATHENA, 
+    (2) fit_float(): Fitting all standards with changing baseline correction and edge-step normalization parameters. </td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.2.1)</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a></td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>quadprog</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>6.0.1</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2017-11-22 13:46:13 UTC; Florian</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2017-11-22 14:10:01 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='bkg_corr'>Background correction function</h2><span id='topic+bkg_corr'></span>
+
+<h3>Description</h3>
+
+<p>This function allows you to base-line correct and edge-step normalize XANES spectra (background correction).
+Raw spectra are loaded, then base-line corrected and edge-step normalized. The spectrum is flattened after E0.
+The function returns the corrected, normalized and flattened spectrum
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>bkg_corr(raw.spec, corr.norm)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="bkg_corr_+3A_raw.spec">raw.spec</code></td>
+<td>
+<p>Raw spectrum</p>
+</td></tr>
+<tr><td><code id="bkg_corr_+3A_corr.norm">corr.norm</code></td>
+<td>
+<p>Vector of the base-line correction and edge-step normalization values (vector of length 4)</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.samples &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec &lt;- bkg_corr(raw.spec = corr.spec.samples[[1]], 
+  corr.norm = c(-36, -15, 37, 58))
+print(corr.spec)
+</code></pre>
+
+<hr>
+<h2 id='fit_athena'>Porting of 'ATHENA' linear combination fitting</h2><span id='topic+fit_athena'></span>
+
+<h3>Description</h3>
+
+<p>The function can be used to check which combinations of standards produce a good fit and if output from 'ATHENA' is similar.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fit_athena(all.samples, all.standards, LC.vals, amoSTD, ex.smaller = NULL,
+  file.output = NULL, best.fits = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fit_athena_+3A_all.samples">all.samples</code></td>
+<td>
+<p>List of all samples</p>
+</td></tr>
+<tr><td><code id="fit_athena_+3A_all.standards">all.standards</code></td>
+<td>
+<p>List of all standards</p>
+</td></tr>
+<tr><td><code id="fit_athena_+3A_lc.vals">LC.vals</code></td>
+<td>
+<p>The fitting range values for the linear combination fitting</p>
+</td></tr>
+<tr><td><code id="fit_athena_+3A_amostd">amoSTD</code></td>
+<td>
+<p>Use at most X standards</p>
+</td></tr>
+<tr><td><code id="fit_athena_+3A_ex.smaller">ex.smaller</code></td>
+<td>
+<p>Exclude portions smaller than a given value (decimal form), default to NULL</p>
+</td></tr>
+<tr><td><code id="fit_athena_+3A_file.output">file.output</code></td>
+<td>
+<p>Possibility to have a file output, default to NULL</p>
+</td></tr>
+<tr><td><code id="fit_athena_+3A_best.fits">best.fits</code></td>
+<td>
+<p>Possibility to output more than the best fit (e.g. the first 10 best fits), default to 1</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.standards  &lt;- initial_load(specdat[1:4], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec.samples    &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+athena.fit &lt;- fit_athena(all.samples = corr.spec.samples, 
+  all.standards = corr.spec.standards, LC.vals = c(-14, 46), amoSTD = 4)
+## exclude portions smaller 5% = 0.05
+athena.fit.exlcude &lt;- fit_athena(all.samples = corr.spec.samples, 
+  all.standards = corr.spec.standards, 
+  LC.vals = c(-14, 46), amoSTD = 4, ex.smaller = 0.05)
+</code></pre>
+
+<hr>
+<h2 id='fit_float'>Central fitting function with float environment</h2><span id='topic+fit_float'></span>
+
+<h3>Description</h3>
+
+<p>This function allows to process all samples, especially written for the float environment.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fit_float(all.samples, all.standards, LC.vals, float, ex.smaller = NULL,
+  file.output = NULL, best.fits = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fit_float_+3A_all.samples">all.samples</code></td>
+<td>
+<p>List of all samples</p>
+</td></tr>
+<tr><td><code id="fit_float_+3A_all.standards">all.standards</code></td>
+<td>
+<p>List of all standards</p>
+</td></tr>
+<tr><td><code id="fit_float_+3A_lc.vals">LC.vals</code></td>
+<td>
+<p>The fitting range values for the linear combination fitting</p>
+</td></tr>
+<tr><td><code id="fit_float_+3A_float">float</code></td>
+<td>
+<p>Let vary the energy range paramerters</p>
+</td></tr>
+<tr><td><code id="fit_float_+3A_ex.smaller">ex.smaller</code></td>
+<td>
+<p>Exclude portions smaller than a given value (decimal form), default to NULL</p>
+</td></tr>
+<tr><td><code id="fit_float_+3A_file.output">file.output</code></td>
+<td>
+<p>Possibility to have a file output, default to NULL</p>
+</td></tr>
+<tr><td><code id="fit_float_+3A_best.fits">best.fits</code></td>
+<td>
+<p>Possibility to output more than the best fit (e.g. the first 10 best fits), default to 1</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.standards  &lt;- initial_load(specdat[1:4], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec.samples    &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+## Select parameters for baseline correction and edge-step normalization
+param.float &lt;- expand.grid(pre.adj.1 = seq(-42,-30,6), 
+  pre.adj.2 = seq(-19,-9,5), post.adj.1 = seq(35,40,5), 
+  post.adj.2 = seq(50,65,5))
+length(param.float[,1])
+float.fit &lt;- fit_float(all.samples = corr.spec.samples,
+  all.standards = corr.spec.standards, 
+  LC.vals = c(-14, 46), float = param.float, best.fits = 20)
+print(float.fit)
+
+###### Using next configuration can be very time consuming 
+
+param.float.2 &lt;- expand.grid(pre.adj.1 = seq(-43,-30,1), 
+  pre.adj.2 = seq(-19,-9,.5), post.adj.1 = seq(34,40,.5), 
+  post.adj.2 = seq(50,65,1))
+</code></pre>
+
+<hr>
+<h2 id='initial_load'>Initial loading of spectra</h2><span id='topic+initial_load'></span>
+
+<h3>Description</h3>
+
+<p>This function loads and initially normalizes the raw spectra. Output is a list with the raw and initially corrected spectra.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>initial_load(raw.spec = NULL, file = NULL, corr.norm, use.eshift = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="initial_load_+3A_raw.spec">raw.spec</code></td>
+<td>
+<p>List of files already loaded with read_raw_spec()</p>
+</td></tr>
+<tr><td><code id="initial_load_+3A_file">file</code></td>
+<td>
+<p>Vector with file names</p>
+</td></tr>
+<tr><td><code id="initial_load_+3A_corr.norm">corr.norm</code></td>
+<td>
+<p>Initial correction and normalization parameters</p>
+</td></tr>
+<tr><td><code id="initial_load_+3A_use.eshift">use.eshift</code></td>
+<td>
+<p>Set TRUE, if using energy shift value, defaults to NULL</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.standards  &lt;- initial_load(specdat[1:4], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec.samples    &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+</code></pre>
+
+<hr>
+<h2 id='LC_fit'>Linear combination fitting function</h2><span id='topic+LC_fit'></span>
+
+<h3>Description</h3>
+
+<p>This function performs the LC fitting of the input sample/samples. It outputs the fitting results with the R-Factors as fitting statistics.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>LC_fit(sample, standards, LC.vals, float = NULL, E.zero = NULL,
+  ex.smaller = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="LC_fit_+3A_sample">sample</code></td>
+<td>
+<p>The sample spectrum</p>
+</td></tr>
+<tr><td><code id="LC_fit_+3A_standards">standards</code></td>
+<td>
+<p>The standards spectra</p>
+</td></tr>
+<tr><td><code id="LC_fit_+3A_lc.vals">LC.vals</code></td>
+<td>
+<p>Values for ranges of linear combination fitting, with respect to the edge-step</p>
+</td></tr>
+<tr><td><code id="LC_fit_+3A_float">float</code></td>
+<td>
+<p>Set float parameters, defaults to NULL</p>
+</td></tr>
+<tr><td><code id="LC_fit_+3A_e.zero">E.zero</code></td>
+<td>
+<p>Set E0, defaults to NULL</p>
+</td></tr>
+<tr><td><code id="LC_fit_+3A_ex.smaller">ex.smaller</code></td>
+<td>
+<p>Set value to exclude small portions (as portion of 1), defaults to NULL</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.standards  &lt;- initial_load(specdat[1:4], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec.samples    &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+fit.standards &lt;- std_df(sample = corr.spec.samples[[1]], 
+  all.standards = corr.spec.standards)
+fit.result &lt;- LC_fit(sample = corr.spec.samples[[1]], 
+  standards = fit.standards, LC.vals = c(-14, 46))
+print(fit.result)
+</code></pre>
+
+<hr>
+<h2 id='LCF_solve_QP'>Linear combination fitting solve function</h2><span id='topic+LCF_solve_QP'></span>
+
+<h3>Description</h3>
+
+<p>Quadratic programming solution function for linear combination fitting (LCF)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>LCF_solve_QP(LCF.stds, LCF.samp)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="LCF_solve_QP_+3A_lcf.stds">LCF.stds</code></td>
+<td>
+<p>Standards for LCF</p>
+</td></tr>
+<tr><td><code id="LCF_solve_QP_+3A_lcf.samp">LCF.samp</code></td>
+<td>
+<p>Sample for LCF</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.standards  &lt;- initial_load(specdat[1:4], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec.samples    &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+fit.standards &lt;- std_df(sample = corr.spec.samples[[1]], 
+  all.standards = corr.spec.standards)
+corr.spec &lt;- bkg_corr(raw.spec = corr.spec.samples[[1]], 
+  corr.norm = c(-36, -15, 37, 58))
+## set fitting range parameters relative to E zero
+E.zero &lt;- corr.spec.samples[[1]]$data$E0
+LC.pre &lt;- -14
+LC.post &lt;- 46
+## find ranges that have to be fitted
+abs.pre &lt;- abs(corr.spec[["energy"]]-(E.zero+LC.pre))
+abs.post &lt;- abs(corr.spec[["energy"]]-(E.zero+LC.post))
+range.pre &lt;- which(abs.pre == min(abs.pre))
+range.post &lt;- which(abs.post == min(abs.post))
+## extract standards and sample in given range
+LC.sample &lt;- corr.spec["cor.absorption"][range.pre:range.post,]
+LC.standards &lt;- fit.standards[range.pre:range.post,]
+## actual fitting
+fit.result &lt;- LCF_solve_QP(LCF.stds = LC.standards, LCF.samp = LC.sample)
+print(fit.result)
+</code></pre>
+
+<hr>
+<h2 id='plot_LCF'>Plot sample data, linear combination fit and residual spectrum</h2><span id='topic+plot_LCF'></span>
+
+<h3>Description</h3>
+
+<p>This function allows plotting (png or tiff image files) of the corrected sample spectrum, the linear combination fit and the residual.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plot_LCF(all.samples, all.standards, LCF.res, LC.vals, corr.norm,
+  float = NULL, exclude = NULL, use.tiff = NULL, E.zero = NULL,
+  set.plot.ymax = NULL, file.output = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot_LCF_+3A_all.samples">all.samples</code></td>
+<td>
+<p>List of all samples</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_all.standards">all.standards</code></td>
+<td>
+<p>List of all standards</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_lcf.res">LCF.res</code></td>
+<td>
+<p>Results from function fit_float()</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_lc.vals">LC.vals</code></td>
+<td>
+<p>The fitting range values for the linear combination fitting</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_corr.norm">corr.norm</code></td>
+<td>
+<p>Vector of the base-line correction and edge-step normalization values (vector of length 4)</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_float">float</code></td>
+<td>
+<p>Logical, default to FALSE</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_exclude">exclude</code></td>
+<td>
+<p>Logical, default to FALSE</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_use.tiff">use.tiff</code></td>
+<td>
+<p>Logical, default to FALSE</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_e.zero">E.zero</code></td>
+<td>
+<p>Set E0, defaults to NULL</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_set.plot.ymax">set.plot.ymax</code></td>
+<td>
+<p>Set maximum of plot y axis, defaults to NULL</p>
+</td></tr>
+<tr><td><code id="plot_LCF_+3A_file.output">file.output</code></td>
+<td>
+<p>Logical, default to FALSE</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.standards  &lt;- initial_load(specdat[1:4], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec.samples    &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+param.float &lt;- expand.grid(pre.adj.1 = seq(-45,-30,5), 
+  pre.adj.2 = seq(-19,-9,5), post.adj.1 = seq(34,40,2), 
+  post.adj.2 = seq(50,65,5))
+float.fit &lt;- fit_float(all.samples = corr.spec.samples[1], 
+  all.standards = corr.spec.standards, LC.vals = c(-14, 46), 
+  float = param.float, ex.smaller = 0.05)
+par(pty="s")
+plot_LCF(all.samples = corr.spec.samples[1], 
+  all.standards = corr.spec.standards, 
+  LCF.res = float.fit[1,], LC.vals = c(-14,46), 
+  corr.norm = c(-36, -15, 37, 58))
+</code></pre>
+
+<hr>
+<h2 id='read_raw_spec'>Read raw spectra</h2><span id='topic+read_raw_spec'></span>
+
+<h3>Description</h3>
+
+<p>This function reads the raw .xmu file, extracts E0 and energy shift and returns a list with name, E0, energy shift, and the raw spectrum
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>read_raw_spec(file, use.eshift = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="read_raw_spec_+3A_file">file</code></td>
+<td>
+<p>The raw .xmu file</p>
+</td></tr>
+<tr><td><code id="read_raw_spec_+3A_use.eshift">use.eshift</code></td>
+<td>
+<p>Set TRUE, if using energy shift value, defaults to NULL</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## any .xmu file as output from ATHENA (&gt;=0.9.25)
+</code></pre>
+
+<hr>
+<h2 id='specdat'>Phosphorus K-edge XANES spectral data for LCF</h2><span id='topic+specdat'></span>
+
+<h3>Description</h3>
+
+<p>Data from an experiment on the quality of XANES spectrscopy for phosphorus speciation
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(stdmix)
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>List of four standard spectra comounds and four spectra of mixtures of these standard compounds, output objects of function read_raw_spec().</p>
+
+
+<h3>References</h3>
+
+<p>Werner &amp; Prietzel 2015, Environ. Sci. Technol. (49), 10521-10528
+(<a href="dx.doi.org/10.1021/acs.est.5b03096">DOI</a>)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+specdat[[1]]
+specdat[[5]]
+</code></pre>
+
+<hr>
+<h2 id='std_df'>Create a data frame of all standards</h2><span id='topic+std_df'></span>
+
+<h3>Description</h3>
+
+<p>The function creates a data frame with all standards in one data frame. The data frame has the
+same energy values as the sample that is loaded.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>std_df(sample, all.standards)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="std_df_+3A_sample">sample</code></td>
+<td>
+<p>A raw sample</p>
+</td></tr>
+<tr><td><code id="std_df_+3A_all.standards">all.standards</code></td>
+<td>
+<p>List of all standards</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(stdmix)
+corr.spec.standards  &lt;- initial_load(specdat[1:4], 
+  corr.norm = c(-36, -15, 37, 58))
+corr.spec.samples    &lt;- initial_load(specdat[5:8], 
+  corr.norm = c(-36, -15, 37, 58))
+fit.standards &lt;- std_df(sample = corr.spec.samples[[1]], 
+  all.standards = corr.spec.standards)
+print(fit.standards)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

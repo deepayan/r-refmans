@@ -1,0 +1,588 @@
+<!DOCTYPE html><html><head><title>Help for package OmicKriging</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {OmicKriging}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#krigr_cross_validation'><p>Multithreaded cross validation routine for Omic Kriging.</p></a></li>
+<li><a href='#load_sample_data'><p>Loads sample phenotype and covariate data into data frame.</p></a></li>
+<li><a href='#make_GXM'><p>Compute gene expression correlation matrix.</p></a></li>
+<li><a href='#make_PCs_irlba'><p>Run Principal Component Analysis (PCA) using the irlba package.</p></a></li>
+<li><a href='#make_PCs_svd'><p>Run Principal Component Analysis (PCA) using base R svd() function.</p></a></li>
+<li><a href='#okriging'><p>Run omic kriging on a set of correlation matrices and a given phenotype.</p></a></li>
+<li><a href='#read_GRMBin'><p>Read the GRM binary file.</p></a></li>
+<li><a href='#write_GRMBin'><p>Write GRM binary files.</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Poly-Omic Prediction of Complex TRaits</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.4.0</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2016-03-03</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Hae Kyung Im, Heather E. Wheeler, Keston Aquino Michaels, Vassily
+    Trubetskoy</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Hae Kyung Im &lt;haky@uchicago.edu&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>It provides functions to generate a correlation matrix
+    from a genetic dataset and to use this matrix to predict the phenotype of an
+    individual by using the phenotypes of the remaining individuals through
+    kriging. Kriging is a geostatistical method for optimal prediction or best
+    unbiased linear prediction. It consists of predicting the value of a
+    variable at an unobserved location as a weighted sum of the variable at
+    observed locations. Intuitively, it works as a reverse linear regression:
+    instead of computing correlation (univariate regression coefficients are
+    simply scaled correlation) between a dependent variable Y and independent
+    variables X, it uses known correlation between X and Y to predict Y.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL (&ge; 3)</a></td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R(&ge; 2.15.1), doParallel</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>ROCR, irlba, parallel, foreach</td>
+</tr>
+<tr>
+<td>Collate:</td>
+<td>'correlation_matrices.R' 'input_pheno_GT.R' 'omic_KRIGR.R'</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>5.0.1</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2016-03-07 16:26:39 UTC; haky</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2016-03-08 00:12:43</td>
+</tr>
+</table>
+<hr>
+<h2 id='krigr_cross_validation'>Multithreaded cross validation routine for Omic Kriging.</h2><span id='topic+krigr_cross_validation'></span>
+
+<h3>Description</h3>
+
+<p>This is a flexible cross validation routine which wraps the Omic Kriging
+calculation. The user can specify the size of the test set, all the way to
+&quot;Leave One Out&quot; cross validation. Additionally, all relevant  parameters in the
+<code><a href="#topic+okriging">okriging</a></code> function are exposed. This function uses the doParallel
+package to distribute computation over multiple cores. If the phenotype is 
+case/control, a ROCR AUC and GLM analysis is run and the results printed to screen.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>krigr_cross_validation(cor.list, pheno.df, pheno.id = 1, h2.vec,
+  covar.mat = NULL, nfold = 10, ncore = "all", verbose = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="krigr_cross_validation_+3A_cor.list">cor.list</code></td>
+<td>
+<p>A list of correlation matrices used in Kriging. rownames and colnames
+of cor should be IID list and include idtest and idtrain.</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_pheno.df">pheno.df</code></td>
+<td>
+<p>A data frame with rownames set as sample IDs and a column containing phenotype data.</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_pheno.id">pheno.id</code></td>
+<td>
+<p>The name of the column in pheno which contains phenotype data to test.</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_h2.vec">h2.vec</code></td>
+<td>
+<p>has weights for each RM relatednes matrix</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_covar.mat">covar.mat</code></td>
+<td>
+<p>Data frame of covariates with rownames() set to sample IDs.</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_nfold">nfold</code></td>
+<td>
+<p>Select the number of cross validation rounds to run. The value &quot;LOOCV&quot;
+will run one round of cross validation for each sample in your dataset.
+The value &quot;ncore&quot; will set the test set size such that a single round
+runs on each core specified in the ncore option. Any numeric value
+will be set to the test size. Default runs 10 rounds of cross validation.</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_ncore">ncore</code></td>
+<td>
+<p>The number of cores available to distribute computaition across
+If a numeric value is supplied, that number of cores is registered. If the
+value &quot;all&quot; is supplied, all available cores are used.</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_verbose">verbose</code></td>
+<td>
+<p>Report rounds on cross validation on standard out.</p>
+</td></tr>
+<tr><td><code id="krigr_cross_validation_+3A_...">...</code></td>
+<td>
+<p>Optional and unnamed arguments.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A dataframe with three columns: sample ID, observed phenotype Ytest, and predicted phenotype Ypred
+</p>
+
+<hr>
+<h2 id='load_sample_data'>Loads sample phenotype and covariate data into data frame.</h2><span id='topic+load_sample_data'></span>
+
+<h3>Description</h3>
+
+<p>This function loads a file into a data frame. This file should contain one
+row per sample in your study, and one column for each covariate and
+phenotype of interest. Additionally, it requires a header with &quot;IID&quot; for
+the column of sample IDs, and a unique name for each phenotype and covariate.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>load_sample_data(phenoFile, main.pheno)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="load_sample_data_+3A_phenofile">phenoFile</code></td>
+<td>
+<p>File path to the phenotype/covariate file.</p>
+</td></tr>
+<tr><td><code id="load_sample_data_+3A_main.pheno">main.pheno</code></td>
+<td>
+<p>Column name of the main phenotype of interest.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data frame with dimensions (# of samples) x (# of phenotypes/covar)
+</p>
+
+<hr>
+<h2 id='make_GXM'>Compute gene expression correlation matrix.</h2><span id='topic+make_GXM'></span>
+
+<h3>Description</h3>
+
+<p>This function computes a gene expression correlation matrix given a file of
+transcript expression levels for each sample in the study. It returns a
+correlation matrix with rownames and colnames as sample IDs.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>make_GXM(expFile = NULL, gxmFilePrefix = NULL, idfile = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="make_GXM_+3A_expfile">expFile</code></td>
+<td>
+<p>Path to gene expression file.</p>
+</td></tr>
+<tr><td><code id="make_GXM_+3A_gxmfileprefix">gxmFilePrefix</code></td>
+<td>
+<p>File path prefixes for outputting GCTA style binary
+correlation matrices.</p>
+</td></tr>
+<tr><td><code id="make_GXM_+3A_idfile">idfile</code></td>
+<td>
+<p>Path to file containing family IDs and sample IDs with header FID and IID.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns a correlation matrix of (N-samples x N-samples), with
+rownames and colnames as sample IDs.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> ## load gene expression values from vignette
+ expressionFile &lt;- system.file(package = "OmicKriging",
+                     "doc/vignette_data/ig_gene_subset.txt.gz")
+ ## compute correlation matrix
+ geneCorrelationMatrix &lt;- make_GXM(expressionFile)
+</code></pre>
+
+<hr>
+<h2 id='make_PCs_irlba'>Run Principal Component Analysis (PCA) using the irlba package.</h2><span id='topic+make_PCs_irlba'></span>
+
+<h3>Description</h3>
+
+<p>A simple wrapper around the irlba() function which computes a partial SVD
+efficiently. This function's run time depends on the number of eigenvectors
+requested but scales well. Use this function to generate covariates for use
+with the <code><a href="#topic+okriging">okriging</a></code> or <code><a href="#topic+krigr_cross_validation">krigr_cross_validation</a></code>
+functions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>make_PCs_irlba(X, n.top = 2)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="make_PCs_irlba_+3A_x">X</code></td>
+<td>
+<p>A correlation matrix.</p>
+</td></tr>
+<tr><td><code id="make_PCs_irlba_+3A_n.top">n.top</code></td>
+<td>
+<p>Number of top principal compenents to return</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix of Principal Components of dimension (# of samples) x
+(n.top). As expected, eigenvectors are ordered by eigenvalue. Rownames
+are given as sample IDs.
+</p>
+
+
+<h3>References</h3>
+
+<p>library(irlba)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> ## compute PC's using the  gene expression correlation matrix from vignette
+ ## load gene expression values from vignette
+ expressionFile &lt;- system.file(package = "OmicKriging",
+                     "doc/vignette_data/ig_gene_subset.txt.gz")
+ ## compute correlation matrix
+ geneCorrelationMatrix &lt;- make_GXM(expressionFile)
+ ## find top ten PC's of this matrix using SVD
+ topPcs &lt;- make_PCs_irlba(geneCorrelationMatrix, n.top=10) 
+</code></pre>
+
+<hr>
+<h2 id='make_PCs_svd'>Run Principal Component Analysis (PCA) using base R svd() function.</h2><span id='topic+make_PCs_svd'></span>
+
+<h3>Description</h3>
+
+<p>A simple wrapper around the base R svd() function which returns the top N
+eigenvectors of a matrix. Use this function to generate covariates for use
+with the <code><a href="#topic+okriging">okriging</a></code> or <code><a href="#topic+krigr_cross_validation">krigr_cross_validation</a></code>
+functions. This wrapper preserves the rownames of the original matrix.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>make_PCs_svd(X, n.top = 2)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="make_PCs_svd_+3A_x">X</code></td>
+<td>
+<p>A correlation matrix.</p>
+</td></tr>
+<tr><td><code id="make_PCs_svd_+3A_n.top">n.top</code></td>
+<td>
+<p>Number of top principal compenents to return</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix of Principal Components of dimension (# of samples) x
+(n.top). As expected, eigenvectors are ordered by eigenvalue. Rownames
+are given as sample IDs.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> ## compute PC's using the  gene expression correlation matrix from vignette
+ ## load gene expression values from vignette
+ expressionFile &lt;- system.file(package = "OmicKriging",
+                     "doc/vignette_data/ig_gene_subset.txt.gz")
+ ## compute correlation matrix
+ geneCorrelationMatrix &lt;- make_GXM(expressionFile)
+ ## find top ten PC's of this matrix using SVD
+ topPcs &lt;- make_PCs_svd(geneCorrelationMatrix, n.top=10) 
+</code></pre>
+
+<hr>
+<h2 id='okriging'>Run omic kriging on a set of correlation matrices and a given phenotype.</h2><span id='topic+okriging'></span>
+
+<h3>Description</h3>
+
+<p>Universal kriging formula:
+lambda' = ( c + X m )' iSig
+m' = ( x - X' iSig c )' ( X' iSig X )^-1
+m' = ( t(x) - c' iSig X ) ( X' iSig X )^-1
+lambda' = (c' + m' X) iSig
+x: #covariates x ntest
+X: ntrain x #cov
+c: ntrain x ntest
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>okriging(idtest, idtrain = NULL, corlist, H2vec, pheno, phenoname,
+  Xcova = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="okriging_+3A_idtest">idtest</code></td>
+<td>
+<p>A vector of sample IDs which constitute the test set.</p>
+</td></tr>
+<tr><td><code id="okriging_+3A_idtrain">idtrain</code></td>
+<td>
+<p>A vector of sample IDs which constitute the training set.</p>
+</td></tr>
+<tr><td><code id="okriging_+3A_corlist">corlist</code></td>
+<td>
+<p>A list of correlation matrices used in Kriging. rownames and colnames
+of cor should be IID list and include idtest and idtrain.</p>
+</td></tr>
+<tr><td><code id="okriging_+3A_h2vec">H2vec</code></td>
+<td>
+<p>has weights for each RM relatednes matrix</p>
+</td></tr>
+<tr><td><code id="okriging_+3A_pheno">pheno</code></td>
+<td>
+<p>A data frame with rownames set as sample IDs and a column containing phenotype data.</p>
+</td></tr>
+<tr><td><code id="okriging_+3A_phenoname">phenoname</code></td>
+<td>
+<p>The name of the column in pheno which contains phenotype data to test.</p>
+</td></tr>
+<tr><td><code id="okriging_+3A_xcova">Xcova</code></td>
+<td>
+<p>Data frame of covariates with rownames() set to sample IDs.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A dataframe with three columns: sample ID, observed phenotype Ytest, and predicted phenotype Ypred
+</p>
+
+
+<h3>References</h3>
+
+<p>Cressie 1993 Statistics for Spatial Data p.154
+</p>
+
+<hr>
+<h2 id='read_GRMBin'>Read the GRM binary file.</h2><span id='topic+read_GRMBin'></span>
+
+<h3>Description</h3>
+
+<p>Function provided by GCTA maintainers (modified slightly) for accessing their
+recently introduced binary GRM format. The GRM is stored as a vector of numerics
+which correspond to the lower triangular elements including the diagonal. We simply read these, pull
+the diagonal elements, and inflate them into a full symmetric matrix. We add
+sample IDs to colnames and rownames for compatibility with other Kriging 
+functions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>read_GRMBin(prefix, size = 4)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="read_GRMBin_+3A_prefix">prefix</code></td>
+<td>
+<p>The file path prefix to GRM binary files (e.g., test.grm.bin, test.grm.N.bin, test.grm.id.)</p>
+</td></tr>
+<tr><td><code id="read_GRMBin_+3A_size">size</code></td>
+<td>
+<p>The length (in bytes) of each value in the raw GRM vector. Default is 4, and matches GRM writen by GCTA 1.11.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Note that the GRM is described by three files, and this function assumes that all
+have a common prefix that is passed in.
+</p>
+
+
+<h3>Value</h3>
+
+<p>GRM of dim (N.samples x N.samples) with rownames and colnames as sample ID.
+</p>
+
+
+<h3>References</h3>
+
+<p>http://www.complextraitgenomics.com/software/gcta/estimate_grm.html
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  ## read binary Genetic Relatedness Matrix (GRM) generated by GCTA
+  grmFile &lt;- system.file(package = "OmicKriging",
+                         "doc/vignette_data/ig_genotypes.grm.bin")
+  grmFileBase &lt;- substr(grmFile,1, nchar(grmFile) - 4)
+  GRM &lt;- read_GRMBin(grmFileBase)
+</code></pre>
+
+<hr>
+<h2 id='write_GRMBin'>Write GRM binary files.</h2><span id='topic+write_GRMBin'></span>
+
+<h3>Description</h3>
+
+<p>Function to write a binary GRM format recently introduced by GCTA. It takes
+a correlation matrix as used by other Kriging functions, and writes three
+files: binary file for storing the diagonal + lower triangular elements, a
+text file for sample IDs, and a binary file storing the number of SNPs used
+in the correlation matrix calculation.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>write_GRMBin(X, n.snps = 0, prefix, size = 4)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="write_GRMBin_+3A_x">X</code></td>
+<td>
+<p>Correlation matrix with rownames and colnames as sample IDs.</p>
+</td></tr>
+<tr><td><code id="write_GRMBin_+3A_n.snps">n.snps</code></td>
+<td>
+<p>Number of SNPs used in correlation matrix calculation. Default is 0.0.</p>
+</td></tr>
+<tr><td><code id="write_GRMBin_+3A_prefix">prefix</code></td>
+<td>
+<p>Base file path and names for the three output files.</p>
+</td></tr>
+<tr><td><code id="write_GRMBin_+3A_size">size</code></td>
+<td>
+<p>Number of bytes to write for each value. Default is 4</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>None. Though side effects are writing three files as described above.
+</p>
+
+
+<h3>References</h3>
+
+<p>http://www.complextraitgenomics.com/software/gcta/estimate_grm.html
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  
+  ## create a random genotype matrix
+  nSamples &lt;- 10
+  mMarkers &lt;- 100
+  X &lt;- matrix(rbinom(n=100, size=2, prob=0.5), nrow=nSamples)
+  ## compute the Genetric Relatedness Matrix
+  grm &lt;- cor(X)
+  ## write a Genetic Relatedness Matrix (GRM)
+  ## NOTE: to following is not run here -- not writing any files in examples
+  #write_GRMBin(grm, n.snps=mMarkers, prefix="grm.out")
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

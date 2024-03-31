@@ -1,0 +1,541 @@
+<!DOCTYPE html><html><head><title>Help for package thief</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {thief}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#AEdemand'><p>Accident and Emergency demand in the UK</p></a></li>
+<li><a href='#plot.tsaggregates'><p>Plot time series aggregates</p></a></li>
+<li><a href='#reconcilethief'><p>Reconcile temporal hierarchical forecasts</p></a></li>
+<li><a href='#thief'><p>Temporal hierarchical forecasting</p></a></li>
+<li><a href='#tsaggregates'><p>Non-overlapping temporal aggregation of a time series</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>0.3</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Temporal Hierarchical Forecasting</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Methods and tools for generating forecasts at different temporal
+    frequencies using a hierarchical time series approach.</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.0.2), forecast (&ge; 7.2)</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>hts, ggplot2</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>ByteCompile:</td>
+<td>TRUE</td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/robjhyndman/thief/issues">https://github.com/robjhyndman/thief/issues</a></td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a></td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="http://pkg.robjhyndman.com/thief">http://pkg.robjhyndman.com/thief</a>,
+<a href="https://github.com/robjhyndman/thief">https://github.com/robjhyndman/thief</a></td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>6.0.1.9000</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2018-01-24 04:50:27 UTC; hyndman</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Rob Hyndman [aut, cre, cph],
+  Nikolaos Kourentzes [aut, cph]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Rob Hyndman &lt;Rob.Hyndman@monash.edu&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2018-01-24 05:06:33 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='AEdemand'>Accident and Emergency demand in the UK</h2><span id='topic+AEdemand'></span>
+
+<h3>Description</h3>
+
+<p>Weekly demand of Accident &amp; Emergency departments in the UK, 
+from 7 November 2010 to 7 June 2015.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>AEdemand
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>An object of class <code>ts</code>.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(ggplot2)
+autoplot(AEdemand, xlab="Year", ylab="Demand ('000)") +
+  ggtitle("Accident &amp; Emergency Demand in the UK")
+
+## Not run: 
+
+# Demonstration of the adjustment of all temporal aggregates
+# using Total Emergency Admissions
+
+total &lt;- AEdemand[,12]
+totalagg &lt;- tsaggregates(total)
+plot(totalagg, main="Total Emergency Admissions")
+
+# Base forecasts
+base &lt;- list()
+for(i in 1:5)
+  base[[i]] &lt;- forecast(auto.arima(totalagg[[i]]))
+base[[6]] &lt;-  forecast(auto.arima(totalagg[[6]]), h=2)
+
+# Reconciled forecasts
+reconciled &lt;- reconcilethief(base)
+
+main &lt;- paste(names(totalagg)," (k=",
+           52/unlist(lapply(reconciled,frequency)),")",sep="")
+par(mfrow=c(2,3))
+for(i in 6:1)
+{
+  ylim &lt;- range(base[[i]]$mean, base[[i]]$x, reconciled[[i]]$mean)
+  plot(base[[i]], main=main[i], fcol='white',
+      plot.conf=FALSE, ylim=ylim, xlim=c(2010.5,2017.5))
+  polygon(c(2015.45, 2020, 2020, 2015.45),
+          c(0, 0, 1e5, 1e5), col='grey', border=FALSE)
+  lines(base[[i]]$mean, col='red', lty=2)
+  lines(reconciled[[i]]$mean, col='blue')
+}
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='plot.tsaggregates'>Plot time series aggregates</h2><span id='topic+plot.tsaggregates'></span><span id='topic+autoplot.tsaggregates'></span>
+
+<h3>Description</h3>
+
+<p>Plots all temporal aggregations of a time series
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'tsaggregates'
+plot(x, series = "all", ...)
+
+## S3 method for class 'tsaggregates'
+autoplot(object, series = "all", ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot.tsaggregates_+3A_x">x</code></td>
+<td>
+<p><code>tsaggregates</code> object, produced by <code><a href="#topic+tsaggregates">tsaggregates</a></code>.</p>
+</td></tr>
+<tr><td><code id="plot.tsaggregates_+3A_series">series</code></td>
+<td>
+<p>The indexes of the series to plot. By default, all series are plotted.</p>
+</td></tr>
+<tr><td><code id="plot.tsaggregates_+3A_...">...</code></td>
+<td>
+<p>Other arguments passed to <code><a href="stats.html#topic+plot.ts">plot.ts</a></code>
+or <code><a href="forecast.html#topic+autoplot.ts">autoplot.ts</a></code>.</p>
+</td></tr>
+<tr><td><code id="plot.tsaggregates_+3A_object">object</code></td>
+<td>
+<p><code>tsaggregates</code> object, produced by <code><a href="#topic+tsaggregates">tsaggregates</a></code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Rob J Hyndman
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>deathagg &lt;- tsaggregates(USAccDeaths)
+plot(deathagg, series=c(1,2,4,6))
+
+library(ggplot2)
+autoplot(deathagg)
+
+</code></pre>
+
+<hr>
+<h2 id='reconcilethief'>Reconcile temporal hierarchical forecasts</h2><span id='topic+reconcilethief'></span>
+
+<h3>Description</h3>
+
+<p>Takes forecasts of time series at all levels of temporal aggregation
+and combines them using the temporal hierarchical approach of Athanasopoulos et al (2016).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>reconcilethief(forecasts, comb = c("struc", "mse", "ols", "bu", "shr", "sam"),
+  mse = NULL, residuals = NULL, returnall = TRUE, aggregatelist = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="reconcilethief_+3A_forecasts">forecasts</code></td>
+<td>
+<p>List of forecasts. Each element must be a time series of forecasts,
+or a forecast object.
+The number of forecasts should be equal to k times the seasonal period for each series,
+where k is the same across all series.</p>
+</td></tr>
+<tr><td><code id="reconcilethief_+3A_comb">comb</code></td>
+<td>
+<p>Combination method of temporal hierarchies, taking one of the following values:
+</p>
+
+<dl>
+<dt>&quot;struc&quot;</dt><dd><p>Structural scaling - weights from temporal hierarchy</p>
+</dd>
+<dt>&quot;mse&quot;</dt><dd><p>Variance scaling - weights from in-sample MSE</p>
+</dd>
+<dt>&quot;ols&quot;</dt><dd><p>Unscaled OLS combination weights</p>
+</dd>
+<dt>&quot;bu&quot;</dt><dd><p>Bottom-up combination &ndash; i.e., all aggregate forecasts are ignored.</p>
+</dd>
+<dt>&quot;shr&quot;</dt><dd><p>GLS using a shrinkage (to block diagonal) estimate of residuals</p>
+</dd>
+<dt>&quot;sam&quot;</dt><dd><p>GLS using sample covariance matrix of residuals</p>
+</dd>
+</dl>
+</td></tr>
+<tr><td><code id="reconcilethief_+3A_mse">mse</code></td>
+<td>
+<p>A vector of one-step MSE values corresponding to each of the forecast series.</p>
+</td></tr>
+<tr><td><code id="reconcilethief_+3A_residuals">residuals</code></td>
+<td>
+<p>List of residuals corresponding to each of the forecast models.
+Each element must be a time series of residuals. If <code>forecast</code> contains a list of
+forecast objects, then the residuals will be extracted automatically and this argument
+is not needed. However, it will be used if not <code>NULL</code>.</p>
+</td></tr>
+<tr><td><code id="reconcilethief_+3A_returnall">returnall</code></td>
+<td>
+<p>If <code>TRUE</code>, a list of time series corresponding to the first argument
+is returned, but now reconciled. Otherwise, only the most disaggregated series is returned.</p>
+</td></tr>
+<tr><td><code id="reconcilethief_+3A_aggregatelist">aggregatelist</code></td>
+<td>
+<p>(optional) User-selected list of forecast aggregates to consider</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>List of reconciled forecasts in the same format as <code>forecast</code>.
+If <code>returnall==FALSE</code>, only the most disaggregated series is returned.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Rob J Hyndman
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+thief">thief</a></code>, <code><a href="#topic+tsaggregates">tsaggregates</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Construct aggregates
+aggts &lt;- tsaggregates(USAccDeaths)
+
+# Compute forecasts
+fc &lt;- list()
+for(i in seq_along(aggts))
+  fc[[i]] &lt;- forecast(auto.arima(aggts[[i]]), h=2*frequency(aggts[[i]]))
+
+# Reconcile forecasts
+reconciled &lt;- reconcilethief(fc)
+
+# Plot forecasts before and after reconcilation
+par(mfrow=c(2,3))
+for(i in seq_along(fc))
+{
+  plot(reconciled[[i]], main=names(aggts)[i])
+  lines(fc[[i]]$mean, col='red')
+}
+
+</code></pre>
+
+<hr>
+<h2 id='thief'>Temporal hierarchical forecasting</h2><span id='topic+thief'></span>
+
+<h3>Description</h3>
+
+<p>Takes a time series as input and produces forecasts using
+the temporal hierarchical approach of Athanasopoulos et al (2016).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>thief(y, m = frequency(y), h = m * 2, comb = c("struc", "mse", "ols",
+  "bu", "shr", "sam"), usemodel = c("ets", "arima", "theta", "naive",
+  "snaive"), forecastfunction = NULL, aggregatelist = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="thief_+3A_y">y</code></td>
+<td>
+<p>Time series input</p>
+</td></tr>
+<tr><td><code id="thief_+3A_m">m</code></td>
+<td>
+<p>Seasonal period</p>
+</td></tr>
+<tr><td><code id="thief_+3A_h">h</code></td>
+<td>
+<p>Forecast horizon</p>
+</td></tr>
+<tr><td><code id="thief_+3A_comb">comb</code></td>
+<td>
+<p>Combination method of temporal hierarchies, taking one of the following values:
+</p>
+
+<dl>
+<dt>&quot;struc&quot;</dt><dd><p>Structural scaling - weights from temporal hierarchy</p>
+</dd>
+<dt>&quot;mse&quot;</dt><dd><p>Variance scaling - weights from in-sample MSE</p>
+</dd>
+<dt>&quot;ols&quot;</dt><dd><p>Unscaled OLS combination weights</p>
+</dd>
+<dt>&quot;bu&quot;</dt><dd><p>Bottom-up combination &ndash; i.e., all aggregate forecasts are ignored.</p>
+</dd>
+<dt>&quot;shr&quot;</dt><dd><p>GLS using a shrinkage (to block diagonal) estimate of residuals</p>
+</dd>
+<dt>&quot;sam&quot;</dt><dd><p>GLS using sample covariance matrix of residuals</p>
+</dd>
+</dl>
+</td></tr>
+<tr><td><code id="thief_+3A_usemodel">usemodel</code></td>
+<td>
+<p>Model used for forecasting each aggregation level:
+</p>
+
+<dl>
+<dt>&quot;ets&quot;</dt><dd><p>exponential smoothing, using the <code><a href="forecast.html#topic+ets">ets</a></code> function.</p>
+</dd>
+<dt>&quot;arima&quot;</dt><dd><p>arima, using the <code><a href="forecast.html#topic+auto.arima">auto.arima</a></code> function.</p>
+</dd>
+<dt>&quot;theta&quot;</dt><dd><p>theta method, using the <code><a href="forecast.html#topic+thetaf">thetaf</a></code> function.</p>
+</dd>
+<dt>&quot;naive&quot;</dt><dd><p>random walk forecasts</p>
+</dd>
+<dt>&quot;snaive&quot;</dt><dd><p>seasonal naive forecasts, based on the last year of observed data.</p>
+</dd>
+</dl>
+</td></tr>
+<tr><td><code id="thief_+3A_forecastfunction">forecastfunction</code></td>
+<td>
+<p>User-defined function to be used instead of <code>usemodel</code>. The
+function must take a time series as the first argument, and the forecast horizon
+as the second argument. It must return an object of class <code>forecast</code>.</p>
+</td></tr>
+<tr><td><code id="thief_+3A_aggregatelist">aggregatelist</code></td>
+<td>
+<p>User-selected list of forecast aggregates to consider</p>
+</td></tr>
+<tr><td><code id="thief_+3A_...">...</code></td>
+<td>
+<p>Arguments to be passed to the time series modelling function
+(such as <code>ets</code> or <code>auto.arima</code>), or to <code>forecastfunction</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function computes the temporal aggregates of <code>y</code> using
+<code><a href="#topic+tsaggregates">tsaggregates</a></code>, then calculates all forecasts using the model function
+specified by <code>usemodel</code> or <code>forecastfunction</code>, and finally reconciles the
+forecasts using <code><a href="#topic+reconcilethief">reconcilethief</a></code>. The reconciled forecasts of <code>y</code>
+are returned.
+</p>
+
+
+<h3>Value</h3>
+
+<p>forecast object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Rob J Hyndman and Nikolaos Kourentzes
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+reconcilethief">reconcilethief</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+
+# Select ARIMA models for all series using auto.arima()
+z &lt;- thief(AEdemand[,12], usemodel='arima')
+plot(z)
+
+# Use your own function
+ftbats &lt;- function(y,h,...){forecast(tbats(y),h,...)}
+z &lt;- thief(AEdemand[,12], forecastfunction=ftbats)
+plot(z)
+
+## End(Not run)
+
+</code></pre>
+
+<hr>
+<h2 id='tsaggregates'>Non-overlapping temporal aggregation of a time series</h2><span id='topic+tsaggregates'></span>
+
+<h3>Description</h3>
+
+<p>Produces all temporal aggregations for frequencies greater than 1
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>tsaggregates(y, m = frequency(y), align = c("end", "start"),
+  aggregatelist = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="tsaggregates_+3A_y">y</code></td>
+<td>
+<p>Univariate time series of class <code>ts</code>.</p>
+</td></tr>
+<tr><td><code id="tsaggregates_+3A_m">m</code></td>
+<td>
+<p>Integer seasonal period</p>
+</td></tr>
+<tr><td><code id="tsaggregates_+3A_align">align</code></td>
+<td>
+<p>Indicates how the aggregates are to be aligned:
+either with the <code>start</code> of the series or the <code>end</code> of the series.
+For forecasting purposes, it should be set to <code>end</code>.</p>
+</td></tr>
+<tr><td><code id="tsaggregates_+3A_aggregatelist">aggregatelist</code></td>
+<td>
+<p>User-selected list of aggregates to consider.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of time series. The first element is the series 'y',
+followed by series with increasing levels of aggregation. The last
+element is the &quot;annual&quot; series (i.e., the series aggregated over all seasons).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Rob J Hyndman
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+plot.tsaggregates">plot.tsaggregates</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>tsaggregates(USAccDeaths)
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

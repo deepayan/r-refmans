@@ -1,0 +1,880 @@
+<!DOCTYPE html><html><head><title>Help for package hrt</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {hrt}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#critical.value'><p>Critical Values for Heteroskedasticity Robust Testing</p></a></li>
+<li><a href='#hrt-package'>
+<p>Heteroskedasticity Robust Testing</p></a></li>
+<li><a href='#size'><p>Computing the Size of Heteroskedasticity Robust Tests</p></a></li>
+<li><a href='#test.stat'><p>Computation of the test statistics</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Heteroskedasticity Robust Testing</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0.1</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2021-09-08</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>David Preinerstorfer </td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>David Preinerstorfer &lt;david.preinerstorfer@ulb.be&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Functions for testing affine hypotheses on the regression coefficient vector in regression models with heteroskedastic errors: (i) a function for computing various test statistics (in particular using HC0-HC4 covariance estimators based on unrestricted or restricted residuals); (ii) a function for numerically approximating the size of a test based on such test statistics and a user-supplied critical value; and, most importantly, (iii) a function for determining size-controlling critical values for such test statistics and a user-supplied significance level (also incorporating a check of conditions under which such a size-controlling critical value exists). The three functions are based on results in Poetscher and Preinerstorfer (2021) "Valid Heteroskedasticity Robust Testing" &lt;<a href="https://arxiv.org/abs/2104.12597">arXiv:2104.12597</a>&gt;.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>methods, stats, Rcpp, CompQuadForm</td>
+</tr>
+<tr>
+<td>LinkingTo:</td>
+<td>Rcpp, RcppEigen</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2021-09-08 09:26:46 UTC; DPreinerstorfer</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2021-09-08 11:50:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='critical.value'>Critical Values for Heteroskedasticity Robust Testing</h2><span id='topic+critical.value'></span>
+
+<h3>Description</h3>
+
+<p>This function provides an implementation of 
+Algorithm 3 in Pötscher and Preinerstorfer (2021), based on 
+Algorithm 1 (if <code class="reqn">q = 1</code>) or Algorithm 2 
+(if <code class="reqn">q &gt; 1</code>) in the same reference as the auxiliary algorithm <code class="reqn">\mathsf{A}</code>.
+Which of the two algorithms is used is automatically 
+determined as a function of <code class="reqn">q</code>, the number of rows of <code>R</code>.
+</p>
+<p>The user is referred to
+Pötscher and Preinerstorfer (2021) for definitions, 
+a detailed description of the problems solved
+by the algorithms, and for a detailed description of the algorithms themselves.
+</p>
+<p>Most of the input parameters to <code>critical.value</code> are actually used
+in the auxiliary Algorithm 1 or 2, respectively. 
+Algorithm 1 is based on the function 
+<code>davies</code> from the package <span class="pkg">CompQuadForm</span>. The parameters
+<code>lim</code> and <code>acc</code> for <code>davies</code> can be supplemented by the user.
+Algorithms 1 and 2 are implemented using the function <code><a href="stats.html#topic+constrOptim">constrOptim</a></code> 
+from <span class="pkg">stats</span> in Stages 1 and 2; this function
+is used with default parameters, but control parameters can be supplied by the user.
+</p>
+<p>After determining a critical value for a given testing 
+problem via the function <code>critical.value</code>, it is recommended that: (i) the user
+applies the function <code>size</code> to compute the size of the test corresponding to the critical value obtained; 
+and (ii) to check whether the size obtained does coincide with (or is close to) the targeted level of 
+significance (that is <code>alpha</code>). If (ii) is not the case, this is an indication
+of numerical issues, which potentially can be avoided by changing the input parameters
+responsible for the accuracy of the computations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>critical.value(alpha, R, X, hcmethod, restr.cov, Mp, M1, M2, 
+N0 = NULL, N1 = NULL, N2 = NULL, tol = 1e-08, 
+control.1 = list("reltol" = 1e-02, "maxit" = dim(X)[1]*20),
+control.2 = list("reltol" = 1e-03, "maxit" = dim(X)[1]*30),
+cores = 1, lower = 0, eps.close = .0001, lim = 30000, acc = 0.001, 
+size.tol = .001, maxit = 25, as.tol = 1e-08)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="critical.value_+3A_alpha">alpha</code></td>
+<td>
+<p>Significance level. A real number in the interval <code class="reqn">(0, 1)</code>.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_r">R</code></td>
+<td>
+<p>The restriction matrix. <code>critical.value</code> computes the (smallest) size-controlling critical value
+for a test of the hypothesis <code class="reqn">R \beta = r</code>. <code>R</code> needs to be of
+full row rank, and needs to have the same number of columns as <code>X</code>.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_x">X</code></td>
+<td>
+<p>The design matrix <code>X</code> needs to be of full column rank. 
+The number of columns of <code>X</code> must be smaller than the number of rows of 
+<code>X</code>.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_hcmethod">hcmethod</code></td>
+<td>
+<p>Integer in [-1, 4]. Determines the method applied in the construction of the covariance estimator
+used in the test statistic. The value -1 corresponds to unadjusted (i.e., classical) F statistic without df adjustment; the value 0 
+corresponds to the HC0 estimator; ...; the value 4 corresponds to the HC4 estimator. Note that in case <code>restr.cov</code>
+is TRUE the null-restricted versions of the covariance estimators are computed. Cf. Pötscher 
+and Preinerstorfer (2021) and the references there for details.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_restr.cov">restr.cov</code></td>
+<td>
+<p>TRUE or FALSE. Covariance matrix estimator based on null-restricted (TRUE) or unrestricted (FALSE) residuals.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_mp">Mp</code></td>
+<td>
+<p>This input is used in Algorithm 1 or 2, respectively. <code>Mp</code> is a positive integer 
+(should be chosen large, e.g., 50000; but the feasibility depends on the dimension of <code>X</code>, etc). 
+<code>Mp</code> determines <code class="reqn">M_0</code> in Algorithm 1 or 2 (i.e., <code class="reqn">\mathsf{A}</code>), respectively, that is, 
+the number of initial values chosen in Stage 0 of that algorithm. The way initial values  
+(i.e., the sets of variance covariance matrices <code class="reqn">\Sigma_j</code> in Stage 0 of the algorithm; 
+the diagonal entries of each <code class="reqn">\Sigma_j</code> sum up to 1) are chosen is as follows:
+</p>
+
+<ol>
+<li><p> If <code class="reqn">q = 1</code> and <code class="reqn">lower = 0</code>, one of the initial values <code class="reqn">\Sigma_j</code> is a matrix which maximizes the expectation of the quadratic form <code class="reqn">y \mapsto y'\Sigma^{1/2}
+A_C \Sigma^{1/2}y</code> under an n-variate standard normal distribution. Here, <code class="reqn">A_C</code> is a matrix that is defined Pötscher and Preinerstorfer (2021).
+If diagonal entries of this maximizer are 0, then they are replaced by the value of <code>eps.close</code> (and the other values are adjusted
+so that the diagonal sums up to 1).
+</p>
+</li>
+<li><p> One starting value <code class="reqn">\Sigma_j</code> is a diagonal matrix with constant diagonal entries.
+</p>
+</li>
+<li><p> If <code>lower</code> is zero, then (i) <code class="reqn">\lceil Mp/4 \rceil - 1</code> covariance matrices <code class="reqn">\Sigma_j</code> are drawn by sampling their diagonals <code class="reqn">\tau_1^2, ..., \tau_n^2</code> from a uniform distribution 
+on the unit simplex in <code class="reqn">R^n</code>; and (ii)  the remaining <code class="reqn">M_p - (\lceil Mp/4 \rceil - 1)</code> covariance matrices <code class="reqn">\Sigma_j</code> are each drawn by first sampling a vector <code class="reqn">(t_1, ..., t_n)'</code> from a uniform distribution 
+on the unit simplex in <code class="reqn">R^n</code>, and by then obtaining the diagonal <code class="reqn">\tau_1^2, ..., \tau_n^2</code> of <code class="reqn">\Sigma_j</code> via <code class="reqn">(t_1^2, ..., t_n^2)/\sum_{i = 1}^n t_i^2</code>. If <code>lower</code> is nonzero,
+then the initial values are drawn analogously, but from a uniform distribution on the subset of the unit simplex in <code class="reqn">R^n</code> corresponding to the restriction imposed
+by the lower bound <code>lower</code>.
+</p>
+</li>
+<li> <p><code class="reqn">n</code> starting values equal to covariance matrices with a single dominant diagonal entry and all other diagonal entries constant. The size of the dominant
+diagonal entry is regulated via the input parameters <code>eps.close</code> and <code>lower</code>. In case <code>lower</code> is nonzero,
+the size of the dominant diagonal entry equals <code class="reqn">1-(n-1)*(lower + eps.close)</code>. In case <code>lower</code> is zero, the size of the dominant diagonal
+entry equals <code class="reqn">1-eps.close</code>.
+</p>
+</li></ol>
+
+</td></tr>
+<tr><td><code id="critical.value_+3A_m1">M1</code></td>
+<td>
+<p>This input is used in Algorithm 1 or 2, respectively. A positive integer 
+(should be chosen large, e.g., 500; but the feasibility depends on the dimension of <code>X</code>, etc). 
+Corresponds to <code class="reqn">M_1</code> in the description of 
+Algorithm 1 and 2 in 
+Pötscher and Preinerstorfer (2021). M1 must not exceed Mp.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_m2">M2</code></td>
+<td>
+<p>This input is used in Algorithm 1 or 2, respectively.
+A positive integer. Corresponds to <code class="reqn">M_2</code> in the description of 
+Algorithm 1 and 2 in 
+Pötscher and Preinerstorfer (2021). M2 must not exceed M1.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_n0">N0</code></td>
+<td>
+<p>This input is needed in Algorithm 2.
+Only used in case <code class="reqn">q &gt; 1</code> (i.e., when Algorithm 2 is used). A positive integer. 
+Corresponds to <code class="reqn">N_0</code> in the description of Algorithm 2 in 
+Pötscher and Preinerstorfer (2021).</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_n1">N1</code></td>
+<td>
+<p>This input is needed in Algorithm 2.
+Only used in case <code class="reqn">q &gt; 1</code> (i.e., when Algorithm 2 is used). A positive integer. 
+Corresponds to <code class="reqn">N_1</code> in the description of Algorithm 2 in 
+Pötscher and Preinerstorfer (2021). N1 should be greater than 
+N0.</p>
+</td></tr>     
+<tr><td><code id="critical.value_+3A_n2">N2</code></td>
+<td>
+<p>This input is needed in Algorithm 2.
+Only used in case <code class="reqn">q &gt; 1</code> (i.e., when Algorithm 2 is used). A positive integer. 
+Corresponds to <code class="reqn">N_2</code> in the description of Algorithm 2 in 
+Pötscher and Preinerstorfer (2021). N2 should be greater than
+N1.</p>
+</td></tr> 
+<tr><td><code id="critical.value_+3A_tol">tol</code></td>
+<td>
+<p>This input is used in Algorithm 1 or 2, respectively.
+(Small) positive real number. Tolerance parameter used in checking invertibility of the 
+covariance matrix in the test statistic. Default is 1e-08.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_control.1">control.1</code></td>
+<td>
+<p>This input is used in Algorithm 1 or 2, respectively.
+Control parameters passed to the <code><a href="stats.html#topic+constrOptim">constrOptim</a></code> function in 
+Stage 1 of Algorithm 1 or 2, respectively. Default is <code>control.1 = list("reltol" = 1e-02, 
+"maxit" = dim(X)[1]*20)</code>.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_control.2">control.2</code></td>
+<td>
+<p>This input is used in Algorithm 1 or 2, respectively.
+Control parameters passed to the <code><a href="stats.html#topic+constrOptim">constrOptim</a></code> function in 
+Stage 2  of Algorithm 1 or 2, respectively. Default is <code>control.2 = list("reltol" = 1e-03, 
+"maxit" = dim(X)[1]*30)</code>.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_cores">cores</code></td>
+<td>
+<p>The number of CPU cores used in the (parallelized)
+computations. Default is 1. Parallelized computation is enabled only
+if the compiler used to build <span class="pkg">hrt</span> supports OpenMP.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_lower">lower</code></td>
+<td>
+<p>Number in <code class="reqn">[0, n^{-1})</code> (note that the diagonal of <code class="reqn">\Sigma</code> is normalized
+to sum up to <code class="reqn">1</code>; if lower &gt; 0, then lower corresponds to what is denoted <code class="reqn">\tau_*</code> in 
+Pötscher and Preinerstorfer (2021)).
+<code>lower</code> specifies a lower bound on each diagonal entry of the (normalized) covariance matrix
+in the covariance model for which the user wants to obtain a critical value that achieves size control.
+If this lower bound is nonzero (which is the non-standard choice), then the size is only computed over all covariance matrices,
+which are restricted such that their minimal diagonal entry is not smaller than <code>lower</code>. 
+The relevant optimization problems in Algorithm 1 and 2 are then carried out only over this
+restricted set of covariance matrices. The size will then in general depend on <code>lower</code>.
+See the relevant discussions concerning restricted heteroskedastic covariance models in 
+Pötscher and Preinerstorfer (2021). Default is <code class="reqn">0</code>, which is the 
+recommended choice, unless there are strong reasons implying a specific lower bound on 
+the variance in a given application.
+</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_eps.close">eps.close</code></td>
+<td>
+<p>(Small) positive real number. This determines the size of the dominant entry in the choice of the
+initial values as discussed in the description of the input <code>Mp</code> above.
+Default is 1e-4.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_lim">lim</code></td>
+<td>
+<p>This input is needed in Algorithm 1. Only used in case <code class="reqn">q = 1</code> (i.e., when Algorithm 1 is used).
+Input parameter for the function <code>davies</code>. Default is 30000.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_acc">acc</code></td>
+<td>
+<p>This input is needed in Algorithm 1. Only used in case <code class="reqn">q = 1</code> (i.e., when Algorithm 1 is used).
+Input parameter for the function <code>davies</code>. Default is 1e-3.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_size.tol">size.tol</code></td>
+<td>
+<p>(Small) positive real number. <code class="reqn">\epsilon</code> in Algorithm 3. Default is 1e-3.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_maxit">maxit</code></td>
+<td>
+<p>Maximum number of iterations in the while loop of Algorithm 3. Default is 25.</p>
+</td></tr>
+<tr><td><code id="critical.value_+3A_as.tol">as.tol</code></td>
+<td>
+<p>(Small) positive real number. Tolerance parameter used in checking rank 
+conditions for verifying Assumptions 1, 2, and for checking a non-constancy condition
+on the test statistic in case <code>hcmethod</code> is not <code class="reqn">-1</code> and <code>restr.cov</code> is
+TRUE. <code>as.tol</code> is also used in the rank computations required for
+computing lower bounds for size-controlling critical values. 
+Furthermore, <code>as.tol</code> is used in checking the sufficient conditions
+for existence of a size-controlling critical value provided in Pötscher 
+and Preinerstorfer(2021). Default is 1e-08.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>For details see the relevant sections in Pötscher 
+and Preinerstorfer 
+(2021), in particular the description of Algorithms 1 and 2 in the Appendix.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output of <code>critical.value</code> is the following:
+</p>
+<table>
+<tr><td><code>critical.value</code></td>
+<td>
+<p>The critical value obtained by Algorithm 3.</p>
+</td></tr>
+<tr><td><code>approximate.size</code></td>
+<td>
+<p>The approximate size of the test based on the 
+returned critical value.</p>
+</td></tr>
+<tr><td><code>iter</code></td>
+<td>
+<p>The number of iterations performed. If <code>iter</code> is smaller than <code>maxit</code>, 
+then the algorithm determined because the required level of accuracy was achieved.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Pötscher, B. M. and Preinerstorfer, D. (2021). Valid Heteroskedasticity Robust Testing. &lt;arXiv:2104.12597&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>davies</code>, <code><a href="stats.html#topic+constrOptim">constrOptim</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+#critical value for the classical (uncorrected) F-test in a location model
+#with unrestricted heteroskedasticity
+
+#it is known that (in this very special case) the conventional critical value 
+#C &lt;- qt(.975, df = 9)^2
+#is size-controlling (thus the resulting size should be 5% (approximately))
+
+R &lt;- matrix(1, nrow = 1)
+X &lt;- matrix(rep(1, length = 10), nrow = 10, ncol = 1)
+hcmethod &lt;- -1
+restr.cov &lt;- FALSE
+Mp &lt;- 1000
+M1 &lt;- 5
+M2 &lt;- 1
+
+#here, the parameters are chosen such that the run-time is low
+#to guarantee a high accuracy level in the computation, 
+#Mp, M1 and M2 should be chosen much higher
+
+critical.value(alpha = .05, R, X, hcmethod, restr.cov, Mp, M1, M2)
+</code></pre>
+
+<hr>
+<h2 id='hrt-package'>
+Heteroskedasticity Robust Testing
+</h2><span id='topic+hrt-package'></span><span id='topic+hrt'></span>
+
+<h3>Description</h3>
+
+<p>The package <span class="pkg">hrt</span> provides three functions in the context of testing affine restrictions on 
+the regression coefficient vector in linear models with heteroskedastic (but independent) errors.
+The methods implemented in <span class="pkg">hrt</span> are based on the article 
+Pötscher and Preinerstorfer (2021).
+The package can be used to compute various heteroskedasticity robust 
+test statistics; to numerically determine size-controlling critical values 
+when the error vector is heteroskedastic and Gaussian (or, more generally, elliptically symmetric);
+and to compute the size of a test that is 
+obtained from a heteroskedasticity robust test statistic and a user-supplied critical value.
+</p>
+
+
+<h3>Details</h3>
+
+<p><span class="pkg">hrt</span> provides three functions: 
+</p>
+
+<ol>
+<li><p> The function <code>test.stat</code> can be used to evaluate the
+test statistics <code class="reqn">T_{uc}</code>, <code class="reqn">T_{Het}</code> (with HC0-HC4 weights), 
+<code class="reqn">\tilde{T}_{uc}</code>, or <code class="reqn">\tilde{T}_{Het}</code> (with HC0R-HC4R weights), as defined in 
+Pötscher and Preinerstorfer (2021).
+</p>
+</li>
+<li><p> The function <code>critical.value</code> provides an implementation of 
+Algorithm 3 in Pötscher and Preinerstorfer (2021), based 
+on the auxiliary algorithm <code class="reqn">\mathsf{A}</code> equal to Algorithm 1 (if <code class="reqn">q = 1</code>) or Algorithm 2 
+(if <code class="reqn">q &gt; 1</code>) in the same reference. This function can be 
+used to determine size-controlling critical values for the test statistics 
+<code class="reqn">T_{uc}</code>, <code class="reqn">T_{Het}</code> (with HC0-HC4 weights), <code class="reqn">\tilde{T}_{uc}</code>, or 
+<code class="reqn">\tilde{T}_{Het}</code> (with HC0R-HC4R weights), whenever such critical values 
+exist (which is checked numerically when the algorithm is applied).
+</p>
+</li>
+<li><p> The function <code>size</code> provides an implementation of Algorithm 1 or 2, 
+respectively, in Pötscher and Preinerstorfer 
+(2021), depending on whether <code class="reqn">q = 1</code> or <code class="reqn">q &gt; 1</code>. Given a user-supplied 
+critical value, the respective algorithm can be used to determine 
+the size of a test based on one of the test statistics <code class="reqn">T_{uc}</code>, 
+<code class="reqn">T_{Het}</code> (with HC0-HC4 weights), <code class="reqn">\tilde{T}_{uc}</code>, or 
+<code class="reqn">\tilde{T}_{Het}</code> (with HC0R-HC4R weights).
+</p>
+<p>We refer the user to the description of the three functions below, 
+and to Pötscher and Preinerstorfer (2021) for details 
+concerning the framework, the test statistics, the 
+algorithms, and the underlying theoretical results.
+</p>
+</li></ol>
+
+
+
+<h3>References</h3>
+
+<p>Pötscher, B. M. and Preinerstorfer, D. (2021). Valid Heteroskedasticity Robust Testing. &lt;arXiv:2104.12597&gt;
+</p>
+
+<hr>
+<h2 id='size'>Computing the Size of Heteroskedasticity Robust Tests</h2><span id='topic+size'></span>
+
+<h3>Description</h3>
+
+<p>This function provides an implementation of Algorithm 1 (if <code class="reqn">q = 1</code>)  or 2 (if <code class="reqn">q &gt; 1</code>), respectively, in Pötscher and Preinerstorfer 
+(2021). Which of the two algorithms is applied is automatically determined as a function of <code class="reqn">q</code>. 
+</p>
+<p>The user is referred to the just-mentioned article for definitions, a detailed description of the problem solved
+the algorithms, and for a detailed description of the algorithms themselves.
+</p>
+<p>Algorithm 1 is based on the function <code>davies</code> from the package <span class="pkg">CompQuadForm</span>. The parameters
+<code>lim</code> and <code>acc</code> for <code>davies</code> can be supplemented by the user.
+Algorithms 1 and 2 are implemented using the function <code><a href="stats.html#topic+constrOptim">constrOptim</a></code> from <span class="pkg">stats</span> in Stages 1 and 2; this function
+is used with default parameters, but control parameters can be supplied by the user.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>size(C, R, X, hcmethod, restr.cov, Mp, M1, M2, 
+N0 = NULL, N1 = NULL, N2 = NULL, tol = 1e-08, 
+control.1 = list("reltol" = 1e-02, "maxit" = dim(X)[1]*20),
+control.2 = list("reltol" = 1e-03, "maxit" = dim(X)[1]*30),
+cores = 1, lower = 0, eps.close = .0001, lim = 30000, acc = 0.001, 
+levelCl = 0, LBcheck = FALSE, as.tol = 1e-08)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="size_+3A_c">C</code></td>
+<td>
+<p>Critical value. A positive real number (for negative critical values
+the size of the test equals <code class="reqn">1</code>).</p>
+</td></tr>
+<tr><td><code id="size_+3A_r">R</code></td>
+<td>
+<p>The restriction matrix. <code>size</code> computes the size of a test 
+for the hypothesis <code class="reqn">R \beta = r</code>. <code>R</code> needs to be of
+full row rank, and needs to have the same number of columns as <code>X</code>.</p>
+</td></tr>
+<tr><td><code id="size_+3A_x">X</code></td>
+<td>
+<p>The design matrix <code>X</code> needs to be of full column rank. 
+The number of columns of <code>X</code> must be smaller than the number of rows of 
+<code>X</code>.</p>
+</td></tr>
+<tr><td><code id="size_+3A_hcmethod">hcmethod</code></td>
+<td>
+<p>Integer in [-1, 4]. Determines the method applied in the construction of the covariance estimator
+used in the test statistic. The value -1 corresponds to the unadjusted (i.e., classical) F statistic without df adjustment; the value 0 
+corresponds to the HC0 estimator; ...; the value 4 corresponds to the HC4 estimator. Note that in case <code>restr.cov</code>
+is TRUE the null-restricted versions of the covariance estimators are computed. Cf. Pötscher 
+and Preinerstorfer (2021) and the references there for details.</p>
+</td></tr>
+<tr><td><code id="size_+3A_restr.cov">restr.cov</code></td>
+<td>
+<p>TRUE or FALSE. Covariance matrix estimator based on null-restricted (TRUE) or unrestricted (FALSE) residuals.</p>
+</td></tr>
+<tr><td><code id="size_+3A_mp">Mp</code></td>
+<td>
+<p>A positive integer (should be chosen large, e.g., 50000; but the feasibility depends on the dimension of <code>X</code>, etc). 
+<code>Mp</code> determines <code class="reqn">M_0</code> in Algorithm 1 or 2, respectively, that is, 
+the number of initial values chosen in Stage 0 of that algorithm. The way initial values  
+(i.e., the sets of variance covariance matrices <code class="reqn">\Sigma_j</code> in Stage 0 of the algorithm; 
+the diagonal entries of each <code class="reqn">\Sigma_j</code> sum up to 1) are chosen is as follows:
+</p>
+
+<ol>
+<li><p> If <code class="reqn">q = 1</code> and <code class="reqn">lower = 0</code>, one of the initial values <code class="reqn">\Sigma_j</code> is a matrix which maximizes the expectation of the quadratic form <code class="reqn">y \mapsto y'\Sigma^{1/2}
+A_C \Sigma^{1/2}y</code> under an n-variate standard normal distribution. Here, <code class="reqn">A_C</code> is a matrix that is defined Pötscher and Preinerstorfer (2021).
+If diagonal entries of this maximizer are 0, then they are replaced by the value of <code>eps.close</code> (and the other values are adjusted
+so that the diagonal sums up to 1).
+</p>
+</li>
+<li><p> One starting value <code class="reqn">\Sigma_j</code> is a diagonal matrix with constant diagonal entries.
+</p>
+</li>
+<li><p> If <code>lower</code> is zero, then (i) <code class="reqn">\lceil Mp/4 \rceil - 1</code> covariance matrices <code class="reqn">\Sigma_j</code> are drawn by sampling their diagonals <code class="reqn">\tau_1^2, ..., \tau_n^2</code> from a uniform distribution 
+on the unit simplex in <code class="reqn">R^n</code>; and (ii)  the remaining <code class="reqn">M_p - (\lceil Mp/4 \rceil - 1)</code> covariance matrices <code class="reqn">\Sigma_j</code> are each drawn by first sampling a vector <code class="reqn">(t_1, ..., t_n)'</code> from a uniform distribution 
+on the unit simplex in <code class="reqn">R^n</code>, and by then obtaining the diagonal <code class="reqn">\tau_1^2, ..., \tau_n^2</code> of <code class="reqn">\Sigma_j</code> via <code class="reqn">(t_1^2, ..., t_n^2)/\sum_{i = 1}^n t_i^2</code>. If <code>lower</code> is nonzero,
+then the initial values are drawn analogously, but from a uniform distribution on the subset of the unit simplex in <code class="reqn">R^n</code> corresponding to the restriction imposed
+by the lower bound <code>lower</code>.
+</p>
+</li>
+<li> <p><code class="reqn">n</code> starting values equal to covariance matrices with a single dominant diagonal entry and all other diagonal entries constant. The size of the dominant
+diagonal entry is regulated via the input parameters <code>eps.close</code> and <code>lower</code>. In case <code>lower</code> is nonzero,
+the size of the dominant diagonal entry equals <code class="reqn">1-(n-1)*(lower+eps.close)</code>. In case <code>lower</code> is zero, the size of the dominant diagonal
+entry equals <code class="reqn">1-eps.close</code>.
+</p>
+</li>
+<li><p> If <code>levelCl</code> is nonzero (see the description of <code>levelCl</code> below for details concerning this input), then
+one further initial value may be obtained by: (i) checking whether <code>C</code> exceeds 5 times the critical value <code class="reqn">C_H</code>, say,
+for which the rejection probability under homoskedasticity equals <code class="reqn">1-levelCl</code>; and (ii) if this is the case, running the
+function <code>size</code> (with the same input parameters, but with <code>levelCl</code> set to <code class="reqn">0</code> and <code>M2</code> set to <code class="reqn">1</code>) on the critical value <code class="reqn">C_H</code>,
+and then using the output <code>second.stage.parameter</code> as a further initial value.
+</p>
+</li></ol>
+
+</td></tr>
+<tr><td><code id="size_+3A_m1">M1</code></td>
+<td>
+<p>A positive integer (should be chosen large, e.g., 500; but the feasibility depends on the dimension of <code>X</code>, etc). Corresponds to <code class="reqn">M_1</code> in the description of 
+Algorithm 1 and 2 in 
+Pötscher and Preinerstorfer (2021). M1 must not exceed Mp.</p>
+</td></tr>
+<tr><td><code id="size_+3A_m2">M2</code></td>
+<td>
+<p>A positive integer. Corresponds to <code class="reqn">M_2</code> in the description of 
+Algorithm 1 and 2 in 
+Pötscher and Preinerstorfer (2021). M2 must not exceed M1.</p>
+</td></tr>
+<tr><td><code id="size_+3A_n0">N0</code></td>
+<td>
+<p>Only used in case <code class="reqn">q &gt; 1</code> (i.e., when Algorithm 2 is used). A positive integer. 
+Corresponds to <code class="reqn">N_0</code> in the description of Algorithm 2 in 
+Pötscher and Preinerstorfer (2021).</p>
+</td></tr>
+<tr><td><code id="size_+3A_n1">N1</code></td>
+<td>
+<p>Only used in case <code class="reqn">q &gt; 1</code> (i.e., when Algorithm 2 is used). A positive integer. 
+Corresponds to <code class="reqn">N_1</code> in the description of Algorithm 2 in 
+Pötscher and Preinerstorfer (2021). N1 should be greater than 
+N0.</p>
+</td></tr>     
+<tr><td><code id="size_+3A_n2">N2</code></td>
+<td>
+<p>Only used in case <code class="reqn">q &gt; 1</code> (i.e., when Algorithm 2 is used). A positive integer. 
+Corresponds to <code class="reqn">N_2</code> in the description of Algorithm 2 in 
+Pötscher and Preinerstorfer (2021). N2 should be greater than
+N1.</p>
+</td></tr> 
+<tr><td><code id="size_+3A_tol">tol</code></td>
+<td>
+<p>(Small) positive real number. Tolerance parameter used in checking invertibility of the 
+covariance matrix in the test statistic. Default is 1e-08.</p>
+</td></tr>
+<tr><td><code id="size_+3A_control.1">control.1</code></td>
+<td>
+<p>Control parameters passed to the <code><a href="stats.html#topic+constrOptim">constrOptim</a></code>  function in 
+Stage 1 of Algorithm 1 or 2, respectively. Default is <code>control.1 = list("reltol" = 1e-02, 
+"maxit" = dim(X)[1]*20)</code>.</p>
+</td></tr>
+<tr><td><code id="size_+3A_control.2">control.2</code></td>
+<td>
+<p>Control parameters passed to the <code><a href="stats.html#topic+constrOptim">constrOptim</a></code>  function in 
+Stage 2 of Algorithm 1 or 2, respectively. Default is <code>control.2 = list("reltol" = 1e-03, 
+"maxit" = dim(X)[1]*30)</code>.</p>
+</td></tr>
+<tr><td><code id="size_+3A_cores">cores</code></td>
+<td>
+<p>The number of CPU cores used in the (parallelized)
+computations. Default is 1. Parallelized computation is enabled only
+if the compiler used to build <span class="pkg">hrt</span> supports OpenMP.</p>
+</td></tr>
+<tr><td><code id="size_+3A_lower">lower</code></td>
+<td>
+<p>Number in <code class="reqn">[0, n^{-1})</code> (note that the diagonal of <code class="reqn">\Sigma</code> is normalized
+to sum up to <code class="reqn">1</code>; if lower &gt; 0, then lower corresponds to what is denoted <code class="reqn">\tau_*</code> in 
+Pötscher and Preinerstorfer (2021)).
+<code>lower</code> specifies a lower bound on each diagonal entry of the (normalized) covariance matrix
+in the covariance model for which the user wants to compute the size.
+If this lower bound is nonzero, then the size is only computed over all covariance matrices,
+which are restricted such that their minimal diagonal entry is not smaller than <code>lower</code>. 
+The relevant optimization problems in Algorithm 1 and 2 are then carried out only over this
+restricted set of covariance matrices. The size will then in general depend on <code>lower</code>.
+See the relevant discussions concerning restricted heteroskedastic covariance models in 
+Pötscher and Preinerstorfer (2021). Default is <code class="reqn">0</code>, which is the 
+recommended choice, unless there are strong reasons implying a specific lower bound on 
+the variance in a given application.
+</p>
+</td></tr>
+<tr><td><code id="size_+3A_eps.close">eps.close</code></td>
+<td>
+<p>(Small) positive real number. This determines the size of the dominant entry in the choice of the
+initial values as discussed in the description of the input <code>Mp</code> above.
+Default is 1e-4.</p>
+</td></tr>
+<tr><td><code id="size_+3A_lim">lim</code></td>
+<td>
+<p>This input is needed in Algorithm 1. Only used in case <code class="reqn">q = 1</code> (i.e., when Algorithm 1 is used).
+Input parameter for the function <code>davies</code>. Default is 30000.</p>
+</td></tr>
+<tr><td><code id="size_+3A_acc">acc</code></td>
+<td>
+<p>This input is needed in Algorithm 1. Only used in case <code class="reqn">q = 1</code> (i.e., when Algorithm 1 is used).
+Input parameter for the function <code>davies</code>. Default is 1e-3.</p>
+</td></tr>
+<tr><td><code id="size_+3A_levelcl">levelCl</code></td>
+<td>
+<p>Number in <code class="reqn">[0, 1)</code>. This enters via the choice of the initial values as discussed
+in the input <code>Mp</code> above. <code>levelCl</code> should be used in case <code>C</code>
+is unusually large. In this case, the additional set of starting values
+provided may help to increase the accuracy of the size computation. Default is 0.</p>
+</td></tr>
+<tr><td><code id="size_+3A_lbcheck">LBcheck</code></td>
+<td>
+<p>Either FALSE (default) or TRUE. If TRUE, then <code>C</code> is compared
+to the theoretical lower bounds on size-controlling critical values in 
+Pötscher and Preinerstorfer (2021). If the supplemented <code>C</code>
+is smaller than the respective lower bound, theoretical results imply that the
+size equals 1 and the function <code>size</code> is halted.</p>
+</td></tr>
+<tr><td><code id="size_+3A_as.tol">as.tol</code></td>
+<td>
+<p>(Small) positive real number. Tolerance parameter used in checking rank 
+conditions for verifying Assumptions 1, 2, and for checking a non-constancy condition
+on the test statistic in case <code>hcmethod</code> is not <code class="reqn">-1</code> and <code>restr.cov</code> is
+TRUE. Furthermore, <code>as.tol</code> is used in the rank computations required for
+computing lower bounds for size-controlling critical values (in case <code>LBcheck</code> is
+TRUE or <code>levelCl</code> is nonzero). Default is 1e-08.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>For details see the relevant sections in Pötscher 
+and Preinerstorfer 
+(2021), in particular the description of Algorithms 1 and 2 in the Appendix.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The output of <code>size</code> is the following:
+</p>
+<table>
+<tr><td><code>starting.parameters</code></td>
+<td>
+<p>The rows of this matrix are the
+initial values (diagonals of covariance matrices) that were used in Stage 1 of the algorithm, and which were 
+chosen from the pool of initial values in Stage 0.</p>
+</td></tr>
+<tr><td><code>starting.rejection.probs</code></td>
+<td>
+<p>The null-rejection
+probabilities corresponding to the initial values used in Stage 1.</p>
+</td></tr>
+<tr><td><code>first.stage.parameters</code></td>
+<td>
+<p>The rows of this matrix are the 
+parameters (diagonals of covariance matrices) that were obtained in Stage 1 of the algorithm.</p>
+</td></tr>
+<tr><td><code>first.stage.rejection.probs</code></td>
+<td>
+<p>The
+null-rejection
+probabilities corresponding to the <code>first.stage.parameters</code>.</p>
+</td></tr> 
+<tr><td><code>second.stage.parameters</code></td>
+<td>
+<p>The rows of this matrix are the 
+parameters (diagonals of covariance matrices) that were obtained in Stage 2 of the algorithm.</p>
+</td></tr>
+<tr><td><code>second.stage.rejection.probs</code></td>
+<td>
+<p>The null-rejection probabilities
+corresponding to the <code>second.stage.parameters</code>.</p>
+</td></tr>
+<tr><td><code>convergence</code></td>
+<td>
+<p>Convergence codes returned from <code><a href="stats.html#topic+constrOptim">constrOptim</a></code>
+in Stage 2 of the algorithm for each initial value.</p>
+</td></tr>
+<tr><td><code>size</code></td>
+<td>
+<p>The size computed by the algorithm, i.e., the maximum of the
+<code>second.stage.rejection.probs</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Pötscher, B. M. and Preinerstorfer, D. (2021). Valid Heteroskedasticity Robust Testing. &lt;arXiv:2104.12597&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>davies</code>, <code><a href="stats.html#topic+constrOptim">constrOptim</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+#size of the classical (uncorrected) F-test in a location model
+#with conventional t-critical value (5% level)
+
+#it is known that (in this very special case) the conventional critical value 
+#is size-controlling (i.e., the resulting size should be 5% (approximately))
+
+C &lt;- qt(.975, df = 9)^2
+R &lt;- matrix(1, nrow = 1)
+X &lt;- matrix(rep(1, length = 10), nrow = 10, ncol = 1)
+hcmethod &lt;- -1
+restr.cov &lt;- FALSE
+Mp &lt;- 100
+M1 &lt;- 5
+M2 &lt;- 1
+
+#here, the parameters are chosen such that the run-time is low
+#to guarantee a high accuracy level in the computation, 
+#Mp, M1 and M2 should be chosen much higher
+
+size(C, R, X, hcmethod, restr.cov, Mp, M1, M2)
+</code></pre>
+
+<hr>
+<h2 id='test.stat'>Computation of the test statistics</h2><span id='topic+test.stat'></span>
+
+<h3>Description</h3>
+
+<p>This function computes the test statistics <code class="reqn">T_{uc}</code>, <code class="reqn">T_{Het}</code> 
+(with HC0-HC4 weights), <code class="reqn">\tilde{T}_{uc}</code>, or <code class="reqn">\tilde{T}_{Het}</code> 
+(with HC0R-HC4R weights) as defined in 
+Pötscher and Preinerstorfer (2021).</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>test.stat(y, R, r, X, hcmethod, restr.cov, tol = 1e-08, cores = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="test.stat_+3A_y">y</code></td>
+<td>
+<p>Either an observation vector, or a matrix the columns of which are
+observation vectors. The
+number of rows of an observation vector must coincide with the number of rows
+of the design matrix <code>X</code>.</p>
+</td></tr>
+<tr><td><code id="test.stat_+3A_r">R</code></td>
+<td>
+<p>The restriction matrix. <code>test.stat</code> computes a test 
+statistic for the hypothesis <code class="reqn">R \beta = r</code>. <code>R</code> needs to be of
+full row rank, and needs to have the same number of columns as <code>X</code>.</p>
+</td></tr>
+<tr><td><code id="test.stat_+3A_r">r</code></td>
+<td>
+<p>The restriction vector. <code>test.stat</code> computes a test 
+statistic for the hypothesis <code class="reqn">R \beta = r</code>. <code>r</code> needs to be a
+vector with the same number of coordinates as the number of rows of <code>R</code>.</p>
+</td></tr>
+<tr><td><code id="test.stat_+3A_x">X</code></td>
+<td>
+<p>The design matrix <code>X</code> needs to be of full column rank. 
+The number of columns of <code>X</code> must be smaller than the number of rows of 
+<code>X</code>.</p>
+</td></tr>
+<tr><td><code id="test.stat_+3A_hcmethod">hcmethod</code></td>
+<td>
+<p>Integer in [-1, 4]. Determines the method applied in the construction of the covariance estimator
+used in the test statistic. The value -1 corresponds to unadjusted (i.e., classical) F statistic without df adjustment; the value 0 
+corresponds to the HC0 estimator; ...; the value 4 corresponds to the HC4 estimator. Note that in case <code>restr.cov</code>
+is TRUE the null-restricted versions of the covariance estimators are computed. Cf. Pötscher 
+and Preinerstorfer (2021) and the references there for details.</p>
+</td></tr>
+<tr><td><code id="test.stat_+3A_restr.cov">restr.cov</code></td>
+<td>
+<p>TRUE or FALSE. Covariance matrix estimator based on null-restricted (TRUE) or unrestricted (FALSE) residuals.</p>
+</td></tr>
+<tr><td><code id="test.stat_+3A_tol">tol</code></td>
+<td>
+<p>(Small) positive real number. Tolerance parameter used in checking invertibility of the covariance matrix in the test statistic. 
+Default is 1e-08.</p>
+</td></tr>
+<tr><td><code id="test.stat_+3A_cores">cores</code></td>
+<td>
+<p>The number of CPU cores used in the (parallelized)
+computations. Default is 1. Parallelized computation is enabled only
+if the compiler used to build <span class="pkg">hrt</span> supports OpenMP.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>For details concerning the test statistics please
+see the relevant sections in Pötscher and Preinerstorfer (2021)
+.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns a list consisting of:
+</p>
+<table>
+<tr><td><code>test.val</code></td>
+<td>
+<p>Either a vector the entries of which correspond to the values 
+of the
+test statistic evaluated at each column of the input matrix <code>y</code>, or, 
+if <code>y</code> is a vector, the test statistic evaluated at <code>y</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Pötscher, B. M. and Preinerstorfer, D. (2021). Valid Heteroskedasticity Robust Testing. &lt;arXiv:2104.12597&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 20
+y &lt;- rnorm(n)
+X &lt;- cbind(rep(1, length = n), rnorm(n))
+R &lt;- matrix(1, nrow = 1, ncol = 2)
+r &lt;- 0
+hcmethod &lt;- 4
+restr.cov &lt;- FALSE
+test.stat(y, R, r, X, hcmethod, restr.cov)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

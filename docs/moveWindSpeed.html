@@ -1,0 +1,726 @@
+<!DOCTYPE html><html><head><title>Help for package moveWindSpeed</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {moveWindSpeed}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#estimatePhi'><p>estimatePhi</p></a></li>
+<li><a href='#findGoodPoints'><p>Function to find good points for estimation of phi</p></a></li>
+<li><a href='#getDefaultIsThermallingFunction'><p>A function to generate an isThermallingFunction</p></a></li>
+<li><a href='#getIsFocalPointFunction'><p>A function to generate isFocalPoint functions</p></a></li>
+<li><a href='#getIsSamplingRegularFunction'><p>A function to generate functions used to check if a segment is regular</p></a></li>
+<li><a href='#getTrackSegments'><p>An helper function to extract trajectory segments for wind estimation from a track</p></a></li>
+<li><a href='#getWindEstimate'><p>Estimate wind speed from a sample of ground speeds</p></a></li>
+<li><a href='#getWindEstimates'><p>Generate wind estimates for a trajectories or data frame with wind speeds</p></a></li>
+<li><a href='#getWindowSizeLR'><p>Generate arguments for window size around focal point</p></a></li>
+<li><a href='#storks'><p>Example stork data.</p></a></li>
+<li><a href='#windEstimLogLik'><p>Estimate the log likelihood</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Estimate Wind Speeds from Bird Trajectories</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>0.2.4</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Estimating wind speed from trajectories of individually tracked birds using a maximum likelihood approach.</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.0.0), methods, move</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>testthat, knitr, rmarkdown, sf</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a> | <a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a> [expanded from: GPL]</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="https://gitlab.com/bartk/moveWindSpeed">https://gitlab.com/bartk/moveWindSpeed</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://gitlab.com/bartk/moveWindSpeed/-/issues">https://gitlab.com/bartk/moveWindSpeed/-/issues</a></td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.2.3</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>Rcpp</td>
+</tr>
+<tr>
+<td>LinkingTo:</td>
+<td>Rcpp</td>
+</tr>
+<tr>
+<td>VignetteBuilder:</td>
+<td>knitr</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-06-06 20:58:53 UTC; bart</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Bart Kranstauber [aut, cre],
+  Rolf Weinzierl [aut]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Bart Kranstauber &lt;b.kranstauber@uva.nl&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2023-06-07 08:20:02 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='estimatePhi'>estimatePhi</h2><span id='topic+estimatePhi'></span>
+
+<h3>Description</h3>
+
+<p>An function to estimate phi (the autocorrelation of speed) from data. This is done using iterative calls to the wind speed optimization on a selection of segments.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>estimatePhi(
+  data,
+  isThermallingFunction = getDefaultIsThermallingFunction(360, 4),
+  maxPointsToUseInEstimate = 20,
+  phiInitialEstimate = 0,
+  isGoodPoint = NULL,
+  returnPointsUsedInEstimate = F,
+  windowSize = 29,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="estimatePhi_+3A_data">data</code></td>
+<td>
+<p>An move object or stack.</p>
+</td></tr>
+<tr><td><code id="estimatePhi_+3A_isthermallingfunction">isThermallingFunction</code></td>
+<td>
+<p>The thermalling function to use.</p>
+</td></tr>
+<tr><td><code id="estimatePhi_+3A_maxpointstouseinestimate">maxPointsToUseInEstimate</code></td>
+<td>
+<p>Maximal number of desired windows for phi estimation</p>
+</td></tr>
+<tr><td><code id="estimatePhi_+3A_phiinitialestimate">phiInitialEstimate</code></td>
+<td>
+<p>Initial phi estimate</p>
+</td></tr>
+<tr><td><code id="estimatePhi_+3A_isgoodpoint">isGoodPoint</code></td>
+<td>
+<p>The points to use for phi estimation as logical or numeric, if NULL then findGoodPoints is used.</p>
+</td></tr>
+<tr><td><code id="estimatePhi_+3A_returnpointsusedinestimate">returnPointsUsedInEstimate</code></td>
+<td>
+<p>an logical value, if the segments used for phi estimation should also be returned.</p>
+</td></tr>
+<tr><td><code id="estimatePhi_+3A_windowsize">windowSize</code></td>
+<td>
+<p>An window size, odd number or the start and end of the window relative to the focal point</p>
+</td></tr>
+<tr><td><code id="estimatePhi_+3A_...">...</code></td>
+<td>
+<p>extra arguments for getWindSpeedEstimates</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a list with phi and the log likelihood and the number of locations used
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(storks)
+estimatePhi(
+  storks[[2]],
+  windowSize = 19,
+  isSamplingRegular = 1,
+  isThermallingFunction = getDefaultIsThermallingFunction(360, 4),
+  maxPointsToUseInEstimate = 10
+)
+</code></pre>
+
+<hr>
+<h2 id='findGoodPoints'>Function to find good points for estimation of phi</h2><span id='topic+findGoodPoints'></span>
+
+<h3>Description</h3>
+
+<p>The function tries to find non overlapping windows for phi optimization.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>findGoodPoints(
+  data,
+  maxPointsToUseInEstimate,
+  phiInitialEstimate,
+  windowSize,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="findGoodPoints_+3A_data">data</code></td>
+<td>
+<p>An move object.</p>
+</td></tr>
+<tr><td><code id="findGoodPoints_+3A_maxpointstouseinestimate">maxPointsToUseInEstimate</code></td>
+<td>
+<p>The number of desired windows.</p>
+</td></tr>
+<tr><td><code id="findGoodPoints_+3A_phiinitialestimate">phiInitialEstimate</code></td>
+<td>
+<p>The initial value used for the autocorrelation when calculating the wind speed for finding suitable windows.</p>
+</td></tr>
+<tr><td><code id="findGoodPoints_+3A_windowsize">windowSize</code></td>
+<td>
+<p>An odd number providing the window size</p>
+</td></tr>
+<tr><td><code id="findGoodPoints_+3A_...">...</code></td>
+<td>
+<p>passed on to getWindEstimates</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a logical vector with the focal locations
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(storks)
+which(findGoodPoints( storks[[2]],
+windowSize = 29,  isSamplingRegular = 1,
+isThermallingFunction = getDefaultIsThermallingFunction(360, 4),  maxPointsToUseInEstimate = 10,
+phiInitialEstimate = 0  ))
+</code></pre>
+
+<hr>
+<h2 id='getDefaultIsThermallingFunction'>A function to generate an isThermallingFunction</h2><span id='topic+getDefaultIsThermallingFunction'></span>
+
+<h3>Description</h3>
+
+<p>A function to generate an isThermallingFunction
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getDefaultIsThermallingFunction(totalAngle = 360, minMeanSpeed = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getDefaultIsThermallingFunction_+3A_totalangle">totalAngle</code></td>
+<td>
+<p>the cumulative angle that is required to consider an trajectory thermalling</p>
+</td></tr>
+<tr><td><code id="getDefaultIsThermallingFunction_+3A_minmeanspeed">minMeanSpeed</code></td>
+<td>
+<p>the minimal air speed that is required to decide of a track is thermalling</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a function is returned that based on a series of headings returns a logical value to indicate is a track is thermalling or not
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>fun&lt;-getDefaultIsThermallingFunction(170)
+fun(1:160)
+fun(1:190, rep(2,190))
+fun&lt;-getDefaultIsThermallingFunction(170, 3)
+fun(1:190, rep(2,190))
+fun(1:190, rep(3.4,190))
+</code></pre>
+
+<hr>
+<h2 id='getIsFocalPointFunction'>A function to generate isFocalPoint functions</h2><span id='topic+getIsFocalPointFunction'></span>
+
+<h3>Description</h3>
+
+<p>A function to generate isFocalPoint functions
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getIsFocalPointFunction(isFocalPoint)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getIsFocalPointFunction_+3A_isfocalpoint">isFocalPoint</code></td>
+<td>
+<p>a function, a boolean array from which such a function can be built, or a list of indices</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a function which decides if wind estimation is performed for a point in the input data
+</p>
+
+<hr>
+<h2 id='getIsSamplingRegularFunction'>A function to generate functions used to check if a segment is regular</h2><span id='topic+getIsSamplingRegularFunction'></span>
+
+<h3>Description</h3>
+
+<p>A function to generate functions used to check if a segment is regular
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getIsSamplingRegularFunction(isSamplingRegular)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getIsSamplingRegularFunction_+3A_issamplingregular">isSamplingRegular</code></td>
+<td>
+<p>a function which decides if a sequence of timestamps is regular or the interval which is considered regular</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a function which decides if a sequence of timestamps is regular
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>fun&lt;-getIsSamplingRegularFunction(10)
+fun(Sys.time()+1:5)
+fun(Sys.time()+c(0,10,20,30))
+fun(Sys.time()+c(0,10,20,31))
+</code></pre>
+
+<hr>
+<h2 id='getTrackSegments'>An helper function to extract trajectory segments for wind estimation from a track</h2><span id='topic+getTrackSegments'></span>
+
+<h3>Description</h3>
+
+<p>An helper function to extract trajectory segments for wind estimation from a track
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getTrackSegments(
+  data,
+  timestamps,
+  windowSize = 29,
+  isFocalPoint = function(i, ts) {
+     TRUE
+ },
+  isSamplingRegular = 1,
+  focalSampleBefore = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getTrackSegments_+3A_data">data</code></td>
+<td>
+<p>A two column dataframe.</p>
+</td></tr>
+<tr><td><code id="getTrackSegments_+3A_timestamps">timestamps</code></td>
+<td>
+<p>A series of POSIXct timestamps as long as the data.</p>
+</td></tr>
+<tr><td><code id="getTrackSegments_+3A_windowsize">windowSize</code></td>
+<td>
+<p>The window size (odd number) or two numbers giving the start and end of a window around a focal point.</p>
+</td></tr>
+<tr><td><code id="getTrackSegments_+3A_isfocalpoint">isFocalPoint</code></td>
+<td>
+<p>an function taking location numbers and timestamps that is used to see if a location should be considered as an focal point. It can for example be used to speed up calculations by only considering every second location. An numeric value can also be provided then only these locations are considered</p>
+</td></tr>
+<tr><td><code id="getTrackSegments_+3A_issamplingregular">isSamplingRegular</code></td>
+<td>
+<p>Either an numeric or a function that is used to decide if a series of timestamps is regular. If numeric than it should correspond to the interval in seconds.</p>
+</td></tr>
+<tr><td><code id="getTrackSegments_+3A_focalsamplebefore">focalSampleBefore</code></td>
+<td>
+<p>An argument to be used if data is not the start of the location count.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of ground speeds
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>length(getTrackSegments(data.frame(1:40,1:40), Sys.time()+1:40))
+length(getTrackSegments(data.frame(1:40,1:40), Sys.time()+c(1:25,36:50), windowSize=11))
+str(getTrackSegments(data.frame(1:40,1:40), Sys.time()+1:40, windowSize=39))
+</code></pre>
+
+<hr>
+<h2 id='getWindEstimate'>Estimate wind speed from a sample of ground speeds</h2><span id='topic+getWindEstimate'></span><span id='topic+getWindEstimate+2Cmatrix+2Cnumeric-method'></span><span id='topic+getWindEstimate+2Cmatrix+2Cnumeric+2CANY-method'></span>
+
+<h3>Description</h3>
+
+<p>Estimate wind speed from a sample of ground speeds
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getWindEstimate(groundSpeeds, phi, windStart = c(0, 0))
+
+## S4 method for signature 'matrix,numeric'
+getWindEstimate(groundSpeeds, phi, windStart = c(0, 0))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getWindEstimate_+3A_groundspeeds">groundSpeeds</code></td>
+<td>
+<p>matrix with two columns representing the ground speeds.</p>
+</td></tr>
+<tr><td><code id="getWindEstimate_+3A_phi">phi</code></td>
+<td>
+<p>numeric of length one giving the auto correlation.</p>
+</td></tr>
+<tr><td><code id="getWindEstimate_+3A_windstart">windStart</code></td>
+<td>
+<p>numeric of length 2 giving the wind speed where to optimize from.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>an list with parameter estimates
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>s&lt;-seq(0,2*pi, .1)
+set.seed(34)
+getWindEstimate(cbind(4*cos(s)+3+rnorm(length(s)), 4*sin(s)+2+rnorm(length(s))),0)
+getWindEstimate(cbind(4*cos(s)+3+rnorm(length(s),sd=.2), 4*sin(s)+2+rnorm(length(s),sd=.2)),0)
+</code></pre>
+
+<hr>
+<h2 id='getWindEstimates'>Generate wind estimates for a trajectories or data frame with wind speeds</h2><span id='topic+getWindEstimates'></span><span id='topic+getWindEstimates+2CMoveStack+2Cmissing-method'></span><span id='topic+getWindEstimates+2CMove+2Cmissing-method'></span><span id='topic+getWindEstimates+2Cdata.frame+2CPOSIXct-method'></span><span id='topic+getWindEstimates+2Clist+2CANY-method'></span>
+
+<h3>Description</h3>
+
+<p>Generate wind estimates for a trajectories or data frame with wind speeds
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getWindEstimates(data, timestamps, ...)
+
+## S4 method for signature 'MoveStack,missing'
+getWindEstimates(data, timestamps, ...)
+
+## S4 method for signature 'Move,missing'
+getWindEstimates(data, timestamps, groundSpeedXY = NULL, ...)
+
+## S4 method for signature 'data.frame,POSIXct'
+getWindEstimates(
+  data,
+  timestamps,
+  windowSize = 29,
+  isFocalPoint = function(i, ts) {
+     TRUE
+ },
+  isSamplingRegular = 1,
+  focalSampleBefore = 0,
+  returnSegmentList = F,
+  referenceGroundSpeed = NULL,
+  ...
+)
+
+## S4 method for signature 'list,ANY'
+getWindEstimates(
+  data,
+  timestamps,
+  phi = 0,
+  isThermallingFunction = getDefaultIsThermallingFunction(360, 4),
+  columnNamesWind = c("estimationSuccessful", "residualVarAirspeed", "windX", "windY",
+    "windVarX", "windVarY", "windCovarXY", "windVarMax", "airX", "airY"),
+  referenceGroundSpeed = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getWindEstimates_+3A_data">data</code></td>
+<td>
+<p>Move object, MoveStack or data.frame containing wind speeds</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_timestamps">timestamps</code></td>
+<td>
+<p>timestamps of the speed observations</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_...">...</code></td>
+<td>
+<p>other possible arguments currently nothing else is implemented</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_groundspeedxy">groundSpeedXY</code></td>
+<td>
+<p>an character of length 2 containing column names from the move object that need to be used as the x and y component of the ground speed vector</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_windowsize">windowSize</code></td>
+<td>
+<p>a numeric vector of length 1 or 2, if length 1 it is the size of the focal window data will be assigned to the central location. If length 2 the window size is <code>sum(windowSize)+1)</code> and the first element is the number of location before the focal locations, the second is the number of locations after the focal location.</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_isfocalpoint">isFocalPoint</code></td>
+<td>
+<p>an function that based on location number and timestamps returns a logical vector if location should be included. Or a numeric/logical vector indicating the location numbers.</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_issamplingregular">isSamplingRegular</code></td>
+<td>
+<p>either a function that determines based on a vector of timestamps if the sampling interval is regular or a numeric value that corresponds to the time interval between observations in the dataset that is regular</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_focalsamplebefore">focalSampleBefore</code></td>
+<td>
+<p>The number of locations that occurred before the move object fed in the getWindEstimates function, used in case stacks are provided for example. This is most cases not useful for users.</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_returnsegmentlist">returnSegmentList</code></td>
+<td>
+<p>a logical value indicating if the list of segments to estimate wind over should be returned instead of the estimates</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_referencegroundspeed">referenceGroundSpeed</code></td>
+<td>
+<p>a number indicating which of the grounds speed vectors to take as a reference for air speed, by default the 0th/middle location of the window if that is specified by one number.</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_phi">phi</code></td>
+<td>
+<p>the auto correlation of air speed.</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_isthermallingfunction">isThermallingFunction</code></td>
+<td>
+<p>An function that based on a series of headings and speeds (wind corrected) decides if an segment should be considered thermalling.</p>
+</td></tr>
+<tr><td><code id="getWindEstimates_+3A_columnnameswind">columnNamesWind</code></td>
+<td>
+<p>The column names used for storing the data in the returned objected after it has been calculated.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a Move object, dataframe or a MoveStack depending on input
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("storks")
+# run example for reduced dataset
+windEst&lt;-getWindEstimates(storks[format(timestamps(storks),"%H")=="12",][[2:3]])
+# Use evolution status 2 to avoid using rgdal (set using sp)
+set_evolution_status(2L)
+windEst&lt;-spTransform(windEst, center=TRUE)
+plot(windEst)
+# only plot few arrows of estimates
+s&lt;-windEst$estimationSuccessful &amp; format(timestamps(windEst), "%S")=='00'
+# enlarge arrows 30 times
+arrows(coordinates(windEst)[s,1],coordinates(windEst)[s,2],
+   coordinates(windEst)[s,1]+ windEst$windX[s]*30,
+   coordinates(windEst)[s,2]+windEst$windY[s]*30)
+</code></pre>
+
+<hr>
+<h2 id='getWindowSizeLR'>Generate arguments for window size around focal point</h2><span id='topic+getWindowSizeLR'></span>
+
+<h3>Description</h3>
+
+<p>A function to translate an window size argument to a standardized argument.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getWindowSizeLR(windowSize)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getWindowSizeLR_+3A_windowsize">windowSize</code></td>
+<td>
+<p>a pair of positive integers determining the window size left and right of a focal point or an odd number determining the size of a symmetrical window</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>windowSize a pair of positive integers determining the window size left and right of a focal point
+</p>
+
+<hr>
+<h2 id='storks'>Example stork data.</h2><span id='topic+storks'></span>
+
+<h3>Description</h3>
+
+<p>A dataset containing location data of 6 juvenile storks (Ciconia ciconia) on the 18th of august when migration just started. On several occasion the birds use thermals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>storks
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A MoveStack consisting of 22333 locations
+</p>
+
+
+<h3>Source</h3>
+
+<p><a href="https://www.movebank.org/">https://www.movebank.org/</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("storks")
+</code></pre>
+
+<hr>
+<h2 id='windEstimLogLik'>Estimate the log likelihood</h2><span id='topic+windEstimLogLik'></span>
+
+<h3>Description</h3>
+
+<p>Estimate the log likelihood
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>windEstimLogLik(sigma, phi)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="windEstimLogLik_+3A_sigma">sigma</code></td>
+<td>
+<p>the residual variance in airspeed</p>
+</td></tr>
+<tr><td><code id="windEstimLogLik_+3A_phi">phi</code></td>
+<td>
+<p>the autocorrelation used in the calculations</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>the log likelihood
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>windEstimLogLik(c(1.3,.6,1.5,1.8),.3)
+windEstimLogLik(c(1.3,.6,1.5,1.8),.5)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

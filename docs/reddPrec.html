@@ -1,0 +1,411 @@
+<!DOCTYPE html><html><head><title>Help for package reddPrec</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {reddPrec}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#gapFilling'><p>Estimating new values in original missing values data series of daily precipitation</p></a></li>
+<li><a href='#gridPcp'><p>Gridded dataset creation</p></a></li>
+<li><a href='#qcPrec'><p>Quality Control of daily precipitation observations</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Reconstruction of Daily Data - Precipitation</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>2.0.1</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Applies quality control to daily precipitation observations; 
+    reconstructs the original series by estimating precipitation in missing values; and 
+    creates gridded datasets of daily precipitation.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a></td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>terra, stats, foreach, doParallel, reshape, qmap</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.2.3</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2024-01-19 12:10:39 UTC; rserrano</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Roberto Serrano-Notivoli
+    <a href="https://orcid.org/0000-0001-7663-1202"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut, cre]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Roberto Serrano-Notivoli &lt;roberto.serrano@unizar.es&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2024-01-19 12:50:03 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='gapFilling'>Estimating new values in original missing values data series of daily precipitation</h2><span id='topic+gapFilling'></span>
+
+<h3>Description</h3>
+
+<p>This function uses the neighboring observations to estimate new precipitation values in those days and locations where no records exist.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>gapFilling(
+  prec,
+  sts,
+  dates,
+  stmethod = NULL,
+  thres = NA,
+  neibs = 10,
+  coords,
+  crs,
+  coords_as_preds = TRUE,
+  window,
+  ncpu = 2
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gapFilling_+3A_prec">prec</code></td>
+<td>
+<p>matrix or data.frame containing the original (cleaned) precipitation data. Each column represents one station. The names of columns must coincide with the names of the stations.</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_sts">sts</code></td>
+<td>
+<p>matrix or data.frame. A column &quot;ID&quot; (unique ID of stations) is required. The rest of the columns (all of them) will act as predictors of the model.</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_dates">dates</code></td>
+<td>
+<p>vector of class &quot;Date&quot; with all days of observations (yyyy-mm-dd).</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_stmethod">stmethod</code></td>
+<td>
+<p>standardization method. 'quant' or 'ratio', see details.</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_thres">thres</code></td>
+<td>
+<p>numeric. Maximum radius (in km) where neighboring stations will be searched. NA value uses the whole spatial domain.</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_neibs">neibs</code></td>
+<td>
+<p>integer. Number of nearest neighbors to use.</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_coords">coords</code></td>
+<td>
+<p>vector of two character elements. Names of the fields in &quot;sts&quot; containing longitude and latitude.</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_crs">crs</code></td>
+<td>
+<p>character. Coordinates system in EPSG format (e.g.: &quot;EPSG:4326&quot;).</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_coords_as_preds">coords_as_preds</code></td>
+<td>
+<p>logical. If TRUE (default), &quot;coords&quot; are also taken as predictors.</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_window">window</code></td>
+<td>
+<p>odd integer. Length of data considered for standardization</p>
+</td></tr>
+<tr><td><code id="gapFilling_+3A_ncpu">ncpu</code></td>
+<td>
+<p>number of processor cores used to parallel computing.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>After the gap filling, &quot;stmethod&quot; allows for an standardization of the predictions based on the observations.
+It only works for daily data. For other timescales (monthly, annual) use &quot;stmethod=NULL&quot;.
+The &quot;window&quot; parameter is a daily-moving centered window from which data is collected for each year
+(i.e. a 15-day window on 16th January will take all predictions from 1st to 30th January of all years to standardize them
+with their corresponding observations. Only standardized prediction of 16th January is returned. Process is repeated for all days).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+set.seed(123)
+prec &lt;- round(matrix(rnorm(30*50, mean = 1.2, sd = 6), 30, 50), 1)
+prec[prec&lt;0] &lt;- 0
+prec &lt;- apply(prec, 2, FUN = function(x){x[sample(length(x),5)] &lt;- NA; x})
+colnames(prec) &lt;- paste0('sts_',1:50)
+sts &lt;- data.frame(ID = paste0('sts_',1:50), lon = rnorm(50,0,1), 
+                  lat = rnorm(50,40,1), dcoast = rnorm(50,200,50))
+filled &lt;- gapFilling(prec, sts, 
+                    dates = seq.Date(as.Date('2023-04-01'),
+                    as.Date('2023-04-30'),by='day'), 
+                    stmethod = "ratio", thres = NA, coords = c('lon','lat'),
+                    coords_as_preds = TRUE, crs = 'EPSG:4326', neibs = 10, 
+                    window = 11, ncpu = 2)
+str(filled)
+summary(filled)
+
+## End(Not run)
+
+</code></pre>
+
+<hr>
+<h2 id='gridPcp'>Gridded dataset creation</h2><span id='topic+gridPcp'></span>
+
+<h3>Description</h3>
+
+<p>This function creates a gridded precipitation dataset from a station-based dataset.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>gridPcp(
+  prec,
+  grid,
+  sts,
+  dates,
+  ncpu,
+  thres,
+  neibs,
+  coords,
+  crs,
+  coords_as_preds
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gridPcp_+3A_prec">prec</code></td>
+<td>
+<p>matrix or data.frame containing the original (cleaned) precipitation data. Each column represents one station. The names of columns must coincide with the names of the stations.</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_grid">grid</code></td>
+<td>
+<p>SpatRaster. Collection of rasters representing each one of the predictors.</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_sts">sts</code></td>
+<td>
+<p>matrix or data.frame. A column &quot;ID&quot; (unique ID of stations) is required. The rest of the columns (all of them) will act as predictors of the model.</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_dates">dates</code></td>
+<td>
+<p>vector of class &quot;Date&quot; with all days of observations (yyyy-mm-dd).</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_ncpu">ncpu</code></td>
+<td>
+<p>number of processor cores used to parallel computing.</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_thres">thres</code></td>
+<td>
+<p>numeric. Maximum radius (in km) where neighboring stations will be searched. NA value uses the whole spatial domain.</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_neibs">neibs</code></td>
+<td>
+<p>integer. Number of nearest neighbors to use.</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_coords">coords</code></td>
+<td>
+<p>vector of two character elements. Names of the fields in &quot;sts&quot; containing longitude and latitude.</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_crs">crs</code></td>
+<td>
+<p>character. Coordinates system in EPSG format (e.g.: &quot;EPSG:4326&quot;).</p>
+</td></tr>
+<tr><td><code id="gridPcp_+3A_coords_as_preds">coords_as_preds</code></td>
+<td>
+<p>logical. If TRUE (default), &quot;coords&quot; are also taken as predictors.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+alt &lt;- terra::rast(volcano, crs = 'EPSG:4326')
+terra::ext(alt) &lt;- c(-1,3,38,42)
+lon &lt;- terra::rast(cbind(terra::crds(alt),terra::crds(alt)[,1]),type='xyz',crs='EPSG:4326')
+lat &lt;- terra::rast(cbind(terra::crds(alt),terra::crds(alt)[,2]),type='xyz',crs='EPSG:4326')
+dcoast &lt;- terra::costDist(alt,target=min(terra::values(alt)))/1000
+grid &lt;- c(alt, lon, lat, dcoast)
+names(grid) &lt;- c('alt', 'lon', 'lat', 'dcoast')
+
+prec &lt;- round(matrix(rnorm(2*25, mean = 1.2, sd = 4), 2, 25), 1)+1
+prec[prec&lt;0] &lt;- 0
+colnames(prec) &lt;- paste0('sts_',1:25)
+sts &lt;- data.frame(ID = paste0('sts_',1:25), as.data.frame(terra::spatSample(grid, 25)))
+gridPcp(prec, grid, sts, 
+        dates = seq.Date(as.Date('2023-04-01'),as.Date('2023-04-02'),by='day'),
+        thres = NA, coords = c('lon','lat'),coords_as_preds = TRUE, 
+        crs = 'EPSG:4326', neibs = 10, ncpu = 2)
+
+r &lt;- terra::rast(c('./pred/20230401.tif','./err/20230401.tif'))
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='qcPrec'>Quality Control of daily precipitation observations</h2><span id='topic+qcPrec'></span>
+
+<h3>Description</h3>
+
+<p>This function apply several threshold-based criteria to filter original observations of daily precipitation.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>qcPrec(
+  prec,
+  sts,
+  crs,
+  coords,
+  coords_as_preds = TRUE,
+  neibs = 10,
+  thres = NA,
+  qc = "all",
+  qc3 = 10,
+  qc4 = c(0.99, 5),
+  qc5 = c(0.01, 0.1, 5),
+  ncpu = 1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="qcPrec_+3A_prec">prec</code></td>
+<td>
+<p>matrix or data.frame containing the original precipitation data. Each column represents one station. The names of columns have to be names of the stations.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_sts">sts</code></td>
+<td>
+<p>matrix or data.frame. A column &quot;ID&quot; (unique ID of stations) is required. The rest of the columns (all of them) will act as predictors of the model.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_crs">crs</code></td>
+<td>
+<p>character. Coordinates system in EPSG format (e.g.: &quot;EPSG:4326&quot;).</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_coords">coords</code></td>
+<td>
+<p>vector of two character elements. Names of the fields in &quot;sts&quot; containing longitude and latitude.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_coords_as_preds">coords_as_preds</code></td>
+<td>
+<p>logical. If TRUE (default), &quot;coords&quot; are also taken as predictors.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_neibs">neibs</code></td>
+<td>
+<p>integer. Number of nearest neighbors to use.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_thres">thres</code></td>
+<td>
+<p>numeric. Maximum radius (in km) where neighboring stations will be searched. NA value uses the whole spatial domain.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_qc">qc</code></td>
+<td>
+<p>vector of strings with the QC criteria to apply. Default is &quot;all&quot;. See details.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_qc3">qc3</code></td>
+<td>
+<p>numeric. Indicates the threshold (number of times higher or lower) from which a observation, in comparison with its estimate, should be deleted. Default is 10.</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_qc4">qc4</code></td>
+<td>
+<p>numeric vector of length 2. Thresholds of wet probability (0 to 1) and magnitude (in the units of input precipitation data) from which a observation of value zero, in comparison with its estimate, should be deleted. Default is c(0.99, 5).</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_qc5">qc5</code></td>
+<td>
+<p>numeric vector of length 2. Thresholds of dry probability (0 to 1) and magnitude (in the units of input precipitation data) from which a observation higher than a specific value (also in the original units), in comparison with its estimate, should be deleted. Default is c(0.01, 0.1, 5).</p>
+</td></tr>
+<tr><td><code id="qcPrec_+3A_ncpu">ncpu</code></td>
+<td>
+<p>number of processor cores used to parallel computing.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Parameter &quot;sts&quot; must have an &quot;ID&quot; field containing unique identifiers of the stations.
+</p>
+<p>&quot;qc&quot; can be &quot;all&quot; (all criteria are applied) or a vector of strings (e.g.: c(&quot;1&quot;,&quot;2&quot;,&quot;4&quot;)) indicating the QC criteria to apply to observations:
+&quot;1&quot; (suspect value): obs==0 &amp; all(neibs&gt;0);
+&quot;2&quot; (suspect zero): obs&gt;0 &amp; all(neibs==0);
+&quot;3&quot; (suspect outlier): obs is &quot;qc3&quot; times higher or lower than the estimate;
+&quot;4&quot; (suspect wet): obs==0 &amp; wet probability &gt; &quot;qc4[1]&quot; &amp; estimate &gt; &quot;qc4[2]&quot;;
+&quot;5&quot; (suspect dry): obs&gt;&quot;qc5[3]&quot; &amp; dry probability &lt; &quot;qc5[1]&quot; &amp; estimate &lt; &quot;qc5[2]&quot;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+set.seed(123)
+prec &lt;- round(matrix(rnorm(30*50, mean = 1.2, sd = 6), 30, 50), 1)
+prec[prec&lt;0] &lt;- 0
+colnames(prec) &lt;- paste0('sts_',1:50) 
+sts &lt;- data.frame(ID = paste0('sts_',1:50), lon = rnorm(50,0,1), 
+                  lat = rnorm(50,40,1), dcoast = rnorm(50,200,50))
+qcdata &lt;- qcPrec(prec, sts, crs = 'EPSG:4326', coords = c('lon','lat'),
+                 coords_as_preds = TRUE, neibs = 10, thres = NA,
+                 qc = 'all', qc3 = 10, qc4 = c(0.99, 5), qc5 = c(0.01, 0.1, 5),
+                 ncpu=2)
+str(qcdata)
+
+## End(Not run)
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>
