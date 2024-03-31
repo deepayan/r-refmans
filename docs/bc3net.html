@@ -1,0 +1,1210 @@
+<!DOCTYPE html><html><head><title>Help for package bc3net</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {bc3net}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#bc3net'><p>Bc3net gene regulatory network inference</p></a></li>
+<li><a href='#bc3net-package'>
+<p>BC3NET Gene Regulatory network Inference</p></a></li>
+<li><a href='#c3mtc'>
+<p>'c3mtc' gene regulatory network inference using c3net with multiple testing correction procedure</p></a></li>
+<li><a href='#enrichment'>
+<p>Function that performs a functional enrichment analysis based on a one-sided Fisher's exact teset (hypergeometric test).</p>
+</p></a></li>
+<li><a href='#exanet'><p>Example gene regulatory network for testing purposes only</p></a></li>
+<li><a href='#exgensets'><p>Example gene sets defined from the CPDB database</p></a></li>
+<li><a href='#expmat'><p>Test gene expression dataset</p></a></li>
+<li><a href='#getgcc'><p>Extracting the giant connected component from an igraph object</p></a></li>
+<li><a href='#gpea'>
+<p>Gene pair enrichment analysis (GPEA)</p>
+</p></a></li>
+<li><a href='#makenull'>
+<p>Generate a mutual information null distribution from a gene expression matrix</p>
+</p></a></li>
+<li><a href='#mimwrap'><p>Wrapper function for mutual information matrix estimators</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Version:</td>
+<td>1.0.4</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2016-11-26</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Gene Regulatory Network Inference with Bc3net</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Ricardo de Matos Simoes [aut, cre],
+  Frank Emmert-Streib [aut]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Ricardo de Matos Simoes &lt;ricardo_dematossimoes@dfci.harvard.edu&gt;</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.0.0), c3net, infotheo, igraph, Matrix, lattice</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implementation of the BC3NET algorithm for gene regulatory network inference (de Matos Simoes and Frank Emmert-Streib, Bagging Statistical Network Inference from Large-Scale Gene Expression Data, PLoS ONE 7(3): e33624, &lt;<a href="https://doi.org/10.1371%2Fjournal.pone.0033624">doi:10.1371/journal.pone.0033624</a>&gt;).</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a> | <a href="https://www.r-project.org/Licenses/GPL-3">GPL-3</a> [expanded from: GPL (&ge; 2)]</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2016-11-27 21:32:12 UTC; ricardo</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2016-11-28 08:21:04</td>
+</tr>
+</table>
+<hr>
+<h2 id='bc3net'>Bc3net gene regulatory network inference</h2><span id='topic+bc3net'></span>
+
+<h3>Description</h3>
+
+<p>The basic idea of BC3NET is to generate from one dataset D_s,
+consisting of s samples, an ensemble of B independent bootstrap datasets
+D_k by sampling from D(s) with replacement by using a non-parametric
+bootstrap (Efron 1993). Then, for each generated data set D_k in the
+ensemble, a network G^b_k is inferred by using C3NET (Altay 2010a). 
+From the ensemble of networks G^b_k we construct one weighted network 
+G^b_w which is used to determine the statistical significance of the
+connection between gene pairs. This results in the final binary,
+undirected network G.
+</p>
+<p>A base component of BC3NET is the inference method C3NET introduced in
+Altay (2010a), which we present in the following in a modified form to
+obtain a more efficient implementation. Briefly, C3NET consists of three
+main steps. First, mutual information values among all gene pairs are
+estimated. Second, an extremal selection strategy is applied allowing
+each of the p genes in a given dataset to contribute at most one edge to
+the inferred network. That means we need to test only p different
+hypotheses and not p(p-1)/2. This potential edge corresponds to the
+hypothesis test that needs to be conducted for each of the p
+genes. Third, a multiple testing procedure is applied to control the
+type one error. In the above described context, this results in a
+network G^b_k.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>bc3net(dataset, boot=100, estimator="pearson", disc="equalwidth", mtc1=TRUE,
+alpha1=0.05, nullit=NA, null=c(), adj1="bonferroni", mtc2=TRUE,
+alpha2=0.05, adj2="bonferroni",
+weighted=TRUE, igraph=TRUE, verbose=FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="bc3net_+3A_dataset">dataset</code></td>
+<td>
+
+<p>gene expression dataset where rows define genes and columns samples
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_boot">boot</code></td>
+<td>
+
+<p>default 100 bootstrap datasets are generated to infer an ensemble
+of c3net gene regulatory networks
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_estimator">estimator</code></td>
+<td>
+
+<p>estimators for continuous variables
+&quot;pearson&quot;, &quot;spearman&quot;, &quot;kendall&quot;, &quot;spearman&quot;
+</p>
+<p>estimators for discrete variables
+&quot;emp&quot;, &quot;mm&quot;,&quot;sg&quot;,&quot;shrink&quot;
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_disc">disc</code></td>
+<td>
+
+<p>required for discrete estimators, method for discretize function (see infotheo package)
+&quot;equalwidth&quot; (default),  &quot;equalfreq&quot;, &quot;globalequalwidth&quot; 
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_nullit">nullit</code></td>
+<td>
+
+<p>nullit defines the size of the generated null distribution vector
+used for hypothesis testing of significant edges inferred by
+c3net. The null distribution of mutual information is generated from
+sample and gene label randomization.
+</p>
+<p>number of iterations, where the default is defined by
+</p>
+<p>nullit=ceiling(10^5/(((genes*genes)/2)-genes))
+</p>
+<p>genes: number of genes 
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_null">null</code></td>
+<td>
+
+<p>assign alternatively an external null distribution vector
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_mtc1">mtc1</code></td>
+<td>
+
+<p>consider multiple hypothesis testing for edges inferred by c3net
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_alpha1">alpha1</code></td>
+<td>
+<p> significance level for mtc1 </p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_adj1">adj1</code></td>
+<td>
+<p> if mtc1==TRUE default multiple hypothesis
+testing procedure for c3net inferred edges using &quot;bonferroni&quot;
+(default)
+</p>
+<p>alternatively use &quot;holm&quot;, &quot;hochberg&quot;, &quot;hommel&quot;, &quot;bonferroni&quot;, &quot;BH&quot;, &quot;BY&quot;,&quot;fdr&quot;,
+&quot;none&quot; (see ?p.adjust())
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_mtc2">mtc2</code></td>
+<td>
+
+<p>Consider multiple hypothesis testing for edges inferred by bc3net. A
+binomial test is performed for each gene pair with an ensemble
+consensus rate &gt;0 consider multiple hypothesis testing for edges
+inferred by bc3net
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_alpha2">alpha2</code></td>
+<td>
+
+<p>significance level for mtc2
+</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_adj2">adj2</code></td>
+<td>
+
+<p>Consider multiple hypothesis testing for edges inferred by bc3net.
+if mtc2==TRUE  &quot;bonferroni&quot; is used as multiple hypothesis testing procedure.
+alternatively use &quot;holm&quot;, &quot;hochberg&quot;, &quot;hommel&quot;, &quot;bonferroni&quot;, &quot;BH&quot;,
+&quot;BY&quot;,&quot;fdr&quot;, &quot;none&quot;</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_weighted">weighted</code></td>
+<td>
+<p> A weighted network is returned, where the
+weights denote the ensemble consensus rate of bc3net.</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_igraph">igraph</code></td>
+<td>
+<p> A bc3net igraph object is returned.</p>
+</td></tr>
+<tr><td><code id="bc3net_+3A_verbose">verbose</code></td>
+<td>
+<p> Return processing information of running procedures.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>BC3NET Gene regulatory network inference
+</p>
+
+
+<h3>Value</h3>
+
+<p>'bc3net' returns a gene regulatory network formated as adjacency
+matrix, as weighted matrix where the edge weights are defined by the
+corresponding mutual information values or as undirected weighted or
+unweighted igraph object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>de Matos Simoes R, Emmert-Streib F.
+</p>
+
+
+<h3>References</h3>
+
+<p>Altay G, Emmert-Streib F. Inferring the conservative causal core of gene
+regulatory networks. BMC Syst Biol. 2010 Sep 28;4:132.
+</p>
+<p>de Matos Simoes R, Emmert-Streib F. Bagging statistical network inference from
+large-scale gene expression data. PLoS One. 2012;7(3):e33624, Epub 2012 Mar 30,  &lt;doi:10.1371/journal.pone.0033624&gt;.
+</p>
+<p>de Matos Simoes R, Emmert-Streib F. Influence of statistical estimators of
+mutual information and data heterogeneity on the inference of gene regulatory
+networks. PLoS One. 2011;6(12):e29279. Epub 2011 Dec 29.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>C3NET c3mtc 
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> data(expmat)
+ bnet=bc3net(expmat)
+</code></pre>
+
+<hr>
+<h2 id='bc3net-package'>
+BC3NET Gene Regulatory network Inference
+</h2><span id='topic+bc3net-package'></span>
+
+<h3>Description</h3>
+
+<p>The basic idea of BC3NET is to generate from one dataset D_s,
+consisting of s samples, an ensemble of B independent bootstrap datasets
+D_k by sampling from D(s) with replacement by using a non-parametric
+bootstrap (Efron 1993). Then, for each generated data set D_k in the
+ensemble, a network G^b_k is inferred by using C3NET (Altay 2010a). From the ensemble of networks G^b_k we construct one weighted network 
+G^b_w which is used to determine the statistical significance of the
+connection between gene pairs. This results in the final binary,
+undirected network G.
+</p>
+<p>A base component of BC3NET is the inference method C3NET introduced in
+Altay (2010a), which we present in the following in a modified form to obtain a more efficient implementation. Briefly, C3NET consists of three main steps. First, mutual information values among all gene pairs are estimated. Second, an extremal selection strategy is applied allowing each of the p genes in a given dataset to contribute at most one edge to the inferred network. That means we need to test only p different hypotheses and not p(p-1)/2. This potential edge corresponds to the hypothesis test that needs to be conducted for each of the p genes. Third, a multiple testing procedure is applied to control the type one error. In the above described context, this results in a network G^b_k.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> bc3net</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.0.0</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2012-01-12</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL (&gt;=2)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>bc3net.R c3mtc.R makenull.R mimwrap.R getpval.R mat2igraph.R
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ricardo de Matos Simoes  &lt;r.dematossimoes@qub.ac.uk&gt;
+Frank Emmert-Streib &lt;f.emmert-streib@qub.ac.uk&gt;
+Maintainer: Ricardo de Matos Simoes &lt;r.dematossimoes@qub.ac.uk&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>de Matos Simoes R, Emmert-Streib F., Bagging statistical network
+inference from large-scale gene expression data., PLoS One. 2012;7(3):e33624. Epub 2012 Mar 30.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>C3NET, MINET, INFOTHEO
+
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(expmat)
+bnet=bc3net(expmat)
+
+data(expmat)
+cnet=c3mtc(expmat)
+
+</code></pre>
+
+<hr>
+<h2 id='c3mtc'>
+'c3mtc' gene regulatory network inference using c3net with multiple testing correction procedure
+</h2><span id='topic+c3mtc'></span>
+
+<h3>Description</h3>
+
+<p>We present in the following the inference method C3NET introduced in
+Altay (2010a) in a modified form to obtain a more efficient
+implementation. Briefly, C3NET consists of three main steps. First,
+mutual information values among all gene pairs are estimated. Second, an
+extremal selection strategy is applied allowing each of the p genes in a
+given dataset to contribute at most one edge to the inferred
+network. That means we need to test only p different hypotheses and not
+p(p-1)/2. This potential edge corresponds to the hypothesis test that
+needs to be conducted for each of the p genes. Third, a multiple testing
+procedure is applied to control the type one error.
+</p>
+<p>In order to determine the statistical significance of the mutual information values between genes we test for each pair of genes the following null hypothesis.
+</p>
+<p>H_0^I: The mutual information between gene i and j is zero.
+</p>
+<p>Because we are using a nonparametric test we need to obtain the
+corresponding null distribution for H_0^I from a randomization of the
+data. 
+</p>
+<p>The formulated null hypothesis is performed by permuting the sample and
+gene labels for all genes of the entire expression matrix at once. The
+vector of the mutual information null distribution is obtained from
+repeated randomizations for a given number of iterations. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+c3mtc(dataset, null=NULL, mtc=TRUE, adj="bonferroni", alpha=0.05, nullit=NA,
+estimator="pearson", disc="none", adjacency=FALSE, igraph=TRUE)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="c3mtc_+3A_dataset">dataset</code></td>
+<td>
+
+<p>gene expression dataset where rows define genes and columns samples
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_nullit">nullit</code></td>
+<td>
+
+<p>nullit defines the size of the generated null distribution vector
+used for hypothesis testing of significant edges inferred by
+c3net. The null distribution of mutual information is generated from
+sample and gene label randomization.  
+</p>
+<p>default number of iterations:
+nullit=ceiling(10^5/(((genes*genes)/2)-genes))
+genes: number of genes
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_estimator">estimator</code></td>
+<td>
+
+<p>minet package (continuous estimators)
+&quot;pearson&quot;, &quot;spearman&quot;, &quot;kendall&quot;, &quot;spearman&quot;
+</p>
+<p>minet package (discrete estimators)
+&quot;mi.empirical&quot;, &quot;mi.mm&quot;,&quot;mi.sg&quot;,&quot;mi.shrink&quot;
+</p>
+<p>c3net gaussian estimator (pearson)
+&quot;gaussian&quot;
+</p>
+<p>bspline requires installation of &quot;mis_calc&quot;
+&quot;bspline&quot;</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_disc">disc</code></td>
+<td>
+
+<p>only required for discrete estimators (minet package)
+&quot;equalfreq&quot;, &quot;equalwidth&quot;
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_mtc">mtc</code></td>
+<td>
+
+<p>consider multiple hypothesis testing for edges inferred by c3net
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_adj">adj</code></td>
+<td>
+<p> if mtc==TRUE default multiple hypothesis
+testing procedure for c3net inferred edges using &quot;bonferroni&quot;
+(default)
+</p>
+<p>alternatively use &quot;holm&quot;, &quot;hochberg&quot;, &quot;hommel&quot;, &quot;bonferroni&quot;, &quot;BH&quot;,
+&quot;BY&quot;,&quot;fdr&quot;, &quot;none&quot; (see ?p.adjust())
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_alpha">alpha</code></td>
+<td>
+
+<p>significance level for mtc after multiple hypothesis
+testing correction
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_adjacency">adjacency</code></td>
+<td>
+
+<p>return an adjacency matrix
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_igraph">igraph</code></td>
+<td>
+
+<p>return igraph object
+</p>
+</td></tr>
+<tr><td><code id="c3mtc_+3A_null">null</code></td>
+<td>
+
+<p>If NULL a null distribution vector is generated from a
+sample label and gene label permutation of the gene expression
+matrix. For the ensemble inference of one dataset an external null
+distribution vector is suggested for decreasing running time.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>'c3mtc' returns a gene regulatory network formated as adjacency
+matrix, as weighted matrix where the edge weights are defined by the
+corresponding mutual information values or as undirected weighted or
+unweighted igraph object.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>de Matos Simoes R, Emmert-Streib F.
+</p>
+
+
+<h3>References</h3>
+
+<p>Altay G, Emmert-Streib F. Inferring the conservative causal core of gene
+regulatory networks. BMC Syst Biol. 2010 Sep 28;4:132. PubMed PMID: 20920161;
+PubMed Central PMCID: PMC2955605.
+</p>
+<p>de Matos Simoes R, Emmert-Streib F. Bagging statistical network inference from
+large-scale gene expression data. PLoS One. 2012;7(3):e33624. Epub 2012 Mar 30.
+PubMed PMID: 22479422; PubMed Central PMCID: PMC3316596.
+</p>
+<p>de Matos Simoes R, Emmert-Streib F. Influence of statistical estimators of
+mutual information and data heterogeneity on the inference of gene regulatory
+networks. PLoS One. 2011;6(12):e29279. Epub 2011 Dec 29. PubMed PMID: 22242113;
+PubMed Central PMCID: PMC3248437.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code>c3</code>
+
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(expmat)
+net=c3mtc(expmat)
+
+</code></pre>
+
+<hr>
+<h2 id='enrichment'> 
+Function that performs a functional enrichment analysis based on a one-sided Fisher's exact teset (hypergeometric test).
+</h2><span id='topic+enrichment'></span>
+
+<h3>Description</h3>
+
+ 
+<p>For a given set of candidate genes, reference genes and a list object of gene sets (e.g. Gene Ontology terms or gene sets from pathways) a one-sided Fisher's exact test (&quot;greater&quot;) is performed for each gene set in the collection.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  
+   enrichment(genes, reference, genesets, adj = "fdr", verbose = FALSE)  
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+ 
+<table>
+<tr><td><code id="enrichment_+3A_genes">genes</code></td>
+<td>
+ 
+<p>A character vector of gene identifiers used as a candidate gene list that is assessed by the functional enrichment analysis. The candidate gene list is a subset of the reference gene list.
+</p>
+</td></tr> 
+<tr><td><code id="enrichment_+3A_reference">reference</code></td>
+<td>
+ 
+<p>A character vector of gene identifiers used as the reference gene list. Note all candidate genes are included in the reference gene list.
+</p>
+</td></tr> 
+<tr><td><code id="enrichment_+3A_genesets">genesets</code></td>
+<td>
+ 
+<p>A named list object of a collection of gene sets. The identifiers used for the candidate and reference genes need to match the identifier types used for the gene sets. An example list of gene sets is given in data(exgensets) showing an example list object of gene sets from pathways with gene symbols.
+</p>
+<p>$'Reactome:REACT_115566:Cell Cycle'
+[1] &quot;APITD1&quot;           &quot;TAOK1&quot;            &quot;CDC23&quot;           
+[4] &quot;RB1&quot;              &quot;PRKCA&quot;            &quot;HIST1H4J&quot;        
+[7] &quot;MCM10&quot;            &quot;PPP1CC&quot;           &quot;NUP153&quot;          
+...
+</p>
+<p>$'Reactome:REACT_152:Cell Cycle, Mitotic'
+[1] &quot;APITD1&quot;           &quot;TAOK1&quot;            &quot;CDKN2C&quot;          
+[4] &quot;RB1&quot;              &quot;PRKCA&quot;            &quot;MCM10&quot;           
+[7] &quot;HIST1H2BH&quot;        &quot;NUP153&quot;           &quot;TUBGCP3&quot;         
+[10] &quot;APEX1&quot;            &quot;RPA2&quot;             &quot;PRKACA&quot;          
+...
+</p>
+</td></tr> 
+<tr><td><code id="enrichment_+3A_adj">adj</code></td>
+<td>
+
+<p>The default value is &lt;fdr&gt; (False discovery rate using the Benjamini-Hochberg approach). 
+Multiple testing correction based on the function stats::p.adjust() with available options for 
+&quot;holm&quot;, &quot;hochberg&quot;, &quot;hommel&quot;, &quot;bonferroni&quot;, &quot;BH&quot;, &quot;BY&quot;, &quot;fdr&quot; and &quot;none&quot;
+</p>
+</td></tr> 
+<tr><td><code id="enrichment_+3A_verbose">verbose</code></td>
+<td>
+ 
+<p>The default value is &lt;FALSE&gt;. If this option is set &lt;TRUE&gt; the number and name of the 
+gene sets during their processing is reported.
+</p>
+</td></tr> 
+</table>
+
+
+<h3>Details</h3>
+
+ 
+<p>The enrichment analysis is based on a one-sided Fisher's exact test.
+</p>
+
+
+<h3>Value</h3>
+
+ 
+<p>The function returns a data.frame object with the columns 
+</p>
+<p>&quot;TermID&quot; the given name of a gene set i from the named gene set collection list object S.
+&quot;genes&quot;  the number of candidate genes present in the gene set i
+&quot;all&quot;    the number of all genes present in the gene set i
+&quot;pval&quot;   the nominal p-value from a one-sided fisher's exact test
+&quot;padj&quot;   the adjusted p-value to consider for multiple testing
+</p>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Ricardo de Matos Simoes
+</p>
+
+
+<h3>References</h3>
+
+ 
+<p>de Matos Simoes R, Tripathi S, Emmert-Streib F. Organizational structure and the periphery of the gene regulatory network in B-cell lymphoma. BMC Syst Biol. 2012; 6:38.
+</p>
+<p>Inference and Analysis of Gene Regulatory Networks in R: Applications in Biology, Medicine, and Chemistry, DOI: 10.1002/9783527694365.ch10
+In book: Computational Network Analysis with R, 2016, pp.289-306
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# In the following candidate genes are defined from a
+# giant connected component of an example igraph network 
+# where we use the remaining genes of a given network 
+# as a reference list.
+
+data(exanet)
+data(exgensets)
+
+candidate=V(getgcc(exanet))$name
+reference=V(exanet)$name
+
+# hypergeometric test is performed for 
+# each defined set of genes in the 
+# list object exgensets
+tab.hypg=enrichment(candidate, reference, exgensets, verbose=TRUE) 
+
+</code></pre>
+
+<hr>
+<h2 id='exanet'>Example gene regulatory network for testing purposes only</h2><span id='topic+exanet'></span>
+
+<h3>Description</h3>
+
+<p>The network consists of 814 genes and 1,103 interactions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  data(exanet)
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>An undirected weighted igraph object with 814 vertices and 1,103 egdges.
+</p>
+
+
+<h3>References</h3>
+
+<p>de Matos Simoes R, Emmert-Streib F., &quot;Bagging statistical network inference from large-scale gene expression data&quot; PLoS One. 2012;7(3):e33624. Epub 2012 Mar 30. PubMed PMID: 22479422; PubMed Central PMCID: PMC3316596.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  data(expmat)
+</code></pre>
+
+<hr>
+<h2 id='exgensets'>Example gene sets defined from the CPDB database</h2><span id='topic+exgensets'></span>
+
+<h3>Description</h3>
+
+<p>This list data object contains 25 gene sets defined from the 
+CPDB database and is used for testing purposes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(exgensets)
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A list object with 25 character vectors.
+</p>
+
+
+<h3>Details</h3>
+
+<p>An list object of 25 pathway gene sets from CPDB with gene symbols.
+</p>
+
+
+<h3>Source</h3>
+
+<p>http://consensuspathdb.org/
+</p>
+
+
+<h3>References</h3>
+
+<p>A. Kamburov, U. Stelzl, H. Lehrach and R. Herwig, The ConsensusPathDB interaction database: 2013 update, Nucleic Acids Research, Volume 41, Issue D1, Pp. D793-D800
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  data(exgensets)
+
+  # The gene set collection from CPDB can be formatted by:
+  # "CPDB_pathways_genes.tab" is available in the download section in http://consensuspathdb.org/
+  # cpdb = readLines("CPDB_pathways_genes.tab", warn = FALSE)
+  # cpdb = lapply(cpdb, function(x) strsplit(x, "\t")[[1]])
+  # names(cpdb) = sapply(cpdb, function(x) paste(x[3], x[2], x[1], sep=":") )       
+  # cpdb = lapply(cpdb, function(x) x[-c(1:3)])
+  # cpdb = cpdb[-length(cpdb)]
+  # cpdb = lapply(cpdb, function(x) strsplit(x, ",")[[1]])
+</code></pre>
+
+<hr>
+<h2 id='expmat'>Test gene expression dataset</h2><span id='topic+expmat'></span>
+
+<h3>Description</h3>
+
+<p>The dataset is test dataset of a gene expression matrix
+with 100 genes and 100 samples
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data(expmat)
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A matrix with 100 observations and 100 variables.
+</p>
+
+
+<h3>References</h3>
+
+<p>de Matos Simoes R, Emmert-Streib F., &quot;Bagging statistical network inference from large-scale gene expression data&quot; PLoS One. 2012;7(3):e33624. Epub 2012 Mar 30. PubMed PMID: 22479422; PubMed Central PMCID: PMC3316596.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  data(expmat)
+</code></pre>
+
+<hr>
+<h2 id='getgcc'>Extracting the giant connected component from an igraph object</h2><span id='topic+getgcc'></span>
+
+<h3>Description</h3>
+
+<p>The function uses igraph::clusters and igraph::induced.subgraph to extract
+the giant component of an igraph object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  getgcc(net)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getgcc_+3A_net">net</code></td>
+<td>
+
+<p>An igraph object.
+</p>
+</td></tr>	  
+</table>
+
+
+<h3>Details</h3>
+
+<p>In a connected component of an undirected graph all pairs of vertices u and v are reachable by a path. The giant connected component describes the largest connected component of a graph object.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>getgcc</code> returns an igraph object with the giant connected 
+component of an igraph object.
+</p>
+
+
+<h3>References</h3>
+
+<p>G. Csardi and T. Nepusz, The igraph software package for complex network research,
+InterJournal, Complex Systems,1695, 2006, http://igraph.org  
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># The example network "exanet" contains 814 genes with 1103 edges
+data(exanet)
+
+# The giant connected component of the example 
+# network contains 382 genes with 989 edges
+getgcc(exanet)
+
+</code></pre>
+
+<hr>
+<h2 id='gpea'> 
+Gene pair enrichment analysis (GPEA)
+</h2><span id='topic+gpea'></span>
+
+<h3>Description</h3>
+
+ 
+<p>When a network G contains n interactions, of which k interactions are among genes from the given gene set S, then a p-value for the enrichment of gene pairs of this gene set S can be calculated based on a e.g., one-sided Fisher's exact test. For p genes there is a total of N=p(p-1)/2 different gene pairs (clique graph) with the assumption that all genes within a gene set are associated to each other. If there are pS genes for a particular gene set (S) then the total number of gene pairs for this gene set is mS=pS(pS-1)/2. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'> 
+
+
+gpea(gnet, genesets, verbose = TRUE, cmax = 1000, cmin = 3,
+                 adj = "bonferroni")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+ 
+<table>
+<tr><td><code id="gpea_+3A_gnet">gnet</code></td>
+<td>
+ 
+<p>igraph object (e.g., inferred from bc3net) of a given network where the gene identifiers [V(net)$names] correspond to the provided gene identifiers in the reference gene sets.
+</p>
+</td></tr> 
+<tr><td><code id="gpea_+3A_genesets">genesets</code></td>
+<td>
+ 
+<p>A named list object of a collection of gene sets. The identifiers used for the candidate and reference genes need to match the identifier types used for the gene sets. An example list of gene sets is given in data(exgensets) showing an example list object of gene sets from pathways with gene symbols.
+</p>
+<p>$'Reactome:REACT_115566:Cell Cycle'
+[1] &quot;APITD1&quot;           &quot;TAOK1&quot;            &quot;CDC23&quot;           
+[4] &quot;RB1&quot;              &quot;PRKCA&quot;            &quot;HIST1H4J&quot;        
+[7] &quot;MCM10&quot;            &quot;PPP1CC&quot;           &quot;NUP153&quot;          
+...
+</p>
+<p>$'Reactome:REACT_152:Cell Cycle, Mitotic'
+[1] &quot;APITD1&quot;           &quot;TAOK1&quot;            &quot;CDKN2C&quot;          
+[4] &quot;RB1&quot;              &quot;PRKCA&quot;            &quot;MCM10&quot;           
+[7] &quot;HIST1H2BH&quot;        &quot;NUP153&quot;           &quot;TUBGCP3&quot;         
+[10] &quot;APEX1&quot;            &quot;RPA2&quot;             &quot;PRKACA&quot;          
+...
+</p>
+</td></tr> 
+<tr><td><code id="gpea_+3A_verbose">verbose</code></td>
+<td>
+ 
+<p>The default value is &lt;FALSE&gt;. If this option is set &lt;TRUE&gt; the number and name of the 
+gene sets during their processing is reported.
+</p>
+</td></tr> 
+<tr><td><code id="gpea_+3A_cmax">cmax</code></td>
+<td>
+ 
+<p>All provided genesets with more than cmax genes will be excluded from the analysis (default cmax=1000).
+</p>
+</td></tr> 
+<tr><td><code id="gpea_+3A_cmin">cmin</code></td>
+<td>
+ 
+<p>All provided genesets with less than cmin genes will be excluded from the analysis
+(default cmin&gt;=3).
+</p>
+</td></tr> 
+<tr><td><code id="gpea_+3A_adj">adj</code></td>
+<td>
+ 
+<p>The default value is &lt;fdr&gt; (False discovery rate using the Benjamini-Hochberg approach). 
+Multiple testing correction based on the function stats::p.adjust() with available options for 
+&quot;holm&quot;, &quot;hochberg&quot;, &quot;hommel&quot;, &quot;bonferroni&quot;, &quot;BH&quot;, &quot;BY&quot;, &quot;fdr&quot; and &quot;none&quot;
+</p>
+</td></tr> 
+</table>
+
+
+<h3>Details</h3>
+
+ 
+<p>The enrichment analysis is based on a one-sided Fisher's exact test.
+</p>
+
+
+<h3>Value</h3>
+
+ 
+<p>The function returns a data.frame object with the columns 
+</p>
+<p>&quot;TermID&quot; the given name of a gene set i from the named gene set collection list object S.
+&quot;edges&quot;  the number of connected gene pairs present a given geneset
+&quot;genes&quot;  the number of candidate genes present in the gene set i
+&quot;all&quot;    the number of all genes present in the gene set i
+&quot;pval&quot;   the nominal p-value from a one-sided fisher's exact test
+&quot;padj&quot;   the adjusted p-value to consider for multiple testing
+</p>
+
+
+<h3>Author(s)</h3>
+
+ 
+<p>Ricardo de Matos Simoes
+</p>
+
+
+<h3>References</h3>
+
+ 
+<p>Inference and Analysis of Gene Regulatory Networks in R: Applications in Biology, Medicine, and Chemistry, DOI: 10.1002/9783527694365.ch10
+In book: Computational Network Analysis with R, 2016, pp.289-306
+</p>
+<p>Urothelial cancer gene regulatory networks inferred from large-scale RNAseq, Bead and Oligo gene expression data, BMC Syst Biol. 2015; 9: 21. 
+</p>
+
+
+<h3>See Also</h3>
+
+ 
+<p>See Also as <code><a href="#topic+enrichment">enrichment</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(exanet)
+data(exgensets) ## example gene sets from the CPDB database (http://www.consensuspathdb.org)
+
+res = gpea(exanet, exgensets, cmax=1000, cmin=2)
+
+
+</code></pre>
+
+<hr>
+<h2 id='makenull'>
+Generate a mutual information null distribution from a gene expression matrix
+</h2><span id='topic+makenull'></span>
+
+<h3>Description</h3>
+
+<p>In order to determine the statistical significance of the mutual information values between genes we test for each pair of genes the following null hypothesis.
+</p>
+<p>H_0^I: The mutual information between gene i and j is zero.
+</p>
+<p>Because we are using a nonparametric test we need to obtain the
+corresponding null distribution for H_0^I from a randomization of the
+data. 
+</p>
+<p>'makenull' performs a randomization with the formulated null hypothesis
+by permuting the sample and gene labels for all genes of the entire
+expression matrix at once. The vector of the mutual information null
+distribution is obtained from repeated randomizations for a given
+number of iterations. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>makenull(dataset, nullit=NA, estimator="pearson", disc="equalwidth")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="makenull_+3A_dataset">dataset</code></td>
+<td>
+
+<p>gene expression data matrix   
+</p>
+</td></tr>
+<tr><td><code id="makenull_+3A_nullit">nullit</code></td>
+<td>
+
+<p>nullit defines the size of the generated null distribution vector
+used for hypothesis testing of significant edges inferred by
+c3net. The null distribution of mutual information is generated from
+sample and gene label randomization.  
+</p>
+<p>default number of iterations:
+nullit=ceiling(10^5/(((genes*genes)/2)-genes))
+genes: number of genes
+</p>
+</td></tr>
+<tr><td><code id="makenull_+3A_estimator">estimator</code></td>
+<td>
+
+<p>estimators for continuous variables
+&quot;pearson&quot; (default), &quot;spearman&quot;, &quot;kendall&quot;, &quot;spearman&quot;
+</p>
+<p>estimators for discrete variables
+&quot;emp&quot;, &quot;mm&quot;,&quot;sg&quot;,&quot;shrink&quot;
+</p>
+</td></tr>
+<tr><td><code id="makenull_+3A_disc">disc</code></td>
+<td>
+
+<p>only required for discrete estimators, method for discretize function (infotheo package)
+&quot;equalfreq&quot; (default), &quot;equalwidth&quot;, &quot;globalequalwith&quot;
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The function 'makenull' generates a numeric vector of the mutual information
+null distribution estimated from a given number of randomized
+datasets.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ricardo de Matos Simoes  &lt;r.dematossimoes@qub.ac.uk&gt;
+Frank Emmert-Streib &lt;f.emmert-streib@qub.ac.uk&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>de Matos Simoes R, Emmert-Streib F., Bagging statistical network
+inference from large-scale gene expression data., PLoS
+One. 2012;7(3):e33624. Epub 2012 Mar 30.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>c3mtc bc3net
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> data(expmat)
+ null=makenull(expmat, nullit=5)
+</code></pre>
+
+<hr>
+<h2 id='mimwrap'>Wrapper function for mutual information matrix estimators</h2><span id='topic+mimwrap'></span>
+
+<h3>Description</h3>
+
+<p>Mutual information matrix estimation wrapper function for various
+mutual information estimators. Depends on infotheo package for mutual information estimators on discrete variables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  mimwrap(dataset, estimator="pearson", disc="equalwidth", bins = sqrt(ncol(dataset)))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mimwrap_+3A_dataset">dataset</code></td>
+<td>
+
+<p>Data gene expression matrix where rows denote genes (features) and
+columns samples.
+</p>
+</td></tr>  
+<tr><td><code id="mimwrap_+3A_estimator">estimator</code></td>
+<td>
+
+<p>estimators for continuous variables
+&quot;pearson&quot; (default), &quot;spearman&quot;, &quot;kendall&quot;, &quot;spearman&quot;
+</p>
+<p>estimators for discrete variables (infotheo package)
+&quot;emp&quot;, &quot;mm&quot;,&quot;sg&quot;,&quot;shrink&quot;
+</p>
+</td></tr>  
+<tr><td><code id="mimwrap_+3A_disc">disc</code></td>
+<td>
+
+<p>only required for discrete estimators (see infotheo package)
+&quot;equalwidth&quot; (default), &quot;globalequalwidth&quot; , &quot;equalfreq&quot;
+</p>
+</td></tr>
+<tr><td><code id="mimwrap_+3A_bins">bins</code></td>
+<td>
+
+<p>number of bins for the descretize function (infotheo), 
+default sqrt(ncol(dataset))
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>A mutual information matrix is estimated from a gene expression data set
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>mimwrap</code> returns a symmetric mutual information matrix for
+various mutual information estimators.
+</p>
+
+
+<h3>References</h3>
+
+
+<p>Patrick E Meyer, Frederic Lafitte and Gianluca Bontempi, minet: A
+R/Bioconductor Package for Inferring Large Transcriptional Networks
+Using Mutual Information, BMC Bioinformatics 2008, 9:461
+</p>
+<p>Carsten O. Daub, Ralf Steuer, Joachim Selbig, and Sebastian Kloska,
+Estimating mutual information using B-spline functions - an improved similarity measure for analysing gene expression data, BMC Bioinformatics. 2004; 5: 118
+</p>
+<p>de Matos Simoes R, Emmert-Streib F., Bagging statistical network
+inference from large-scale gene expression data., PLoS
+One. 2012;7(3):e33624. Epub 2012 Mar 30.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> 
+data(expmat)
+mim &lt;- mimwrap(expmat)
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

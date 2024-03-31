@@ -1,0 +1,769 @@
+<!DOCTYPE html><html><head><title>Help for package bootLR</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {bootLR}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#BayesianLR.test'><p>Compute the (positive/negative) likelihood ratio with appropriate, bootstrapped confidence intervals</p></a></li>
+<li><a href='#bca'><p>Internal function to analyze LR bootstrap finding median, and standard and</p>
+BCa percentile 95
+To obtain bca CI on a non-boot result, use a dummy boot.
+and replace t and t0 with the results of interest.</a></li>
+<li><a href='#confusionStatistics'><p>Compute sensitivity, specificity, positive likelihood ratio, negative likelihood ratio for a single 2x2 table</p></a></li>
+<li><a href='#diagCI'><p>Compute values and confidence intervals for sensitivity, specificity, positive likelihood ratio, negative likelihood ratio for a single 2x2 table</p></a></li>
+<li><a href='#drawMaxedOut'><p>Internal function to draw a set of sensitivities or specificities</p>
+This is intended for the case where testPos == totalDzPos or testNeg == totalDzNeg.</a></li>
+<li><a href='#medianConsistentlyOne'><p>Find the lowest population probability whose median is consistently one</p>
+This is the lowest estimate for Sens that is consistently (over 5 runs) most likely to yield a sample estimate that is all 1's (e.g. 100/100, etc.).</a></li>
+<li><a href='#print.diagCI'><p>Prints results from diagCI</p>
+As is typical for R, this is run automatically when you type in an object name, and is typically not run directly by the end-user.</a></li>
+<li><a href='#print.lrtest'><p>Prints results from the BayesianLR.test</p>
+As is typical for R, this is run automatically when you type in an object name, and is typically not run directly by the end-user.</a></li>
+<li><a href='#run.BayesianLR.test'><p>The actual function that runs the test. BayesianLR.test is a wrapper that runs this with ever-looser tolerances.</p></a></li>
+<li><a href='#sequentialGridSearch'><p>Optimize a function returning a single numeric value subject to a boolean constraint</p>
+Utilizes a naive recursive grid search.</a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Bootstrapped Confidence Intervals for (Negative) Likelihood
+Ratio Tests</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0.2</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2019-01-27</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Keith A. Marill and Ari B. Friedman</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Ari B. Friedman &lt;abfriedman@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Computes appropriate confidence intervals for the likelihood ratio tests commonly used in medicine/epidemiology, using the method of Marill et al. (2015) &lt;<a href="https://doi.org/10.1177%2F0962280215592907">doi:10.1177/0962280215592907</a>&gt;.  It is particularly useful when the sensitivity or specificity in the sample is 100%.  Note that this does not perform the test on nested models&ndash;for that, see 'epicalc::lrtest'.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/LGPL-2.1">LGPL-2.1</a></td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>TRUE</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>boot, stats, binom</td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>testthat</td>
+</tr>
+<tr>
+<td>Collate:</td>
+<td>'bootLR.R'</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>6.1.1</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2019-02-01 02:45:58 UTC; arib</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2019-02-01 15:13:30 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='BayesianLR.test'>Compute the (positive/negative) likelihood ratio with appropriate, bootstrapped confidence intervals</h2><span id='topic+BayesianLR.test'></span>
+
+<h3>Description</h3>
+
+<p>Compute the (positive/negative) likelihood ratio with appropriate, bootstrapped confidence intervals. 
+A standard bootstrapping approach is used for sensitivity and specificity, results are combined, and 
+then 95
+For the case where sensitivity or specificity equals zero or one, an appropriate bootstrap sample is generated 
+and then used in subsequent computations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>BayesianLR.test(truePos, totalDzPos, trueNeg, totalDzNeg, R = 10^4,
+  nBSave = 50, verbose = FALSE, parameters = list(shrink = 5, tol =
+  5e-04, nEach = 80), maxTries = 20, ci.width = 0.95,
+  consistentQuantile = 0.5, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="BayesianLR.test_+3A_truepos">truePos</code></td>
+<td>
+<p>The number of true positive tests.</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_totaldzpos">totalDzPos</code></td>
+<td>
+<p>The total number of positives (&quot;sick&quot;) in the population.</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_trueneg">trueNeg</code></td>
+<td>
+<p>The number of true negatives in the population.</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_totaldzneg">totalDzNeg</code></td>
+<td>
+<p>The total number of negatives (&quot;well&quot;) in the population.</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_r">R</code></td>
+<td>
+<p>The number of replications in each round of the bootstrap (has been tested at 10,000 or greater).</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_nbsave">nBSave</code></td>
+<td>
+<p>The number of times to re-bootstrap the statistic and then average at the end to obtain confidence intervals (has been tested at 50).</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_verbose">verbose</code></td>
+<td>
+<p>Whether to display internal operations as they happen.</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_parameters">parameters</code></td>
+<td>
+<p>List of control parameters (shrink, tol, nEach) for sequential search.</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_maxtries">maxTries</code></td>
+<td>
+<p>Each time a run fails, BayesianLR.test will back off on the parameters and try again. maxTries specifies the number of times to try before giving up.  If you can't get it to converge, try setting this higher.</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_ci.width">ci.width</code></td>
+<td>
+<p>Changing this parameter results in different properties than have been tested and is not recommended. The width of the confidence interval used by boot.ci (not necessarily the same as the width of the CI produced by the algorithm overall)</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_consistentquantile">consistentQuantile</code></td>
+<td>
+<p>Changing this parameter results in different properties than have been tested and is not recommended. Defaults to 0.5, i.e. the median. Finds the lowest probability for which the random draws are likely to be consistently one, where consistently is defined by this value (i.e. at .5, a simple majority of the time is enough for consistency).</p>
+</td></tr>
+<tr><td><code id="BayesianLR.test_+3A_...">...</code></td>
+<td>
+<p>Arguments to pass along to boot.ci for the BCa confidence intervals.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If the denominator is 0, calculations are inverted until the final result.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An object of class lrtest.
+</p>
+
+
+<h3>Note</h3>
+
+<p>You'll either need a fast computer or substantial patience for certain combinations of inputs.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+blrt &lt;- BayesianLR.test( truePos=100, totalDzPos=100, trueNeg=60, totalDzNeg=100 )
+blrt
+summary(blrt)
+
+BayesianLR.test( truePos=98, totalDzPos=100, trueNeg=60, totalDzNeg=100 )
+BayesianLR.test( truePos=60, totalDzPos=100, trueNeg=100, totalDzNeg=100 )
+BayesianLR.test( truePos=60, totalDzPos=100, trueNeg=99, totalDzNeg=100 )
+
+# Note the argument names are not necessary if you specify them in the proper order:
+BayesianLR.test( 60, 100, 50, 50 ) 
+
+# You can specify R= to increase/decrease the number of bootstrap replications
+BayesianLR.test( 60, 100, 50, 50, R=10000 ) 
+
+# You can change the number of digits that are printed
+print.lrtest( BayesianLR.test( 500, 500, 300, 500 ), digits = 4 )
+
+# Or extract the results yourself
+model.blrt1 &lt;- BayesianLR.test( 500, 500, 300, 500 )
+unclass( model.blrt1 )
+model.blrt1$statistics
+model.blrt1$posLR.ci
+
+# If the model doesn't converge, you can alter the search parameters
+BayesianLR.test( 500, 500, 300, 500, parameters=list(shrink=4,tol=.001,nEach=150), maxTries = 50 )
+
+### Statistician-only options
+# These change the way the model works. 
+# It is not recommended to alter these, as this will alter the statistical properties of the test
+# in ways that have not been validated.
+# Change number of bootstrap replications
+BayesianLR.test( 500, 500, 300, 500, R = 5*10^4 )
+# Change number of times to average the confidence interval limits at the end
+BayesianLR.test( 500, 500, 300, 500, nBSave = 100 )
+# Change the criteria from median being consistent 0 or 1 to some other quantile
+BayesianLR.test( 500, 500, 300, 500, consistentQuantile = .53 )
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='bca'>Internal function to analyze LR bootstrap finding median, and standard and
+BCa percentile 95
+To obtain bca CI on a non-boot result, use a dummy boot.
+and replace t and t0 with the results of interest.</h2><span id='topic+bca'></span>
+
+<h3>Description</h3>
+
+<p>Internal function to analyze LR bootstrap finding median, and standard and
+BCa percentile 95
+To obtain bca CI on a non-boot result, use a dummy boot.
+and replace t and t0 with the results of interest.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>bca(t, t0, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="bca_+3A_t">t</code></td>
+<td>
+<p>The vector to obtain a BCa bootstrap for (e.g. nlr).</p>
+</td></tr>
+<tr><td><code id="bca_+3A_t0">t0</code></td>
+<td>
+<p>The central value of the vector (e.g. the ).</p>
+</td></tr>
+<tr><td><code id="bca_+3A_...">...</code></td>
+<td>
+<p>Pass-alongs to boot.ci.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='confusionStatistics'>Compute sensitivity, specificity, positive likelihood ratio, negative likelihood ratio for a single 2x2 table</h2><span id='topic+confusionStatistics'></span>
+
+<h3>Description</h3>
+
+<p>Compute sensitivity, specificity, positive likelihood ratio, negative likelihood ratio for a single 2x2 table
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>confusionStatistics(truePos, totalDzPos, trueNeg, totalDzNeg)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="confusionStatistics_+3A_truepos">truePos</code></td>
+<td>
+<p>The number of true positive tests.</p>
+</td></tr>
+<tr><td><code id="confusionStatistics_+3A_totaldzpos">totalDzPos</code></td>
+<td>
+<p>The total number of positives (&quot;sick&quot;) in the population.</p>
+</td></tr>
+<tr><td><code id="confusionStatistics_+3A_trueneg">trueNeg</code></td>
+<td>
+<p>The number of true negatives in the population.</p>
+</td></tr>
+<tr><td><code id="confusionStatistics_+3A_totaldzneg">totalDzNeg</code></td>
+<td>
+<p>The total number of negatives (&quot;well&quot;) in the population.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A one-row matrix containing sensitivity, specificity, posLR, negLR results.
+</p>
+
+
+<h3>References</h3>
+
+<p>Deeks JJ, Altman DG. BMJ. 2004 July 17; 329(7458): 168-169.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+confusionStatistics( 25, 50, 45, 75 )
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='diagCI'>Compute values and confidence intervals for sensitivity, specificity, positive likelihood ratio, negative likelihood ratio for a single 2x2 table</h2><span id='topic+diagCI'></span>
+
+<h3>Description</h3>
+
+<p>Compute values and confidence intervals for sensitivity, specificity, positive likelihood ratio, negative likelihood ratio for a single 2x2 table
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>diagCI(truePos, totalDzPos, trueNeg, totalDzNeg,
+  calcLRCI = "BayesianLR.test", alpha = 0.05, binomMethod = "wilson",
+  ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="diagCI_+3A_truepos">truePos</code></td>
+<td>
+<p>The number of true positive tests.</p>
+</td></tr>
+<tr><td><code id="diagCI_+3A_totaldzpos">totalDzPos</code></td>
+<td>
+<p>The total number of positives (&quot;sick&quot;) in the population.</p>
+</td></tr>
+<tr><td><code id="diagCI_+3A_trueneg">trueNeg</code></td>
+<td>
+<p>The number of true negatives in the population.</p>
+</td></tr>
+<tr><td><code id="diagCI_+3A_totaldzneg">totalDzNeg</code></td>
+<td>
+<p>The total number of negatives (&quot;well&quot;) in the population.</p>
+</td></tr>
+<tr><td><code id="diagCI_+3A_calclrci">calcLRCI</code></td>
+<td>
+<p>Method to use to calculate the LR CI: &quot;BayesianLR.test&quot; &quot;none&quot; or &quot;analytic&quot;</p>
+</td></tr>
+<tr><td><code id="diagCI_+3A_alpha">alpha</code></td>
+<td>
+<p>The alpha for the width of the confidence interval (defaults to alpha = 0.05 for a 95 percent CI)</p>
+</td></tr>
+<tr><td><code id="diagCI_+3A_binommethod">binomMethod</code></td>
+<td>
+<p>The method to be passed to binom.confint to calculate confidence intervals of proportions (sensitivity, etc.).  See help(&quot;binom.confint&quot;) and the Newcombe article referenced below.</p>
+</td></tr>
+<tr><td><code id="diagCI_+3A_...">...</code></td>
+<td>
+<p>Arguments to pass to Bayesian.LRtest.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix containing sensitivity, specificity, posLR, negLR results and their confidence intervals
+</p>
+
+
+<h3>References</h3>
+
+<p>Deeks JJ, Altman DG. BMJ. 2004 July 17; 329(7458): 168-169. Newcombe RG. Statist Med. 1998; 17(857-872).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+diagCI( 25, 50, 45, 75 )
+diagCI( truePos = c(25, 30), totalDzPos = c( 50, 55 ), trueNeg = c(5, 35), totalDzNeg = c(60,65) )
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='drawMaxedOut'>Internal function to draw a set of sensitivities or specificities
+This is intended for the case where testPos == totalDzPos or testNeg == totalDzNeg.</h2><span id='topic+drawMaxedOut'></span>
+
+<h3>Description</h3>
+
+<p>Internal function to draw a set of sensitivities or specificities
+This is intended for the case where testPos == totalDzPos or testNeg == totalDzNeg.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>drawMaxedOut(n, R, consistentQuantile = 0.5, verbose,
+  parameters = list(shrink = 5, tol = 5e-04, nEach = 80),
+  method = "deterministic")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="drawMaxedOut_+3A_n">n</code></td>
+<td>
+<p>The total number of positives/negatives in the population.</p>
+</td></tr>
+<tr><td><code id="drawMaxedOut_+3A_r">R</code></td>
+<td>
+<p>is the number of replications in each round of the bootstrap (has been tested at 10,000 or greater).</p>
+</td></tr>
+<tr><td><code id="drawMaxedOut_+3A_consistentquantile">consistentQuantile</code></td>
+<td>
+<p>Defaults to 0.5, i.e. the median. Finds the lowest probability for which the random draws are likely to be consistently one, where consistently is defined by this value (i.e. at .5, a simple majority of the time is enough for consistency)</p>
+</td></tr>
+<tr><td><code id="drawMaxedOut_+3A_verbose">verbose</code></td>
+<td>
+<p>Whether to display internal operations as they happen.</p>
+</td></tr>
+<tr><td><code id="drawMaxedOut_+3A_parameters">parameters</code></td>
+<td>
+<p>List of control parameters (shrink, tol, nEach) for sequential search.</p>
+</td></tr>
+<tr><td><code id="drawMaxedOut_+3A_method">method</code></td>
+<td>
+<p>Either &quot;deterministic&quot; or &quot;search&quot;. The former is faster and more accurate. Thanks to an anonymous reviewer for pointing out the utility of the binomial distribution in solving this problem.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='medianConsistentlyOne'>Find the lowest population probability whose median is consistently one
+This is the lowest estimate for Sens that is consistently (over 5 runs) most likely to yield a sample estimate that is all 1's (e.g. 100/100, etc.).</h2><span id='topic+medianConsistentlyOne'></span>
+
+<h3>Description</h3>
+
+<p>Find the lowest population probability whose median is consistently one
+This is the lowest estimate for Sens that is consistently (over 5 runs) most likely to yield a sample estimate that is all 1's (e.g. 100/100, etc.).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>medianConsistentlyOne(pr, size, R, nConsistentRuns = 5, warn = TRUE,
+  consistentQuantile = 0.5)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="medianConsistentlyOne_+3A_pr">pr</code></td>
+<td>
+<p>Probability input.</p>
+</td></tr>
+<tr><td><code id="medianConsistentlyOne_+3A_size">size</code></td>
+<td>
+<p>Number of trials.</p>
+</td></tr>
+<tr><td><code id="medianConsistentlyOne_+3A_r">R</code></td>
+<td>
+<p>number of bootstrap replications.</p>
+</td></tr>
+<tr><td><code id="medianConsistentlyOne_+3A_nconsistentruns">nConsistentRuns</code></td>
+<td>
+<p>Number of runs that all have to be identical to return TRUE.</p>
+</td></tr>
+<tr><td><code id="medianConsistentlyOne_+3A_warn">warn</code></td>
+<td>
+<p>Warn if searching outside of the range c(0,1).</p>
+</td></tr>
+<tr><td><code id="medianConsistentlyOne_+3A_consistentquantile">consistentQuantile</code></td>
+<td>
+<p>Defaults to 0.5 (the median). Change if we want to use a different criterion for consistency than the median</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Boolean of length one (TRUE or FALSE).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+prs &lt;- seq(.990,.995,.0001)
+bools &lt;- sapply( prs, medianConsistentlyOne, size=truePos, R=R )
+data.frame( prs, bools )
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='print.diagCI'>Prints results from diagCI
+As is typical for R, this is run automatically when you type in an object name, and is typically not run directly by the end-user.</h2><span id='topic+print.diagCI'></span>
+
+<h3>Description</h3>
+
+<p>Prints results from diagCI
+As is typical for R, this is run automatically when you type in an object name, and is typically not run directly by the end-user.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'diagCI'
+print(x, digits = 3, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="print.diagCI_+3A_x">x</code></td>
+<td>
+<p>The diagCI object created by diagCI()</p>
+</td></tr>
+<tr><td><code id="print.diagCI_+3A_digits">digits</code></td>
+<td>
+<p>Number of digits to round to</p>
+</td></tr>
+<tr><td><code id="print.diagCI_+3A_...">...</code></td>
+<td>
+<p>Pass-alongs (currently ignored).</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns x unaltered.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+diagCI( 25, 50, 45, 75 )
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='print.lrtest'>Prints results from the BayesianLR.test
+As is typical for R, this is run automatically when you type in an object name, and is typically not run directly by the end-user.</h2><span id='topic+print.lrtest'></span>
+
+<h3>Description</h3>
+
+<p>Prints results from the BayesianLR.test
+As is typical for R, this is run automatically when you type in an object name, and is typically not run directly by the end-user.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'lrtest'
+print(x, digits = 3, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="print.lrtest_+3A_x">x</code></td>
+<td>
+<p>The lrtest object created by BayesianLR.test.</p>
+</td></tr>
+<tr><td><code id="print.lrtest_+3A_digits">digits</code></td>
+<td>
+<p>Number of digits to round to for display purposes</p>
+</td></tr>
+<tr><td><code id="print.lrtest_+3A_...">...</code></td>
+<td>
+<p>Pass-alongs (currently ignored).</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns x unaltered.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+print.lrtest( BayesianLR.test( 500, 500, 300, 500 ), digits = 4 )
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='run.BayesianLR.test'>The actual function that runs the test. BayesianLR.test is a wrapper that runs this with ever-looser tolerances.</h2><span id='topic+run.BayesianLR.test'></span>
+
+<h3>Description</h3>
+
+<p>The actual function that runs the test. BayesianLR.test is a wrapper that runs this with ever-looser tolerances.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>run.BayesianLR.test(truePos, totalDzPos, trueNeg, totalDzNeg, R = 10^4,
+  verbose = FALSE, parameters = list(shrink = 5, tol = 5e-04, nEach =
+  80), ci.width = 0.95, consistentQuantile = 0.5, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="run.BayesianLR.test_+3A_truepos">truePos</code></td>
+<td>
+<p>The number of true positive tests.</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_totaldzpos">totalDzPos</code></td>
+<td>
+<p>The total number of positives (&quot;sick&quot;) in the population.</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_trueneg">trueNeg</code></td>
+<td>
+<p>The number of true negatives in the population.</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_totaldzneg">totalDzNeg</code></td>
+<td>
+<p>The total number of negatives (&quot;well&quot;) in the population.</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_r">R</code></td>
+<td>
+<p>is the number of replications in each round of the bootstrap (has been tested at 10,000 or greater).</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_verbose">verbose</code></td>
+<td>
+<p>Whether to display internal operations as they happen.</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_parameters">parameters</code></td>
+<td>
+<p>List of control parameters (shrink, tol, nEach) for sequential grid search.</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_ci.width">ci.width</code></td>
+<td>
+<p>The width of the confidence interval used by boot.ci (not necessarily the same as the width of the CI produced by the algorithm overall; if this parameter is changed, results are not tested)</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_consistentquantile">consistentQuantile</code></td>
+<td>
+<p>Defaults to 0.5, i.e. the median. Finds the lowest probability for which the random draws are likely to be consistently one, where consistently is defined by this value (i.e. at .5, a simple majority of the time is enough for consistency). Changing this parameter results in different properties than have been tested and is not recommended.</p>
+</td></tr>
+<tr><td><code id="run.BayesianLR.test_+3A_...">...</code></td>
+<td>
+<p>Arguments to pass along to boot.ci for the BCa confidence intervals.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An object of class lrtest.
+</p>
+
+<hr>
+<h2 id='sequentialGridSearch'>Optimize a function returning a single numeric value subject to a boolean constraint
+Utilizes a naive recursive grid search.</h2><span id='topic+sequentialGridSearch'></span>
+
+<h3>Description</h3>
+
+<p>Optimize a function returning a single numeric value subject to a boolean constraint
+Utilizes a naive recursive grid search.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>sequentialGridSearch(f, constraint, bounds, nEach = 40, shrink = 10,
+  tol = .Machine$double.eps^0.5, verbose = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="sequentialGridSearch_+3A_f">f</code></td>
+<td>
+<p>Function to be minimized: takes a single numeric value and returns a single numeric value.</p>
+</td></tr>
+<tr><td><code id="sequentialGridSearch_+3A_constraint">constraint</code></td>
+<td>
+<p>Function of a single variable returning a single boolean value (must be TRUE to be at the optimum).</p>
+</td></tr>
+<tr><td><code id="sequentialGridSearch_+3A_bounds">bounds</code></td>
+<td>
+<p>A numeric vector of length two which are the upper and lower bounds of the input to try.</p>
+</td></tr>
+<tr><td><code id="sequentialGridSearch_+3A_neach">nEach</code></td>
+<td>
+<p>Number of points n each round of grid searching to use.</p>
+</td></tr>
+<tr><td><code id="sequentialGridSearch_+3A_shrink">shrink</code></td>
+<td>
+<p>Factor indicating how much (1/shrink) to narrow the search width by each round; highly recommended that shrink is at least half the size of nEach.</p>
+</td></tr>
+<tr><td><code id="sequentialGridSearch_+3A_tol">tol</code></td>
+<td>
+<p>The tolerance (epsilon).</p>
+</td></tr>
+<tr><td><code id="sequentialGridSearch_+3A_verbose">verbose</code></td>
+<td>
+<p>Whether to display verbose output.</p>
+</td></tr>
+<tr><td><code id="sequentialGridSearch_+3A_...">...</code></td>
+<td>
+<p>Arguments to pass along to constraint.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The optimized input value (numeric).
+</p>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>
