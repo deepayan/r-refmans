@@ -1,0 +1,973 @@
+<!DOCTYPE html><html><head><title>Help for package autoMFA</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {autoMFA}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#AMFA'><p>Automated Mixtures of Factor Analyzers</p></a></li>
+<li><a href='#AMFA.inc'><p>Incremental Automated Mixtures of Factor Analyzers</p></a></li>
+<li><a href='#amofa'><p>Adaptive Mixture of Factor Analyzers (AMoFA)</p></a></li>
+<li><a href='#autoMFA-package'><p>autoMFA: Algorithms for Automatically Fitting MFA Models</p></a></li>
+<li><a href='#MFA_ECM'><p>ECM-Based MFA Estimation</p></a></li>
+<li><a href='#MFA_testdata'><p>Test dataset for the MFA model</p></a></li>
+<li><a href='#preprocess'><p>Preprocess</p></a></li>
+<li><a href='#vbmfa'><p>Variational Bayesian Mixture of Factor Analyzers (VB-MoFA)</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Title:</td>
+<td>Algorithms for Automatically Fitting MFA Models</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0.0</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Provides methods for fitting the Mixture of Factor Analyzers (MFA) model automatically. 
+    The MFA model is a mixture model where each sub-population is assumed to follow the Factor Analysis model. The Factor Analysis (FA) model is a latent variable model which assumes that observations are normally distributed, but imposes constraints on their covariance matrix. The MFA model contains two hyperparameters; g (the number of components in the mixture) and q (the number of factors in each component Factor Analysis model). Usually, the Expectation-Maximisation algorithm would be used to fit the MFA model, but this requires g and q to be known. This package treats g and q as unknowns and provides several methods which infer these values with as little input from the user as possible.</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 3.5.0)</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL (&ge; 3)</a></td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>abind, MASS, Matrix, Rfast, expm, stats, utils, Rdpack,
+pracma, usethis</td>
+</tr>
+<tr>
+<td>RdMacros:</td>
+<td>Rdpack</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.1.1</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2021-08-10 05:38:09 UTC; a1725387</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>John Davey [aut, cre],
+  Sharon Lee [ctb],
+  Garique Glonek [ctb],
+  Suren Rathnayake [ctb],
+  Geoff McLachlan [ctb],
+  Albert Ali Salah [ctb],
+  Heysem Kaya [ctb]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>John Davey &lt;john.c.m.davey@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2021-08-10 12:00:05 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='AMFA'>Automated Mixtures of Factor Analyzers</h2><span id='topic+AMFA'></span>
+
+<h3>Description</h3>
+
+<p>An implementation of AMFA algorithm from (Wang and Lin 2020). The number of factors, <em>q</em>, is estimated during the fitting process of each MFA model.
+The best value of <em>g</em> is chosen as the model with the minimum BIC of all candidate models in the range <code>gmin</code> &lt;= <em>g</em> &lt;= <code>gmax</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>AMFA(
+  Y,
+  gmin = 1,
+  gmax = 10,
+  eta = 0.005,
+  itmax = 500,
+  nkmeans = 5,
+  nrandom = 5,
+  tol = 1e-05,
+  conv_measure = "diff",
+  varimax = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="AMFA_+3A_y">Y</code></td>
+<td>
+<p>An <em>n</em> by <em>p</em> data matrix, where <em>n</em> is the number of observations and <em>p</em> is the number of dimensions of the data.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_gmin">gmin</code></td>
+<td>
+<p>The smallest number of components for which an MFA model will be fitted.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_gmax">gmax</code></td>
+<td>
+<p>The largest number of components for which an MFA model will be fitted.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_eta">eta</code></td>
+<td>
+<p>The smallest possible entry in any of the error matrices <em>D_i</em> (Zhao and Yu 2008).</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_itmax">itmax</code></td>
+<td>
+<p>The maximum number of ECM iterations allowed for the estimation of each MFA model.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_nkmeans">nkmeans</code></td>
+<td>
+<p>The number of times the <em>k</em>-means algorithm will be used to initialise models for each combination of <em>g</em> and <em>q</em>.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_nrandom">nrandom</code></td>
+<td>
+<p>The number of randomly initialised models that will be used for each combination of <em>g</em> and <em>q</em>.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_tol">tol</code></td>
+<td>
+<p>The ECM algorithm terminates if the measure of convergence falls below this value.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_conv_measure">conv_measure</code></td>
+<td>
+<p>The convergence criterion of the ECM algorithm. The default <code>'diff'</code> stops the ECM iterations if |l^(k+1) - l^(k)| &lt; <code>tol</code> where l^(k) is the log-likelihood at the <em>k</em>th ECM iteration. If <code>'ratio'</code>, then the convergence of the ECM iterations is measured using |(l^(k+1) - l^(k))/l^(k+1)|.</p>
+</td></tr>
+<tr><td><code id="AMFA_+3A_varimax">varimax</code></td>
+<td>
+<p>Boolean indicating whether the output factor loading matrices should be constrained
+using varimax rotation or not.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following elements:
+</p>
+
+<ul>
+<li><p><code>model</code>: A list specifying the final MFA model. This contains: </p>
+
+<ul>
+<li><p><code>B</code>: A <em>p</em> by <em>p</em> by <em>q</em> array containing the factor loading matrices for each component.
+</p>
+</li>
+<li><p><code>D</code>: A <em>p</em> by <em>p</em> by <em>g</em> array of error variance matrices.
+</p>
+</li>
+<li><p><code>mu</code>:  A <em>p</em> by <em>g</em> array containing the mean of each cluster.
+</p>
+</li>
+<li><p><code>pivec</code>: A 1 by <em>g</em> vector containing the mixing
+proportions for each FA in the mixture.
+</p>
+</li>
+<li><p><code>numFactors</code>: A 1 by <em>g</em> vector containing the number of factors for each FA.</p>
+</li></ul>
+
+
+</li>
+<li><p><code>clustering</code>: A list specifying the clustering produced by the final model. This contains: </p>
+
+<ul>
+<li><p><code>responsibilities</code>: A <em>n</em> by <em>g</em> matrix containing the probability
+that each point belongs to each FA in the mixture.
+</p>
+</li>
+<li><p><code>allocations</code>: A <em>n</em> by 1 matrix containing which
+FA in the mixture each point is assigned to based on the responsibilities.</p>
+</li></ul>
+
+</li>
+<li><p><code>diagnostics</code>: A list containing various pieces of information related to the fitting process of the algorithm. This contains: </p>
+
+<ul>
+<li><p><code>bic</code>: The BIC of the final model.
+</p>
+</li>
+<li><p><code>logL</code>: The log-likelihood of the final model.
+</p>
+</li>
+<li><p><code>times</code>: A data frame containing the amount of time taken to fit each MFA model.
+</p>
+</li>
+<li><p><code>totalTime</code>: The total time taken to fit the final model.</p>
+</li></ul>
+
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Wang W, Lin T (2020).
+&ldquo;Automated learning of mixtures of factor analysis models with missing information.&rdquo;
+<em>TEST</em>.
+ISSN 1133-0686.
+</p>
+<p>Zhao J, Yu PLH (2008).
+&ldquo;Fast ML Estimation for the Mixture of Factor Analyzers via an ECM Algorithm.&rdquo;
+<em>IEEE Transactions on Neural Networks</em>, <b>19</b>(11), 1956-1961.
+ISSN 1045-9227.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>RNGversion('4.0.3'); set.seed(3)
+MFA.fit &lt;- AMFA(autoMFA::MFA_testdata,3,3, nkmeans = 3, nrandom = 3, itmax = 100)
+</code></pre>
+
+<hr>
+<h2 id='AMFA.inc'>Incremental Automated Mixtures of Factor Analyzers</h2><span id='topic+AMFA.inc'></span>
+
+<h3>Description</h3>
+
+<p>An alternative implementation of AMFA algorithm (Wang and Lin 2020). The number of factors, <em>q</em>, is estimated during the fitting process of each MFA model.
+Instead of employing a grid search over <em>g</em> like the <code>AMFA</code> method, this method starts with a <em>1</em> component MFA model and splits components according to their multivariate kurtosis. This uses the same approach as <code>amofa</code> (Kaya and Salah 2015).
+Once a component has been selected for splitting, the new components are initialised in the same manner as <code>vbmfa</code> (Ghahramani and Beal 2000).
+It keeps trying to split components until all components have had <code>numTries</code> splits attempted with no decrease in BIC, after which the current model is returned.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>AMFA.inc(
+  Y,
+  numTries = 2,
+  eta = 0.005,
+  itmax = 500,
+  tol = 1e-05,
+  conv_measure = "diff",
+  nkmeans = 1,
+  nrandom = 1,
+  varimax = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="AMFA.inc_+3A_y">Y</code></td>
+<td>
+<p>An <em>n</em> by <em>p</em> data matrix, where <em>n</em> is the number of observations and <em>p</em> is the number of dimensions of the data.</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_numtries">numTries</code></td>
+<td>
+<p>The number of attempts that should be made to split each component.</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_eta">eta</code></td>
+<td>
+<p>The smallest possible entry in any of the error matrices <em>D_i</em> (Zhao and Yu 2008).</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_itmax">itmax</code></td>
+<td>
+<p>The maximum number of ECM iterations allowed for the estimation of each MFA model.</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_tol">tol</code></td>
+<td>
+<p>The ECM algorithm terminates if the measure of convergence falls below this value.</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_conv_measure">conv_measure</code></td>
+<td>
+<p>The convergence criterion of the ECM algorithm. The default <code>'diff'</code> stops the ECM iterations if |l^(k+1) - l^(k)| &lt; <code>tol</code> where l^(k) is the log-likelihood at the <em>k</em>th ECM iteration. If <code>'ratio'</code>, then the convergence of the ECM iterations is measured using |(l^(k+1) - l^(k))/l^(k+1)|.</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_nkmeans">nkmeans</code></td>
+<td>
+<p>The number of times the <em>k</em>-means algorithm will be used to initialise the (single component) starting models.</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_nrandom">nrandom</code></td>
+<td>
+<p>The number of randomly initialised (single component) starting models.</p>
+</td></tr>
+<tr><td><code id="AMFA.inc_+3A_varimax">varimax</code></td>
+<td>
+<p>Boolean indicating whether the output factor loading matrices should be constrained
+using varimax rotation or not.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following elements:
+</p>
+
+<ul>
+<li><p><code>model</code>: A list specifying the final MFA model. This contains: </p>
+
+<ul>
+<li><p><code>B</code>: A <em>p</em> by <em>p</em> by <em>q</em> array containing the factor loading matrices for each component.
+</p>
+</li>
+<li><p><code>D</code>: A <em>p</em> by <em>p</em> by <em>g</em> array of error variance matrices.
+</p>
+</li>
+<li><p><code>mu</code>:  A <em>p</em> by <em>g</em> array containing the mean of each cluster.
+</p>
+</li>
+<li><p><code>pivec</code>: A 1 by <em>g</em> vector containing the mixing
+proportions for each FA in the mixture.
+</p>
+</li>
+<li><p><code>numFactors</code>: A 1 by <em>g</em> vector containing the number of factors for each FA.</p>
+</li></ul>
+
+
+</li>
+<li><p><code>clustering</code>: A list specifying the clustering produced by the final model. This contains: </p>
+
+<ul>
+<li><p><code>responsibilities</code>: A <em>n</em> by <em>g</em> matrix containing the probability
+that each point belongs to each FA in the mixture.
+</p>
+</li>
+<li><p><code>allocations</code>: A <em>n</em> by 1 matrix containing which
+FA in the mixture each point is assigned to based on the responsibilities.</p>
+</li></ul>
+
+</li>
+<li><p><code>diagnostics</code>: A list containing various pieces of information related to the fitting process of the algorithm. This contains: </p>
+
+<ul>
+<li><p><code>bic</code>: The BIC of the final model.
+</p>
+</li>
+<li><p><code>logL</code>: The log-likelihood of the final model.
+</p>
+</li>
+<li><p><code>totalTime</code>: The total time taken to fit the final model.</p>
+</li></ul>
+
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Wang W, Lin T (2020).
+&ldquo;Automated learning of mixtures of factor analysis models with missing information.&rdquo;
+<em>TEST</em>.
+ISSN 1133-0686.
+</p>
+<p>Kaya H, Salah AA (2015).
+&ldquo;Adaptive Mixtures of Factor Analyzers.&rdquo;
+<em>arXiv preprint arXiv:1507.02801</em>.
+</p>
+<p>Ghahramani Z, Beal MJ (2000).
+&ldquo;Variational inference for Bayesian Mixtures of Factor Analysers.&rdquo;
+In <em>Advances in neural information processing systems</em>, 449&ndash;455.
+</p>
+<p>Zhao J, Yu PLH (2008).
+&ldquo;Fast ML Estimation for the Mixture of Factor Analyzers via an ECM Algorithm.&rdquo;
+<em>IEEE Transactions on Neural Networks</em>, <b>19</b>(11), 1956-1961.
+ISSN 1045-9227.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+amofa">amofa</a></code> <code><a href="#topic+vbmfa">vbmfa</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>RNGversion('4.0.3'); set.seed(3) 
+MFA.fit &lt;- AMFA.inc(autoMFA::MFA_testdata, itmax = 1, numTries = 0)
+</code></pre>
+
+<hr>
+<h2 id='amofa'>Adaptive Mixture of Factor Analyzers (AMoFA)</h2><span id='topic+amofa'></span>
+
+<h3>Description</h3>
+
+<p>An implementation of the Adaptive Mixture of Factor Analyzers (AMoFA)
+algorithm from (Kaya and Salah 2015). This code is a R port of the MATLAB code which was
+included with that paper.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>amofa(data, itmax = 100, verbose = FALSE, varimax = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="amofa_+3A_data">data</code></td>
+<td>
+<p>An <em>n</em> by <em>p</em> data matrix, where <em>n</em> is the number of
+observations and <em>p</em> is the number of dimensions of the data.</p>
+</td></tr>
+<tr><td><code id="amofa_+3A_itmax">itmax</code></td>
+<td>
+<p>The maximum number of EM iterations allowed for the estimation of each MFA model.</p>
+</td></tr>
+<tr><td><code id="amofa_+3A_verbose">verbose</code></td>
+<td>
+<p>Boolean indicating whether or not to print more
+verbose output, including the number of EM-iterations used and the total
+running time. Default is FALSE.</p>
+</td></tr>
+<tr><td><code id="amofa_+3A_varimax">varimax</code></td>
+<td>
+<p>Boolean indicating whether the output factor loading matrices should be constrained
+using varimax rotation or not.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following elements:
+</p>
+
+<ul>
+<li><p><code>model</code>: A list specifying the final MFA model. This contains: </p>
+
+<ul>
+<li><p><code>B</code>: A list containing the factor loading matrices for each component.
+</p>
+</li>
+<li><p><code>D</code>: A <em>p</em> by <em>p</em> by <em>g</em> array of error variance matrices.
+</p>
+</li>
+<li><p><code>mu</code>:  A <em>p</em> by <em>g</em> array containing the mean of each cluster.
+</p>
+</li>
+<li><p><code>pivec</code>: A 1 by g vector containing the mixing
+proportions for each FA in the mixture.
+</p>
+</li>
+<li><p><code>numFactors</code>: A <em>1</em> by <em>g</em> vector containing the number of factors for each FA.</p>
+</li></ul>
+
+
+</li>
+<li><p><code>clustering</code>: A list specifying the clustering produced by the final model. This contains: </p>
+
+<ul>
+<li><p><code>responsibilities</code>: A <em>n</em> by <em>g</em> matrix containing the probability
+that each point belongs to each FA in the mixture.
+</p>
+</li>
+<li><p><code>allocations</code>: A <em>n</em> by 1 matrix containing which
+FA in the mixture each point is assigned to based on the responsibilities.</p>
+</li></ul>
+
+</li>
+<li><p><code>diagnostics</code>: A list containing various pieces of information related to the fitting process of the algorithm. This contains: </p>
+
+<ul>
+<li><p><code>bic</code>: The BIC of the final model.
+</p>
+</li>
+<li><p><code>logL</code>: The log-likelihood of the final model.
+</p>
+</li>
+<li><p><code>totalEM</code>: The total number of EM iterations used.
+</p>
+</li>
+<li><p><code>progress</code>: A matrix containing information about the decisions
+made by the algorithm.
+</p>
+</li>
+<li><p><code>times</code>: The time taken for each loop in the algorithm.
+</p>
+</li>
+<li><p><code>totalTime</code>: The total time taken to fit the final model.</p>
+</li></ul>
+
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Kaya H, Salah AA (2015).
+&ldquo;Adaptive Mixtures of Factor Analyzers.&rdquo;
+<em>arXiv preprint arXiv:1507.02801</em>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>RNGversion('4.0.3'); set.seed(3)
+MFA.fit &lt;- amofa(autoMFA::MFA_testdata)
+
+</code></pre>
+
+<hr>
+<h2 id='autoMFA-package'>autoMFA: Algorithms for Automatically Fitting MFA Models</h2><span id='topic+autoMFA'></span><span id='topic+autoMFA-package'></span>
+
+<h3>Description</h3>
+
+<p>Provides methods for fitting the Mixture of Factor Analyzers (MFA) model automatically. 
+The MFA model is a mixture model where each sub-population is assumed to follow the Factor Analysis model. The Factor Analysis (FA) model is a latent variable model which assumes that observations are normally distributed, but imposes constraints on their covariance matrix. The MFA model contains two hyperparameters; g (the number of components in the mixture) and q (the number of factors in each component Factor Analysis model). Usually, the Expectation-Maximisation algorithm would be used to fit the MFA model, but this requires g and q to be known. This package treats g and q as unknowns and provides several methods which infer these values with as little input from the user as possible.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: John Davey <a href="mailto:john.c.m.davey@gmail.com">john.c.m.davey@gmail.com</a>
+</p>
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> Sharon Lee [contributor]
+</p>
+</li>
+<li><p> Garique Glonek [contributor]
+</p>
+</li>
+<li><p> Suren Rathnayake [contributor]
+</p>
+</li>
+<li><p> Geoff McLachlan [contributor]
+</p>
+</li>
+<li><p> Albert Ali Salah [contributor]
+</p>
+</li>
+<li><p> Heysem Kaya [contributor]
+</p>
+</li></ul>
+
+
+<hr>
+<h2 id='MFA_ECM'>ECM-Based MFA Estimation</h2><span id='topic+MFA_ECM'></span>
+
+<h3>Description</h3>
+
+<p>An implementation of an ECM algorithm for the MFA model which does not condition on the factors being known (Zhao and Yu 2008).
+Performs a grid search from <code>gmin</code> to <code>gmax</code>, and <code>qmin</code> to <code>qmax</code>, respectively. The best combination of <em>g</em> and <em>q</em> is chosen to be the model with the minimum BIC.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>MFA_ECM(
+  Y,
+  gmin = 1,
+  gmax = 10,
+  qmin = 1,
+  qmax = NULL,
+  eta = 0.005,
+  itmax = 500,
+  nkmeans = 5,
+  nrandom = 5,
+  tol = 1e-05,
+  conv_measure = "diff",
+  varimax = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="MFA_ECM_+3A_y">Y</code></td>
+<td>
+<p>An <em>n</em> by <em>p</em> data matrix, where <em>n</em> is the number of observations and <em>p</em> is the number of dimensions of the data.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_gmin">gmin</code></td>
+<td>
+<p>The smallest number of components for which an MFA model will be fitted.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_gmax">gmax</code></td>
+<td>
+<p>The largest number of components for which an MFA model will be fitted.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_qmin">qmin</code></td>
+<td>
+<p>The smallest number of factors with which an MFA model will be fitted.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_qmax">qmax</code></td>
+<td>
+<p>The largest number of factors with which an MFA model will be fitted. Must obey the Ledermann bound.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_eta">eta</code></td>
+<td>
+<p>The smallest possible entry in any of the error matrices <em>D_i</em> (Zhao and Yu 2008).</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_itmax">itmax</code></td>
+<td>
+<p>The maximum number of ECM iterations allowed for the estimation of each MFA model.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_nkmeans">nkmeans</code></td>
+<td>
+<p>The number of times the <em>k</em>-means algorithm will be used to initialise models for each combination of <em>g</em> and <em>q</em>.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_nrandom">nrandom</code></td>
+<td>
+<p>The number of randomly initialised models that will be used for each combination of g and q.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_tol">tol</code></td>
+<td>
+<p>The ECM algorithm terminates if the measure of convergence falls below this value.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_conv_measure">conv_measure</code></td>
+<td>
+<p>The convergence criterion of the ECM algorithm. The default <code>'diff'</code> stops the ECM iterations if |l^(k+1) - l^(k)| &lt; <code>tol</code> where l^(k) is the log-likelihood at the <em>k</em>th ECM iteration. If <code>'ratio'</code>, then the convergence of the ECM iterations is measured using |(l^(k+1) - l^(k))/l^(k+1)|.</p>
+</td></tr>
+<tr><td><code id="MFA_ECM_+3A_varimax">varimax</code></td>
+<td>
+<p>Boolean indicating whether the output factor loading matrices should be constrained
+using varimax rotation or not.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following elements:
+</p>
+
+<ul>
+<li><p><code>model</code>: A list specifying the final MFA model. This contains: </p>
+
+<ul>
+<li><p><code>B</code>: A <em>p</em> by <em>p</em> by <em>q</em> array containing the factor loading matrices for each component.
+</p>
+</li>
+<li><p><code>D</code>: A <em>p</em> by <em>p</em> by <em>g</em> array of error variance matrices.
+</p>
+</li>
+<li><p><code>mu</code>:  A <em>p</em> by <em>g</em> array containing the mean of each cluster.
+</p>
+</li>
+<li><p><code>pivec</code>: A 1 by <em>g</em> vector containing the mixing
+proportions for each FA in the mixture.
+</p>
+</li>
+<li><p><code>numFactors</code>: A 1 by <em>g</em> vector containing the number of factors for each FA.</p>
+</li></ul>
+
+
+</li>
+<li><p><code>clustering</code>: A list specifying the clustering produced by the final model. This contains: </p>
+
+<ul>
+<li><p><code>responsibilities</code>: A <em>n</em> by <em>g</em> matrix containing the probability
+that each point belongs to each FA in the mixture.
+</p>
+</li>
+<li><p><code>allocations</code>: A <em>n</em> by 1 matrix containing which
+FA in the mixture each point is assigned to based on the responsibilities.</p>
+</li></ul>
+
+</li>
+<li><p><code>diagnostics</code>: A list containing various pieces of information related to the fitting process of the algorithm. This contains: </p>
+
+<ul>
+<li><p><code>bic</code>: The BIC of the final model.
+</p>
+</li>
+<li><p><code>logL</code>: The log-likelihood of the final model.
+</p>
+</li>
+<li><p><code>times</code>: A data frame containing the amount of time taken to fit each MFA model.
+</p>
+</li>
+<li><p><code>totalTime</code>: The total time taken to fit the final model.</p>
+</li></ul>
+
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Zhao J, Yu PLH (2008).
+&ldquo;Fast ML Estimation for the Mixture of Factor Analyzers via an ECM Algorithm.&rdquo;
+<em>IEEE Transactions on Neural Networks</em>, <b>19</b>(11), 1956-1961.
+ISSN 1045-9227.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>RNGversion('4.0.3'); set.seed(3)
+MFA.fit &lt;- MFA_ECM(autoMFA::MFA_testdata,3,3)
+</code></pre>
+
+<hr>
+<h2 id='MFA_testdata'>Test dataset for the MFA model</h2><span id='topic+MFA_testdata'></span>
+
+<h3>Description</h3>
+
+<p>A 720 x 3 test dataset generated from a MFA model with 3 components, 1 factor for
+each component. Uneven point distribution with large separation between
+clusters relative to the component variance matrices.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>MFA_testdata
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>Data matrix with 720 observations of 3 variables.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(MFA_testdata)
+plot(MFA_testdata[,1], MFA_testdata[,2])
+</code></pre>
+
+<hr>
+<h2 id='preprocess'>Preprocess</h2><span id='topic+preprocess'></span>
+
+<h3>Description</h3>
+
+<p>Performs the pre-processing of a data matrix such that it is ready
+to be used by <code>vbmfa</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>preprocess(Y, ppp, shrinkQ)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="preprocess_+3A_y">Y</code></td>
+<td>
+<p>An <em>n</em> by <em>p</em> data matrix which is to be scaled.</p>
+</td></tr>
+<tr><td><code id="preprocess_+3A_ppp">ppp</code></td>
+<td>
+<p>An optional <em>p</em> by 2 matrix where the columns represent
+the sample mean and sample standard deviation of the <em>p</em>th dimension of <code>Y</code>.</p>
+</td></tr>
+<tr><td><code id="preprocess_+3A_shrinkq">shrinkQ</code></td>
+<td>
+<p>If 1, the data is shrunk according to <code>ppp</code>. If 0, the data is expanded
+to invert a prior shrinking by <code>ppp</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing </p>
+
+<ul>
+<li><p><code>Yout</code>: A processed data matrix of observations.
+</p>
+</li>
+<li><p><code>ppp</code>: The shrinkage which as applied in the processing.
+</p>
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Ghahramani Z, Beal MJ (2000).
+&ldquo;Variational inference for Bayesian Mixtures of Factor Analysers.&rdquo;
+In <em>Advances in neural information processing systems</em>, 449&ndash;455.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+vbmfa">vbmfa</a></code> for fitting models after using <code>preprocess</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>Yout &lt;- preprocess(autoMFA::MFA_testdata);
+
+</code></pre>
+
+<hr>
+<h2 id='vbmfa'>Variational Bayesian Mixture of Factor Analyzers (VB-MoFA)</h2><span id='topic+vbmfa'></span>
+
+<h3>Description</h3>
+
+<p>An implementation of the Variational Bayesian Mixutre of Factor
+Analysers (Ghahramani and Beal 2000). This code is an
+R port of the MATLAB code which was written by M.J.Beal and released alongside
+their paper.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vbmfa(Y, qmax = NULL, maxtries = 3, verbose = FALSE, varimax = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vbmfa_+3A_y">Y</code></td>
+<td>
+<p>An <em>n</em> by <em>p</em> (normalised) data matrix (i.e. the result of
+a call to the function <code>preprocess</code>), where <em>n</em> is the number of observations and
+<em>p</em> is the number of dimensions of the data.</p>
+</td></tr>
+<tr><td><code id="vbmfa_+3A_qmax">qmax</code></td>
+<td>
+<p>Maximum factor dimensionality (default <em>p</em>-1).</p>
+</td></tr>
+<tr><td><code id="vbmfa_+3A_maxtries">maxtries</code></td>
+<td>
+<p>The maximum number of times the algorithm will attempt to split each component.</p>
+</td></tr>
+<tr><td><code id="vbmfa_+3A_verbose">verbose</code></td>
+<td>
+<p>Whether or not verbose output should be printed during the
+model fitting process (defaults to false).</p>
+</td></tr>
+<tr><td><code id="vbmfa_+3A_varimax">varimax</code></td>
+<td>
+<p>Boolean indicating whether the output factor loading matrices should be constrained
+using varimax rotation or not.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following elements:
+</p>
+
+<ul>
+<li><p><code>model</code>: A list specifying the final MFA model. This contains: </p>
+
+<ul>
+<li><p><code>B</code>: A <em>p</em> by <em>p</em> by <em>q</em> array containing the factor loading matrices for each component.
+</p>
+</li>
+<li><p><code>D</code>: A <em>p</em> by <em>p</em> by <em>g</em> array of error variance matrices.
+</p>
+</li>
+<li><p><code>mu</code>:  A <em>p</em> by <em>g</em> array containing the mean of each cluster.
+</p>
+</li>
+<li><p><code>pivec</code>: A 1 by <em>g</em> vector containing the mixing
+proportions for each FA in the mixture.
+</p>
+</li>
+<li><p><code>numFactors</code>: A 1 by <em>g</em> vector containing the number of factors for each FA.</p>
+</li></ul>
+
+
+</li>
+<li><p><code>clustering</code>: A list specifying the clustering produced by the final model. This contains: </p>
+
+<ul>
+<li><p><code>responsibilities</code>: A <em>n</em> by <em>g</em> matrix containing the probability
+that each point belongs to each FA in the mixture.
+</p>
+</li>
+<li><p><code>allocations</code>: A <em>n</em> by 1 matrix containing which
+FA in the mixture each point is assigned to based on the responsibilities.</p>
+</li></ul>
+
+</li>
+<li><p><code>diagnostics</code>: A list containing various pieces of information related to the fitting process of the algorithm. This contains: </p>
+
+<ul>
+<li><p><code>bic</code>: The BIC of the final model.
+</p>
+</li>
+<li><p><code>logL</code>: The log-likelihood of the final model.
+</p>
+</li>
+<li><p><code>Fhist</code>:The values of <em>F</em> at each iteration of the algorithm. <em>F</em> is defined in (Ghahramani and Beal 2000).
+</p>
+</li>
+<li><p><code>times</code>: The time taken for each loop in the algorithm.
+</p>
+</li>
+<li><p><code>totalTime</code>: The total time taken to fit the final model.</p>
+</li></ul>
+
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Ghahramani Z, Beal MJ (2000).
+&ldquo;Variational inference for Bayesian Mixtures of Factor Analysers.&rdquo;
+In <em>Advances in neural information processing systems</em>, 449&ndash;455.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+preprocess">preprocess</a></code> for centering and scaling data prior to using <code>vbmfa</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>RNGversion('4.0.3'); set.seed(3)
+Yout &lt;- preprocess(MFA_testdata)
+MFA.fit &lt;- vbmfa(Yout$Yout, maxtries = 2)
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>

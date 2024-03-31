@@ -1,0 +1,693 @@
+<!DOCTYPE html><html><head><title>Help for package adaptivetau</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {adaptivetau}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#ssa.adaptivetau'>
+<p>Approximate stochastic simulation algorithm</p></a></li>
+<li><a href='#ssa.exact'>
+<p>Exact stochastic simulation algorithm</p></a></li>
+<li><a href='#ssa.maketrans'>
+<p>Make transition matrix</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table>
+<tr>
+<td>Type:</td>
+<td>Package</td>
+</tr>
+<tr>
+<td>Title:</td>
+<td>Tau-Leaping Stochastic Simulation</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>2.3</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2023-11-28</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Philip Johnson</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Philip Johnson &lt;plfj@umd.edu&gt;</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>R (&ge; 2.10.1)</td>
+</tr>
+<tr>
+<td>Enhances:</td>
+<td>compiler</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Implements adaptive tau leaping to approximate the
+        trajectory of a continuous-time stochastic process as
+        described by Cao et al. (2007) The Journal of Chemical Physics
+        &lt;<a href="https://doi.org/10.1063%2F1.2745299">doi:10.1063/1.2745299</a>&gt; (aka. the Gillespie stochastic
+        simulation algorithm).  This package is based upon work
+        supported by NSF DBI-0906041 and NIH K99-GM104158 to Philip
+        Johnson and NIH R01-AI049334 to Rustom Antia.</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.r-project.org/Licenses/GPL-3">GPL (&ge; 3)</a></td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2023-11-28 15:49:32 UTC; pjohnson</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2023-11-28 17:40:11 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='ssa.adaptivetau'>
+Approximate stochastic simulation algorithm
+</h2><span id='topic+ssa.adaptivetau'></span><span id='topic+adaptivetau'></span>
+
+<h3>Description</h3>
+
+<p>Implements adaptive tau-leaping approximation for simulating the
+trajectory of a continuous-time Markov process (see reference below).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ssa.adaptivetau(init.values, transitions, rateFunc, params, tf,
+                jacobianFunc = NULL, maxTauFunc = NULL,
+                deterministic = NULL, halting = NULL,
+                relratechange = rep(1, length(init.values)),
+                tl.params = NULL, reportTransitions = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ssa.adaptivetau_+3A_init.values">init.values</code></td>
+<td>
+
+<p>Vector of initial values for all variables.  This should be a simple
+one-dimensional vector of real numbers.  <em>IMPORTANT:</em> variables
+must never take negative values.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_transitions">transitions</code></td>
+<td>
+
+<p>One of two possible data types:
+</p>
+
+<ul>
+<li><p> A list with length equal to the number of transitions.  Each
+element of the list should be a vector specifying a transition
+(i.e., which state(s) change and by how much).  Each entry in the
+vector needs a name (specifying which state variable to change,
+either by name or index) and a value (specifying the amount by
+which this variable will change).
+</p>
+</li>
+<li><p> A two-dimensional matrix of integers specifying how each state
+variable (rows) should be changed for a given transition (columns).
+Generally this will be a sparse matrix of primarily 1s and -1s,
+which can make this structure inefficient.
+</p>
+</li></ul>
+
+<p>See the example below for details as well as
+<code><a href="#topic+ssa.maketrans">ssa.maketrans</a></code> or the vignette accompanying this package.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_ratefunc">rateFunc</code></td>
+<td>
+
+<p>R function that returns instantaneous transition rates for each
+transition in the form a real-valued one-dimensional vector with
+length equal to the number of transitions.  The order of these
+rates must match the order in which transitions were specified in
+the <code>transitions</code> parameter above.  This function must accept
+the following arguments:
+</p>
+
+<ul>
+<li><p> vector of current values for all state variables (in order
+used in the <code>init.values</code> argument above)
+</p>
+</li>
+<li><p> parameters as supplied in argument to ssa.adaptivetau
+</p>
+</li>
+<li><p> single real number giving the current time (all simulations
+start at t=0)
+</p>
+</li></ul>
+
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_params">params</code></td>
+<td>
+
+<p>any R variable to be passed as-is to rateFunc, presumably specifying
+useful parameters.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_tf">tf</code></td>
+<td>
+
+<p>final time of simulation.  Due to the approximate nature of the
+tau-leaping algorithm, the simulation may overshoot this time somewhat.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_jacobianfunc">jacobianFunc</code></td>
+<td>
+<p> R function that returns Jacobian of transition
+rates.  If supplied, enables the use of the implicit tau-leaping
+algorithm (if appropriate; used in stiff systems).  In contrast to
+typical definition of Jacobian (but consistent with the transition
+matrix parameter above), columns represent transitions (functions)
+and rows represent state variables (different partial derivative
+variables). jacobianFunc takes the same parameters as rateFunc.
+<b>NOTE:</b> the implicit tau-leaping algorithm will reduce the observed
+variance for fast-changing state variables, although the mean will
+be correct.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_maxtaufunc">maxTauFunc</code></td>
+<td>
+<p> R function that returns single real number giving
+the maximum tau leap allowable from the current state.  Only
+executed if the adaptive tau algorithm wants to leap in a step
+greater than tl.params$maxtau (should only need to use if your rate
+functions have a dramatically discontinuous first derivative).
+Takes same parameters as rateFunc.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_deterministic">deterministic</code></td>
+<td>
+
+<p>Specify transitions to be treated as deterministic.  If not NULL,
+either a TRUE/FALSE vector of length equal to the number of
+transitions -or- a integer vector of transition numbers to be
+treated as deterministic (i.e. applying <code><a href="base.html#topic+which">which</a></code> to the
+former).  Deterministic transitions will be applied every timestep
+using the <b>expected</b> degree of change.  Note this will almost
+certainly result in non-integer values for any affected state
+variables.  Also, note that this is still an approximation &ndash; not a
+true numerical ODE solution &ndash; and at least one transition must be
+stochastic for this to work at all.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_halting">halting</code></td>
+<td>
+
+<p>Specify transitions which, when executed, will cause the simulation
+to halt.  If not NULL, either a TRUE/FALSE vector of length equal to the
+number of transitions -or- a integer vector of transition numbers to
+be treated as halting (i.e. applying <code><a href="base.html#topic+which">which</a></code> to
+the former).  If halting transitions are specified, then the return
+value is different (since we want to know which transition halted us).
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_relratechange">relratechange</code></td>
+<td>
+
+<p>one-dimensional vector of length equal to the number of state
+variables providing an upperbound to the ratio of amount that any
+transition rate will change given a corresponding change in the
+state variable.  In other words, if variable i doubles, can we be
+assured that no transition will <b>more</b> than double (ratio of
+1)?  If not, then you need to set this variable to be greater than 1.
+</p>
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_tl.params">tl.params</code></td>
+<td>
+
+<p>List of various parameters to the tau-leaping algorithm itself (best
+explained by reading original reference):
+</p>
+
+<dl>
+<dt>epsilon</dt><dd><p>default 0.05; increasing will make bigger leaps
+resulting in potentially more error</p>
+</dd>
+<dt>delta</dt><dd><p>default 0.05; how close two symmetric transition
+rates must be before we classify them as in
+partial-equilibrium.  Only applies to the implicit tau routine.
+</p>
+</dd>
+<dt>maxtau</dt><dd><p>default Inf; maximum leap allowed.  Should only need
+to specify if rate functions are drastically non-smooth.
+</p>
+</dd>
+<dt>extraChecks</dt><dd><p>default TRUE; whether to perform a battery of
+validity checks on the state variables and rates after every
+call to &quot;rateFunc.&quot;  Slows down implementation, but unless
+you are SURE you have designed your transition matrix and rate
+function correctly, probably best to keep these checks.
+</p>
+</dd>
+</dl>
+
+</td></tr>
+<tr><td><code id="ssa.adaptivetau_+3A_reporttransitions">reportTransitions</code></td>
+<td>
+<p>default FALSE; whether to include a
+matrix of executed transitions per time interval in the output
+(alongside with the states at each time point).
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The initial values, transition matrix &amp; transition rates must all be
+designed such that variables are always non-negative.  The algorithm
+relies on this invariant.
+</p>
+<p>See reference for details but, in brief the adaptive tau-leaping
+algorithm dynamically switches between three methods for simulating
+events:
+</p>
+
+<dl>
+<dt>exact</dt><dd><p>no approximation &ndash; executes a single transition at a time</p>
+</dd>
+<dt>explicit tau-leaping</dt><dd><p>subdivides transitions into those that
+might hit cause a variable to hit 0 (&ldquo;critical&rdquo;) and those
+that do not.  Duration of time step picked dynamically with the
+goal of maximizing the step while minimized the change in the
+transition rates (the approximation assumes that these rates do
+not change).  Non-critical transitions are advanced by a
+poisson-distributed random variable; critical transitions are
+handled more like the exact algorithm.</p>
+</dd>
+<dt>implicit tau-leaping</dt><dd><p>in addition to dividing between critical
+and non-critical, also identifies transitions in quasi-equilbrium
+(reversible pairs of transition that have roughly equal
+forward-backward flow).  Duration of time step picked on basis of
+non-critical, non-equilibrium transitions.  This has the potential
+to greatly increase the timestep size for stiff systems.  Similar
+idea to the explicit method but necesitates solving an implicit
+equation via Newton's method.  Thus you must supply a function to
+calculate the Jacobian to enable this method.</p>
+</dd>
+</dl>
+
+<p>All error messages that reference variables or transitions by number
+use 1-based numbering where the first variable (or transition) is 1.
+</p>
+<p>Consider calling <code><a href="compiler.html#topic+enableJIT">enableJIT</a>(1)</code> before running
+ssa.adaptivetau.  In most circumstances, this should yield some
+speedup by byte-code compiling the rate function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>If no halting transitions are specified, then a two-dimensional matrix
+with rows for every timepoint at which the rateFunc was evaluated and
+columns giving the value for every state variable at that time.  The
+first column specifies the time.
+</p>
+<p>If halting transitions are specified, then a list with two elements.
+The first (&lsquo;dynamics&rsquo;) is the same two-dimensional matrix as
+without halting transitions.  The second (&lsquo;haltingTransition&rsquo;)
+gives the number of the transition that halted the simulation, or NA
+otherwise.
+</p>
+<p>If the &lsquo;reportTransitions&rsquo; option is used, then a list is
+returned with two elements (or three, if combined with halting
+transitions).  The final element of the list is a two-dimensional
+matrix called &lsquo;transitions&rsquo; with a row for each timepoint and
+columns giving the number of times each transition was executed in the
+between the current time and the previous time.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Development of this package was supported in part by National Science
+Foundation award DBI-0906041 and National Institute of Health award
+K99-GM104158.  Any opinions, findings, and conclusions or
+recommendations expressed in this material are those of the author and
+do not necessarily reflect the views of the NSF or NIH.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Philip Johnson
+</p>
+
+
+<h3>References</h3>
+
+<p>Cao Y, Gillespie DT, Petzold LR, <em>The Journal of
+Chemical Physics</em>, 2007
+</p>
+
+
+<h3>See Also</h3>
+
+
+<p>For systems with sparse transition matrices, see helper function
+<code><a href="#topic+ssa.maketrans">ssa.maketrans</a></code>.
+<code><a href="#topic+ssa.exact">ssa.exact</a></code> exposes a R interface to the C++
+implementation of the exact, non-approximate simulation algorithm
+(sometimes known as &quot;Gillespie&quot;).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## Simple Lotka-Volterra example
+
+# We have three potential transitions:
+transitions = list(c(prey = +1), # prey grow
+                   c(prey = -2, pred = +1), # predation
+                   c(pred = -1)) # predator dies
+
+# Function to calculate transition rates, given variables and parameters
+lvrates &lt;- function(x, params, t) {
+  return(c(params$preygrowth*x["prey"],     # rate of prey growing
+           x["prey"]*x["pred"]*params$eat,  # rate of predation
+           x["pred"]*params$preddeath))     # rate of predators dying
+}
+
+# Set the Lotka-Volterra parameters
+params = list(preygrowth=10, eat=0.01, preddeath=10);
+
+# Set the random seed (only necessary if you want to reproduce results)
+set.seed(4)
+
+# Perform the stochastic simulation!
+r=ssa.adaptivetau(c(prey = 1000, pred = 500),
+                  transitions, lvrates, params, tf=12)
+
+# Plot the results
+matplot(r[,"time"], r[,c("prey","pred")], type='l', xlab='Time',
+        ylab='Counts (log scale)', log='y')
+legend("bottomleft", legend=c("prey", "predator"), lty=1:2, col=1:2)
+
+
+# However, if you are interested in very fine-scale variance, perhaps the
+# default parameters smooth too much.  Try reducing the tl.param epsilon
+# to see a better approximation:
+s=ssa.adaptivetau(c(prey = 1000, pred = 500),
+                  transitions, lvrates, params, tf=12,
+                  tl.params = list(epsilon=0.01)) # reduce "epsilon"
+par(mfrow=c(2,1));
+matplot(r[r[,"time"]&lt;2,"time"], r[r[,"time"]&lt;2,c("prey","pred")],
+        type='l', xlab='Time', ylab='Counts', main="Original (epsilon=default)")
+matplot(s[s[,"time"]&lt;2,"time"], s[s[,"time"]&lt;2,c("prey","pred")],
+        type='l', xlab='Time', ylab='Counts', main="Fine-scale (epsilon=0.01)")
+</code></pre>
+
+<hr>
+<h2 id='ssa.exact'>
+Exact stochastic simulation algorithm
+</h2><span id='topic+ssa.exact'></span>
+
+<h3>Description</h3>
+
+<p>Simulates the trajectory of a continuous-time Markov process (aka. the
+Gillespie simulation algorithm).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ssa.exact(init.values, transitions, rateFunc, params, tf,
+          reportTransitions = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ssa.exact_+3A_init.values">init.values</code></td>
+<td>
+
+<p>Vector of initial values for all variables.  This should be a simple
+one-dimensional vector of real numbers.  <em>IMPORTANT:</em> variables
+must never take negative values.
+</p>
+</td></tr>
+<tr><td><code id="ssa.exact_+3A_transitions">transitions</code></td>
+<td>
+
+<p>Two-dimensional matrix of integers specifying how each state
+variable (rows) should be changed for a given transition (columns).
+Generally this will be a sparse matrix of primarily 1s and -1s.
+</p>
+</td></tr>
+<tr><td><code id="ssa.exact_+3A_ratefunc">rateFunc</code></td>
+<td>
+
+<p>R-function that returns instantaneous transition rates for each
+transition in the form a real-valued one-dimensional vector with
+length equal to the number of transitions.  The order of these
+rates must match the order in which transitions were specified in
+the <code>transitions</code> parameter above.  This function must accept
+the following arguments:
+</p>
+
+<ul>
+<li><p> vector of current values for all state variables (in order
+used in the <code>init.values</code> argument above)
+</p>
+</li>
+<li><p> parameters as supplied in argument to ssa.adaptivetau
+</p>
+</li>
+<li><p> single real number giving the current time (all simulations
+start at t=0)
+</p>
+</li></ul>
+
+</td></tr>
+<tr><td><code id="ssa.exact_+3A_params">params</code></td>
+<td>
+
+<p>any R variable to be passed as-is to rateFunc, presumably specifying
+useful parameters.
+</p>
+</td></tr>
+<tr><td><code id="ssa.exact_+3A_tf">tf</code></td>
+<td>
+
+<p>final time of simulation.  Due to the approximate nature of the
+tau-leaping algorithm, the simulation may overshoot this time somewhat.
+</p>
+</td></tr>
+<tr><td><code id="ssa.exact_+3A_reporttransitions">reportTransitions</code></td>
+<td>
+<p>default FALSE; whether to include a
+matrix of executed transitions per time interval in the output
+(alongside with the states at each time point).
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function is supplied as a bonus with the adaptivetau package,
+since the C++ function that underlies this (exact) stochastic
+simulation algorithm is used in the (approximate) adaptive tau
+stochastic simulation as well.
+</p>
+<p>The initial values, transition matrix, and transition rates must all
+be designed such that variables are always non-negative.  The
+algorithm relies on this invariant.
+</p>
+<p>Consider calling <code><a href="compiler.html#topic+enableJIT">enableJIT</a>(1)</code> before running
+ssa.exact.  In most circumstances, this should yield some speedup by
+byte-code compiling the rate function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Two-dimensional matrix with rows for every timepoint at which the
+rateFunc was evaluated and columns giving the value for every state
+variable at that time.  The first column specifies the time.
+</p>
+<p>If the &lsquo;reportTransitions&rsquo; option is used, then a list is
+returned with two elements.  The first element is the
+&lsquo;dynamics&rsquo; matrix described above.  The second is a
+two-dimensional matrix called &lsquo;transitions&rsquo; with a row for each
+timepoint and columns giving the number of times each transition was
+executed between the current time and the previous time.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Philip Johnson
+</p>
+
+
+<h3>See Also</h3>
+
+
+<p>This function is a bonus the comes along with the approximate (but
+faster) <code><a href="#topic+ssa.adaptivetau">ssa.adaptivetau</a></code>.  For systems with sparse
+transition matrices, see helper function <code><a href="#topic+ssa.maketrans">ssa.maketrans</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Lotka-Volterra example
+lvrates &lt;- function(x, params, t) {
+  with(params, {
+    return(c(preygrowth*x["prey"],      ## prey growth rate
+             x["prey"]*x["pred"]*eat,   ## prey death / predator growth rate
+             x["pred"]*preddeath))      ## predator death rate
+  })
+}
+params=list(preygrowth=10, eat=0.01, preddeath=10);
+r=ssa.exact(c(prey = 1000, pred = 500),
+            matrix(c(1,0, -2,1, 0,-1), nrow=2), lvrates, params, tf=2)
+matplot(r[,"time"], r[,c("prey","pred")], type='l', xlab='Time', ylab='Counts')
+legend("topleft", legend=c("prey", "predator"), lty=1:2, col=1:2)
+</code></pre>
+
+<hr>
+<h2 id='ssa.maketrans'>
+Make transition matrix
+</h2><span id='topic+ssa.maketrans'></span>
+
+<h3>Description</h3>
+
+<p>Helper function to (easily) construct sparse transition matrices for
+ssa.adapativetau.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ssa.maketrans(variables, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ssa.maketrans_+3A_variables">variables</code></td>
+<td>
+
+<p>Either the number of variables in your system OR a vector of strings
+specifying the names of the variables (in which case the length of
+this vector is the number of variables).  The number of variables
+equals the number of rows in the returned transition matrix.
+</p>
+</td></tr>
+<tr><td><code id="ssa.maketrans_+3A_...">...</code></td>
+<td>
+
+<p>At least one additional argument is *required*.  Each should be a
+matrix with an arbitrary number of columns (each represents a
+separate transition) and an even number of rows.  Going down a
+particular column, entries alternate between specifying the variable
+that will change and the amount by which it will change.  Variables
+be specified either by numerical index (1,2,...,numVariables) or
+character name (if names supplied in the parameter above).  See
+examples below.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Making large transition matrices can be a real pain, particularly if
+the entries in the end will be quite sparse.  The concept of this
+function is simple but the easiest way to understand it is probably to
+check out the examples.
+</p>
+
+
+<h3>Value</h3>
+
+<p>two-dimensional matrix with rows for each variable and columns for each
+transition.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Philip Johnson
+</p>
+
+
+<h3>See Also</h3>
+
+
+<p>You probably only want to use this in preparation for calling
+<code><a href="#topic+ssa.adaptivetau">ssa.adaptivetau</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## trivial Lotka-Volterra example from ssa.adaptivetau
+nu = ssa.maketrans(2, #number of variables
+                   rbind(1, +1),
+                   rbind(1, -1, 2, +1),
+                   rbind(2, -1))
+
+## slightly more complicated SIR epidemiological model with two distinct
+## susceptible and infected variables (think male and female), birth
+## (into S) and death (exclusively from I and R)
+nu = ssa.maketrans(c("Sm", "Sf", "Im", "If", "R"), #list of variable names
+                   rbind(c("Sm","Sf"), +1),
+                   rbind(c("Sm","Sf"), -1, c("Im","If"), +1),
+                   rbind(c("Im","If"), -1),
+                   rbind(c("Im","If"), -1, "R", +1),
+                   rbind("R", -1))
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>
