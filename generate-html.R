@@ -2,8 +2,12 @@
 stopifnot(require(Rdpack))
 options(warn = 1)
 
-pkgs <- list.dirs("CRAN", full.names = FALSE, recursive = FALSE)
+## TODO: keep track of version in DESCRIPTION and update only if newer
 
+## Assume that CRAN/<pkg> has unpacked sources containing necessary
+## components (R, src, etc. not needed)
+
+pkgs <- list.dirs("CRAN", full.names = FALSE, recursive = FALSE)
 
 for (pkg in pkgs) {
     if (!file.exists(sprintf("refmans/%s.html", pkg))) {
@@ -12,7 +16,7 @@ for (pkg in pkgs) {
             try(
                 tools::pkg2HTML(package = pkg,
                                 dir = sprintf("CRAN/%s", pkg),
-                                out = sprintf("refmans/%s.html", pkg),
+                                out = sprintf("docs/%s.html", pkg),
                                 stylesheet = "R-nav.css",
                                 stages = c("build", "install", "render")),
                 silent = TRUE)
@@ -24,7 +28,21 @@ for (pkg in pkgs) {
     }
 }
 
-## tools:::pkg2HTML("sass", out = "sass.html") # error
+## do 'base' packages from installation
+
+ip <- installed.packages()
+wbase <- which(ip[, "Priority"] == "base")
+
+for (pkg in ip[wbase, "Package"]) {
+    cat(pkg, fill = TRUE)
+    tools::pkg2HTML(pkg, out = sprintf("docs/%s.html", pkg),
+                    stylesheet = "R-nav.css", 
+                    stages = c("build", "install", "render"))
+}
+
+
+
+## TODO: make this a table, perhaps a DataTable
 
 for (hfile in list.files("refmans/", pattern = "html$")) {
     cat(sprintf("- [%s](refmans/%s)\n\n", hfile, hfile),
@@ -32,26 +50,4 @@ for (hfile in list.files("refmans/", pattern = "html$")) {
 }
 
 
-if (FALSE)
-{
 
-    hook <- function(pkg) {
-        cat(sys.calls() |> as.character(),
-            file = "~/hook-output.txt",
-            append = TRUE, fill = TRUE, sep = " >>> ")
-        cat(pkg, ": ", ans <- sprintf("%s.html", pkg), "\n-----------\n",
-            file = "~/hook-output.txt",
-            append = TRUE)
-        ans
-    }
-    
-    pkg  <-  "lattice"
-    tools::pkg2HTML(package = pkg,
-                    dir = sprintf("CRAN/%s", pkg),
-                    out = sprintf("refmans/%s.html", pkg),
-                    stylesheet = "R-nav.css",
-                    hooks = list(pkg_href = hook),
-                    stages = c("build", "install", "render"))
-
-
-}
