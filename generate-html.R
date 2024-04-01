@@ -41,13 +41,12 @@ for (pkg in ip[wbase, "Package"]) {
 }
 
 
+### Index - see generate-index.R
 
-## TODO: make this a table, perhaps a DataTable
-
-for (hfile in list.files("refmans/", pattern = "html$")) {
-    cat(sprintf("- [%s](refmans/%s)\n\n", hfile, hfile),
-        file = "refmans/index.md", append = TRUE)
-}
+## for (hfile in list.files("refmans/", pattern = "html$")) {
+##     cat(sprintf("- [%s](refmans/%s)\n\n", hfile, hfile),
+##         file = "refmans/index.md", append = TRUE)
+## }
 
 
 
