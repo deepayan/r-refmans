@@ -8,3 +8,8 @@ rsync -avz --recursive --delete --delete-excluded \
 
 mv aliases.rds aliases.rds~
 wget https://cran.r-project.org/src/contrib/Meta/aliases.rds
+
+mv packages.rds packages.rds~
+wget https://cran.r-project.org/web/packages/packages.rds
+
+

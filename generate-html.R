@@ -1,6 +1,29 @@
 
+require(tools)
 stopifnot(require(Rdpack))
 options(warn = 1)
+
+## All links from CRAN packages
+
+
+makeLinks <- function(db, i)
+{
+    pkg <- names(db[i])
+    x <- db[[i]]
+    topics <- unname(unlist(x))
+    rdfiles <- rep(names(x), vapply(x, length, 0L))
+    htmlfiles <- sprintf("../../%s/html/%s", pkg, gsub("[\\.]Rd$", ".html", rdfiles))
+    names(htmlfiles) <- topics
+    htmlfiles
+}
+
+linksDB <- readRDS("aliases.rds")
+xLinks <- lapply(seq_along(linksDB), makeLinks, db = linksDB)
+names(xLinks) <- names(linksDB)
+
+
+cranPkgDB <- readRDS("packages.rds")
+
 
 ## TODO: keep track of version in DESCRIPTION and update only if newer
 
@@ -10,22 +33,25 @@ options(warn = 1)
 pkgs <- list.dirs("CRAN", full.names = FALSE, recursive = FALSE)
 
 for (pkg in pkgs) {
-    if (!file.exists(sprintf("refmans/%s.html", pkg))) {
+##    if (!file.exists(sprintf("refmans/%s.html", pkg))) {
         cat(pkg, fill = TRUE)
+        deps <- c(pkg,
+                  package_dependencies(pkg, db = cranPkgDB, which = "all")[[pkg]])
         status <-
             try(
-                tools::pkg2HTML(package = pkg,
-                                dir = sprintf("CRAN/%s", pkg),
-                                out = sprintf("docs/%s.html", pkg),
-                                stylesheet = "R-nav.css",
-                                stages = c("build", "install", "render")),
+                pkg2HTML(package = pkg,
+                         dir = sprintf("CRAN/%s", pkg),
+                         out = sprintf("docs/%s.html", pkg),
+                         stylesheet = "R-nav.css",
+                         xLinks = unlist(unname(xLinks[deps])),
+                         stages = c("build", "install", "render", "later")),
                 silent = TRUE)
         if (inherits(status, "try-error")) {
             cat("FAILED with error condition: ",
                 conditionMessage(attr(status, "condition")),
                 fill = TRUE)
         }
-    }
+##    }
 }
 
 ## do 'base' packages from installation
@@ -35,9 +61,9 @@ wbase <- which(ip[, "Priority"] == "base")
 
 for (pkg in ip[wbase, "Package"]) {
     cat(pkg, fill = TRUE)
-    tools::pkg2HTML(pkg, out = sprintf("docs/%s.html", pkg),
-                    stylesheet = "R-nav.css", 
-                    stages = c("build", "install", "render"))
+    pkg2HTML(pkg, out = sprintf("docs/%s.html", pkg),
+             stylesheet = "R-nav.css", 
+             stages = c("build", "install", "render"))
 }
 
 
