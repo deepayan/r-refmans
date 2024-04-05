@@ -1,6 +1,7 @@
 
 require(tools)
 stopifnot(require(Rdpack))
+stopifnot(require(mathjaxr))
 options(warn = 1)
 
 ## All links from CRAN packages
@@ -31,6 +32,24 @@ cranPkgDB <- readRDS("packages.rds")
 ## components (R, src, etc. not needed)
 
 pkgs <- list.dirs("CRAN", full.names = FALSE, recursive = FALSE)
+
+## packages using mathjaxr
+
+## pkgs <-
+##     c("ADMUR", "aglm", "ammistability", "augmentedRCBD",
+##       "BayesDLMfMRI", "BEKKs", "bioregion", "BoundEdgeworth",
+##       "BrailleR", "clifford", "clugenr", "complexlm", "covatest",
+##       "cpop", "Davies", "eatATA", "einsum", "EmiR", "esci", "espadon",
+##       "EvaluateCore", "factReg", "FoReco", "frab", "freealg",
+##       "germinationmetrics", "GGMncv", "GOCompare", "heterometa",
+##       "JointAI", "jointCalib", "jordan", "maczic", "MarZIC",
+##       "metadat", "metafor", "metan", "metap", "mlmhelpr", "mlrv",
+##       "MM", "multivator", "NetInt", "NFCP", "nonprobsvy", "OCA",
+##       "onion", "partitions", "permutations", "PLFD", "poolr",
+##       "prospectr", "resemble", "SCEM", "sdcLog", "singleRcapture",
+##       "sjSDM", "sorcering", "spfda", "spray", "statpsych", "stokes",
+##       "TDLM", "tdsa", "tseriesTARMA", "vcmeta", "weyl")
+
 
 for (pkg in pkgs) {
 ##    if (!file.exists(sprintf("refmans/%s.html", pkg))) {
