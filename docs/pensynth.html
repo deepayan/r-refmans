@@ -18,10 +18,18 @@ function processMathHTML() {
 <h1>Package {pensynth}</h1>
 <h2>Contents</h2>
 <ul class="menu">
-<li><a href='#cv_pensynth'><p>Cross-validated penalized synthetic control estimator</p></a></li>
-<li><a href='#in_convex_hull'><p>Is the treated unit in the convex hull</p></a></li>
+<li><a href='#cv_pensynth'><p>Hold-out validated penalized synthetic control estimator</p></a></li>
+<li><a href='#in_convex_hull'><p>Check whether treated unit is in the convex hull of donors</p></a></li>
+<li><a href='#lambda_sequence'><p>Determine lambda sequence</p></a></li>
 <li><a href='#pensynth'><p>Penalized synthetic control estimator</p></a></li>
-<li><a href='#plot_path'><p>Plotting for cross-validated penalized synthetic control objects</p></a></li>
+<li><a href='#placebo_test'><p>Placebo permutation test for pensynth</p></a></li>
+<li><a href='#plot.cvpensynth'><p>Plotting for hold-out validated penalized synthetic control objects</p></a></li>
+<li><a href='#plot.pensynthtest'><p>Plotting a pensynth permutation object</p></a></li>
+<li><a href='#predict.cvpensynth'><p>Create prediction from cvpensynth model</p></a></li>
+<li><a href='#predict.pensynth'><p>Create prediction from pensynth model</p></a></li>
+<li><a href='#print.cvpensynth'><p>Print cvpensynth model</p></a></li>
+<li><a href='#print.pensynth'><p>Print pensynth model</p></a></li>
+<li><a href='#simulate_data'><p>Simulate synthetic control data</p></a></li>
 <li><a href='#standardize_X'><p>Function to scale the X matrices in synthetic control</p></a></li>
 </ul>
 </div>
@@ -39,7 +47,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.0</td>
+<td>0.5.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -55,6 +63,10 @@ function processMathHTML() {
 <td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
 </tr>
 <tr>
+<td>URL:</td>
+<td><a href="https://github.com/vankesteren/pensynth">https://github.com/vankesteren/pensynth</a></td>
+</tr>
+<tr>
 <td>Encoding:</td>
 <td>UTF-8</td>
 </tr>
@@ -64,7 +76,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>geometry, clarabel</td>
+<td>clarabel, Matrix</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -80,7 +92,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-15 08:54:50 UTC; erikj</td>
+<td>2024-03-28 10:28:13 UTC; erikj</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -99,15 +111,15 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-15 11:50:05 UTC</td>
+<td>2024-03-28 15:10:02 UTC</td>
 </tr>
 </table>
 <hr>
-<h2 id='cv_pensynth'>Cross-validated penalized synthetic control estimator</h2><span id='topic+cv_pensynth'></span>
+<h2 id='cv_pensynth'>Hold-out validated penalized synthetic control estimator</h2><span id='topic+cv_pensynth'></span>
 
 <h3>Description</h3>
 
-<p>Compute a penalized synthetic control estimator with cross-validation for the
+<p>Compute a penalized synthetic control estimator with hold-out validation for the
 lambda penalty parameter. Lambda will be determined by minimizing the mean squared
 error on a hold-out set of pre-intervention outcome time-series.
 </p>
@@ -118,9 +130,9 @@ error on a hold-out set of pre-intervention outcome time-series.
 <pre><code class='language-R'>cv_pensynth(
   X1,
   X0,
-  v,
   Z1,
   Z0,
+  v = 1,
   nlambda = 100,
   opt_pars = clarabel::clarabel_control(),
   standardize = TRUE,
@@ -140,10 +152,6 @@ error on a hold-out set of pre-intervention outcome time-series.
 <td>
 <p><code style="white-space: pre;">&#8288;N_covars by N_donors matrix&#8288;</code> of donor unit covariates</p>
 </td></tr>
-<tr><td><code id="cv_pensynth_+3A_v">v</code></td>
-<td>
-<p><code style="white-space: pre;">&#8288;N_covars vector&#8288;</code> of variable weights</p>
-</td></tr>
 <tr><td><code id="cv_pensynth_+3A_z1">Z1</code></td>
 <td>
 <p><code style="white-space: pre;">&#8288;N_targets by 1 matrix&#8288;</code> of treated unit hold-out outcome</p>
@@ -151,6 +159,10 @@ error on a hold-out set of pre-intervention outcome time-series.
 <tr><td><code id="cv_pensynth_+3A_z0">Z0</code></td>
 <td>
 <p><code style="white-space: pre;">&#8288;N_targets by N_donors matrix&#8288;</code> of donor unit hold-out outcome</p>
+</td></tr>
+<tr><td><code id="cv_pensynth_+3A_v">v</code></td>
+<td>
+<p><code style="white-space: pre;">&#8288;N_covars vector&#8288;</code> of variable weights, default 1</p>
 </td></tr>
 <tr><td><code id="cv_pensynth_+3A_nlambda">nlambda</code></td>
 <td>
@@ -174,7 +186,7 @@ error on a hold-out set of pre-intervention outcome time-series.
 <h3>Details</h3>
 
 <p>The lambda sequence is an exponentially increasing sequence where
-The minimum lambda is always 1e-7, the max lambda is determined by the data.
+The minimum lambda is always 1e-11, the max lambda is determined by the data.
 </p>
 
 
@@ -188,33 +200,20 @@ the solvers.
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+pensynth">pensynth()</a></code> <code><a href="#topic+plot_path">plot_path()</a></code>
+<p><code><a href="#topic+pensynth">pensynth()</a></code>, <code><a href="#topic+plot.cvpensynth">plot.cvpensynth()</a></code>, <code><a href="#topic+placebo_test">placebo_test()</a></code>, <code><a href="#topic+simulate_data">simulate_data()</a></code>
 </p>
 
 
 <h3>Examples</h3>
 
 <pre><code class='language-R'>set.seed(45)
-N_covar &lt;- 7
-N_donor &lt;- 50
-N_target &lt;- 12
-
-w  &lt;- runif(N_donor)
-w[5:N_donor] &lt;- 0
-w  &lt;- w / sum(w)
-v  &lt;- rep(1, N_covar)
-X0 &lt;- matrix(rnorm(N_covar*N_donor), N_covar)
-X1 &lt;- X0%*%w
-Z0 &lt;- matrix(rnorm(N_target*N_donor), N_target)
-Z1 &lt;- Z0%*%w
-
-res &lt;- cv_pensynth(X1, X0, v, Z1, Z0)
-plot_path(res)
-
+dat &lt;- simulate_data()
+res &lt;- with(dat, cv_pensynth(X1, X0, Z1, Z0))
+plot(res)
 </code></pre>
 
 <hr>
-<h2 id='in_convex_hull'>Is the treated unit in the convex hull</h2><span id='topic+in_convex_hull'></span>
+<h2 id='in_convex_hull'>Check whether treated unit is in the convex hull of donors</h2><span id='topic+in_convex_hull'></span>
 
 <h3>Description</h3>
 
@@ -225,7 +224,7 @@ of the donor units.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>in_convex_hull(X1, X0)
+<pre><code class='language-R'>in_convex_hull(X1, X0, ...)
 </code></pre>
 
 
@@ -240,19 +239,111 @@ of the donor units.
 <td>
 <p><code style="white-space: pre;">&#8288;N_covars by N_donors matrix&#8288;</code> of donor unit covariates</p>
 </td></tr>
+<tr><td><code id="in_convex_hull_+3A_...">...</code></td>
+<td>
+<p>additional arguments passed to <code><a href="clarabel.html#topic+clarabel">clarabel::clarabel()</a></code></p>
+</td></tr>
 </table>
+
+
+<h3>Details</h3>
+
+<p>This function does not actually construct the convex hull (which
+is infeasible in higher dimensions), but rather it checks whether
+the following linear program has a feasible solution:
+</p>
+<p>min q'w s.t. Aw = b
+</p>
+<p>with w constrained to be above 0 and sum to 1, the feasibility
+of this linear program directly corresponds to whether the treated
+is in the convex hull
+</p>
+<p>When the treated unit very close to the boundary of the convex hull
+this method usually cannot determine this exactly and this function
+may return <code>NA</code> with the warning &quot;Solver terminated due to lack of
+progress&quot;
+</p>
 
 
 <h3>Value</h3>
 
 <p><code>bool</code> whether the treated unit is in the convex hull of
-the donor units.
+the donor units. <code>NA</code> if this cannot be determined. Vector if X1
+has multiple columns.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># create some data
+set.seed(45)
+X0 &lt;- matrix(runif(20), nrow = 2)
+X1 &lt;- matrix(c(.5, .5))
+
+# test if X1 is in the convex hull:
+in_convex_hull(X1, X0)
+
+# also works with multiple units in X1:
+X1 &lt;- cbind(X1, c(1.3, -3))
+in_convex_hull(X1, X0)
+</code></pre>
+
+<hr>
+<h2 id='lambda_sequence'>Determine lambda sequence</h2><span id='topic+lambda_sequence'></span>
+
+<h3>Description</h3>
+
+<p>This function uses the weighted cross-product matrix
+(X1VX0) and Delta to determine the lambda sequence.
+This sequence will be exponentially increasing so it
+is easy to plot with a logarithmic x-axis
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>lambda_sequence(X1VX0, Delta, nlambda)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="lambda_sequence_+3A_x1vx0">X1VX0</code></td>
+<td>
+<p>the weighted cross-product matrix</p>
+</td></tr>
+<tr><td><code id="lambda_sequence_+3A_delta">Delta</code></td>
+<td>
+<p>the matching penalty matrix</p>
+</td></tr>
+<tr><td><code id="lambda_sequence_+3A_nlambda">nlambda</code></td>
+<td>
+<p>the number of lambda values</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The formula for the maximum lambda value was determined
+empirically, with an eye for the form of the quadratic
+program. In general, the max lambda should be so large
+that we are practically in &quot;nearest-neighbour&quot; matching
+territory. This formula ensures this for a wide range
+of input parameters.
+</p>
+
+
+<h3>Value</h3>
+
+<p>lambda sequence as a numeric vector
 </p>
 
 
 <h3>See Also</h3>
 
-<p><code><a href="geometry.html#topic+convhulln">geometry::convhulln()</a></code> <code><a href="geometry.html#topic+inhulln">geometry::inhulln()</a></code>
+<p><code><a href="#topic+plot.cvpensynth">plot.cvpensynth()</a></code>
 </p>
 
 <hr>
@@ -272,7 +363,7 @@ single treated unit.
 <pre><code class='language-R'>pensynth(
   X1,
   X0,
-  v,
+  v = 1,
   lambda = 0,
   opt_pars = clarabel::clarabel_control(),
   standardize = TRUE
@@ -293,7 +384,7 @@ single treated unit.
 </td></tr>
 <tr><td><code id="pensynth_+3A_v">v</code></td>
 <td>
-<p><code style="white-space: pre;">&#8288;N_covars vector&#8288;</code> of variable weights</p>
+<p><code style="white-space: pre;">&#8288;N_covars vector&#8288;</code> of variable weights (default 1)</p>
 </td></tr>
 <tr><td><code id="pensynth_+3A_lambda">lambda</code></td>
 <td>
@@ -313,9 +404,9 @@ single treated unit.
 <h3>Details</h3>
 
 <p>This routine uses the same notation of the original <code><a href="Synth.html#topic+synth">Synth::synth()</a></code> implementation
-but uses a different, faster quadratic program solver (namely, <code><a href="osqp.html#topic+osqp">osqp::osqp()</a></code>). Additionally, it
-implements the penalization procedure described in Abadie &amp; L'Hour (2021), such that the loss
-function is as in equation 5 of that paper (but for a single treated unit).
+but uses a different, faster quadratic program solver (namely, <code><a href="clarabel.html#topic+clarabel">clarabel::clarabel()</a></code>).
+Additionally, it implements the penalization procedure described in Abadie &amp; L'Hour (2021),
+such that the loss function is as in equation 5 of that paper (but for a single treated unit).
 </p>
 <p>Variable weights are not optimized by this function, meaning they need to be pre-specified.
 This is by design.
@@ -342,7 +433,7 @@ A penalized synthetic control estimator for disaggregated data.
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+cv_pensynth">cv_pensynth()</a></code> <code><a href="Synth.html#topic+synth">Synth::synth()</a></code>
+<p><code><a href="#topic+cv_pensynth">cv_pensynth()</a></code>, <code><a href="#topic+placebo_test">placebo_test()</a></code>, <code><a href="#topic+simulate_data">simulate_data()</a></code>, <code><a href="Synth.html#topic+synth">Synth::synth()</a></code>
 </p>
 
 
@@ -356,22 +447,142 @@ X0 &lt;- matrix(
     1.8, 1.8,
     1.3, 1.8), 2)
 X1 &lt;- matrix(c(0.8, 1.65), 2)
-v &lt;- rep(1, 2)
 
 # run classic synthetic control (no penalization)
-res &lt;- pensynth(X1, X0, v)
-plot(t(X0))
+res &lt;- pensynth(X1, X0)
+
+# plot donor units in covariate space
+plot(t(X0), asp = 1, xlab = "X1", ylab = "X2",
+     main = "Covariate space plot")
+# add the treated unit
 points(t(X1), pch = 2)
+# add the synthetic control
 points(t(X0%*%res$w), pch = 3)
 
 # run synthetic control with penalty
-res &lt;- pensynth(X1, X0, v, lambda = 0.5)
+res &lt;- pensynth(X1, X0, lambda = 0.5)
+# the resulting synthetic control is
+# biased towards its closest neighbours
 points(t(X0 %*% res$w), pch = 4)
-
 </code></pre>
 
 <hr>
-<h2 id='plot_path'>Plotting for cross-validated penalized synthetic control objects</h2><span id='topic+plot_path'></span>
+<h2 id='placebo_test'>Placebo permutation test for pensynth</h2><span id='topic+placebo_test'></span><span id='topic+placebo_test.pensynth'></span><span id='topic+placebo_test.cvpensynth'></span>
+
+<h3>Description</h3>
+
+<p>Perform a permutation test on a pensynth object, in the sense
+of Abadie, Diamond, and Hainmueller (2010). The pensynth
+method is performed multiple times, treating each donor as the
+treated unit and the treated unit with the remaining donors as
+the donor units.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>placebo_test(object, Y1, Y0)
+
+## S3 method for class 'pensynth'
+placebo_test(object, Y1, Y0)
+
+## S3 method for class 'cvpensynth'
+placebo_test(object, Y1, Y0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="placebo_test_+3A_object">object</code></td>
+<td>
+<p>a fitted <code>pensynth</code> or <code>cvpensynth</code> object</p>
+</td></tr>
+<tr><td><code id="placebo_test_+3A_y1">Y1</code></td>
+<td>
+<p>the post-intervention outcome of the treated unit</p>
+</td></tr>
+<tr><td><code id="placebo_test_+3A_y0">Y0</code></td>
+<td>
+<p>the post-intervention outcome of the donor units
+(with N_donors columns)</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Note that this function updates the original call in order to
+re-estimate the synthetic control on the permuted data.
+Ensure that the data is available to the placebo test function
+(i.e., avoid complex environment functions such as <code>with()</code>),
+and ensure that the data does not change between estimating the
+original object and calling this function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with two elements
+</p>
+
+<ul>
+<li><p> E1, the treated unit effect, computed as <code>Y1 - Y0 %*% w</code>
+</p>
+</li>
+<li><p> E0, the donor unit effects, computed in the same way but
+using the permutation test's weights.
+</p>
+</li>
+<li><p> ATE1, the estimated ATE of the treated unit
+</p>
+</li>
+<li><p> ATE0, the estimated ATE of the donor units
+</p>
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Abadie, A., Diamond, A., &amp; Hainmueller, J. (2010).
+Synthetic control methods for comparative case studies:
+Estimating the effect of California’s tobacco control program.
+Journal of the American statistical Association, 105(490),
+493-505.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+pensynth">pensynth()</a></code>, <code><a href="#topic+cv_pensynth">cv_pensynth()</a></code>, <code><a href="#topic+plot.pensynthtest">plot.pensynthtest()</a></code>, <code><a href="stats.html#topic+update">stats::update()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>set.seed(45)
+
+# simulate data with an effect of 0.8 SD
+dat &lt;- simulate_data(treatment_effect = .8)
+
+# fit a model
+fit &lt;- pensynth(dat$X1, dat$X0, lambda = 1e-5)
+
+# Perform placebo test
+test &lt;- placebo_test(fit, dat$Y1, dat$Y0)
+plot(test)
+abline(h = .8, lty = 2)
+legend("bottomright", lty = 2, legend = "true effect")
+
+# compute a pseudo p-value based on ATE in
+# the post-intervention time period
+ref_dist &lt;- stats::ecdf(test$ATE0)
+1 - ref_dist(test$ATE1)
+</code></pre>
+
+<hr>
+<h2 id='plot.cvpensynth'>Plotting for hold-out validated penalized synthetic control objects</h2><span id='topic+plot.cvpensynth'></span>
 
 <h3>Description</h3>
 
@@ -382,18 +593,19 @@ of lambda, the penalization parameter.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>plot_path(object, ...)
+<pre><code class='language-R'>## S3 method for class 'cvpensynth'
+plot(x, ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="plot_path_+3A_object">object</code></td>
+<tr><td><code id="plot.cvpensynth_+3A_x">x</code></td>
 <td>
 <p>a <code>cvpensynth</code> output object</p>
 </td></tr>
-<tr><td><code id="plot_path_+3A_...">...</code></td>
+<tr><td><code id="plot.cvpensynth_+3A_...">...</code></td>
 <td>
 <p>additional arguments passed to <code>plot()</code></p>
 </td></tr>
@@ -410,6 +622,358 @@ of lambda, the penalization parameter.
 
 <p><code><a href="#topic+cv_pensynth">cv_pensynth()</a></code> <code><a href="#topic+pensynth">pensynth()</a></code>
 </p>
+
+<hr>
+<h2 id='plot.pensynthtest'>Plotting a pensynth permutation object</h2><span id='topic+plot.pensynthtest'></span>
+
+<h3>Description</h3>
+
+<p>Plotting the reference distribution and the
+estimated treatement effect for the treated unit
+for the pensynth permutation test.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'pensynthtest'
+plot(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot.pensynthtest_+3A_x">x</code></td>
+<td>
+<p>a <code>pensynthtest</code> object</p>
+</td></tr>
+<tr><td><code id="plot.pensynthtest_+3A_...">...</code></td>
+<td>
+<p>additional parameters passed to <code>plot</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>No return value, called for side effects
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="base.html#topic+plot">base::plot()</a></code>
+</p>
+
+<hr>
+<h2 id='predict.cvpensynth'>Create prediction from cvpensynth model</h2><span id='topic+predict.cvpensynth'></span>
+
+<h3>Description</h3>
+
+<p>Matrix multiplies the values in <code>newdata</code> by the unit weights
+extracted from the cvpensynth object to produce predicted
+values.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'cvpensynth'
+predict(object, newdata, lambda, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="predict.cvpensynth_+3A_object">object</code></td>
+<td>
+<p>a fitted cvpensynth model</p>
+</td></tr>
+<tr><td><code id="predict.cvpensynth_+3A_newdata">newdata</code></td>
+<td>
+<p>N_values * N_donors matrix of
+values for the donor units.</p>
+</td></tr>
+<tr><td><code id="predict.cvpensynth_+3A_lambda">lambda</code></td>
+<td>
+<p>desired lambda value (defaults to optimal lambda)</p>
+</td></tr>
+<tr><td><code id="predict.cvpensynth_+3A_...">...</code></td>
+<td>
+<p>ignored</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>For a chosen lambda that is not in the list of tested lambdas
+in the cvpensynth object, the closest lambda (on the log scale)
+will be chosen.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a matrix (column vector) of predicted values
+</p>
+
+<hr>
+<h2 id='predict.pensynth'>Create prediction from pensynth model</h2><span id='topic+predict.pensynth'></span>
+
+<h3>Description</h3>
+
+<p>Matrix multiplies the values in <code>newdata</code> by the unit weights
+extracted from the pensynth object to produce predicted
+values.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'pensynth'
+predict(object, newdata, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="predict.pensynth_+3A_object">object</code></td>
+<td>
+<p>a fitted cvpensynth model</p>
+</td></tr>
+<tr><td><code id="predict.pensynth_+3A_newdata">newdata</code></td>
+<td>
+<p>N_values * N_donors matrix of
+values for the donor units.</p>
+</td></tr>
+<tr><td><code id="predict.pensynth_+3A_...">...</code></td>
+<td>
+<p>ignored</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a matrix (column vector) of predicted values
+</p>
+
+<hr>
+<h2 id='print.cvpensynth'>Print cvpensynth model</h2><span id='topic+print.cvpensynth'></span>
+
+<h3>Description</h3>
+
+<p>Print cvpensynth model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'cvpensynth'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="print.cvpensynth_+3A_x">x</code></td>
+<td>
+<p>a cvpensynth object</p>
+</td></tr>
+<tr><td><code id="print.cvpensynth_+3A_...">...</code></td>
+<td>
+<p>ignored</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>the cvpensynth object, invisibly
+</p>
+
+<hr>
+<h2 id='print.pensynth'>Print pensynth model</h2><span id='topic+print.pensynth'></span>
+
+<h3>Description</h3>
+
+<p>Print pensynth model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'pensynth'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="print.pensynth_+3A_x">x</code></td>
+<td>
+<p>a pensynth object</p>
+</td></tr>
+<tr><td><code id="print.pensynth_+3A_...">...</code></td>
+<td>
+<p>ignored</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>the pensynth object, invisibly
+</p>
+
+<hr>
+<h2 id='simulate_data'>Simulate synthetic control data</h2><span id='topic+simulate_data'></span>
+
+<h3>Description</h3>
+
+<p>This function simulates a basic form of synthetic control
+data, mainly for testing purposes. This
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>simulate_data(
+  N_donor = 50,
+  N_covar = 5,
+  N_pre = 12,
+  N_post = 6,
+  N_nonzero = 4,
+  treatment_effect = 1,
+  sd_resid_X1 = 0.1,
+  sd_resid_Z1 = 0.1,
+  sd_resid_Y1 = 0.1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="simulate_data_+3A_n_donor">N_donor</code></td>
+<td>
+<p>number of donors</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_n_covar">N_covar</code></td>
+<td>
+<p>number of covariates</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_n_pre">N_pre</code></td>
+<td>
+<p>number of pre-intervention timepoints</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_n_post">N_post</code></td>
+<td>
+<p>number of post-intervention timepoints</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_n_nonzero">N_nonzero</code></td>
+<td>
+<p>number of true nonzero weights</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_treatment_effect">treatment_effect</code></td>
+<td>
+<p>the size of the true treatment effect</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_sd_resid_x1">sd_resid_X1</code></td>
+<td>
+<p>the residual standard deviation of X1</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_sd_resid_z1">sd_resid_Z1</code></td>
+<td>
+<p>the residual standard deviation of Z1</p>
+</td></tr>
+<tr><td><code id="simulate_data_+3A_sd_resid_y1">sd_resid_Y1</code></td>
+<td>
+<p>the residual standard deviation of Y1</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Note that treatment effect can be a single number, but
+it may also be a vector of length N_post, indicating
+the effect size at each post-intervention measurement
+occasion.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with the following elements
+</p>
+
+<ul>
+<li><p> w the true unit weights
+</p>
+</li>
+<li><p> X0 the donor unit covariates
+</p>
+</li>
+<li><p> X1 the treated unit covariates
+</p>
+</li>
+<li><p> Z0 the donor unit pre-intervention outcomes
+</p>
+</li>
+<li><p> Z1 the treated unit pre-intervention outcomes
+</p>
+</li>
+<li><p> Y0 the donor unit post-intervention outcomes
+</p>
+</li>
+<li><p> Y1 the treated unit post-intervention outcomes
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+pensynth">pensynth()</a></code>, <code><a href="#topic+cv_pensynth">cv_pensynth()</a></code>, <code><a href="#topic+placebo_test">placebo_test()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># simulate data with an effect of 0.8 SD
+dat &lt;- simulate_data(treatment_effect = 0.8)
+
+plot(
+  NA,
+  ylim = c(-3, 3),
+  xlim = c(1, 18),
+  main = "Simulated data",
+  ylab = "Outcome value"
+)
+for (n in 1:ncol(dat$Z0))
+  lines(1:18, c(dat$Z0[, n], dat$Y0[, n]), col = "grey")
+lines(1:18, c(dat$Z1, dat$Y1))
+lines(1:18, rbind(dat$Z0, dat$Y0) %*% dat$w, lty = 2)
+abline(v = length(dat$Z1) + 0.5, lty = 3)
+legend(
+  x = "bottomleft",
+  legend = c(
+    "Donor units",
+    "Treated unit",
+    "True synth. control",
+    "Intervention time"
+  ),
+  lty = c(1, 1, 2, 3),
+  col = c("grey", "black", "black", "black")
+)
+</code></pre>
 
 <hr>
 <h2 id='standardize_X'>Function to scale the X matrices in synthetic control</h2><span id='topic+standardize_X'></span>
@@ -445,6 +1009,12 @@ deviation of the X1 and X0 matrices together.
 <h3>Details</h3>
 
 <p>See the pre-processing in <code><a href="Synth.html#topic+synth">Synth::synth()</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>a list with X1 and X0 standardized.
 </p>
 
 

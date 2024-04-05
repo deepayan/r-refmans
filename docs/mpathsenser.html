@@ -74,7 +74,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.2.2</td>
+<td>1.2.3</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -110,7 +110,8 @@ purrr, rlang, RSQLite, stats, tibble, tidyr</td>
 <tr>
 <td>Suggests:</td>
 <td>cli, curl, ggplot2, httr, kableExtra, knitr, lintr,
-progressr, rmarkdown, rvest, sodium, testthat (&ge; 3.0.0), vroom</td>
+progressr, rmarkdown, rvest, sodium, spelling, testthat (&ge;
+3.0.0), vroom</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -133,12 +134,16 @@ progressr, rmarkdown, rvest, sodium, testthat (&ge; 3.0.0), vroom</td>
 <td>7.3.1</td>
 </tr>
 <tr>
+<td>Language:</td>
+<td>en-GB</td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>no</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-22 23:25:29 UTC; u0134047</td>
+<td>2024-03-29 15:47:37 UTC; u0134047</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -158,7 +163,7 @@ progressr, rmarkdown, rvest, sodium, testthat (&ge; 3.0.0), vroom</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-23 10:00:02 UTC</td>
+<td>2024-03-29 16:00:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -877,8 +882,7 @@ db2 &lt;- create_db(tempdir(), "mydb2.db")
 DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
 DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
 DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
-               '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')"
-)
+               '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
 
 # Then copy the first database to the second database
 copy_db(db1, db2)
@@ -1121,12 +1125,14 @@ library(dplyr)
 library(sodium)
 # Create some GPS  coordinates.
 data &lt;- data.frame(
- participant_id = "12345",
- time = as.POSIXct(c("2022-12-02 12:00:00",
-                     "2022-12-02 12:00:01",
-                     "2022-12-02 12:00:02")),
- longitude = c("50.12345", "50.23456", "50.34567"),
- latitude = c("4.12345", "4.23456", "4.345678")
+  participant_id = "12345",
+  time = as.POSIXct(c(
+    "2022-12-02 12:00:00",
+    "2022-12-02 12:00:01",
+    "2022-12-02 12:00:02"
+  )),
+  longitude = c("50.12345", "50.23456", "50.34567"),
+  latitude = c("4.12345", "4.23456", "4.345678")
 )
 
 # Generate keypair
@@ -1137,19 +1143,19 @@ pub &lt;- sodium::pubkey(key)
 # You do not need to do this for m-Path Sense
 # as this is already encrypted
 encrypt &lt;- function(data, pub) {
- data &lt;- lapply(data, charToRaw)
- data &lt;- lapply(data, function(x) sodium::simple_encrypt(x, pub))
- data &lt;- lapply(data, sodium::bin2hex)
- data &lt;- unlist(data)
- data
+  data &lt;- lapply(data, charToRaw)
+  data &lt;- lapply(data, function(x) sodium::simple_encrypt(x, pub))
+  data &lt;- lapply(data, sodium::bin2hex)
+  data &lt;- unlist(data)
+  data
 }
 data$longitude &lt;- encrypt(data$longitude, pub)
 data$latitude &lt;- encrypt(data$latitude, pub)
 
 # Once the data has been collected, decrypt it using decrypt_gps().
 data |&gt;
- mutate(longitude = decrypt_gps(longitude, key)) |&gt;
- mutate(latitude = decrypt_gps(latitude, key))
+  mutate(longitude = decrypt_gps(longitude, key)) |&gt;
+  mutate(latitude = decrypt_gps(latitude, key))
 
 </code></pre>
 
@@ -1524,10 +1530,7 @@ geocode_rev(50.037936, 8.5599631)
 
 <p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt='[Stable]' /></a>
 </p>
-<p>This is a convenience function to help extract data from an m-Path sense database. For some
-sensors that require a bit more pre-processing, such as app usage and screen time, more
-specialised functions are available (e.g. <code><a href="#topic+app_usage">app_usage</a></code> and
-<code><a href="#topic+screen_duration">screen_duration</a></code>).
+<p>This is a convenience function to help extract data from an m-Path sense database.
 </p>
 
 
@@ -1570,6 +1573,19 @@ last entry for a participant.</p>
 </table>
 
 
+<h3>Details</h3>
+
+<p>Note that this function returns a lazy (also called remote) <code>tibble</code>. This means that
+the data is not actually in R until you call a function that pulls the data from the database.
+This is useful for various functions in this package that work with a lazy tibble, for example
+<code><a href="#topic+identify_gaps">identify_gaps()</a></code>. You may manually want to modify this lazy <code>tibble</code> by using <code>dplyr</code>
+functions such as <code><a href="dplyr.html#topic+filter">dplyr::filter()</a></code> or <code><a href="dplyr.html#topic+mutate">dplyr::mutate()</a></code> before pulling the data into R. These
+functions will be executed in-database, and will therefore be much faster than having to first
+pull all data into R and then possibly removing a large part of it. Importantly, data can
+pulled into R using <code><a href="dplyr.html#topic+compute">dplyr::collect()</a></code>.
+</p>
+
+
 <h3>Value</h3>
 
 <p>A lazy <code><a href="dplyr.html#topic+tbl">tbl</a></code> containing the requested data.
@@ -1589,6 +1605,7 @@ get_data(db, "Accelerometer", "12345")
 get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 
 ## End(Not run)
+
 </code></pre>
 
 <hr>
@@ -2558,15 +2575,21 @@ link(
 # without using fixed offsets.
 x &lt;- data.frame(
   start_time = rep(
-    x = as.POSIXct(c("2021-11-14 12:40:00",
-                     "2021-11-14 13:30:00",
-                     "2021-11-14 15:00:00")),
-    times = 2),
+    x = as.POSIXct(c(
+      "2021-11-14 12:40:00",
+      "2021-11-14 13:30:00",
+      "2021-11-14 15:00:00"
+    )),
+    times = 2
+  ),
   end_time = rep(
-    x = as.POSIXct(c("2021-11-14 13:20:00",
-                     "2021-11-14 14:10:00",
-                     "2021-11-14 15:30:00")),
-    times = 2),
+    x = as.POSIXct(c(
+      "2021-11-14 13:20:00",
+      "2021-11-14 14:10:00",
+      "2021-11-14 15:30:00"
+    )),
+    times = 2
+  ),
   participant_id = c(rep("12345", 3), rep("23456", 3)),
   item_one = rep(c(40, 50, 60), 2)
 )
@@ -2717,8 +2740,10 @@ db &lt;- open_db("path/to/db")
 link_db(db, "accelerometer", "gyroscope", offset_before = 300, offset_after = 300)
 
 # Link a sensor with an external data frame
-link_db(db, "accelerometer", external = my_external_data,
-external_time = "time", offset_before = 300, offset_after = 300)
+link_db(db, "accelerometer",
+  external = my_external_data,
+  external_time = "time", offset_before = 300, offset_after = 300
+)
 
 ## End(Not run)
 </code></pre>
@@ -2828,9 +2853,9 @@ x &lt;- data.frame(
 
 # Create some gaps
 gaps &lt;- data.frame(
- from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
- to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
- participant_id = c("12345", "23456")
+  from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
+  to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
+  participant_id = c("12345", "23456")
 )
 
 # Link the gaps to the data
@@ -3593,13 +3618,13 @@ unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", recursive = TRUE)
 
 # Unzip specific files
 unzip_data(
- path = "path/to/zipfiles",
- to = "path/to/unzipped",
- files = c("file1.zip", "file2.zip")
+  path = "path/to/zipfiles",
+  to = "path/to/unzipped",
+  files = c("file1.zip", "file2.zip")
 )
 
 # Unzip files in a directory, but skip those that are already unzipped
-unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE
+unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE)
 
 ## End(Not run)
 </code></pre>

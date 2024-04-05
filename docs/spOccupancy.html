@@ -52,7 +52,7 @@ from 2010-2018 in the Hubbard Brook Experimental Forest</a></li>
 <li><a href='#neon2015'><p>Detection-nondetection data of 12 foliage gleaning bird species</p>
 in 2015 in Bartlett Experimental Forest in New Hampshire, USA</a></li>
 <li><a href='#PGOcc'><p>Function for Fitting Single-Species Occupancy Models Using Polya-Gamma Latent Variables</p></a></li>
-<li><a href='#postHocLM'><p>Function for Fitting Linear Mixed Models Previous Model Estimates</p></a></li>
+<li><a href='#postHocLM'><p>Function for Fitting Linear Mixed Models with Previous Model Estimates</p></a></li>
 <li><a href='#ppcOcc'><p>Function for performing posterior predictive checks</p></a></li>
 <li><a href='#predict.intMsPGOcc'><p>Function for prediction at new locations for integrated multi-species occupancy models</p></a></li>
 <li><a href='#predict.intPGOcc'><p>Function for prediction at new locations for single-species integrated occupancy models</p></a></li>
@@ -122,6 +122,7 @@ in 2015 in Bartlett Experimental Forest in New Hampshire, USA</a></li>
 <li><a href='#svcTPGOcc'><p>Function for Fitting Multi-Season Single-Species Spatially-Varying Coefficient Occupancy Models Using Polya-Gamma Latent Variables</p></a></li>
 <li><a href='#tMsPGOcc'><p>Function for Fitting Multi-Species Multi-Season Occupancy Models</p></a></li>
 <li><a href='#tPGOcc'><p>Function for Fitting Multi-Season Single-Species Occupancy Models Using Polya-Gamma Latent Variables</p></a></li>
+<li><a href='#updateMCMC'><p>Update a spOccupancy or spAbundance model run with more MCMC iterations</p></a></li>
 <li><a href='#waicOcc'><p>Compute Widely Applicable Information Criterion for spOccupancy Model Objects</p></a></li>
 </ul>
 </div>
@@ -140,7 +141,7 @@ Models</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.7.2</td>
+<td>0.7.3</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -187,7 +188,8 @@ Models</td>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>stats, coda, abind, RANN, lme4, foreach, doParallel, methods</td>
+<td>stats, coda, abind, RANN, lme4, foreach, doParallel,
+spAbundance, methods</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -199,7 +201,7 @@ Models</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-31 22:34:47 UTC; jeffdoser</td>
+<td>2024-03-28 20:41:57 UTC; jeff</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -207,7 +209,7 @@ Models</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-11-01 05:00:02 UTC</td>
+<td>2024-03-28 21:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -1529,7 +1531,7 @@ dynamics using multiple data sources. Methods in Ecology and Evolution, 00, 1-14
 
 <h3>Description</h3>
 
-<p>Function for fitting multi-species occupancy models using Polya-Gamma latent variables. 
+<p>Function for fitting integrated multi-species occupancy models using Polya-Gamma latent variables. 
 </p>
 
 
@@ -3824,7 +3826,7 @@ summary(out)
 </code></pre>
 
 <hr>
-<h2 id='postHocLM'>Function for Fitting Linear Mixed Models Previous Model Estimates</h2><span id='topic+postHocLM'></span>
+<h2 id='postHocLM'>Function for Fitting Linear Mixed Models with Previous Model Estimates</h2><span id='topic+postHocLM'></span>
 
 <h3>Description</h3>
 
@@ -3843,7 +3845,7 @@ to as &quot;two-stage&quot; analyses.
 <h3>Usage</h3>
 
 <pre><code class='language-R'>postHocLM(formula, data, inits, priors, verbose = FALSE, 
-	  n.report = 100, n.samples, n.chains = 1, ...)
+          n.report = 100, n.samples, n.chains = 1, ...)
 </code></pre>
 
 
@@ -4020,7 +4022,7 @@ if (p &gt; 1) {
     X[, i] &lt;- rnorm(N)
   } # i
 }
-mu &lt;- X 
+mu &lt;- X[, 1] * beta[1] + X[, 2] * beta[2] + X[, 3] * beta[3]
 y &lt;- rnorm(N, mu, sqrt(tau.sq))
 # Replicate y n.samples times and add a small amount of noise that corresponds
 # to uncertainty from a first stage model.
@@ -4030,20 +4032,19 @@ y &lt;- y + rnorm(length(y), 0, 0.25)
 
 # Package data for use with postHocLM -------------------------------------
 colnames(X) &lt;- c('int', 'cov.1', 'cov.2')
-data.list &lt;- list(y = y, 
-		  covs = X)
+data.list &lt;- list(y = y, covs = X)
 data &lt;- data.list
 inits &lt;- list(beta = 0, tau.sq = 1)
 priors &lt;- list(beta.normal = list(mean = 0, var = 10000),
-	       tau.sq.ig = c(0.001, 0.001))
+               tau.sq.ig = c(0.001, 0.001))
 
 # Run the model -----------------------------------------------------------
 out &lt;- postHocLM(formula = ~ cov.1 + cov.2, 
-		 inits = inits, 
-		 data = data.list, 
-		 priors = priors, 
-		 verbose = FALSE, 
-		 n.chains = 1)
+                 inits = inits, 
+                 data = data.list, 
+                 priors = priors, 
+                 verbose = FALSE, 
+                 n.chains = 1)
 summary(out)
 </code></pre>
 
@@ -5478,7 +5479,7 @@ out.pred &lt;- predict(out, X.0, coords.0, verbose = FALSE)
 
 <pre><code class='language-R'>## S3 method for class 'sfMsPGOcc'
 predict(object, X.0, coords.0, n.omp.threads = 1, verbose = TRUE, 
-        n.report = 100, ignore.RE = FALSE, type = 'occupancy', ...)
+        n.report = 100, ignore.RE = FALSE, type = 'occupancy', grid.index.0, ...)
 </code></pre>
 
 
@@ -5527,6 +5528,10 @@ levels of the unstructured random effects.</p>
 <tr><td><code id="predict.sfMsPGOcc_+3A_type">type</code></td>
 <td>
 <p>a quoted keyword indicating what type of prediction to produce. Valid keywords are 'occupancy' to predict latent occupancy probability and latent occupancy values (this is the default), or 'detection' to predict detection probability given new values of detection covariates.</p>
+</td></tr>
+<tr><td><code id="predict.sfMsPGOcc_+3A_grid.index.0">grid.index.0</code></td>
+<td>
+<p>an indexing vector used to specify how each row in <code>X.0</code> corresponds to the coordinates specified in <code>coords.0</code>. Only relevant if the spatial random effect was estimated at a higher spatial resolution (e.g., grid cells) than point locations.</p>
 </td></tr>
 <tr><td><code id="predict.sfMsPGOcc_+3A_...">...</code></td>
 <td>
@@ -6168,7 +6173,7 @@ latent occupancy state as well as detection.
 
 <pre><code class='language-R'>## S3 method for class 'spPGOcc'
 predict(object, X.0, coords.0, n.omp.threads = 1, verbose = TRUE, 
-        n.report = 100, ignore.RE = FALSE, type = 'occupancy', ...)
+        n.report = 100, ignore.RE = FALSE, type = 'occupancy', grid.index.0, ...)
 </code></pre>
 
 
@@ -6217,6 +6222,10 @@ levels of the unstructured random effects.</p>
 <tr><td><code id="predict.spPGOcc_+3A_type">type</code></td>
 <td>
 <p>a quoted keyword indicating what type of prediction to produce. Valid keywords are 'occupancy' to predict latent occupancy probability and latent occupancy values (this is the default), or 'detection' to predict detection probability given new values of detection covariates.</p>
+</td></tr>
+<tr><td><code id="predict.spPGOcc_+3A_grid.index.0">grid.index.0</code></td>
+<td>
+<p>an indexing vector used to specify how each row in <code>X.0</code> corresponds to the coordinates specified in <code>coords.0</code>. Only relevant if the spatial random effect was estimated at a higher spatial resolution (e.g., grid cells) than point locations.</p>
 </td></tr>
 <tr><td><code id="predict.spPGOcc_+3A_...">...</code></td>
 <td>
@@ -6384,7 +6393,7 @@ out.pred &lt;- predict(out, X.0, coords.0, verbose = FALSE)
 <pre><code class='language-R'>## S3 method for class 'stMsPGOcc'
 predict(object, X.0, coords.0, t.cols, n.omp.threads = 1, 
                           verbose = TRUE, n.report = 100, 
-                          ignore.RE = FALSE, type = 'occupancy', ...)
+                          ignore.RE = FALSE, type = 'occupancy', grid.index.0, ...)
 </code></pre>
 
 
@@ -6433,6 +6442,10 @@ the screen.</p>
 <tr><td><code id="predict.stMsPGOcc_+3A_type">type</code></td>
 <td>
 <p>a quoted keyword indicating what type of prediction to produce. Valid keywords are 'occupancy' to predict latent occupancy probability and latent occupancy values (this is the default), or 'detection' to predict detection probability given new values of detection covariates.</p>
+</td></tr>
+<tr><td><code id="predict.stMsPGOcc_+3A_grid.index.0">grid.index.0</code></td>
+<td>
+<p>an indexing vector used to specify how each row in <code>X.0</code> corresponds to the coordinates specified in <code>coords.0</code>. Only relevant if the spatial random effect was estimated at a higher spatial resolution (e.g., grid cells) than point locations.</p>
 </td></tr>
 <tr><td><code id="predict.stMsPGOcc_+3A_...">...</code></td>
 <td>
@@ -6646,7 +6659,7 @@ str(out.pred)
 predict(object, X.0, coords.0, t.cols, n.omp.threads = 1, 
                           verbose = TRUE, n.report = 100, 
                           ignore.RE = FALSE, type = 'occupancy', 
-                          forecast = FALSE, ...)
+                          forecast = FALSE, grid.index.0, ...)
 </code></pre>
 
 
@@ -6699,6 +6712,10 @@ the screen.</p>
 <tr><td><code id="predict.stPGOcc_+3A_forecast">forecast</code></td>
 <td>
 <p>a logical value indicating whether prediction is occurring at non-sampled primary time periods (e.g., forecasting).</p>
+</td></tr>
+<tr><td><code id="predict.stPGOcc_+3A_grid.index.0">grid.index.0</code></td>
+<td>
+<p>an indexing vector used to specify how each row in <code>X.0</code> corresponds to the coordinates specified in <code>coords.0</code>. Only relevant if the spatial random effect was estimated at a higher spatial resolution (e.g., grid cells) than point locations.</p>
 </td></tr>
 <tr><td><code id="predict.stPGOcc_+3A_...">...</code></td>
 <td>
@@ -7354,7 +7371,7 @@ latent occupancy state as well as detection.
 <pre><code class='language-R'>
 ## S3 method for class 'svcPGOcc'
 predict(object, X.0, coords.0, weights.0, n.omp.threads = 1, verbose = TRUE, 
-        n.report = 100, ignore.RE = FALSE, type = 'occupancy', ...)
+        n.report = 100, ignore.RE = FALSE, type = 'occupancy', grid.index.0, ...)
 </code></pre>
 
 
@@ -7408,6 +7425,10 @@ levels of the unstructured random effects.</p>
 <tr><td><code id="predict.svcPGOcc_+3A_type">type</code></td>
 <td>
 <p>a quoted keyword indicating what type of prediction to produce. Valid keywords are 'occupancy' to predict latent occupancy probability and latent occupancy values (this is the default), or 'detection' to predict detection probability given new values of detection covariates.</p>
+</td></tr>
+<tr><td><code id="predict.svcPGOcc_+3A_grid.index.0">grid.index.0</code></td>
+<td>
+<p>an indexing vector used to specify how each row in <code>X.0</code> corresponds to the coordinates specified in <code>coords.0</code>. Only relevant if the SVCs were estimated at a higher spatial resolution (e.g., grid cells) than point locations.</p>
 </td></tr>
 <tr><td><code id="predict.svcPGOcc_+3A_...">...</code></td>
 <td>
@@ -7578,7 +7599,7 @@ out.pred &lt;- predict(out, X.0, coords.0, verbose = FALSE)
 <pre><code class='language-R'>## S3 method for class 'svcTMsPGOcc'
 predict(object, X.0, coords.0, t.cols, n.omp.threads = 1, 
                           verbose = TRUE, n.report = 100, 
-                          ignore.RE = FALSE, type = 'occupancy', ...)
+                          ignore.RE = FALSE, type = 'occupancy', grid.index.0, ...)
 </code></pre>
 
 
@@ -7627,6 +7648,10 @@ the screen.</p>
 <tr><td><code id="predict.svcTMsPGOcc_+3A_type">type</code></td>
 <td>
 <p>a quoted keyword indicating what type of prediction to produce. Valid keywords are 'occupancy' to predict latent occupancy probability and latent occupancy values (this is the default), or 'detection' to predict detection probability given new values of detection covariates.</p>
+</td></tr>
+<tr><td><code id="predict.svcTMsPGOcc_+3A_grid.index.0">grid.index.0</code></td>
+<td>
+<p>an indexing vector used to specify how each row in <code>X.0</code> corresponds to the coordinates specified in <code>coords.0</code>. Only relevant if the spatial random effect was estimated at a higher spatial resolution (e.g., grid cells) than point locations.</p>
 </td></tr>
 <tr><td><code id="predict.svcTMsPGOcc_+3A_...">...</code></td>
 <td>
@@ -8069,7 +8094,8 @@ str(out.pred)
 <pre><code class='language-R'>## S3 method for class 'svcTPGOcc'
 predict(object, X.0, coords.0, t.cols, weights.0, n.omp.threads = 1, 
         verbose = TRUE, n.report = 100, 
-        ignore.RE = FALSE, type = 'occupancy', forecast = FALSE, ...)
+        ignore.RE = FALSE, type = 'occupancy', forecast = FALSE, 
+        grid.index.0, ...)
 </code></pre>
 
 
@@ -8124,13 +8150,17 @@ the screen.</p>
 <td>
 <p>a quoted keyword indicating what type of prediction to produce. Valid keywords are 'occupancy' to predict latent occupancy probability and latent occupancy values (this is the default), or 'detection' to predict detection probability given new values of detection covariates.</p>
 </td></tr>
-<tr><td><code id="predict.svcTPGOcc_+3A_...">...</code></td>
+<tr><td><code id="predict.svcTPGOcc_+3A_grid.index.0">grid.index.0</code></td>
 <td>
-<p>currently no additional arguments</p>
+<p>an indexing vector used to specify how each row in <code>X.0</code> corresponds to the coordinates specified in <code>coords.0</code>. Only relevant if the spatial random effect was estimated at a higher spatial resolution (e.g., grid cells) than point locations.</p>
 </td></tr>
 <tr><td><code id="predict.svcTPGOcc_+3A_forecast">forecast</code></td>
 <td>
 <p>a logical value indicating whether prediction is occurring at non-sampled primary time periods (e.g., forecasting).</p>
+</td></tr>
+<tr><td><code id="predict.svcTPGOcc_+3A_...">...</code></td>
+<td>
+<p>currently no additional arguments</p>
 </td></tr>
 </table>
 
@@ -8725,16 +8755,24 @@ using <span class="pkg">lme4</span> syntax (Bates et al. 2015).</p>
 <tr><td><code id="sfJSDM_+3A_data">data</code></td>
 <td>
 <p>a list containing data necessary for model fitting.
-Valid tags are <code>y</code>, <code>covs</code>, <code>coords</code>, <code>range.ind</code>. <code>y</code>
+Valid tags are <code>y</code>, <code>covs</code>, <code>coords</code>, <code>range.ind</code>, and <code>grid.index</code>. <code>y</code>
 is a two-dimensional array with first dimension equal to the number 
 of species and second dimension equal to the number of sites. Note how this differs
 from other <code>spOccupancy</code> functions in that <code>y</code> does not have any 
 replicate surveys. This is because <code>sfJSDM</code> does not account for imperfect
 detection. <code>covs</code> is a matrix or data frame containing the variables 
 used in the model, with <code class="reqn">J</code> rows for 
-each column (variable). <code>coords</code> is a matrix with <code class="reqn">J</code> 
-rows and 2 columns consisting of the spatial coordinates of each site in 
-the data. Note that <code>spOccupancy</code> assumes coordinates are specified 
+each column (variable). <code>coords</code> is a matrix of the observation coordinates used
+to estimate the SVCs for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate SVCs at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate an SVC for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
 in a projected coordinate system. 
 <code>range.ind</code> is a matrix with rows corresponding to species and columns
 corresponding to sites, with each element taking value 1 if that site is 
@@ -8776,7 +8814,14 @@ the first and second elements corresponding to the shape and scale parameters,
 which are each specified as vectors of length equal to the number of 
 coefficients to be estimated or a single value if priors are the same for all 
 parameters. If not specified, prior shape and scale 
-parameters are set to 0.1. The spatial factor model fits <code>n.factors</code> independent
+parameters are set to 0.1. If desired, the species-specific regression coefficients
+(<code>beta</code>) can also be estimated indepdendently by specifying the 
+tag <code>independent.betas = TRUE</code>. If specified, this will not estimate species-specific
+coefficients as random effects from a common-community-level distribution, and rather
+the values of <code>beta.comm</code> and <code>tau.sq.beta</code> will be fixed at the 
+specified initial values. This is equivalent to specifying a Gaussian, independent
+prior for each of the species-specific effects.
+The spatial factor model fits <code>n.factors</code> independent
 spatial processes. The spatial decay <code>phi</code> and smoothness <code>nu</code> parameters 
 for each latent factor are assumed to follow Uniform distributions. 
 The hyperparameters of the Uniform are passed as a list with two elements, 
@@ -8850,7 +8895,10 @@ or not (<code>FALSE</code>). Note that if <code>range.ind</code> is specified in
 this will result in the covariates being standardized differently for each species
 based on the sites where <code>range.ind == 1</code> for that given species. If <code>range.ind</code> is not specified 
 and <code>std.by.sp = TRUE</code>, this will simply be equivalent to standardizing 
-the covariates across all locations prior to fitting the model.</p>
+the covariates across all locations prior to fitting the model. Note that the covariates
+in <code>formula</code> should still be standardized across all locations. This can be done
+either outside the function, or can be done by specifying <code>scale()</code> in the model formula 
+around the continuous covariates.</p>
 </td></tr>
 <tr><td><code id="sfJSDM_+3A_n.factors">n.factors</code></td>
 <td>
@@ -9249,7 +9297,8 @@ intercepts are allowed using lme4 syntax (Bates et al. 2015).</p>
 <tr><td><code id="sfMsPGOcc_+3A_data">data</code></td>
 <td>
 <p>a list containing data necessary for model fitting.
-Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, <code>coords</code>. 
+Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, <code>coords</code>, 
+and <code>grid.index</code>. 
 <code>y</code> is a three-dimensional array with first dimension equal to the 
 number of species, second dimension equal to the number of sites, and 
 third dimension equal to the maximum number of replicates at a given site. 
@@ -9261,9 +9310,19 @@ detection covariate, which can be site-level or observational-level.
 Site-level covariates are specified as a vector of length <code class="reqn">J</code> while 
 observation-level covariates are specified as a matrix or data frame 
 with the number of rows equal to <code class="reqn">J</code> and number of columns equal 
-to the maximum number of replicates at a given site. <code>coords</code> is a 
-<code class="reqn">J \times 2</code> matrix of the observation coordinates. Note that 
-<code>spOccupancy</code> assumes coordinates are specified in a projected coordinate system.</p>
+to the maximum number of replicates at a given site. 
+<code>coords</code> is a matrix of the observation coordinates used
+to estimate the spatial random effect for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate spatial random effects at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate a spatial random effect for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
+in a projected coordinate system.</p>
 </td></tr>
 <tr><td><code id="sfMsPGOcc_+3A_inits">inits</code></td>
 <td>
@@ -10336,7 +10395,7 @@ dat &lt;- simIntOcc(n.data = n.data, J.x = J.x, J.y = J.y, J.obs = J.obs,
 <pre><code class='language-R'>simMsOcc(J.x, J.y, n.rep, n.rep.max, N, beta, alpha, psi.RE = list(), 
          p.RE = list(), sp = FALSE, svc.cols = 1, cov.model, 
 	 sigma.sq, phi, nu, factor.model = FALSE, n.factors, 
-         range.probs, shared.spatial = FALSE, ...)
+         range.probs, shared.spatial = FALSE, grid, ...)
 </code></pre>
 
 
@@ -10421,6 +10480,10 @@ in the model formula (with 1 being the intercept if specified).</p>
 <tr><td><code id="simMsOcc_+3A_shared.spatial">shared.spatial</code></td>
 <td>
 <p>a logical value indicating used to specify whether a common spatial process should be estimated for all species instead of the factor modeling approach.</p>
+</td></tr>
+<tr><td><code id="simMsOcc_+3A_grid">grid</code></td>
+<td>
+<p>an atomic vector used to specify the grid across which to simulate the latent spatial processes. This argument is used to simulate the underlying spatial processes at a different resolution than the coordinates (e.g., if coordinates are distributed across a grid).</p>
 </td></tr>
 <tr><td><code id="simMsOcc_+3A_...">...</code></td>
 <td>
@@ -10616,7 +10679,7 @@ in the model formula (with 1 being the intercept if specified).</p>
 </td></tr>
 <tr><td><code id="simOcc_+3A_grid">grid</code></td>
 <td>
-<p>a list or atomic vector used to specify the grid across which to simulate the latent spatial processes. If a list, each element should correspond to the grid used for each SVC in the model. This argument is used to simulate the underlying spatial process at a different resolution than the coordinates (e.g., if coordinates are distributed across a grid).</p>
+<p>an atomic vector used to specify the grid across which to simulate the latent spatial processes. This argument is used to simulate the underlying spatial processes at a different resolution than the coordinates (e.g., if coordinates are distributed across a grid).</p>
 </td></tr>
 <tr><td><code id="simOcc_+3A_...">...</code></td>
 <td>
@@ -10911,7 +10974,7 @@ dat &lt;- simTBinom(J.x = J.x, J.y = J.y, n.time = n.time, weights = weights, be
 	  trend = TRUE, psi.RE = list(), p.RE = list(), 
           sp = FALSE, svc.cols = 1, cov.model, 
 	  sigma.sq, phi, nu, ar1 = FALSE, rho, sigma.sq.t, 
-	  factor.model = FALSE, n.factors, range.probs, ...)
+	  factor.model = FALSE, n.factors, range.probs, grid, ...)
 </code></pre>
 
 
@@ -11012,6 +11075,10 @@ in the model formula (with 1 being the intercept if specified).</p>
 <tr><td><code id="simTMsOcc_+3A_range.probs">range.probs</code></td>
 <td>
 <p>a numeric vector of length <code>N</code> where each value should fall between 0 and 1, and indicates the probability that one of the <code>J</code> spatial locations simulated is within the simulated range of the given species. If set to 1, every species has the potential of being present at each location.</p>
+</td></tr>
+<tr><td><code id="simTMsOcc_+3A_grid">grid</code></td>
+<td>
+<p>an atomic vector used to specify the grid across which to simulate the latent spatial processes. This argument is used to simulate the underlying spatial processes at a different resolution than the coordinates (e.g., if coordinates are distributed across a grid).</p>
 </td></tr>
 <tr><td><code id="simTMsOcc_+3A_...">...</code></td>
 <td>
@@ -11157,7 +11224,7 @@ str(dat)
 <pre><code class='language-R'>simTOcc(J.x, J.y, n.time, n.rep, n.rep.max, beta, alpha, sp.only = 0, trend = TRUE, 
         psi.RE = list(), p.RE = list(), sp = FALSE, svc.cols = 1, cov.model, 
         sigma.sq, phi, nu, ar1 = FALSE, rho, sigma.sq.t, x.positive = FALSE, 
-	mis.spec.type = 'none', scale.param = 1, avail, ...)
+	mis.spec.type = 'none', scale.param = 1, avail, grid, ...)
 </code></pre>
 
 
@@ -11262,6 +11329,10 @@ in the model formula (with 1 being the intercept if specified).</p>
 <tr><td><code id="simTOcc_+3A_avail">avail</code></td>
 <td>
 <p>a site x primary time period x visit array indicating the availability probability of the species during each survey simulated at the given site/primary time period/visit combination. This can be used to assess impacts of non-constant availability across replicate surveys in simulation studies. Values should fall between 0 and 1. When not specified, availability is set to 1 for all surveys.</p>
+</td></tr>
+<tr><td><code id="simTOcc_+3A_grid">grid</code></td>
+<td>
+<p>an atomic vector used to specify the grid across which to simulate the latent spatial processes. This argument is used to simulate the underlying spatial processes at a different resolution than the coordinates (e.g., if coordinates are distributed across a grid).</p>
 </td></tr>
 <tr><td><code id="simTOcc_+3A_...">...</code></td>
 <td>
@@ -12381,7 +12452,7 @@ joint likelihood framework. Details on data integration are given in
 Miller, Pacifici, Sanderlin, and Reich (2019). Details on single-species and 
 multi-species models are found in MacKenzie et al. (2002) and Dorazio and Royle (2005), 
 respectively. Details on the package functionality is given in Doser et al. (2022), 
-Doser, Finley, Banerjee (2023), and Doser, Finley, Saunders, Kery, Weed, and Zipkin (2023). 
+Doser, Finley, Banerjee (2023), Doser et al. (2024a,b). 
 See <code>citation('spOccupancy')</code> for how to cite spOccupancy in publications.
 </p>
 <p><strong>Single-species models</strong>
@@ -12450,6 +12521,14 @@ See <code>citation('spOccupancy')</code> for how to cite spOccupancy in publicat
 </p>
 <p><code><a href="#topic+simTMsOcc">simTMsOcc</a></code> simulates multi-species multi-season occupancy data from multiple data sources. 
 </p>
+<p><strong>Miscellaneous</strong>
+</p>
+<p><code><a href="#topic+postHocLM">postHocLM</a></code> fits post-hoc linear (mixed) models.
+</p>
+<p><code><a href="#topic+getSVCSamples">getSVCSamples</a></code> extracts spatially varying coefficient MCMC samples.
+</p>
+<p><code><a href="#topic+updateMCMC">updateMCMC</a></code> updates a spOccupancy or spAbundance model object with more MCMC iterations.
+</p>
 <p>All objects from model-fitting functions have support with the <code>summary</code> function for 
 displaying a concise summary of model results, the <code>fitted</code> function for extracting 
 model fitted values, and the <code>predict</code> function for predicting occupancy and/or detection
@@ -12468,15 +12547,23 @@ across an area of interest.
 <p>Doser, J. W., Finley, A. O., Kery, M., &amp; Zipkin, E. F. (2022). 
 spOccupancy: An R package for single-species, multi-species, and 
 integrated spatial occupancy models. 
-Methods in Ecology and Evolution, 13, 1670-1678. <a href="https://doi.org/10.1111/2041-210X.13897">doi:10.1111/2041-210X.13897</a> 
+Methods in Ecology and Evolution, 13, 1670-1678. <a href="https://doi.org/10.1111/2041-210X.13897">doi:10.1111/2041-210X.13897</a>.
 </p>
 <p>Doser, J. W., Finley, A. O., &amp; Banerjee, S. (2023). Joint species 
 distribution models with imperfect detection for high-dimensional 
-spatial data. Ecology e4137. <a href="https://doi.org/10.1002/ecy.4137">doi:10.1002/ecy.4137</a>
+spatial data. Ecology, 104(9), e4137. <a href="https://doi.org/10.1002/ecy.4137">doi:10.1002/ecy.4137</a>.
 </p>
-<p>Doser, J. W., Finley, A. O., Saunders, S. P., Kery, M., Weed A. S., Zipkin, E. F. (2023).
-Modeling complex species-environment relationships through spatially-varying coefficient 
-occupancy models. arXiv preprint.
+<p>Doser, J. W., Finley, A. O., Saunders, S. P., Kery, M., Weed, A. S., &amp;
+Zipkin, E. F. (2024A). Modeling complex species-environment
+relationships through spatially-varying coefficient occupancy models.
+Journal of Agricultural, Biological and Environmental Statistics.
+<a href="https://doi.org/10.1007/s13253-023-00595-6">doi:10.1007/s13253-023-00595-6</a>.
+</p>
+<p>Doser, J. W., Kery, M., Saunders, S. P., Finley, A. O., Bateman, B. L.,
+Grand, J., Reault, S., Weed, A. S., &amp; Zipkin, E. F. (2024B). Guidelines
+for the use of spatially varying coefficients in species distribution
+models. Global Ecology and Biogeography, 33, e13814.
+<a href="https://doi.org/10.1111/geb.13814">doi:10.1111/geb.13814</a>.
 </p>
 
 <hr>
@@ -12521,7 +12608,8 @@ are allowed using lme4 syntax (Bates et al. 2015).</p>
 <tr><td><code id="spPGOcc_+3A_data">data</code></td>
 <td>
 <p>a list containing data necessary for model fitting.
-Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, and <code>coords</code>. 
+Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, 
+<code>coords</code>, and <code>grid.index</code>. 
 <code>y</code> is the detection-nondetection data matrix or data frame with 
 first dimension equal to the number of sites (<code class="reqn">J</code>) and second 
 dimension equal to the maximum number of replicates at a given site. 
@@ -12534,8 +12622,17 @@ covariates are specified as a vector of length <code class="reqn">J</code> while
 observation-level covariates are specified 
 as a matrix or data frame with the number of rows equal to <code class="reqn">J</code> and 
 number of columns equal to the maximum number of replicates at a given site. 
-<code>coords</code> is a <code class="reqn">J \times 2</code> matrix of the observation coordinates. 
-Note that <code>spOccupancy</code> assumes coordinates are specified 
+<code>coords</code> is a matrix of the observation coordinates used
+to estimate the spatial random effect for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate spatial random effects at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate a spatial random effect for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
 in a projected coordinate system.</p>
 </td></tr>
 <tr><td><code id="spPGOcc_+3A_inits">inits</code></td>
@@ -12966,8 +13063,8 @@ intercepts are allowed using lme4 syntax (Bates et al. 2015).</p>
 <tr><td><code id="stMsPGOcc_+3A_data">data</code></td>
 <td>
 <p>a list containing data necessary for model fitting.
-Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, and
-<code>coords</code>. 
+Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, 
+<code>coords</code>, and <code>grid.index</code>. 
 <code>y</code> is a four-dimensional array with first dimension equal to the 
 number of species, second dimension equal to the number of sites, third
 dimension equal to the number of primary time periods, and 
@@ -12983,9 +13080,18 @@ In addition to site-level and/or site/primary time period-level,
 detection covariates can also be observational-level. Observation-level covariates
 are specified as a three-dimensional array with first dimension corresponding to 
 sites, second dimension corresponding to primary time period, and third 
-dimension corresponding to replicate. <code>coords</code> is a 
-<code class="reqn">J \times 2</code> matrix of the observation coordinates. Note that 
-<code>spOccupancy</code> assumes coordinates are specified in a projected coordinate system</p>
+dimension corresponding to replicate. <code>coords</code> is a matrix of the observation coordinates used
+to estimate the SVCs for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate SVCs at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate an SVC for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
+in a projected coordinate system.</p>
 </td></tr>
 <tr><td><code id="stMsPGOcc_+3A_inits">inits</code></td>
 <td>
@@ -13513,7 +13619,7 @@ are allowed using lme4 syntax (Bates et al. 2015).</p>
 <tr><td><code id="stPGOcc_+3A_data">data</code></td>
 <td>
 <p>a list containing data necessary for model fitting.
-Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, and <code>coords</code>. <code>y</code>
+Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, <code>coords</code>, and <code>grid.index</code>. <code>y</code>
 is a three-dimensional array with first dimension equal to the number of 
 sites (<code class="reqn">J</code>), second dimension equal to the maximum number of 
 primary time periods (i.e., years or seasons), and third dimension equal 
@@ -13529,9 +13635,19 @@ individual variable. In addition to site-level and/or site/primary time period-l
 detection covariates can also be observational-level. Observation-level covariates
 are specified as a three-dimensional array with first dimension corresponding to 
 sites, second dimension corresponding to primary time period, and third 
-dimension corresponding to replicate. <code>coords</code> is a <code class="reqn">J \times 2</code> 
-matrix of the observation coordinates. Note that <code>spOccupancy</code> assumes 
-coordinates are specified in a projected coordinate system.</p>
+dimension corresponding to replicate. 
+<code>coords</code> is a matrix of the observation coordinates used
+to estimate the spatial random effect for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate spatial random effects at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate a spatial random effect for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
+in a projected coordinate system.</p>
 </td></tr>
 <tr><td><code id="stPGOcc_+3A_inits">inits</code></td>
 <td>
@@ -15724,7 +15840,10 @@ or not (<code>FALSE</code>). Note that if <code>range.ind</code> is specified in
 this will result in the covariates being standardized differently for each species
 based on the sites where <code>range.ind == 1</code> for that given species. If <code>range.ind</code> is not specified 
 and <code>std.by.sp = TRUE</code>, this will simply be equivalent to standardizing 
-the covariates across all locations prior to fitting the model.</p>
+the covariates across all locations prior to fitting the model. Note that the covariates
+in <code>occ.formula</code> should still be standardized across all locations. This can be done
+either outside the function, or can be done by specifying <code>scale()</code> in the model formula 
+around the continuous covariates.</p>
 </td></tr>
 <tr><td><code id="svcMsPGOcc_+3A_n.factors">n.factors</code></td>
 <td>
@@ -16557,7 +16676,7 @@ are allowed using lme4 syntax (Bates et al. 2015).</p>
 <tr><td><code id="svcPGOcc_+3A_data">data</code></td>
 <td>
 <p>a list containing data necessary for model fitting.
-Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, and <code>coords</code>. 
+Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, <code>coords</code>, and <code>grid.index</code>. 
 <code>y</code> is the detection-nondetection data matrix or data frame with 
 first dimension equal to the number of sites (<code class="reqn">J</code>) and second 
 dimension equal to the maximum number of replicates at a given site. 
@@ -16570,8 +16689,17 @@ covariates are specified as a vector of length <code class="reqn">J</code> while
 observation-level covariates are specified 
 as a matrix or data frame with the number of rows equal to <code class="reqn">J</code> and 
 number of columns equal to the maximum number of replicates at a given site. 
-<code>coords</code> is a <code class="reqn">J \times 2</code> matrix of the observation coordinates. 
-Note that <code>spOccupancy</code> assumes coordinates are specified 
+<code>coords</code> is a matrix of the observation coordinates used
+to estimate the spatial random effect for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate the SVCs at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate SVCs for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
 in a projected coordinate system.</p>
 </td></tr>
 <tr><td><code id="svcPGOcc_+3A_inits">inits</code></td>
@@ -17022,7 +17150,7 @@ intercepts are allowed using lme4 syntax (Bates et al. 2015).</p>
 <td>
 <p>a list containing data necessary for model fitting.
 Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, 
-<code>coords</code>, and <code>range.ind</code>. 
+<code>coords</code>, <code>range.ind</code>, and <code>grid.index</code>. 
 <code>y</code> is a four-dimensional array with first dimension equal to the 
 number of species, second dimension equal to the number of sites, third
 dimension equal to the number of primary time periods, and 
@@ -17038,9 +17166,18 @@ In addition to site-level and/or site/primary time period-level,
 detection covariates can also be observational-level. Observation-level covariates
 are specified as a three-dimensional array with first dimension corresponding to 
 sites, second dimension corresponding to primary time period, and third 
-dimension corresponding to replicate. <code>coords</code> is a 
-<code class="reqn">J \times 2</code> matrix of the observation coordinates. Note that 
-<code>spOccupancy</code> assumes coordinates are specified in a projected coordinate system.
+dimension corresponding to replicate. <code>coords</code> is a matrix of the observation coordinates used
+to estimate the SVCs for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate SVCs at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate an SVC for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
+in a projected coordinate system.
 <code>range.ind</code> is a matrix with rows corresponding to species and columns
 corresponding to sites, with each element taking value 1 if that site is 
 within the range of the corresponding species and 0 if it is outside of the 
@@ -17090,6 +17227,14 @@ which are each specified as vectors of length equal to the number of
 coefficients to be estimated or a single value if priors are the same for all 
 parameters. If not specified, prior shape and scale 
 parameters are set to 0.1. 
+If desired, the species-specific occupancy coefficients
+(<code>beta</code>) and/or detection coefficients (<code>alpha</code>) can also be estimated indepdendently by specifying the 
+tag <code>independent.betas = TRUE</code> and/or <code>independent.alphas = TRUE</code>, respectively. 
+If specified, this will not estimate species-specific
+coefficients as random effects from a common-community-level distribution, and rather
+the values of <code>beta.comm</code>/<code>alpha.comm</code> and <code>tau.sq.beta</code>/<code>tau.sq.alpha</code> will be fixed at the 
+specified initial values. This is equivalent to specifying a Gaussian, independent
+prior for each of the species-specific effects.
 The spatial factor model fits <code>n.factors</code> independent
 spatial processes for each spatially-varying coefficient specified in <code>svc.cols</code>. 
 The spatial decay <code>phi</code> and smoothness <code>nu</code> parameters 
@@ -17190,7 +17335,10 @@ or not (<code>FALSE</code>). Note that if <code>range.ind</code> is specified in
 this will result in the covariates being standardized differently for each species
 based on the sites where <code>range.ind == 1</code> for that given species. If <code>range.ind</code> is not specified 
 and <code>std.by.sp = TRUE</code>, this will simply be equivalent to standardizing 
-the covariates across all locations prior to fitting the model.</p>
+the covariates across all locations prior to fitting the model. Note that the covariates
+in <code>occ.formula</code> should still be standardized across all locations. This can be done
+either outside the function, or can be done by specifying <code>scale()</code> in the model formula 
+around the continuous covariates.</p>
 </td></tr>
 <tr><td><code id="svcTMsPGOcc_+3A_n.factors">n.factors</code></td>
 <td>
@@ -18083,7 +18231,7 @@ are allowed using lme4 syntax (Bates et al. 2015).</p>
 <tr><td><code id="svcTPGOcc_+3A_data">data</code></td>
 <td>
 <p>a list containing data necessary for model fitting.
-Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, and <code>coords</code>. <code>y</code>
+Valid tags are <code>y</code>, <code>occ.covs</code>, <code>det.covs</code>, <code>coords</code>, and <code>grid.index</code>. <code>y</code>
 is a three-dimensional array with first dimension equal to the number of 
 sites (<code class="reqn">J</code>), second dimension equal to the maximum number of 
 primary time periods (i.e., years or seasons), and third dimension equal 
@@ -18099,9 +18247,19 @@ individual variable. In addition to site-level and/or site/primary time period-l
 detection covariates can also be observational-level. Observation-level covariates
 are specified as a three-dimensional array with first dimension corresponding to 
 sites, second dimension corresponding to primary time period, and third 
-dimension corresponding to replicate. <code>coords</code> is a <code class="reqn">J \times 2</code> 
-matrix of the observation coordinates. Note that <code>spOccupancy</code> assumes 
-coordinates are specified in a projected coordinate system.</p>
+dimension corresponding to replicate. 
+<code>coords</code> is a matrix of the observation coordinates used
+to estimate the SVCs for each site. <code>coords</code> has two columns for the 
+easting and northing coordinate, respectively. Typically, each site in the data 
+set will have it's own coordinate, such that <code>coords</code> is a <code class="reqn">J \times 2</code> 
+matrix and <code>grid.index</code> should not be specified. 
+If you desire to estimate SVCs at some larger spatial level, 
+e.g., if points fall within grid cells and you want to estimate an SVC for 
+each grid cell instead of each point, <code>coords</code> can be specified as the coordinate for 
+each grid cell. In such a case, <code>grid.index</code> is an indexing vector of length J, where each 
+value of <code>grid.index</code> indicates the corresponding row in <code>coords</code> that the given 
+site corresponds to. Note that <code>spOccupancy</code> assumes coordinates are specified 
+in a projected coordinate system.</p>
 </td></tr>
 <tr><td><code id="svcTPGOcc_+3A_inits">inits</code></td>
 <td>
@@ -19427,6 +19585,192 @@ summary(out)
 </code></pre>
 
 <hr>
+<h2 id='updateMCMC'>Update a spOccupancy or spAbundance model run with more MCMC iterations</h2><span id='topic+updateMCMC'></span>
+
+<h3>Description</h3>
+
+<p>Function for updating a previously run spOccupancy or spAbundance model with 
+additional MCMC iterations. This function is useful for situations where a model
+is run for a long time but convergence/adequate mixing of the MCMC chains is not 
+reached. Instead of re-running the entire model again, this function allows you 
+to pick up where you left off. This function is currently in development, and only currently works 
+with the following spOccupancy and spAbundance model objects: msAbund and sfJSDM. Note that
+cross-validation is not possible when updating the model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>updateMCMC(object, n.batch, n.samples, n.burn = 0, n.thin, 
+           keep.orig = TRUE, verbose = TRUE, n.report = 100, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="updateMCMC_+3A_object">object</code></td>
+<td>
+<p>a <code>spOccupancy</code> or <code>spAbundance</code> model object. Currently 
+supports objects of class <code>msAbund</code> and <code>sfJSDM</code>.</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_n.batch">n.batch</code></td>
+<td>
+<p>the number of additional MCMC batches in each chain 
+to run for the adaptive MCMC sampler. Only valid for model types fit with 
+an adaptive MCMC sampler</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_n.samples">n.samples</code></td>
+<td>
+<p>the number of posterior samples to collect in each chain. Only 
+valid for model types that are run with a fully Gibbs sampler and have 
+<code>n.samples</code> as an argument in the original model fitting function.</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_n.burn">n.burn</code></td>
+<td>
+<p>the number of samples out of the total <code>n.batch * batchlength</code> to 
+discard as burn-in for each chain from the updated samples. Note this argument
+does not discard samples from the previous model run, and rather only applies
+to the samples in the updated run of the model. Defaults to 0</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_n.thin">n.thin</code></td>
+<td>
+<p>the thinning interval for collection of MCMC samples in 
+the updated model run. The thinning occurs after the <code>n.burn</code> 
+samples are discarded. Default value is set to 1.</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_keep.orig">keep.orig</code></td>
+<td>
+<p>A logical value indicating whether or not the samples from 
+the original run of the model should be kept or discarded.</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_verbose">verbose</code></td>
+<td>
+<p>if <code>TRUE</code>, messages about data preparation, 
+model specification, and progress of the sampler are printed to the screen. 
+Otherwise, no messages are printed.</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_n.report">n.report</code></td>
+<td>
+<p>the interval to report Metropolis sampler acceptance and
+MCMC progress.</p>
+</td></tr>
+<tr><td><code id="updateMCMC_+3A_...">...</code></td>
+<td>
+<p>currently no additional arguments</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An object of the same class as the original model fit provided in the <code>argument</code> object. See the manual page for the original model type for complete details.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jeffrey W. Doser <a href="mailto:doserjef@msu.edu">doserjef@msu.edu</a>, <br />
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>J.x &lt;- 8
+J.y &lt;- 8
+J &lt;- J.x * J.y
+n.rep&lt;- sample(2:4, size = J, replace = TRUE)
+N &lt;- 6
+# Community-level covariate effects
+# Occurrence
+beta.mean &lt;- c(0.2)
+p.occ &lt;- length(beta.mean)
+tau.sq.beta &lt;- c(0.6)
+# Detection
+alpha.mean &lt;- c(0)
+tau.sq.alpha &lt;- c(1)
+p.det &lt;- length(alpha.mean)
+# Random effects
+psi.RE &lt;- list()
+p.RE &lt;- list()
+# Draw species-level effects from community means.
+beta &lt;- matrix(NA, nrow = N, ncol = p.occ)
+alpha &lt;- matrix(NA, nrow = N, ncol = p.det)
+for (i in 1:p.occ) {
+  beta[, i] &lt;- rnorm(N, beta.mean[i], sqrt(tau.sq.beta[i]))
+}
+for (i in 1:p.det) {
+  alpha[, i] &lt;- rnorm(N, alpha.mean[i], sqrt(tau.sq.alpha[i]))
+}
+alpha.true &lt;- alpha
+n.factors &lt;- 3
+phi &lt;- rep(3 / .7, n.factors)
+sigma.sq &lt;- rep(2, n.factors)
+nu &lt;- rep(2, n.factors)
+
+dat &lt;- simMsOcc(J.x = J.x, J.y = J.y, n.rep = n.rep, N = N, beta = beta, alpha = alpha,
+                psi.RE = psi.RE, p.RE = p.RE, sp = TRUE, sigma.sq = sigma.sq,
+                phi = phi, nu = nu, cov.model = 'matern', factor.model = TRUE,
+                n.factors = n.factors)
+
+pred.indx &lt;- sample(1:J, round(J * .25), replace = FALSE)
+y &lt;- dat$y[, -pred.indx, , drop = FALSE]
+# Occupancy covariates
+X &lt;- dat$X[-pred.indx, , drop = FALSE]
+coords &lt;- as.matrix(dat$coords[-pred.indx, , drop = FALSE])
+# Prediction covariates
+X.0 &lt;- dat$X[pred.indx, , drop = FALSE]
+coords.0 &lt;- as.matrix(dat$coords[pred.indx, , drop = FALSE])
+# Detection covariates
+X.p &lt;- dat$X.p[-pred.indx, , , drop = FALSE]
+
+y &lt;- apply(y, c(1, 2), max, na.rm = TRUE)
+data.list &lt;- list(y = y, coords = coords)
+# Priors
+prior.list &lt;- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                   tau.sq.beta.ig = list(a = 0.1, b = 0.1),
+                   nu.unif = list(0.5, 2.5))
+# Starting values
+inits.list &lt;- list(beta.comm = 0,
+                   beta = 0,
+                   fix = TRUE,
+                   tau.sq.beta = 1)
+# Tuning
+tuning.list &lt;- list(phi = 1, nu = 0.25)
+
+batch.length &lt;- 25
+n.batch &lt;- 2
+n.report &lt;- 100
+formula &lt;- ~ 1
+
+out &lt;- sfJSDM(formula = formula,
+              data = data.list,
+              inits = inits.list,
+              n.batch = n.batch,
+              batch.length = batch.length,
+              accept.rate = 0.43,
+              priors = prior.list,
+              cov.model = "matern",
+              tuning = tuning.list,
+              n.factors = 3,
+              n.omp.threads = 1,
+              verbose = TRUE,
+              NNGP = TRUE,
+              n.neighbors = 5,
+              search.type = 'cb',
+              n.report = 10,
+              n.burn = 0,
+              n.thin = 1,
+              n.chains = 2)
+summary(out)
+
+# Update the initial model fit
+out.new &lt;- updateMCMC(out, n.batch = 1, keep.orig = TRUE, 
+		     verbose = TRUE, n.report = 1) 
+summary(out.new)
+</code></pre>
+
+<hr>
 <h2 id='waicOcc'>Compute Widely Applicable Information Criterion for spOccupancy Model Objects</h2><span id='topic+waicOcc'></span>
 
 <h3>Description</h3>
@@ -19470,7 +19814,11 @@ a single value for all species.</p>
 <h3>Details</h3>
 
 <p>The effective number of parameters is calculated following the recommendations
-of Gelman et al. (2014).
+of Gelman et al. (2014). Note that when fitting multi-species occupancy models with the 
+<code>range.ind</code> tag, it is not valid to use WAIC to compare a model that 
+uses <code>range.ind</code> (i.e., restricts certain species to a subset of the locations)
+with a model that does not use <code>range.ind</code> (i.e., assumes all species can occur at
+all locations in the data set) or that uses different <code>range.ind</code> values.
 </p>
 
 

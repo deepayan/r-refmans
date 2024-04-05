@@ -59,11 +59,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.0.6</td>
+<td>2.0.7</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-02-06</td>
+<td>2024-03-27</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -107,7 +107,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-06 22:06:17 UTC; patrick</td>
+<td>2024-04-02 19:29:16 UTC; patrick</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -123,7 +123,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-06 23:00:02 UTC</td>
+<td>2024-04-02 20:05:00 UTC</td>
 </tr>
 </table>
 <hr>
@@ -1112,11 +1112,13 @@ desiredTiles = paste0("(",
 	").*.hdf$")
 
 if(requireNamespace("RCurl", quietly=TRUE) &amp; requireNamespace("XML", quietly=TRUE)) {
-theFiles = 	grep(desiredTiles,
-	XML::getHTMLLinks(RCurl::getURL(
+allFiles = try(XML::getHTMLLinks(RCurl::getURL(
 	    modisUrl,ftp.use.epsv=FALSE,
-	    dirlistonly = TRUE)), value=TRUE)
-paste0(modisUrl, theFiles)
+	    dirlistonly = TRUE)), silent=TRUE)
+if(!identical(class(allFiles), 'try-error')) {
+	theFiles = 	grep(desiredTiles, allFiles, value=TRUE)
+	paste0(modisUrl, theFiles)
+}
 }
 
 </code></pre>
@@ -1295,9 +1297,9 @@ plot(attributes(myProj)$crop, col='red', add=TRUE)
 <pre><code class='language-R'>	openmap(x, zoom, 
 	  path="http://tile.openstreetmap.org/",
 	  maxTiles = 9, 
-	  crs=terra::crs(x),   
+	  crs=ifelse(is.numeric(x), mapmisc::crsLL, terra::crs(x)),   
 	  buffer=0, fact=1, 
-	 verbose=getOption('mapmiscVerbose'),
+		verbose=getOption('mapmiscVerbose'),
 	  cachePath=getOption('mapmiscCachePath'),
 	  suffix=NULL
 )
@@ -1422,7 +1424,7 @@ plot(nldTiles)
 
 openmapAttribution('osm', short=TRUE, type='markdown')
 
-openmapAttribution("stamen-toner", type='text')
+openmapAttribution("stamen-watercolor", type='text')
 
 
 myraster = rast(matrix(1:100,10,10),extent=ext(8, 18, 0, 10), crs=crsLL)
@@ -1677,7 +1679,8 @@ to single-layer rasters with indexed colours with whites becoming transparent.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>tonerToTrans(x,  pattern="(red|green|blue)$", power = 0.5, col='black',  threshold=Inf)
+<pre><code class='language-R'>tonerToTrans(x,  pattern="(red|green|blue)$", power = 0.5,
+	col='black',  threshold=Inf,  mostCommon=1)
 </code></pre>
 
 
@@ -1707,13 +1710,11 @@ to single-layer rasters with indexed colours with whites becoming transparent.
 <td>
 <p>colours above this value are transparent</p>
 </td></tr>
+<tr><td><code id="tonerToTrans_+3A_mostcommon">mostCommon</code></td>
+<td>
+<p>integer vector, the most common colours are converted to transparent</p>
+</td></tr>
 </table>
-
-
-<h3>Details</h3>
-
-<p>Intended for <code>'stamen-toner'</code> maps.
-</p>
 
 
 <h3>Value</h3>
@@ -1737,19 +1738,24 @@ to single-layer rasters with indexed colours with whites becoming transparent.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-	data('worldMap');worldMap = unwrap(worldMap)
 
-	origMap = openmap(worldMap[worldMap$NAME == 'Sierra Leone',],
-	 path='cartodb-nolabels',   
-		buffer=100*1000
+	origMap = openmap(
+	   c(-11, 9),
+	  path='cartodb-nolabels',   
+		buffer=2, verbose=TRUE
 	)
+
+
 	oldpar=	map.new(origMap, bg='green')
 	plot(origMap, add=TRUE)
 	
-	transMap = tonerToTrans(origMap)
+	transMap = tonerToTrans(origMap, mostCommon=1)
 	names(transMap)
   map.new(transMap, bg='green')
 	plot(transMap, add=TRUE)
+
+
+
 	par(oldpar)
 
 

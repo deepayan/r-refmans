@@ -30,6 +30,7 @@ function processMathHTML() {
 <li><a href='#glmmTMB_tidiers'><p>Tidying methods for glmmTMB models</p></a></li>
 <li><a href='#insert_NAs'><p>insert a row of NAs into a data frame wherever another data frame has NAs</p></a></li>
 <li><a href='#lme4_tidiers'><p>Tidying methods for mixed effects models</p></a></li>
+<li><a href='#mediation_tidiers'><p>Tidying methods for mediation analyses involving mixed effects models</p></a></li>
 <li><a href='#nlme_tidiers'><p>Tidying methods for mixed effects models</p></a></li>
 <li><a href='#paramNamesMCMCglmm'><p>Extract the parameter names from an <code>MCMCglmm</code> object</p></a></li>
 <li><a href='#ranef.MCMCglmm'><p>Extract random effects from an <code>MCMCglmm</code> object</p></a></li>
@@ -37,6 +38,7 @@ function processMathHTML() {
 <li><a href='#reexports'><p>Objects exported from other packages</p></a></li>
 <li><a href='#rstanarm_tidiers'><p>Tidying methods for an rstanarm model</p></a></li>
 <li><a href='#stdranef'><p>Extract standard deviation of &quot;random&quot; effects from an <code>MCMCglmm</code> object</p></a></li>
+<li><a href='#tidy.lqmm'><p>Tidying methods for lqmm models (EXPERIMENTAL)</p></a></li>
 <li><a href='#tidy.MCMCglmm'><p>Tidying methods for MCMC (Stan, JAGS, etc.) fits</p></a></li>
 <li><a href='#tidy.TMB'><p>Tidying methods for TMB models</p></a></li>
 <li><a href='#tidy.varFunc'><p>Tidy variance structure for the <code>nlme</code> package.</p></a></li>
@@ -57,7 +59,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.9.4</td>
+<td>0.2.9.5</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -82,8 +84,8 @@ tibble, tidyr, furrr</td>
 <td>Suggests:</td>
 <td>brms, dotwhisker, knitr, testthat, gamlss, gamlss.data,
 ggplot2, GLMMadaptive, glmmADMB, glmmTMB, lmerTest, lme4,
-Matrix, MCMCglmm, mgcv, pander, pbkrtest, rstan, rstanarm,
-rstantools, R2jags, TMB, rmarkdown</td>
+Matrix, MCMCglmm, mediation, mgcv, pander, pbkrtest, posterior,
+rstan, rstanarm, rstantools, R2jags, TMB, rmarkdown</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -111,7 +113,7 @@ rstantools, R2jags, TMB, rmarkdown</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.1.2</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -119,7 +121,7 @@ rstantools, R2jags, TMB, rmarkdown</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2022-03-30 13:56:50 UTC; bolker</td>
+<td>2024-03-31 23:17:41 UTC; bolker</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -141,7 +143,11 @@ rstantools, R2jags, TMB, rmarkdown</td>
   Vincent Arel-Bundock
     <a href="https://orcid.org/0000-0003-2042-7063"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [ctb],
   Bill Denney [ctb],
-  Cory Brunson [ctb]</td>
+  Cory Brunson [ctb],
+  Joe Wasserman <a href="https://orcid.org/0000-0002-9705-1853"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a>
+    [ctb],
+  Alexey Stukalov [ctb],
+  Matthieu Bruneaux [ctb]</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -149,7 +155,7 @@ rstantools, R2jags, TMB, rmarkdown</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2022-04-17 17:42:29 UTC</td>
+<td>2024-04-01 08:30:06 UTC</td>
 </tr>
 </table>
 <hr>
@@ -319,6 +325,8 @@ tidy(
   conf.int = TRUE,
   conf.level = 0.95,
   conf.method = c("quantile", "HPDinterval"),
+  rhat = FALSE,
+  ess = FALSE,
   fix.intercept = TRUE,
   exponentiate = FALSE,
   ...
@@ -375,6 +383,16 @@ Only used if <code>conf.int = TRUE</code>.</p>
 <td>
 <p>method for computing confidence intervals
 (&quot;quantile&quot; or &quot;HPDinterval&quot;)</p>
+</td></tr>
+<tr><td><code id="brms_tidiers_+3A_rhat">rhat</code></td>
+<td>
+<p>whether to calculate the *Rhat* convergence metric
+(<code>FALSE</code> by default)</p>
+</td></tr>
+<tr><td><code id="brms_tidiers_+3A_ess">ess</code></td>
+<td>
+<p>whether to calculate the *effective sample size* (ESS) convergence metric
+(<code>FALSE</code> by default)</p>
 </td></tr>
 <tr><td><code id="brms_tidiers_+3A_fix.intercept">fix.intercept</code></td>
 <td>
@@ -485,8 +503,8 @@ are used for compatibility with other (frequentist) mixed model types.
            iter = 500, chains = 2)
  
 ## End(Not run)
- if (.Platform$OS.type!="windows" &amp;&amp; require("brms")) {
-   ## too slow on Windows, skip (&gt;5 seconds on r-devel-windows)
+ 
+   ## too slow for CRAN (&gt;5 seconds)
    ## load stored object
    load(system.file("extdata", "brms_example.rda", package="broom.mixed"))
 
@@ -496,6 +514,9 @@ are used for compatibility with other (frequentist) mixed model types.
    tidy(fit, effects = "fixed", conf.method="HPDinterval")
    tidy(fit, effects = "ran_vals")
    tidy(fit, effects = "ran_pars", robust = TRUE)
+   if (require("posterior")) {
+     tidy(fit, effects = "ran_pars", rhat = TRUE, ess = TRUE)
+   }
    # glance method
    glance(fit)
    ## this example will give a warning that it should be run with
@@ -503,7 +524,7 @@ are used for compatibility with other (frequentist) mixed model types.
    ## because the \code{fit} object has been stripped down to save space
    suppressWarnings(glance(fit, looic = TRUE, cores = 1))
    head(augment(fit))
-}
+
 
 </code></pre>
 
@@ -1231,6 +1252,7 @@ tidy(
   effects = c("ran_pars", "fixed"),
   scales = NULL,
   exponentiate = FALSE,
+  exponentiate_ran_coefs = FALSE,
   ran_prefix = NULL,
   conf.int = FALSE,
   conf.level = 0.95,
@@ -1247,6 +1269,7 @@ tidy(
   effects = c("ran_pars", "fixed"),
   scales = NULL,
   exponentiate = FALSE,
+  exponentiate_ran_coefs = FALSE,
   ran_prefix = NULL,
   conf.int = FALSE,
   conf.level = 0.95,
@@ -1284,6 +1307,10 @@ glance(x, ...)
 <tr><td><code id="lme4_tidiers_+3A_exponentiate">exponentiate</code></td>
 <td>
 <p>whether to exponentiate the fixed-effect coefficient estimates and confidence intervals (common for logistic regression); if <code>TRUE</code>, also scales the standard errors by the exponentiated coefficient, transforming them to the new scale</p>
+</td></tr>
+<tr><td><code id="lme4_tidiers_+3A_exponentiate_ran_coefs">exponentiate_ran_coefs</code></td>
+<td>
+<p>whether to exponentiate the predicted paramater values for each group</p>
 </td></tr>
 <tr><td><code id="lme4_tidiers_+3A_ran_prefix">ran_prefix</code></td>
 <td>
@@ -1496,6 +1523,108 @@ if (require("lmerTest")) {
    tidy(lmm1)
    glance(lmm1)
    detach("package:lmerTest")  # clean up
+}
+</code></pre>
+
+<hr>
+<h2 id='mediation_tidiers'>Tidying methods for mediation analyses involving mixed effects models</h2><span id='topic+mediation_tidiers'></span><span id='topic+tidy.mediate.mer'></span>
+
+<h3>Description</h3>
+
+<p>These methods tidy the coefficients of <code>mediation::mediate</code> output
+(i.e., <code>mediate.mer</code> objects) when <code>lme4::lmer</code> and
+<code>lme4::glmer</code> models (i.e., <code>merMod</code> objects) provide the input.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'mediate.mer'
+tidy(x, conf.int = FALSE, conf.level = 0.95, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mediation_tidiers_+3A_x">x</code></td>
+<td>
+<p>an object of class <code>mediate.mer</code>, as from <code>mediate</code> using
+<code>lmer</code>, <code>glmer</code>, or <code>nlmer</code> models</p>
+</td></tr>
+<tr><td><code id="mediation_tidiers_+3A_conf.int">conf.int</code></td>
+<td>
+<p>whether to include a confidence interval</p>
+</td></tr>
+<tr><td><code id="mediation_tidiers_+3A_conf.level">conf.level</code></td>
+<td>
+<p>confidence level for CI</p>
+</td></tr>
+<tr><td><code id="mediation_tidiers_+3A_...">...</code></td>
+<td>
+<p>additional arguments (unused: for generic consistency)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>All tidying methods return a <code>data.frame</code> without rownames. The
+structure depends on the method chosen.
+</p>
+<p><code>tidy</code> returns one row for each estimated effect:
+first the mediated effect in the control and treatment groups, respectively,
+then the direct effect in each group.
+It contains the columns
+</p>
+<table>
+<tr><td><code>term</code></td>
+<td>
+<p>term being estimated</p>
+</td></tr>
+<tr><td><code>estimate</code></td>
+<td>
+<p>estimated coefficient</p>
+</td></tr>
+<tr><td><code>std.error</code></td>
+<td>
+<p>standard error</p>
+</td></tr>
+<tr><td><code>p.value</code></td>
+<td>
+<p>P-value computed from t-statistic (may be missing/NA)</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="mediation.html#topic+mediate">mediate</a></code>, <code><a href="broom.html#topic+tidy.mediate">tidy.mediate</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>if (require("lme4") &amp;&amp; require("mediation")) {
+    ## Borrowed from \code{help(mediation::mediate)}:
+    ## Not run: 
+        ## Varying intercept for mediator 
+        mod_m &lt;- glmer(job_dich ~ treat + econ_hard + (1 | educ), 
+                       family = binomial(link = "probit"), data = jobs)
+        ## Varying intercept and slope for outcome
+        mod_y &lt;- glmer(work1 ~ treat + job_dich + econ_hard + (1 + treat | occp),
+                       family = binomial(link = "probit"), data = jobs)
+        ## Output based on mediator group ("educ")
+        mod_med &lt;- mediate(mod_m, mod_y, treat = "treat", 
+                           mediator = "job_dich", sims=50, group.out="educ")
+    
+## End(Not run)
+    ## Load stored objects
+    load(system.file("extdata", "mediation_example.rda", package="broom.mixed"))
+    ## Tidy outputs
+    tidy(mod_m)
+    tidy(mod_y)
+    tidy(mod_med)
 }
 </code></pre>
 
@@ -1717,6 +1846,7 @@ if (require("nlme") &amp;&amp; require("lme4")) {
     tidy(lmm1)
     tidy(lmm1, effects = "fixed")
     tidy(lmm1, conf.int = TRUE)
+    tidy(lmm1, conf.int = TRUE, conf.level = 0.8)
     tidy(lmm1, effects = "ran_pars")
     tidy(lmm1, effects = "ran_vals")
     tidy(lmm1, effects = "ran_coefs")
@@ -1963,6 +2093,7 @@ tidy(
   conf.int = FALSE,
   conf.level = 0.9,
   conf.method = c("quantile", "HPDinterval"),
+  exponentiate = FALSE,
   ...
 )
 
@@ -1999,6 +2130,10 @@ See the Value section for details.</p>
 <td>
 <p>method for computing confidence intervals
 (&quot;quantile&quot; or &quot;HPDinterval&quot;)</p>
+</td></tr>
+<tr><td><code id="rstanarm_tidiers_+3A_exponentiate">exponentiate</code></td>
+<td>
+<p>whether to exponentiate the fixed-effect coefficient estimates and confidence intervals (common for logistic regression); if <code>TRUE</code>, also scales the standard errors by the exponentiated coefficient, transforming them to the new scale</p>
 </td></tr>
 <tr><td><code id="rstanarm_tidiers_+3A_...">...</code></td>
 <td>
@@ -2108,17 +2243,29 @@ included:
 <pre><code class='language-R'>
 if (require("rstanarm")) {
 ## Not run: 
-#'     ## original model
-    fit &lt;- stan_glmer(mpg ~ wt + (1|cyl) + (1+wt|gear), data = mtcars,
-                      iter = 300, chains = 2)
+#'     ## original models
+  fit &lt;- stan_glmer(mpg ~ wt + (1|cyl) + (1+wt|gear), data = mtcars,
+                      iter = 500, chains = 2)
+  fit2 &lt;- stan_glmer((mpg&gt;20) ~ wt + (1 | cyl) + (1 + wt | gear),
+                    data = mtcars,
+                    family = binomial,
+                    iter = 500, chains = 2
   
 ## End(Not run)
 ## load example data
-fit &lt;- readRDS(system.file("extdata", "rstanarm_example.rds", package="broom.mixed"))
+  load(system.file("extdata", "rstanarm_example.rda", package="broom.mixed"))
 
   # non-varying ("population") parameters
-  tidy(fit, conf.int = TRUE, prob = 0.5)
-  tidy(fit, conf.int = TRUE, conf.method = "HPDinterval", prob = 0.5)
+  tidy(fit, conf.int = TRUE, conf.level = 0.5)
+  tidy(fit, conf.int = TRUE, conf.method = "HPDinterval", conf.level = 0.5)
+
+  #  exponentiating (in this case, from log-odds to odds ratios)
+  (tidy(fit2, conf.int = TRUE, conf.level = 0.5)
+          |&gt; dplyr::filter(term != "(Intercept)")
+  )
+  (tidy(fit2, conf.int = TRUE, conf.level = 0.5, exponentiate = TRUE)
+          |&gt; dplyr::filter(term != "(Intercept)")
+  )
 
   # hierarchical sd &amp; correlation parameters
   tidy(fit, effects = "ran_pars")
@@ -2233,6 +2380,49 @@ response, &lsquo;response&rsquo;.</p>
 
 ## End(Not run)
 </code></pre>
+
+<hr>
+<h2 id='tidy.lqmm'>Tidying methods for lqmm models (EXPERIMENTAL)</h2><span id='topic+tidy.lqmm'></span><span id='topic+glance.lqmm'></span>
+
+<h3>Description</h3>
+
+<p>These methods, suggested by
+David Luke Thiessen on <a href="https://stackoverflow.com/questions/72514230/is-it-possible-to-use-lqmm-with-a-mira-object">Stack Exchange</a>, provide support for linear quantile mixed models. They have not been carefully tested - please
+check output carefully and report problems!
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'lqmm'
+tidy(x, conf.int = FALSE, conf.level = 0.95, ...)
+
+## S3 method for class 'lqmm'
+glance(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="tidy.lqmm_+3A_x">x</code></td>
+<td>
+<p>An object of class <code>merMod</code>, such as those from <code>lmer</code>,
+<code>glmer</code>, or <code>nlmer</code></p>
+</td></tr>
+<tr><td><code id="tidy.lqmm_+3A_conf.int">conf.int</code></td>
+<td>
+<p>whether to include a confidence interval</p>
+</td></tr>
+<tr><td><code id="tidy.lqmm_+3A_conf.level">conf.level</code></td>
+<td>
+<p>confidence level for CI</p>
+</td></tr>
+<tr><td><code id="tidy.lqmm_+3A_...">...</code></td>
+<td>
+<p>Additional arguments (passed to <code>confint.merMod</code> for <code>tidy</code>; <code>augment_columns</code> for <code>augment</code>; ignored for <code>glance</code>)</p>
+</td></tr>
+</table>
 
 <hr>
 <h2 id='tidy.MCMCglmm'>Tidying methods for MCMC (Stan, JAGS, etc.) fits</h2><span id='topic+tidy.MCMCglmm'></span><span id='topic+mcmc_tidiers'></span><span id='topic+tidyMCMC'></span><span id='topic+tidy.rjags'></span><span id='topic+tidy.stanfit'></span><span id='topic+tidy.mcmc'></span><span id='topic+tidy.mcmc.list'></span>
@@ -2522,23 +2712,20 @@ tidy(
 <p>Returns a tibble with the following columns:
 </p>
 
-<ul>
-<li><p>grouptype of varFunc, along with the right hand side of the formula
-in parentheses e.g. <code>"varExp(age | Sex)"</code>.
-</p>
-</li>
-<li><p>termterms included in the formula of the variance model, specifically
+<dl>
+<dt>group</dt><dd><p>type of varFunc, along with the right hand side of the formula
+in parentheses e.g. <code>"varExp(age | Sex)"</code>.</p>
+</dd>
+<dt>term</dt><dd><p>terms included in the formula of the variance model, specifically
 the names of the coefficients.  If the value is fixed, it will be appended
-with <code>" ; fixed"</code>.
-</p>
-</li>
-<li><p>estimateestimated coefficient
-</p>
-</li>
-<li><p>estimatedThis column is only included if some parameters are fixed.
-TRUE if the parameter is estimated and FALSE if the parameter is fixed.
-</p>
-</li></ul>
+with <code>" ; fixed"</code>.</p>
+</dd>
+<dt>estimate</dt><dd><p>estimated coefficient</p>
+</dd>
+<dt>estimated</dt><dd><p>This column is only included if some parameters are fixed.
+TRUE if the parameter is estimated and FALSE if the parameter is fixed.</p>
+</dd>
+</dl>
 
 
 

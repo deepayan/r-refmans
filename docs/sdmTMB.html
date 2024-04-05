@@ -67,7 +67,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.4.3</td>
+<td>0.5.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -107,9 +107,10 @@ nlme, rlang, stats, TMB (&ge; 1.8.0)</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>dplyr, effects (&ge; 4.0-1), estimability, emmeans (&ge; 1.4),
-future, future.apply, ggeffects, ggforce, glmmTMB, ggplot2,
-knitr, rmarkdown, sf, splancs, testthat, tibble, visreg</td>
+<td>DHARMa, dplyr, effects (&ge; 4.0-1), estimability, emmeans (&ge;
+1.4), future, future.apply, ggeffects, ggforce, glmmTMB,
+ggplot2, knitr, rmarkdown, sf, splancs, testthat, tibble,
+visreg</td>
 </tr>
 <tr>
 <td>LinkingTo:</td>
@@ -153,7 +154,7 @@ knitr, rmarkdown, sf, splancs, testthat, tibble, visreg</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-28 21:55:28 UTC; seananderson</td>
+<td>2024-04-03 19:50:01 UTC; seananderson</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -204,7 +205,7 @@ knitr, rmarkdown, sf, splancs, testthat, tibble, visreg</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-29 01:40:02 UTC</td>
+<td>2024-04-03 20:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -367,14 +368,24 @@ add_utm_columns(d, c("lon", "lat"))
 
 <h3>Description</h3>
 
-<p>Moved to the <a href="https://github.com/pbs-assess/sdmTMBextra">sdmTMBextra</a>
-package. Make sure to load <span class="pkg">sdmTMBextra</span> <em>after</em> <span class="pkg">sdmTMB</span>.
+<p>Plot (and possibly return) DHARMa residuals. This is a wrapper function
+around <code><a href="DHARMa.html#topic+createDHARMa">DHARMa::createDHARMa()</a></code> to facilitate its use with <code><a href="#topic+sdmTMB">sdmTMB()</a></code> models.
+<strong>Note:</strong> It is recommended to set <code>type = "mle-mvn"</code> in
+<code><a href="#topic+simulate.sdmTMB">simulate.sdmTMB()</a></code> for the resulting residuals to have the
+expected distribution. This is <em>not</em> the default.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>dharma_residuals(simulated_response = deprecated(), object, plot = TRUE, ...)
+<pre><code class='language-R'>dharma_residuals(
+  simulated_response,
+  object,
+  plot = TRUE,
+  return_DHARMa = FALSE,
+  expected_distribution = c("uniform", "normal"),
+  ...
+)
 </code></pre>
 
 
@@ -383,36 +394,132 @@ package. Make sure to load <span class="pkg">sdmTMBextra</span> <em>after</em> <
 <table>
 <tr><td><code id="dharma_residuals_+3A_simulated_response">simulated_response</code></td>
 <td>
-<p><strong>Deprecated</strong> See the <span class="pkg">sdmTMBextra</span> package.</p>
+<p>Output from <code><a href="#topic+simulate.sdmTMB">simulate.sdmTMB()</a></code>. It is recommended
+to set <code>type = "mle-mvn"</code> in the call to <code><a href="#topic+simulate.sdmTMB">simulate.sdmTMB()</a></code> for the
+residuals to have the expected distribution.</p>
 </td></tr>
 <tr><td><code id="dharma_residuals_+3A_object">object</code></td>
 <td>
-<p><strong>Deprecated</strong> See the <span class="pkg">sdmTMBextra</span> package.</p>
+<p>Output from <code><a href="#topic+sdmTMB">sdmTMB()</a></code>.</p>
 </td></tr>
 <tr><td><code id="dharma_residuals_+3A_plot">plot</code></td>
 <td>
-<p><strong>Deprecated</strong> See the <span class="pkg">sdmTMBextra</span> package.</p>
+<p>Logical.</p>
+</td></tr>
+<tr><td><code id="dharma_residuals_+3A_return_dharma">return_DHARMa</code></td>
+<td>
+<p>Logical.</p>
+</td></tr>
+<tr><td><code id="dharma_residuals_+3A_expected_distribution">expected_distribution</code></td>
+<td>
+<p>Experimental: expected distribution for
+comparison: uniform(0, 1) or normal(0, 1). Traditional <span class="pkg">DHARMa</span>
+residuals are uniform. If <code>"normal"</code>, a <code>pnorm()</code> transformation is applied.
+First, any simulated quantiles of 0 (no simulations were smaller than the
+observation) are set to an arbitrary value of <code>1/(n*10)</code> where <code>n</code> is the
+number of simulated replicated. Any simulated quantiles of 1 (no
+simulations were larger than the observation) are set to an arbitrary value
+of <code>1 - 1/(n*10)</code>. These points are shown with crosses overlaid.</p>
 </td></tr>
 <tr><td><code id="dharma_residuals_+3A_...">...</code></td>
 <td>
-<p><strong>Deprecated</strong> See the <span class="pkg">sdmTMBextra</span> package.</p>
+<p>Other arguments to pass to <code><a href="DHARMa.html#topic+createDHARMa">DHARMa::createDHARMa()</a></code>.</p>
 </td></tr>
 </table>
 
 
+<h3>Details</h3>
+
+<p>Advantages to these residuals over the ones from the <code><a href="#topic+residuals.sdmTMB">residuals.sdmTMB()</a></code>
+method are (1) they work with delta/hurdle models for the combined
+predictions, not the just the two parts separately, (2) they should work for
+all families, not the just the families where we have worked out the
+analytical quantile function, and (3) they can be used with the various
+diagnostic tools and plots from the <span class="pkg">DHARMa</span> package.
+</p>
+<p>Disadvantages are (1) they are slower to calculate since one must first
+simulate from the model, (2) the stability of the distribution of the
+residuals depends on having a sufficient number of simulation draws, (3)
+uniformly distributed residuals put less emphasis on the tails visually
+(which or may not be desired).
+</p>
+<p>Note that <span class="pkg">DHARMa</span> returns residuals that are uniform(0, 1) if the data
+are consistent with the model whereas any randomized quantile residuals from
+<code><a href="#topic+residuals.sdmTMB">residuals.sdmTMB()</a></code> are expected to be normal(0, 1). An experimental option
+<code>expected_distribution</code> is included to transform the distributions to
+a normal(0, 1) expectation.
+</p>
+
+
 <h3>Value</h3>
 
-<p>Deprecated. See the
-<a href="https://github.com/pbs-assess/sdmTMBextra">sdmTMBextra</a> package.
+<p>A data frame of observed and expected values is invisibly returned,
+so you can set <code>plot = FALSE</code> and assign the output to an object if you wish
+to plot the residuals yourself. See the examples.
+</p>
+<p>If <code>return_DHARMa = TRUE</code>, the object from <code>DHARMa::createDHARMa()</code>
+is returned and any subsequent <span class="pkg">DHARMa</span> functions can be applied.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+simulate.sdmTMB">simulate.sdmTMB()</a></code>, <code><a href="#topic+residuals.sdmTMB">residuals.sdmTMB()</a></code>
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## Not run: 
-dharma_residuals()
+<pre><code class='language-R'>
+# Try Tweedie family:
+fit &lt;- sdmTMB(density ~ as.factor(year) + s(depth, k = 3),
+  data = pcod_2011, mesh = pcod_mesh_2011,
+  family = tweedie(link = "log"), spatial = "on")
 
-## End(Not run)
+# The `simulated_response` argument is first so the output from
+# simulate() can be piped to dharma_residuals().
+
+# We will work with 100 simulations for fast examples, but you'll
+# likely want to work with more than this (enough that the results
+# are stable from run to run).
+
+# not great:
+set.seed(123)
+simulate(fit, nsim = 100, type = "mle-mvn") |&gt;
+  dharma_residuals(fit)
+
+
+# delta-lognormal looks better:
+set.seed(123)
+fit_dl &lt;- update(fit, family = delta_lognormal())
+simulate(fit_dl, nsim = 100, type = "mle-mvn") |&gt;
+  dharma_residuals(fit)
+
+# or skip the pipe:
+set.seed(123)
+s &lt;- simulate(fit_dl, nsim = 100, type = "mle-mvn")
+# and manually plot it:
+r &lt;- dharma_residuals(s, fit_dl, plot = FALSE)
+head(r)
+plot(r$expected, r$observed)
+abline(0, 1)
+
+# return the DHARMa object and work with the DHARMa methods
+ret &lt;- simulate(fit_dl, nsim = 100, type = "mle-mvn") |&gt;
+  dharma_residuals(fit, return_DHARMa = TRUE)
+plot(ret)
+
+# try normal(0, 1) residuals:
+s &lt;- simulate(fit_dl, nsim = 100, type = "mle-mvn")
+dharma_residuals(s, fit, expected_distribution = "normal")
+# note the points in the top right corner that had Inf quantiles
+# because of pnorm(1)
+
+# work with the residuals themselves:
+r &lt;- dharma_residuals(s, fit, return_DHARMa = TRUE)
+plot(fitted(fit), r$scaledResiduals)
+
+
 </code></pre>
 
 <hr>
@@ -563,7 +670,7 @@ extract_mcmc()
 </code></pre>
 
 <hr>
-<h2 id='Families'>Additional families</h2><span id='topic+Families'></span><span id='topic+Beta'></span><span id='topic+lognormal'></span><span id='topic+gamma_mix'></span><span id='topic+lognormal_mix'></span><span id='topic+nbinom2_mix'></span><span id='topic+nbinom2'></span><span id='topic+nbinom1'></span><span id='topic+truncated_nbinom2'></span><span id='topic+truncated_nbinom1'></span><span id='topic+student'></span><span id='topic+tweedie'></span><span id='topic+censored_poisson'></span><span id='topic+delta_gamma'></span><span id='topic+delta_gamma_mix'></span><span id='topic+delta_lognormal'></span><span id='topic+delta_lognormal_mix'></span><span id='topic+delta_truncated_nbinom2'></span><span id='topic+delta_truncated_nbinom1'></span><span id='topic+delta_poisson_link_gamma'></span><span id='topic+delta_poisson_link_lognormal'></span><span id='topic+delta_beta'></span>
+<h2 id='Families'>Additional families</h2><span id='topic+Families'></span><span id='topic+Beta'></span><span id='topic+lognormal'></span><span id='topic+gengamma'></span><span id='topic+gamma_mix'></span><span id='topic+lognormal_mix'></span><span id='topic+nbinom2_mix'></span><span id='topic+nbinom2'></span><span id='topic+nbinom1'></span><span id='topic+truncated_nbinom2'></span><span id='topic+truncated_nbinom1'></span><span id='topic+student'></span><span id='topic+tweedie'></span><span id='topic+censored_poisson'></span><span id='topic+delta_gamma'></span><span id='topic+delta_gamma_mix'></span><span id='topic+delta_gengamma'></span><span id='topic+delta_lognormal'></span><span id='topic+delta_lognormal_mix'></span><span id='topic+delta_truncated_nbinom2'></span><span id='topic+delta_truncated_nbinom1'></span><span id='topic+delta_poisson_link_gamma'></span><span id='topic+delta_poisson_link_lognormal'></span><span id='topic+delta_beta'></span>
 
 <h3>Description</h3>
 
@@ -576,6 +683,8 @@ extract_mcmc()
 <pre><code class='language-R'>Beta(link = "logit")
 
 lognormal(link = "log")
+
+gengamma(link = "log")
 
 gamma_mix(link = "log")
 
@@ -597,19 +706,13 @@ tweedie(link = "log")
 
 censored_poisson(link = "log")
 
-delta_gamma(
-  link1 = "logit",
-  link2 = "log",
-  type = c("standard", "poisson-link")
-)
+delta_gamma(link1, link2 = "log", type = c("standard", "poisson-link"))
 
 delta_gamma_mix(link1 = "logit", link2 = "log")
 
-delta_lognormal(
-  link1 = "logit",
-  link2 = "log",
-  type = c("standard", "poisson-link")
-)
+delta_gengamma(link1, link2 = "log", type = c("standard", "poisson-link"))
+
+delta_lognormal(link1, link2 = "log", type = c("standard", "poisson-link"))
 
 delta_lognormal_mix(link1 = "logit", link2 = "log")
 
@@ -638,7 +741,8 @@ delta_beta(link1 = "logit", link2 = "logit")
 </td></tr>
 <tr><td><code id="Families_+3A_link1">link1</code></td>
 <td>
-<p>Link for first part of delta/hurdle model.</p>
+<p>Link for first part of delta/hurdle model. Defaults to <code>"logit"</code>
+for <code>type = "standard"</code> and <code>"log"</code> for <code>type = "poisson-link"</code>.</p>
 </td></tr>
 <tr><td><code id="Families_+3A_link2">link2</code></td>
 <td>
@@ -657,6 +761,11 @@ model. <code>"poisson-link"</code> for a Poisson-link delta model (Thorson 2018)
 <p><code>delta_poisson_link_gamma()</code> and <code>delta_poisson_link_lognormal()</code> have been
 deprecated in favour of <code>delta_gamma(type = "poisson-link")</code> and
 <code>delta_lognormal(type = "poisson-link")</code>.
+</p>
+<p>The <code>gengamma()</code> family was implemented by J.T. Thorson and uses the Prentice
+(1974) parameterization such that the lognormal occurs as the internal
+parameter <code>gengamma_Q</code> (reported in <code>print()</code> as &quot;Generalized gamma lambda&quot;)
+approaches 0.
 </p>
 <p>The families ending in <code style="white-space: pre;">&#8288;_mix()&#8288;</code> are 2-component mixtures where each
 distribution has its own mean but a shared scale parameter.
@@ -686,6 +795,15 @@ elements <code>delta</code> (logical) and <code>type</code> (standard vs. Poisso
 
 <h3>References</h3>
 
+<p><em>Generalized gamma family</em>:
+</p>
+<p>Prentice, R.L. 1974. A log gamma model and its maximum likelihood estimation.
+Biometrika 61(3): 539–544. <a href="https://doi.org/10.1093/biomet/61.3.539">doi:10.1093/biomet/61.3.539</a>
+</p>
+<p>Stacy, E.W. 1962. A Generalization of the Gamma Distribution. The Annals of
+Mathematical Statistics 33(3): 1187–1192. Institute of Mathematical
+Statistics.
+</p>
 <p><em>Families ending in <code style="white-space: pre;">&#8288;_mix()&#8288;</code></em>:
 </p>
 <p>Thorson, J.T., Stewart, I.J., and Punt, A.E. 2011. Accounting for fish shoals
@@ -709,6 +827,7 @@ Journal of Fisheries and Aquatic Sciences, 75(9), 1369-1382.
 
 <pre><code class='language-R'>Beta(link = "logit")
 lognormal(link = "log")
+gengamma(link = "log")
 gamma_mix(link = "log")
 lognormal_mix(link = "log")
 nbinom2_mix(link = "log")
@@ -721,6 +840,7 @@ tweedie(link = "log")
 censored_poisson(link = "log")
 delta_gamma()
 delta_gamma_mix()
+delta_gengamma()
 delta_lognormal()
 delta_lognormal_mix()
 delta_truncated_nbinom2()
@@ -1997,7 +2117,7 @@ See notes about types of residuals in 'Details' section below.
 <pre><code class='language-R'>## S3 method for class 'sdmTMB'
 residuals(
   object,
-  type = c("mle-laplace", "mle-mcmc", "mvn-laplace", "response", "pearson"),
+  type = c("mle-mvn", "mle-eb", "mle-mcmc", "response", "pearson"),
   model = c(1, 2),
   mcmc_samples = NULL,
   qres_func = NULL,
@@ -2011,11 +2131,11 @@ residuals(
 <table>
 <tr><td><code id="residuals.sdmTMB_+3A_object">object</code></td>
 <td>
-<p>An <code><a href="#topic+sdmTMB">sdmTMB()</a></code> model</p>
+<p>An <code><a href="#topic+sdmTMB">sdmTMB()</a></code> model.</p>
 </td></tr>
 <tr><td><code id="residuals.sdmTMB_+3A_type">type</code></td>
 <td>
-<p>Type of residual. See details.</p>
+<p>Residual type. See details.</p>
 </td></tr>
 <tr><td><code id="residuals.sdmTMB_+3A_model">model</code></td>
 <td>
@@ -2024,7 +2144,7 @@ residuals(
 <tr><td><code id="residuals.sdmTMB_+3A_mcmc_samples">mcmc_samples</code></td>
 <td>
 <p>A vector of MCMC samples of the linear predictor in link
-space. See the
+space. See the <code>predict_mle_mcmc()</code> function in the
 <a href="https://github.com/pbs-assess/sdmTMBextra">sdmTMBextra</a> package.</p>
 </td></tr>
 <tr><td><code id="residuals.sdmTMB_+3A_qres_func">qres_func</code></td>
@@ -2035,52 +2155,94 @@ the arguments <code style="white-space: pre;">&#8288;object, y, mu, ...&#8288;</
 </td></tr>
 <tr><td><code id="residuals.sdmTMB_+3A_...">...</code></td>
 <td>
-<p>Passed to residual function. Only <code>n</code> works for binomial.</p>
+<p>Passed to custom <code>qres_func</code> function. Unused.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>Types of residuals currently supported:
+<p><strong>Randomized quantile residuals:</strong>
 </p>
-<p><strong><code>"mle-laplace"</code></strong> refers to randomized quantile residuals (Dunn &amp;
-Smyth 1996), which are also known as probability integral transform (PIT)
-residuals (Smith 1985). Under model assumptions, these should be distributed
-as standard normal with the following caveat: the Laplace approximation used
-for the latent/random effects can cause these residuals to deviate from the
-standard normal assumption even if the model is consistent with the data
-(Thygesen et al. 2017). Therefore, <strong>these residuals are fast to calculate
-but can be unreliable.</strong>
+<p><code>mle-mvn</code>, <code>mle-eb</code>, and <code>mle-mcmc</code> are all implementations of
+randomized quantile residuals (Dunn &amp; Smyth 1996), which are also known as
+probability integral transform (PIT) residuals (Smith 1985). If the data are
+consistent with model assumptions, these residuals should be distributed as
+normal(0, 1). Randomization is added to account for integer or binary
+response observations. For example, for a Poisson observation likelihood with
+observations <code>y</code> and mean predictions <code>mu</code>, we would create randomized
+quantile residuals as:
 </p>
-<p><strong><code>"mle-mcmc"</code></strong> refers to randomized quantile residuals where the fixed
-effects are fixed at their MLE (maximum likelihood estimate) values and the
-random effects are sampled with MCMC via tmbstan/Stan. As proposed in
-Thygesen et al. (2017) and used in Rufener et al. (2021). Under model
-assumptions, these should be distributed as standard normal. <strong>These
-residuals are theoretically preferred over the regular Laplace approximated
-randomized-quantile residuals, but will be considerably slower to
-calculate.</strong>
+<div class="sourceCode"><pre>a &lt;- ppois(y - 1, mu)
+b &lt;- ppois(y, mu)
+u &lt;- runif(n = length(y), min = a, max = b)
+qnorm(u)
+</pre></div>
+<p><strong>Types of residuals:</strong>
+</p>
+<p>Acronyms:
+</p>
+
+<ul>
+<li><p> EB: Empirical Bayes
+</p>
+</li>
+<li><p> MCMC: Markov chain Monte Carlo
+</p>
+</li>
+<li><p> MLE: Maximum Likelihood Estimate
+</p>
+</li>
+<li><p> MVN: Multivariate normal
+</p>
+</li></ul>
+
+<p><strong><code>mle-mvn</code></strong>: Fixed effects are held at their MLEs and random effects are
+taken from a single approximate posterior sample. The &quot;approximate&quot; part
+refers to the sample being taken from the random effects' assumed MVN
+distribution. In practice, the sample is obtained based on the mode and
+Hessian of the random effects taking advantage of sparsity in the Hessian for
+computational efficiency. This sample is taken with <code>obj$MC()</code>, where <code>obj</code>
+is the <span class="pkg">TMB</span> object created with <code>TMB::MakeADFun()</code>. See Waagepetersen
+(2006) and the description in the source code for the internal <span class="pkg">TMB</span>
+function <code>TMB:::oneSamplePosterior()</code>. Residuals are converted to randomized
+quantile residuals as described above.
+</p>
+<p><strong><code>mle-eb</code></strong>: Fixed effects are held at their MLEs and random effects are
+taken as their EB estimates. These used to be the default residuals in
+<span class="pkg">sdmTMB</span> (and were called <code>mle-laplace</code>). They are available for
+backwards compatibility and for research purposes but they are <em>not</em>
+recommended for checking goodness of fit. Residuals are converted to
+randomized quantile residuals as described above.
+</p>
+<p><strong><code>mle-mcmc</code></strong>: Fixed effects are held at their MLEs and random effects are
+taken from a single posterior sample obtained with MCMC. These are an
+excellent option since they make no assumption about the distribution of the
+random effects (compared to the <code>mle-mvn</code> option) but can be slow to obtain.
+See Waagepetersen (2006) and Thygesen et al. (2017). Residuals are converted
+to randomized quantile residuals as described above.
 </p>
 <p>See the <a href="https://github.com/pbs-assess/sdmTMBextra"><span class="pkg">sdmTMBextra</span></a>
-package for the function <code>predict_mle_mcmc()</code>,
-which can generate the MCMC samples to pass to the <code>mcmc_samples</code> argument.
-Ideally MCMC is run until convergence and then the last iteration can be
-used for residuals. MCMC samples are defined by <code>mcmc_iter - mcmc_warmup</code>.
-The Stan model can be printed with <code>print_stan_model = TRUE</code> to check.
+package for the function <code>predict_mle_mcmc()</code>, which can generate the MCMC
+samples to pass to the <code>mcmc_samples</code> argument. Ideally MCMC is run until
+convergence and then the last iteration can be used for residuals.
 The defaults may not be sufficient for many models.
 </p>
-<p><strong><code>"mvn-laplace"</code></strong> is the same as <code>"mle-laplace"</code> except the parameters are
-based on simulations drawn from the assumed multivariate normal distribution
-(using the joint precision matrix).
+<p><strong><code>response</code></strong>: These are simple observed minus predicted residuals.
 </p>
-<p><strong><code>"response"</code></strong> refers to response residuals: observed minus predicted.
+<p><strong><code>pearson</code></strong>: These are Pearson residuals: response residuals scaled by the
+standard deviation. If weights are present, the residuals are then
+multiplied by sqrt(weights).
 </p>
 
 
 <h3>Value</h3>
 
-<p>A vector of residuals.
+<p>A vector of residuals. Note that randomization from any single
+random effect posterior sample and from any randomized quantile routines
+will result in different residuals with each call. It is suggested to <strong>set
+a randomization seed</strong> and to not go &quot;fishing&quot; for the perfect residuals or
+to present all inspected residuals.
 </p>
 
 
@@ -2092,40 +2254,65 @@ Computational and Graphical Statistics, 5, 236–244.
 <p>Smith, J.Q. (1985). Diagnostic checks of non-standard time series models.
 Journal of Forecasting, 4, 283–291.
 </p>
-<p>Rufener, M.-C., Kristensen, K., Nielsen, J.R., and Bastardie, F. 2021.
-Bridging the gap between commercial fisheries and survey data to model the
-spatiotemporal dynamics of marine species. Ecological Applications. e02453.
-<a href="https://doi.org/10.1002/eap.2453">doi:10.1002/eap.2453</a>
+<p>Waagepetersen, R. (2006). A simulation-based goodness-of-fit test for random
+effects in generalized linear mixed models. Scandinavian Journal of
+Statistics, 33(4), 721-731.
 </p>
 <p>Thygesen, U.H., Albertsen, C.M., Berg, C.W., Kristensen, K., and Nielsen, A.
 2017. Validation of ecological state space models using the Laplace
 approximation. Environ Ecol Stat 24(2): 317–339.
 <a href="https://doi.org/10.1007/s10651-017-0372-4">doi:10.1007/s10651-017-0372-4</a>
 </p>
+<p>Rufener, M.-C., Kristensen, K., Nielsen, J.R., and Bastardie, F. 2021.
+Bridging the gap between commercial fisheries and survey data to model the
+spatiotemporal dynamics of marine species. Ecological Applications. e02453.
+<a href="https://doi.org/10.1002/eap.2453">doi:10.1002/eap.2453</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+simulate.sdmTMB">simulate.sdmTMB()</a></code>, <code><a href="#topic+dharma_residuals">dharma_residuals()</a></code>
+</p>
 
 
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-  mesh &lt;- make_mesh(pcod_2011, c("X", "Y"), cutoff = 10)
-  fit &lt;- sdmTMB(
-    present ~ as.factor(year) + poly(depth, 3),
-    data = pcod_2011, mesh = mesh,
-    family = binomial()
-  )
+mesh &lt;- make_mesh(pcod_2011, c("X", "Y"), cutoff = 10)
+fit &lt;- sdmTMB(
+  present ~ as.factor(year) + poly(depth, 2),
+  data = pcod_2011, mesh = mesh,
+  family = binomial()
+)
 
-  # response residuals will be not be normally distributed unless
-  # the family is Gaussian:
-  r0 &lt;- residuals(fit, type = "response")
-  qqnorm(r0)
-  qqline(r0)
+# the default "mle-mvn" residuals use fixed effects at their MLE and a
+# single sample from the approximate random effect posterior:
+set.seed(9283)
+r &lt;- residuals(fit, type = "mle-mvn")
+qqnorm(r)
+abline(0, 1)
 
-  # quick but can have issues because of Laplace approximation:
-  r1 &lt;- residuals(fit, type = "mle-laplace")
-  qqnorm(r1)
-  qqline(r1)
+# response residuals will be not be normally distributed unless
+# the family is Gaussian:
+r &lt;- residuals(fit, type = "response")
+qqnorm(r)
+abline(0, 1)
 
-  # see also "mle-mcmc" residuals with the help of the sdmTMBextra package
+# "mle-eb" are quick but are not expected to be N(0, 1); not recommended:
+set.seed(2321)
+r &lt;- residuals(fit, type = "mle-eb")
+qqnorm(r)
+abline(0, 1)
+
+# see also "mle-mcmc" residuals with the help of the sdmTMBextra package
+# we can fake them here by taking a single sample from the joint precision
+# matrix and pretending they are MCMC samples:
+set.seed(82728)
+p &lt;- predict(fit, nsim = 1) # pretend these are from sdmTMBextra::predict_mle_mcmc()
+r &lt;- residuals(fit, mcmc_samples = p)
+qqnorm(r)
+abline(0, 1)
 </code></pre>
 
 <hr>
@@ -2340,8 +2527,10 @@ downstream, supply the time argument.</p>
 <code><a href="#topic+families">censored_poisson()</a></code>,
 <code><a href="#topic+families">gamma_mix()</a></code>,
 <code><a href="#topic+families">lognormal_mix()</a></code>,
-<code><a href="#topic+families">student()</a></code>, and
-<code><a href="#topic+families">tweedie()</a></code>. Supports the delta/hurdle models:
+<code><a href="#topic+families">student()</a></code>,
+<code><a href="#topic+families">tweedie()</a></code>, and
+<code><a href="#topic+families">gengamma()</a></code>.
+Supports the delta/hurdle models:
 <code><a href="#topic+families">delta_beta()</a></code>,
 <code><a href="#topic+families">delta_gamma()</a></code>,
 <code><a href="#topic+families">delta_gamma_mix()</a></code>,
@@ -3178,23 +3367,6 @@ m_cv3 &lt;- sdmTMB_cv(
   fold_ids = rep(seq(1, 3), nrow(pcod))[seq(1, nrow(pcod))]
 )
 
-# LFOCV:
-m_lfocv &lt;- sdmTMB_cv(
-  present ~ s(year, k = 4),
-  data = pcod,
-  mesh = mesh,
-  lfo = TRUE,
-  lfo_forecast = 2,
-  lfo_validations = 3,
-  family = binomial(),
-  spatiotemporal = "off",
-  time = "year" # must be specified
-)
-
-# See how the LFOCV folds were assigned:
-example_data &lt;- m_lfocv$models[[1]]$data
-table(example_data$cv_fold, example_data$year)
-
 </code></pre>
 
 <hr>
@@ -3887,7 +4059,7 @@ m &lt;- sdmTMB(density ~ 0 + depth_scaled + depth_scaled2 + as.factor(year),
   priors = sdmTMBpriors(
     b = normal(c(0, 0, NA, NA, NA), c(2, 2, NA, NA, NA)),
     phi = halfnormal(0, 10),
-    tweedie_p = normal(1.5, 2),
+    # tweedie_p = normal(1.5, 2),
     ar1_rho = normal(0, 1),
     matern_s = pc_matern(range_gt = 5, sigma_lt = 1),
     matern_st = pc_matern(range_gt = 5, sigma_lt = 1))
@@ -4000,7 +4172,7 @@ simulate(
   object,
   nsim = 1L,
   seed = sample.int(1e+06, 1L),
-  params = c("mle", "mvn"),
+  type = c("mle-eb", "mle-mvn"),
   model = c(NA, 1, 2),
   re_form = NULL,
   mcmc_samples = NULL,
@@ -4024,12 +4196,14 @@ simulate(
 <td>
 <p>Random number seed</p>
 </td></tr>
-<tr><td><code id="simulate.sdmTMB_+3A_params">params</code></td>
+<tr><td><code id="simulate.sdmTMB_+3A_type">type</code></td>
 <td>
-<p>Whether the parameters used in the simulation should come from
-the Maximum Likelihood Estimate (<code>"mle"</code>) or from new draws from the joint
-precision matrix assuming they are multivariate normal distributed
-(<code>"mvn"</code>).</p>
+<p>How parameters should be treated. <code>"mle-eb"</code>: fixed effects
+are at their maximum likelihood (MLE) estimates  and random effects are at
+their empirical Bayes (EB) estimates. <code>"mle-mvn"</code>: fixed effects are at
+their MLEs but random effects are taken from a single approximate sample.
+This latter option is a suggested approach if these simulations will be
+used for goodness of fit testing (e.g., with the DHARMa package).</p>
 </td></tr>
 <tr><td><code id="simulate.sdmTMB_+3A_model">model</code></td>
 <td>
@@ -4095,14 +4269,12 @@ dim(s1)
 sum(s1 == 0)/length(s1)
 sum(dat$observed == 0) / length(dat$observed)
 
-# simulate with the parameters drawn from the joint precision matrix:
-s2 &lt;- simulate(fit, nsim = 1, params = "MVN")
+# simulate with random effects sampled from their approximate posterior
+s2 &lt;- simulate(fit, nsim = 1, params = "mle-mvn")
+# these may be useful in conjunction with DHARMa simulation-based residuals
 
 # simulate with new random fields:
 s3 &lt;- simulate(fit, nsim = 1, re_form = ~ 0)
-
-# simulate with new random fields and new parameter draws:
-s3 &lt;- simulate(fit, nsim = 1, params = "MVN", re_form = ~ 0)
 </code></pre>
 
 <hr>

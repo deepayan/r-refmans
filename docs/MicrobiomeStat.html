@@ -20,6 +20,7 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#linda'><p>Linear (Lin) Model for Differential Abundance (DA) Analysis of High-dimensional Compositional Data</p></a></li>
 <li><a href='#linda.plot'><p>Plot LinDA Results</p></a></li>
+<li><a href='#linda.wald.test'><p>Wald test for bias-corrected regression coefficients</p></a></li>
 <li><a href='#smokers'><p>Microbiome data from the human upper respiratory tract (left and right throat)</p></a></li>
 </ul>
 </div>
@@ -37,11 +38,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.1</td>
+<td>1.2</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2022-01-23</td>
+<td>2024-03-13</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -55,7 +56,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Description:</td>
-<td>A suite of methods for powerful and robust microbiome data analysis addressing zero-inflation, phylogenetic structure and compositional effects (Zhou et al. (2021)&lt;<a href="https://arxiv.org/abs/2104.00242">arXiv:2104.00242</a>&gt;).  The methods can be applied to the analysis of other (high-dimensional) compositional data arising from sequencing experiments.</td>
+<td>A suite of methods for powerful and robust microbiome data analysis addressing zero-inflation, phylogenetic structure and compositional effects (Zhou et al. (2022)&lt;<a href="https://doi.org/10.1186%2Fs13059-022-02655-5">doi:10.1186/s13059-022-02655-5</a>&gt;).  The methods can be applied to the analysis of other (high-dimensional) compositional data arising from sequencing experiments.</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -63,8 +64,8 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>ggplot2, matrixStats, Matrix, parallel, stats, utils, statmod,
-MASS, ggrepel, lmerTest, foreach, modeest, phyloseq</td>
+<td>ggplot2, matrixStats, parallel, stats, utils, Matrix, statmod,
+MASS, ggrepel, lmerTest, foreach, modeest</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -80,7 +81,7 @@ MASS, ggrepel, lmerTest, foreach, modeest, phyloseq</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2022-01-23 23:30:37 UTC; m123485</td>
+<td>2024-04-01 22:00:40 UTC; m123485</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -88,7 +89,7 @@ MASS, ggrepel, lmerTest, foreach, modeest, phyloseq</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2022-01-24 00:02:41 UTC</td>
+<td>2024-04-01 22:30:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -109,7 +110,6 @@ It could fit mixed-effect models for analysis of correlated data.
 <pre><code class='language-R'>linda(
   feature.dat,
   meta.dat,
-  phyloseq.obj = NULL,
   formula,
   feature.dat.type = c('count', 'proportion'),
   prev.filter = 0,
@@ -140,10 +140,6 @@ It could fit mixed-effect models for analysis of correlated data.
 <td>
 <p>a data frame containing the sample meta data. If there are NAs, the corresponding samples
 will be removed in the analysis.</p>
-</td></tr>
-<tr><td><code id="linda_+3A_phyloseq.obj">phyloseq.obj</code></td>
-<td>
-<p>a <code>phyloseq</code> object containing the OTU count data and sample data.</p>
 </td></tr>
 <tr><td><code id="linda_+3A_formula">formula</code></td>
 <td>
@@ -230,59 +226,95 @@ for declaring differential features. Default is 0.05.</p>
 <table>
 <tr><td><code>variables</code></td>
 <td>
-<p>a vector of variable names of all fixed effects in <code>formula</code>. For example: <code>formula = '~x1*x2+x3+(1|id)'</code>.
+<p>A vector of variable names of all fixed effects in <code>formula</code>. For example: <code>formula = '~x1*x2+x3+(1|id)'</code>.
 Suppose <code>x1</code> and <code>x2</code> are numerical, and <code>x3</code> is a categorical variable of three levels: a, b and c.
 Then the elements of <code>variables</code> would be <code>('x1', 'x2', 'x3b', 'x3c', 'x1:x2')</code>.</p>
 </td></tr>
 <tr><td><code>bias</code></td>
 <td>
-<p>a numeric vector; each element corresponds to one variable in <code>variables</code>;
+<p>numeric vector; each element corresponds to one variable in <code>variables</code>;
 the estimated bias of the regression coefficients due to the compositional effect.</p>
 </td></tr>
 <tr><td><code>output</code></td>
 <td>
 <p>a list of data frames with columns 'baseMean', 'log2FoldChange', 'lfcSE', 'stat', 'pvalue', 'padj', 'reject',
-'df'; <code>names(output)</code> is equal to <code>variables</code>; the rows of the data frame corresponds to features.
-Note: if there are features being excluded due to filtering, the number of the rows of the output data frame
-will be not equal to the number of the rows of <code>feature.dat</code>. Features are identified by the row names.
-If the row names of <code>feature.dat</code> are NULL, then <code>1 : nrow(feature.dat)</code> is set as the row names of <code>feature.dat</code>.
+'df'; <code>names(output)</code> is equal to <code>variables</code>; the rows of the data frame corresponds to taxa.
+Note: if there are taxa being excluded due to <code>prev.cut</code>, the number of the rows of the output data frame
+will be not equal to the number of the rows of <code>otu.tab</code>. Taxa are identified by the rownames.
+If the rownames of <code>otu.tab</code> are NULL, then <code>1 : nrow(otu.tab)</code> is set as the rownames of <code>otu.tab</code>.
 </p>
 
-<ul>
-<li><p>baseMean: 2 to the power of the intercept coefficients (normalized by one million)
-</p>
-</li>
-<li><p>log2FoldChange: bias-corrected coefficients
-</p>
-</li>
-<li><p>lfcSE: standard errors of the coefficients
-</p>
-</li>
-<li><p>stat: <code>log2FoldChange / lfcSE</code>
-</p>
-</li>
-<li><p>pvalue: <code>2 * pt(-abs(stat), df)</code>
-</p>
-</li>
-<li><p>padj: <code>p.adjust(pvalue, method = p.adj.method)</code>
-</p>
-</li>
-<li><p>reject: <code>padj &lt;= alpha</code>
-</p>
-</li>
-<li><p>df: degrees of freedom. The number of samples minus the number of explanatory variables (intercept included) for
-fixed-effect models; estimates from R package <code>lmerTest</code> with Satterthwaite method of approximation for mixed-effect models.
-</p>
-</li></ul>
+<dl>
+<dt>baseMean:</dt><dd><p> 2 to the power of the intercept coefficients (normalized by one million)</p>
+</dd>
+<dt>log2FoldChange:</dt><dd><p> bias-corrected coefficients</p>
+</dd>
+<dt>lfcSE:</dt><dd><p> standard errors of the coefficients</p>
+</dd>
+<dt>stat:</dt><dd> <p><code>log2FoldChange / lfcSE</code></p>
+</dd>
+<dt>pvalue:</dt><dd> <p><code>2 * pt(-abs(stat), df)</code></p>
+</dd>
+<dt>padj:</dt><dd> <p><code>p.adjust(pvalue, method = p.adj.method)</code></p>
+</dd>
+<dt>reject:</dt><dd> <p><code>padj &lt;= alpha</code></p>
+</dd>
+<dt>df:</dt><dd><p> degrees of freedom. The number of samples minus the number of explanatory variables (intercept included) for
+fixed-effect models; estimates from R package <code>lmerTest</code> with Satterthwaite method of approximation for mixed-effect models.</p>
+</dd>
+</dl>
+
 </td></tr>
-<tr><td><code>feature.dat.use</code></td>
+<tr><td><code>covariance</code></td>
 <td>
-<p>the actual feature table used in the differential analysis after filtering, winsorization and zero handling.</p>
+<p>a list of data frames; the data frame records the covariances between a regression coefficient with other coefficients;
+<code>names(covariance)</code> is equal to <code>variables</code>; the rows of the data frame corresponds to taxa. If the length of <code>variables</code>
+is equal to 1, then the <code>covariance</code> is NULL.</p>
 </td></tr>
-<tr><td><code>meta.dat.use</code></td>
+<tr><td><code>otu.tab.use</code></td>
+<td>
+<p>the OTU table used in the abundance analysis (the <code>otu.tab</code> after the preprocessing:
+samples that have NAs in the variables in <code>formula</code> or have less than <code>lib.cut</code> read counts are removed;
+taxa with prevalence less than <code>prev.cut</code> are removed and data is winsorized if <code>!is.null(winsor.quan)</code>;
+and zeros are treated, i.e., imputed or pseudo-count added).</p>
+</td></tr>
+<tr><td><code>meta.use</code></td>
 <td>
 <p>the meta data used in the abundance analysis (only variables in <code>formula</code> are stored; samples that have NAs
-are removed; numerical variables are scaled).</p>
+or have less than <code>lib.cut</code> read counts are removed; numerical variables are scaled).</p>
+</td></tr>
+<tr><td><code>wald</code></td>
+<td>
+<p>a list for use in Wald test. If the fitting model is a linear model, then it includes
+</p>
+
+<dl>
+<dt>beta:</dt><dd><p> a matrix of the biased regression coefficients including intercept and all fixed effects; the culumns correspond to taxa</p>
+</dd>
+<dt>sig:</dt><dd><p> the standard errors; the elements corresponding to taxa</p>
+</dd>
+<dt>X:</dt><dd><p> the design matrix of the fitting model</p>
+</dd>
+<dt>bias:</dt><dd><p> the estimated biases of the regression coefficients including intercept and all fixed effects</p>
+</dd>
+</dl>
+
+<p>If the fitting model is a linear mixed-effect model, then it includes
+</p>
+
+<dl>
+<dt>beta:</dt><dd><p> a matrix of the biased regression coefficients including intercept and all fixed effects; the culumns correspond to taxa</p>
+</dd>
+<dt>beta.cov:</dt><dd><p> a list of covariance matrices of <code>beta</code>; the elements corresponding to taxa</p>
+</dd>
+<dt>rand.cov:</dt><dd><p> a list with covariance matrices of variance parameters of random effects; the elements corresponding to taxa; see more details in the paper of 'lmerTest'</p>
+</dd>
+<dt>Joc.beta.cov.rand:</dt><dd><p> a list of a list of Jacobian matrices of <code>beta.cov</code> with respect to the variance parameters; the elements corresponding to taxa</p>
+</dd>
+<dt>bias:</dt><dd><p> the estimated biases of the regression coefficients including intercept and all fixed effects</p>
+</dd>
+</dl>
+
 </td></tr>
 </table>
 
@@ -297,8 +329,7 @@ Xianyang Zhang
 
 <h3>References</h3>
 
-<p>Huijuan Zhou, Kejun He, Jun Chen, and Xianyang Zhang. LinDA: Linear Models for Differential Abundance
-Analysis of Microbiome Compositional Data. https://arxiv.org/abs/2104.00242
+<p>Zhou, H., He, K., Chen, J., Zhang, X. (2022). LinDA: linear models for differential abundance analysis of microbiome compositional data. Genome biology, 23(1), 95.
 </p>
 
 
@@ -449,8 +480,7 @@ Xianyang Zhang
 
 <h3>References</h3>
 
-<p>Huijuan Zhou, Kejun He, Jun Chen, and Xianyang Zhang. LinDA: Linear Models for Differential Abundance
-Analysis of Microbiome Compositional Data. https://arxiv.org/abs/2104.00242
+<p>Zhou, H., He, K., Chen, J., Zhang, X. (2022). LinDA: linear models for differential abundance analysis of microbiome compositional data. Genome biology, 23(1), 95.
 </p>
 
 
@@ -474,6 +504,126 @@ linda.plot(linda.obj, c('Smokey', 'Sexmale'),
            titles = c('Smoke: n v.s. y', 'Sex: female v.s. male'), 
            alpha = 0.1, lfc.cut = 1, legend = TRUE, directory = NULL,
             width = 11, height = 8)
+</code></pre>
+
+<hr>
+<h2 id='linda.wald.test'>Wald test for bias-corrected regression coefficients</h2><span id='topic+linda.wald.test'></span>
+
+<h3>Description</h3>
+
+<p>The function implements Wald test for bias-corrected regression coefficients generated from the <code>linda</code> function.
+One can utilize the function to perform ANOVA-type analyses. For example, if you have a cateogrical variable with three levels, you can test whether all levels have the same effect.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>linda.wald.test(
+  linda.obj,
+  L,
+  model = c("LM", "LMM"),
+  alpha = 0.05,
+  p.adj.method = "BH"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="linda.wald.test_+3A_linda.obj">linda.obj</code></td>
+<td>
+<p>return from the <code>linda</code> function.</p>
+</td></tr>
+<tr><td><code id="linda.wald.test_+3A_l">L</code></td>
+<td>
+<p>A matrix for testing <code>Lb = 0</code>, where <code>b</code> includes the intercept and all fixed effects from runing <code>linda</code>. Thus the number of columns of L must be equal to <code>length(variables)+1</code>, where <code>variables</code> is from <code>linda.obj</code>, which does not include the intercept.</p>
+</td></tr>
+<tr><td><code id="linda.wald.test_+3A_model">model</code></td>
+<td>
+<p><code>'LM'</code> or <code>'LMM'</code> indicating the model fitted in {linda} is linear model or linear mixed-effect model.</p>
+</td></tr>
+<tr><td><code id="linda.wald.test_+3A_alpha">alpha</code></td>
+<td>
+<p>significance level for testing <code>Lb = 0</code>.</p>
+</td></tr>
+<tr><td><code id="linda.wald.test_+3A_p.adj.method">p.adj.method</code></td>
+<td>
+<p>P-value adjustment approach. See R function <code>p.adjust</code>. The default is 'BH'.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data frame with columns
+</p>
+<table>
+<tr><td><code>Fstat</code></td>
+<td>
+<p>Wald statistics for each taxon</p>
+</td></tr>
+<tr><td><code>df1</code></td>
+<td>
+<p>The numerator degrees of freedom</p>
+</td></tr>
+<tr><td><code>df2</code></td>
+<td>
+<p>The denominator degrees of freedom</p>
+</td></tr>
+<tr><td><code>pvalue</code></td>
+<td>
+ <p><code>1 - pf(Fstat, df1, df2)</code></p>
+</td></tr>
+<tr><td><code>padj</code></td>
+<td>
+ <p><code>p.adjust(pvalue, method = p.adj.method)</code></p>
+</td></tr>
+<tr><td><code>reject</code></td>
+<td>
+ <p><code>padj &lt;= alpha</code></p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Huijuan Zhou <a href="mailto:huijuanzhou2019@gmail.com">huijuanzhou2019@gmail.com</a>
+Jun Chen <a href="mailto:Chen.Jun2@mayo.edu">Chen.Jun2@mayo.edu</a>
+Xianyang Zhang <a href="mailto:zhangxiany@stat.tamu.edu">zhangxiany@stat.tamu.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Zhou, H., He, K., Chen, J., Zhang, X. (2022). LinDA: linear models for differential abundance analysis of microbiome compositional data. Genome biology, 23(1), 95.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+
+data(smokers)
+
+ind &lt;- smokers$meta$AIRWAYSITE == 'Throat'
+otu.tab &lt;- as.data.frame(smokers$otu[, ind])
+depth &lt;- colSums(otu.tab)
+meta &lt;- cbind.data.frame(Smoke = factor(smokers$meta$SMOKER[ind]),
+                         Sex = factor(smokers$meta$SEX[ind]),
+                         Site = factor(smokers$meta$SIDEOFBODY[ind]),
+                         SubjectID = factor(smokers$meta$HOST_SUBJECT_ID[ind]))
+ind  &lt;- depth &gt;= 1000
+linda.obj &lt;- linda(otu.tab[, ind], meta[ind, ], formula = '~Smoke+Sex+(1|SubjectID)',
+           feature.dat.type = 'count', 
+           prev.filter = 0.1, is.winsor = TRUE, outlier.pct = 0.03,
+           p.adj.method = "BH", alpha = 0.1)
+#  L matrix (2x3) is designed to test the second (Smoke) and the third (Sex) coefficient to be 0.
+# For a categorical variable &gt; two levels, similar L can be designed to do ANOVA-type test. 
+L &lt;- matrix(c(0, 1, 0, 0, 0, 1), nrow = 2, byrow = TRUE)
+result &lt;- linda.wald.test(linda.obj, L, 'LMM', alpha = 0.1)
+
+
 </code></pre>
 
 <hr>

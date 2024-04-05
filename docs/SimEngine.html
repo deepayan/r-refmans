@@ -49,7 +49,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.3.0</td>
+<td>1.4.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -65,7 +65,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
+</tr>
+<tr>
+<td>VignetteBuilder:</td>
+<td>knitr</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -75,7 +79,7 @@ function processMathHTML() {
 <td>Imports:</td>
 <td>dplyr (&ge; 1.0.10), parallel (&ge; 4.2.2), pbapply (&ge; 1.6.0),
 data.table (&ge; 1.14.6), rlang (&ge; 1.0.6), methods (&ge; 4.2.2),
-stats (&ge; 4.0.0), utils (&ge; 4.2.2)</td>
+stats (&ge; 4.0.0), utils (&ge; 4.2.2), MASS (&ge; 7.3.50)</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -84,8 +88,12 @@ testthat (&ge; 3.1.6), tidyr (&ge; 1.2.1), ggplot2 (&ge; 3.4.0),
 sandwich (&ge; 3.0.2)</td>
 </tr>
 <tr>
-<td>VignetteBuilder:</td>
-<td>knitr</td>
+<td>URL:</td>
+<td><a href="https://avi-kenny.github.io/SimEngine/">https://avi-kenny.github.io/SimEngine/</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/Avi-Kenny/SimEngine/issues">https://github.com/Avi-Kenny/SimEngine/issues</a></td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -93,7 +101,7 @@ sandwich (&ge; 3.0.2)</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-26 17:29:51 UTC; avike</td>
+<td>2024-04-04 02:55:44 UTC; ak811</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -110,7 +118,7 @@ sandwich (&ge; 3.0.2)</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-26 17:50:02 UTC</td>
+<td>2024-04-04 03:22:58 UTC</td>
 </tr>
 </table>
 <hr>
@@ -118,16 +126,13 @@ sandwich (&ge; 3.0.2)</td>
 
 <h3>Description</h3>
 
-<p>This function is designed to be used within a simulation script
-to leverage &quot;replicate batches&quot;. This is useful if you want to share data
-or objects between simulation replicates. Essentially, it allows you to
-take your simulation replicates and divide them into &quot;batches&quot;; all
-replicates in a given batch will then share a single set of objects. The
-most common use case for this is if you have a simulation that involves
-generating one dataset, analyzing it using multiple methods, and then
-repeating this a number of times. See
-<a href="https://avi-kenny.github.io/SimEngine/advanced-usage/#using-the-batch-function">https://avi-kenny.github.io/SimEngine/advanced-usage/#using-the-batch-function</a>
-for a thorough overview of how this function is used.
+<p>This function is useful for sharing data or objects between
+simulation replicates. Essentially, it allows simulation replicates to be
+divided into “batches”; all replicates in a given batch will then share a
+certain set of objects. A common use case for this is a simulation that
+involves using multiple methods to analyze a shared dataset, and
+repeating this process over a number of dataset replicates. See the <a href="https://avi-kenny.github.io/SimEngine/articles/advanced-functionality.html#using-the-batch-function">Advanced Functionality</a>
+vignette for a detailed overview of how this function is used.
 </p>
 
 
@@ -142,7 +147,7 @@ for a thorough overview of how this function is used.
 <table>
 <tr><td><code id="batch_+3A_code">code</code></td>
 <td>
-<p>A block of code enclosed by curly braces ; see examples.</p>
+<p>A block of code enclosed by curly braces {}; see examples.</p>
 </td></tr>
 </table>
 
@@ -216,24 +221,29 @@ supplied <code>sim_uid</code>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>sim &lt;- new_sim()
+sim %&lt;&gt;% set_levels(n=c(10, 100, 1000))
 create_data &lt;- function(n) {
   x &lt;- runif(n)
   y &lt;- 3 + 2*x + rnorm(n)
   return(data.frame("x"=x, "y"=y))
 }
-sim %&lt;&gt;% set_levels("n"=c(10, 100, 1000))
-sim %&lt;&gt;% set_config(num_sim=1)
+sim %&lt;&gt;% set_config(num_sim=2)
 sim %&lt;&gt;% set_script(function() {
   dat &lt;- create_data(L$n)
   model &lt;- lm(y~x, data=dat)
-  return (list(
+  return(list(
+    "beta0_hat" = model$coefficients[[1]],
     "beta1_hat" = model$coefficients[[2]],
-    ".complex" = model
+    ".complex" = list(
+      "model" = model,
+      "cov_mtx" = vcov(model)
+    )
   ))
 })
 sim %&lt;&gt;% run()
-sim$results %&gt;% print()
-get_complex(sim, 1) %&gt;% print()
+c5 &lt;- get_complex(sim, sim_uid=5)
+print(summary(c5$model))
+print(c5$cov_mtx)
 </code></pre>
 
 <hr>
@@ -264,9 +274,9 @@ cluster computing system (CCS).
 <h3>Description</h3>
 
 <p>Create a new simulation object. This is typically the first
-function to be called when running a simulation using <span class="pkg">SimEngine</span>. Most
-other <span class="pkg">SimEngine</span> functions take a simulation object as their first
-argument.
+function to be called when running a simulation using <span class="pkg">SimEngine</span>.
+Most other <span class="pkg">SimEngine</span> functions take a simulation object as their
+first argument.
 </p>
 
 
@@ -292,7 +302,7 @@ use the <span class="pkg">SimEngine</span> simulation framework.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>sim &lt;- new_sim()
-sim
+print(sim)
 </code></pre>
 
 <hr>
@@ -335,9 +345,7 @@ errors are stored in <code>sim$errors</code>, and warnings are stored in
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># The following is a toy example of a simulation, illustrating the use of
-# the run function.
-sim &lt;- new_sim()
+<pre><code class='language-R'>sim &lt;- new_sim()
 create_data &lt;- function(n) { rpois(n, lambda=5) }
 est_mean &lt;- function(dat, type) {
   if (type=="M") { return(mean(dat)) }
@@ -360,16 +368,21 @@ sim$results %&gt;% print()
 <h3>Description</h3>
 
 <p>This function allows for simulations to be run in parallel on a
-cluster computing system (CCS). It acts as a wrapper for the code in your
-simulation script, organizing the code into three sections, labeled
-&quot;first&quot; (code that is run once at the start of the simulation, e.g.
-setting simulation levels), &quot;main&quot; (running the simulation script via
+cluster computing system (CCS). See the <a href="https://avi-kenny.github.io/SimEngine/articles/parallelization.html">Parallelization</a>
+vignette for a detailed overview of how CCS parallelization works in
+<span class="pkg">SimEngine</span>. <code>run_on_cluster</code> acts as a wrapper for the code in
+your simulation, organizing the code into three sections, labeled &quot;first&quot;
+(code that is run once at the start of the simulation), &quot;main&quot;
+(running the simulation script repeatedly), and &quot;last&quot; (code to process
+or summarize simulation results). This function is to be used in
+conjunction with job scheduler software (e.g., Slurm or Oracle Grid
+Engine) to divide the simulation into tasks that are run in parallel on
+the CCS. See the Parallelization documentation for a detailed overview of
+how CCS parallelization works in <span class="pkg">SimEngine</span>.
 <code><a href="#topic+run">run</a></code>)), and &quot;last&quot; (usually code to process or summarize
 simulation results). This function interacts with cluster job scheduler
 software (e.g. Slurm or Oracle Grid Engine) to divide parallel tasks over
-cluster nodes. See
-<a href="https://avi-kenny.github.io/SimEngine/parallelization/">https://avi-kenny.github.io/SimEngine/parallelization/</a> for a
-detailed overview of how CCS parallelization works in <span class="pkg">SimEngine</span>.
+cluster nodes.
 </p>
 
 
@@ -385,16 +398,14 @@ detailed overview of how CCS parallelization works in <span class="pkg">SimEngin
 <tr><td><code id="run_on_cluster_+3A_first">first</code></td>
 <td>
 <p>Code to run at the start of a simulation. This should be a block
-of code enclosed by curly braces  that creates a simulation object. Put
-everything you need in the simulation object, since global variables
-declared in this block will not be available when the 'main' and 'last'
-code blocks run.</p>
+of code enclosed by curly braces  that creates and sets up a simulation
+object.</p>
 </td></tr>
 <tr><td><code id="run_on_cluster_+3A_main">main</code></td>
 <td>
 <p>Code that will run for every simulation replicate. This should be
-a block of code enclosed by curly braces , and will almost always
-contain only a single call to the <code><a href="#topic+run">run</a></code>) function. This code
+a block of code enclosed by curly braces , and will typically be a
+single line of code calling the <code><a href="#topic+run">run</a></code>) function. This code
 block will have access to the simulation object you created in the
 'first' code block, but any changes made here to the simulation object
 will not be saved.</p>
@@ -402,22 +413,23 @@ will not be saved.</p>
 <tr><td><code id="run_on_cluster_+3A_last">last</code></td>
 <td>
 <p>Code that will run after all simulation replicates have been run.
-This should be a block of code enclosed by curly braces  that takes
-your simulation object (which at this point will contain your results)
-and do something with it, such as display your results on a graph.</p>
+This should be a block of code enclosed by curly braces  that processes
+your simulation object (which at this point will contain your results),
+which may involve calls to <code><a href="#topic+summarize">summarize</a></code>, creation of plots,
+and so on.</p>
 </td></tr>
 <tr><td><code id="run_on_cluster_+3A_cluster_config">cluster_config</code></td>
 <td>
 <p>A list of configuration options. You must specify
 either <code>js</code> (the job scheduler you are using) or <code>tid_var</code> (the
-name of the environment variable that your task ID is stored in). Run
-<code>js_support()</code> to see a list of job schedulers that are currently
-supported. You can optionally also specify <code>dir</code>, which is a
-character string representing a path to a directory; this directory will
-serve as your working directory and hold your simulation object,
-temporary <span class="pkg">SimEngine</span> objects, and simulation results (this defaults
-to the working directory of the R script that contains your simulation
-code).</p>
+name of the environment variable that your task ID is stored in); see
+examples. Run <code>js_support()</code> to see a list of job schedulers that
+are currently supported. You can optionally also specify <code>dir</code>,
+which is a character string representing a path to a directory on the
+CCS; this directory will serve as your working directory and hold your
+simulation object and all temporary objects created by <span class="pkg">SimEngine</span>.
+If unspecified, this defaults to the working directory of the R script
+that contains your simulation code).</p>
 </td></tr>
 </table>
 
@@ -425,48 +437,41 @@ code).</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-# The following is a toy simulation that could be run on a cluster computing
-# environment. It runs 10 replicates of 2 simulation levels as 20 separate
-# cluster jobs, and then summarizes the results. This function is designed to
-# be used in conjunction with cluster job scheduler software (e.g. Slurm or
-# Oracle Grid Engine). We include both the R code as well as sample BASH code
-# for running the simulation using Oracle Grid Engine.
-
-# This code is saved in a file called my_simulation.R
+# The following code is saved in a file called my_simulation.R:
 library(SimEngine)
 run_on_cluster(
-
   first = {
     sim &lt;- new_sim()
-    create_data &lt;- function(n) { rnorm(n) }
+    create_data &lt;- function(n) { return(rpois(n=n, lambda=20)) }
+    est_lambda &lt;- function(dat, type) {
+      if (type=="M") { return(mean(dat)) }
+      if (type=="V") { return(var(dat)) }
+    }
+    sim %&lt;&gt;% set_levels(estimator = c("M","V"), n = c(10,100,1000))
     sim %&lt;&gt;% set_script(function() {
-      data &lt;- create_data(L$n)
-      return(list("x"=mean(data)))
+      dat &lt;- create_data(L$n)
+      lambda_hat &lt;- est_lambda(dat=dat, type=L$estimator)
+      return(list("lambda_hat"=lambda_hat))
     })
-    sim %&lt;&gt;% set_levels(n=c(100,1000))
-    sim %&lt;&gt;% set_config(num_sim=10)
+    sim %&lt;&gt;% set_config(num_sim=100, n_cores=20)
   },
-
   main = {
     sim %&lt;&gt;% run()
   },
-
   last = {
     sim %&gt;% summarize()
   },
-
-  cluster_config = list(js="ge")
-
+  cluster_config = list(js="slurm")
 )
 
-# This code is saved in a file called run_sim.sh
+# The following code is saved in a file called run_sim.sh:
 # #!/bin/bash
 # Rscript my_simulation.R
 
-# The following lines of code are run on the cluster head node.
-# qsub -v sim_run='first' run_sim.sh
-# qsub -v sim_run='main' -t 1-20 -hold_jid 101 run_sim.sh
-# qsub -v sim_run='last' -hold_jid 102 run_sim.sh
+# The following lines of code are run on the CCS head node:
+# sbatch --export=sim_run='first' run_sim.sh
+# sbatch --export=sim_run='main' --array=1-20 --depend=afterok:101 run_sim.sh
+# sbatch --export=sim_run='last' --depend=afterok:102 run_sim.sh
 
 ## End(Not run)
 </code></pre>
@@ -520,10 +525,8 @@ level combination</p>
 <td>
 <p>Boolean; if set to TRUE, <span class="pkg">SimEngine</span> will run one
 simulation per core. if set to FALSE, code will not be parallelized. See
-<a href="https://avi-kenny.github.io/SimEngine/parallelization/">https://avi-kenny.github.io/SimEngine/parallelization/</a> for an
-overview of how parallelization works in <span class="pkg">SimEngine</span>. This option
-will be automatically set to TRUE if the simulation is being run on a
-cluster computing system.</p>
+the <a href="https://avi-kenny.github.io/SimEngine/articles/parallelization.html">Parallelization</a>
+vignette for an overview of how parallelization works in <span class="pkg">SimEngine</span>.</p>
 </td></tr>
 <tr><td><code id="set_config_+3A_n_cores">n_cores</code></td>
 <td>
@@ -605,7 +608,7 @@ sim %&lt;&gt;% set_config(
   num_sim = 10,
   seed = 2112
 )
-sim
+print(sim)
 </code></pre>
 
 <hr>
@@ -640,8 +643,8 @@ more complex levels). See examples.</p>
 </td></tr>
 <tr><td><code id="set_levels_+3A_.keep">.keep</code></td>
 <td>
-<p>An integer vector specifying which level combinations to keep;
-see examples.</p>
+<p>An integer vector of level_id values specifying which level
+combinations to keep; see the Advanced Functionality documentation.</p>
 </td></tr>
 </table>
 
@@ -655,47 +658,23 @@ with the new set
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># Basic usage is as follows:
+<pre><code class='language-R'># Basic simulation levels are numeric or character vectors
 sim &lt;- new_sim()
 sim %&lt;&gt;% set_levels(
-  "n" = c(10, 100, 1000),
-  "theta" = c(2, 3)
+  n = c(10, 100, 1000),
+  est = c("M", "V")
 )
-sim$levels
 
-# More complex levels can be set using lists:
+# Complex simulation levels can be set using named lists of lists
 sim &lt;- new_sim()
 sim %&lt;&gt;% set_levels(
-  "n" = c(10, 100, 1000),
-  "theta" = c(2, 3),
-  "method" = list(
-    "spline1" = list(knots=c(2,4), slopes=c(0.1,0.4)),
-    "spline2" = list(knots=c(1,5), slopes=c(0.2,0.3))
+  n = c(10, 100, 1000),
+  distribution = list(
+    "Beta 1" = list(type="Beta", params=c(0.3, 0.7)),
+    "Beta 2" = list(type="Beta", params=c(1.5, 0.4)),
+    "Normal" = list(type="Normal", params=c(3.0, 0.2))
   )
 )
-sim$levels
-
-# If you don't want to run simulations for all level combinations, use the
-# .keep option. First, set the levels normally. Second, view the
-# sim$levels_grid dataframe to examine the level combinations and the
-# associated level_id values. Third, call set_levels again with the .keep
-# option to specify which levels to keep (via a vector of level_id values).
-sim &lt;- new_sim()
-sim %&lt;&gt;% set_levels(alpha=c(1,2,3), beta=c(5,6))
-sim$levels_grid
-#&gt;   level_id alpha beta
-#&gt; 1        1     1    5
-#&gt; 2        2     2    5
-#&gt; 3        3     3    5
-#&gt; 4        4     1    6
-#&gt; 5        5     2    6
-#&gt; 6        6     3    6
-sim %&lt;&gt;% set_levels(.keep=c(1,2,6))
-sim$levels_grid
-#&gt;   level_id alpha beta
-#&gt; 1        1     1    5
-#&gt; 2        2     2    5
-#&gt; 6        6     3    6
 </code></pre>
 
 <hr>
@@ -729,11 +708,12 @@ and returns the results.
 results. The results must be a list of key-value pairs. Values are
 categorized as simple (a number, a character string, etc.) or complex
 (vectors, dataframes, lists, etc.). Complex data must go inside a key
-called &quot;.complex&quot; and the associated value must be a list (see examples).
-The function body can contain references to the special object <code>L</code>
-that stores the current set of simulation levels (see examples).
-The keys must be valid R names (see ?make.names). Any functions used
-within the script must be declared before <code>set_script</code> is called.</p>
+called &quot;.complex&quot; and the associated value must be a list (see Advanced
+Functionality documentation and examples). The function body can contain
+references to the special object <code>L</code> that stores the current set of
+simulation levels (see examples). The keys must be valid R names (see
+?make.names). Any functions used within the script must be declared
+before <code>set_script</code> is called.</p>
 </td></tr>
 </table>
 
@@ -747,9 +727,7 @@ function added.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># The following is a toy example of a simulation, illustrating the use of
-# the set_script function.
-sim &lt;- new_sim()
+<pre><code class='language-R'>sim &lt;- new_sim()
 create_data &lt;- function(n) { rpois(n, lambda=5) }
 est_mean &lt;- function(dat, type) {
   if (type=="M") { return(mean(dat)) }
@@ -763,24 +741,28 @@ sim %&lt;&gt;% set_script(function() {
   return (list("lambda_hat"=lambda_hat))
 })
 sim %&lt;&gt;% run()
-sim$results
+sim$results %&gt;% print()
 
-# If you need to return complex result data (vectors, dataframes, lists,
-# etc.), use the construct ".complex"=list().
+# To return complex result data, use the special key ".complex".
 sim &lt;- new_sim()
-sim %&lt;&gt;% set_levels(n=c(4,9))
+create_data &lt;- function(n) {
+  x &lt;- runif(n)
+  y &lt;- 3 + 2*x + rnorm(n)
+  return(data.frame("x"=x, "y"=y))
+}
+sim %&lt;&gt;% set_levels("n"=c(10, 100, 1000))
 sim %&lt;&gt;% set_config(num_sim=1)
 sim %&lt;&gt;% set_script(function() {
-  dat &lt;- rnorm(L$n)
-  mtx &lt;- matrix(dat, nrow=sqrt(length(dat)))
+  dat &lt;- create_data(L$n)
+  model &lt;- lm(y~x, data=dat)
   return (list(
-    "mean" = mean(dat),
-    "det" = det(mtx),
-    ".complex" = list(dat=dat, mtx=mtx)
+    "beta1_hat" = model$coefficients[[2]],
+    ".complex" = model
   ))
 })
 sim %&lt;&gt;% run()
-
+sim$results %&gt;% print()
+get_complex(sim, 1) %&gt;% print()
 </code></pre>
 
 <hr>
@@ -807,16 +789,31 @@ sim %&lt;&gt;% run()
 </li></ul>
 
 
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://avi-kenny.github.io/SimEngine/">https://avi-kenny.github.io/SimEngine/</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/Avi-Kenny/SimEngine/issues">https://github.com/Avi-Kenny/SimEngine/issues</a>
+</p>
+</li></ul>
+
+
 <hr>
 <h2 id='summarize'>Summarize simulation results</h2><span id='topic+summarize'></span>
 
 <h3>Description</h3>
 
-<p>This function calculates summary statistics for simulation results,
-including descriptive statistics (e.g. measures of
-center or spread) and inferential statistics (e.g. bias or confidence interval
-coverage). All summary statistics are calculated over simulation replicates
-within a single simulation level.
+<p>This function calculates summary statistics for simulation
+results, including descriptive statistics (e.g. measures of center or
+spread) and inferential statistics (e.g. bias or confidence interval
+coverage). All summary statistics are calculated over simulation
+replicates within a single simulation level.
 </p>
 
 
@@ -836,20 +833,23 @@ within a single simulation level.
 </td></tr>
 <tr><td><code id="summarize_+3A_...">...</code></td>
 <td>
-<p>One or more lists, separated by commas, specifying desired summaries of the <code>sim</code>
-simulation object. See examples. Each list must have a <code>stat</code> item, which specifies the type of summary statistic to
-be calculated. The <code>na.rm</code> item indicates whether to exclude <code>NA</code> values when performing the calculation (with
-default being <code>FALSE</code>). For <code>stat</code> options where the <code>name</code> item is optional,
-if it is not provided, a name will be formed from the type of summary and the column on which the summary
-is performed. Additional required items are detailed below for each <code>stat</code> type.
+<p>One or more lists, separated by commas, specifying desired
+summaries of the <code>sim</code> simulation object. See examples. Each list
+must have a <code>stat</code> item, which specifies the type of summary
+statistic to be calculated. The <code>na.rm</code> item indicates whether to
+exclude <code>NA</code> values when performing the calculation (with default
+being <code>FALSE</code>). For <code>stat</code> options where the <code>name</code> item
+is optional, if it is not provided, a name will be formed from the type
+of summary and the column on which the summary is performed. Additional
+required items are detailed below for each <code>stat</code> type.
 </p>
 
 <ul>
-<li><p><code>list(stat="mean", x="col_1", name="mean_col")</code> computes the
-mean of column <code>sim$results$col_1</code> for each level combination and
-creates a summary column named <code>"mean_col"</code>. Other single-column
-summary statistics (see the next few items) work analogously. <code>name</code>
-is optional.
+<li><p><code>list(stat="mean", x="col_1", name="mean_col", na.rm=F)</code>
+computes the mean of column <code>sim$results$col_1</code> for each level
+combination and creates a summary column named <code>"mean_col"</code>. Other
+single-column summary statistics (see the next few items) work
+analogously. <code>name</code> is optional.
 </p>
 </li>
 <li><p><code>list(stat="median", ...)</code> computes the median.
@@ -939,9 +939,10 @@ summary column named <code>"cov_est"</code> is created.
 </td></tr>
 <tr><td><code id="summarize_+3A_mc_se">mc_se</code></td>
 <td>
-<p>A logical argument indicating whether to compute Monte Carlo standard error and associated confidence interval
-for inferential summary statistics.  This applies only to the <code>bias</code>, <code>bias_pct</code>, <code>mse</code>, <code>mae</code>,
-and <code>coverage</code> summary statistics.</p>
+<p>A logical argument indicating whether to compute Monte Carlo
+standard error and associated confidence interval for inferential summary
+statistics.  This applies only to the <code>bias</code>, <code>bias_pct</code>,
+<code>mse</code>, <code>mae</code>, and <code>coverage</code> summary statistics.</p>
 </td></tr>
 </table>
 
@@ -950,19 +951,23 @@ and <code>coverage</code> summary statistics.</p>
 
 
 <ul>
-<li><p>For all inferential summaries there are three ways to specify <code>truth</code>: (1) a single number,
-meaning the estimand is the same across all simulation replicates and levels, (2) a numeric vector of the
-same length as the number of rows in <code>sim$results</code>, or (3) the name of a variable in <code>sim$results</code>
-containing the estimand of interest.
+<li><p>For all inferential summaries there are three ways to specify
+<code>truth</code>: (1) a single number, meaning the estimand is the same
+across all simulation replicates and levels, (2) a numeric vector of the
+same length as the number of rows in <code>sim$results</code>, or (3) the name
+of a variable in <code>sim$results</code> containing the estimand of interest.
 </p>
 </li>
-<li><p>There are two ways to specify the confidence interval bounds for <code>coverage</code>. The first is to provide
-an <code>estimate</code> and its associated <code>se</code> (standard error). These should both be variables in
-<code>sim$results</code>. The function constructs a 95% Wald-type confidence interval of the form
-<code>(estimate-1.96*se, estimate+1.96*se)</code>. The alternative is to provide
-<code>lower</code> and <code>upper</code> bounds, which should also be variables in <code>sim$results</code>. In this case,
-the confidence interval is (<code>lower</code>, <code>upper</code>). The coverage is the proportion of simulation
-replicates for a given level combination in which <code>truth</code> lies within the interval.
+<li><p>There are two ways to specify the confidence interval bounds for
+<code>coverage</code>. The first is to provide an <code>estimate</code> and its
+associated <code>se</code> (standard error). These should both be variables in
+<code>sim$results</code>. The function constructs a 95% Wald-type confidence
+interval of the form <code>(estimate-1.96*se, estimate+1.96*se)</code>. The
+alternative is to provide <code>lower</code> and <code>upper</code> bounds, which
+should also be variables in <code>sim$results</code>. In this case, the
+confidence interval is (<code>lower</code>, <code>upper</code>). The coverage is the
+proportion of simulation replicates for a given level combination in
+which <code>truth</code> lies within the interval.
 </p>
 </li></ul>
 
@@ -970,17 +975,15 @@ replicates for a given level combination in which <code>truth</code> lies within
 
 <h3>Value</h3>
 
-<p>A data frame containing the result of each specified summary function as a column, for each of
-the simulation levels. The column <code>n_reps</code> returns the number of successful simulation replicates
-within each level.
+<p>A data frame containing the result of each specified summary function
+as a column, for each of the simulation levels. The column <code>n_reps</code>
+returns the number of successful simulation replicates within each level.
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># The following is a toy example of a simulation, illustrating the use of
-# the summarize function.
-sim &lt;- new_sim()
+<pre><code class='language-R'>sim &lt;- new_sim()
 create_data &lt;- function(n) { rpois(n, lambda=5) }
 est_mean &lt;- function(dat, type) {
   if (type=="M") { return(mean(dat)) }
@@ -1076,9 +1079,11 @@ sim %&lt;&gt;% set_script(function() {
   return (list("lambda_hat"=lambda_hat))
 })
 sim %&lt;&gt;% run()
+sim %&gt;% summarize(list(stat="mean", x="lambda_hat"))
 sim %&lt;&gt;% set_levels(n=c(10,100,1000), est=c("M","V"))
 sim %&lt;&gt;% set_config(num_sim=5)
 sim %&lt;&gt;% update_sim()
+sim %&gt;% summarize(list(stat="mean", x="lambda_hat"))
 </code></pre>
 
 <hr>
@@ -1086,17 +1091,17 @@ sim %&lt;&gt;% update_sim()
 
 <h3>Description</h3>
 
-<p>This function serves a scaffold for updating a previously-run in
-parallel on a cluster computing system. Like
-<code><a href="#topic+run_on_cluster">run_on_cluster</a></code>, it acts as a wrapper for the code in your
-simulation script, organizing the code into three sections, labeled
-&quot;first&quot; (code that is run once at the start of the simulation, e.g.
-setting simulation levels), &quot;main&quot; (the simulation script, which is run
-repeatedly), and &quot;last&quot; (code to combine and summarize simulation
-results). This function interacts with cluster job scheduler software
-(e.g. Slurm or Oracle Grid Engine) to divide parallel tasks over cluster
-nodes. See <a href="https://avi-kenny.github.io/SimEngine/parallelization/">https://avi-kenny.github.io/SimEngine/parallelization/</a>
-for an overview of how cluster parallelization works in <span class="pkg">SimEngine</span>.
+<p>This function allows for simulations to be updated in parallel
+on a cluster computing system (CCS). See the <a href="https://avi-kenny.github.io/SimEngine/articles/parallelization.html">Parallelization</a>
+vignette for a detailed overview of how CCS parallelization works in
+<span class="pkg">SimEngine</span>. Like <code><a href="#topic+run_on_cluster">run_on_cluster</a></code>, the
+<code>update_sim_on_cluster</code> function acts as a wrapper for the code in
+your simulation, organizing the code into three sections, labeled &quot;first&quot;
+(code that is run once at the start of the simulation), &quot;main&quot; (running
+the simulation script repeatedly), and &quot;last&quot; (code to process or
+summarize simulation results). This function is to be used in conjunction
+with job scheduler software (e.g., Slurm or Oracle Grid Engine) to divide
+the simulation into tasks that are run in parallel on the CCS.
 </p>
 
 
@@ -1111,39 +1116,40 @@ for an overview of how cluster parallelization works in <span class="pkg">SimEng
 <table>
 <tr><td><code id="update_sim_on_cluster_+3A_first">first</code></td>
 <td>
-<p>Code to run before executing additional simulation replicates. For example,
-this could include altering the simulation levels or changing <code>nsim</code>. This block of code,
-enclosed by curly braces , must first read in an existing simulation object
-and then make alterations to it. Global variables declared in this block will not be available when the 'main'
-and 'last' code blocks run.</p>
+<p>Code to run at the start of a simulation. This should be a block
+of code enclosed by curly braces  that reads in a previously-run
+simulation object via <code>readRDS</code> and makes changes to it via
+<code><a href="#topic+set_levels">set_levels</a></code> or <code><a href="#topic+set_config">set_config</a></code>.</p>
 </td></tr>
 <tr><td><code id="update_sim_on_cluster_+3A_main">main</code></td>
 <td>
 <p>Code that will run for every simulation replicate. This should be
-a block of code enclosed by curly braces  that includes a call to
-<code><a href="#topic+update_sim">update_sim</a></code>. This code block will have access to the
-simulation object you read in the 'first' code block, but any changes
-made here to the simulation object will not be saved.</p>
+a block of code enclosed by curly braces , and will typically be a
+single line of code calling the <code><a href="#topic+update_sim">update_sim</a></code>) function. This
+code block will have access to the simulation object you created in the
+'first' code block, but any changes made here to the simulation object
+will not be saved.</p>
 </td></tr>
 <tr><td><code id="update_sim_on_cluster_+3A_last">last</code></td>
 <td>
-<p>Code that will run after all additional simulation replicates have been run.
-This should be a block of code enclosed by curly braces  that takes
-your simulation object (which at this point will contain both your old and new results)
-and do something with it, such as display your results on a graph.</p>
+<p>Code that will run after all simulation replicates have been run.
+This should be a block of code enclosed by curly braces  that processes
+your simulation object (which at this point will contain your updated
+results), which may involve calls to <code><a href="#topic+summarize">summarize</a></code>, creation of
+plots, and so on.</p>
 </td></tr>
 <tr><td><code id="update_sim_on_cluster_+3A_cluster_config">cluster_config</code></td>
 <td>
 <p>A list of configuration options. You must specify
 either <code>js</code> (the job scheduler you are using) or <code>tid_var</code> (the
-name of the environment variable that your task ID is stored in). Run
-<code>js_support()</code> to see a list of job schedulers that are currently
-supported. You can optionally also specify <code>dir</code>, which is a
-character string representing a path to a directory; this directory will
-serve as your working directory and hold your simulation object,
-temporary <span class="pkg">SimEngine</span> objects, and simulation results (this defaults
-to the working directory of the R script that contains your simulation
-code).</p>
+name of the environment variable that your task ID is stored in); see
+examples. Run <code>js_support()</code> to see a list of job schedulers that
+are currently supported. You can optionally also specify <code>dir</code>,
+which is a character string representing a path to a directory on the
+CCS; this directory will serve as your working directory and hold your
+simulation object and all temporary objects created by <span class="pkg">SimEngine</span>.
+If unspecified, this defaults to the working directory of the R script
+that contains your simulation code).</p>
 </td></tr>
 <tr><td><code id="update_sim_on_cluster_+3A_keep_errors">keep_errors</code></td>
 <td>
@@ -1157,79 +1163,30 @@ try to re-run simulation reps that results in errors previously; if
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-# The following code creates, runs, and subsequently updates a toy simulation
-# on a cluster computing environment. We include both the R code as well as
-# sample BASH code for running the simulation using Oracle Grid Engine.
-
-# This code is saved in a file called my_simulation.R
-library(SimEngine)
-run_on_cluster(
-
-  first = {
-    sim &lt;- new_sim()
-    create_data &lt;- function(n) { rnorm(n) }
-    sim %&lt;&gt;% set_script(function() {
-      data &lt;- create_data(L$n)
-      return(list("x"=mean(data)))
-    })
-    sim %&lt;&gt;% set_levels(n=c(100,1000))
-    sim %&lt;&gt;% set_config(num_sim=10)
-  },
-
-  main = {
-    sim %&lt;&gt;% run()
-  },
-
-  last = {
-    sim %&gt;% summarize()
-  },
-
-  cluster_config = list(js="ge")
-
-)
-
-# This code is saved in a file called run_sim.sh
-# #!/bin/bash
-# Rscript my_simulation.R
-
-# The following lines of code are run on the cluster head node.
-# qsub -v sim_run='first' run_sim.sh
-# qsub -v sim_run='main' -t 1-20 -hold_jid 101 run_sim.sh
-# qsub -v sim_run='last' -hold_jid 102 run_sim.sh
-
-# This code is saved in a file called update_my_simulation.R. Note that it
-# reads in the simulation object created above, which is saved in a file
-# called "sim.rds".
+# The following code is saved in a file called my_simulation.R:
 library(SimEngine)
 update_sim_on_cluster(
-
   first = {
     sim &lt;- readRDS("sim.rds")
-    sim %&lt;&gt;% set_levels(n = c(100,500,1000))
+    sim %&lt;&gt;% set_levels(n=c(100,500,1000))
   },
-
   main = {
     sim %&lt;&gt;% update_sim()
   },
-
   last = {
     sim %&gt;% summarize()
   },
-
-  cluster_config = list(js="ge")
-
+  cluster_config = list(js="slurm")
 )
 
-# This code is saved in a file called update_sim.sh
+# The following code is saved in a file called run_sim.sh:
 # #!/bin/bash
-# Rscript update_my_simulation.R
+# Rscript my_simulation.R
 
-# The following lines of code are run on the cluster head node. Note that
-# only 10 new replicates are run, since 20 of 30 simulation replicates were
-# run in the original call to run_on_cluster.
-# qsub -v sim_run='first' update_sim.sh
-# qsub -v sim_run='main' -t 1-10 -hold_jid 104 update_sim.sh
-# qsub -v sim_run='last' -hold_jid 105 update_sim.sh
+# The following lines of code are run on the CCS head node:
+# sbatch --export=sim_run='first' run_sim.sh
+# sbatch --export=sim_run='main' --array=1-20 --depend=afterok:101 run_sim.sh
+# sbatch --export=sim_run='last' --depend=afterok:102 run_sim.sh
 
 ## End(Not run)
 </code></pre>
@@ -1350,20 +1307,13 @@ and had no errors), &quot;run, some errors&quot; (the simulation ran and had som
 errors), &quot;run, all errors&quot; (the simulation ran and all replicates had
 errors).
 </p>
+</li>
+<li><p><code>session_info</code>: The results of a call to utils::sessionInfo()
+that occures when <a href="#topic+new_sim">new_sim</a> is called.
+</p>
 </li></ul>
 </td></tr>
 </table>
-
-
-<h3>Details</h3>
-
-
-<ul>
-<li><p>You can also access simulation variables through sim$vars, where
-<code>sim</code> is your simulation object (see examples).
-</p>
-</li></ul>
-
 
 
 <h3>Value</h3>
@@ -1375,13 +1325,11 @@ errors).
 <h3>Examples</h3>
 
 <pre><code class='language-R'>sim &lt;- new_sim()
-sim %&lt;&gt;% set_levels(
-  "n" = c(10, 100, 1000)
-)
+sim %&lt;&gt;% set_levels(n = c(10, 100, 1000))
 sim %&lt;&gt;% set_config(num_sim=10)
-vars(sim, "num_sim_total") %&gt;% print()
-sim$vars$num_sim_total %&gt;% print()
-vars(sim) %&gt;% print()
+print(vars(sim, "seed"))
+print(vars(sim, "env"))
+print(vars(sim, "num_sim_total"))
 </code></pre>
 
 </main>

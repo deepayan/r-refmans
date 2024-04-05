@@ -61,7 +61,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.2</td>
+<td>0.3.3</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -128,7 +128,7 @@ stats, vctrs (&ge; 0.2.4), zoo</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-15 13:18:58 UTC; fabians</td>
+<td>2024-03-27 10:45:38 UTC; fabians</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -155,7 +155,7 @@ stats, vctrs (&ge; 0.2.4), zoo</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-18 17:30:02 UTC</td>
+<td>2024-03-28 15:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -2429,7 +2429,7 @@ evaluations.</p>
 <td>
 <p>the function to use that computes eigenfunctions and scores.
 Defaults to <code><a href="#topic+fpc_wsvd">fpc_wsvd()</a></code>, which is quick and easy but returns completely
-unsmoothed eigenfunctions unlikely to be suited for noisy data.</p>
+unsmoothed eigenfunctions unlikely to be suited for noisy data. See Details.</p>
 </td></tr>
 </table>
 
@@ -2506,14 +2506,24 @@ x_irreg &lt;- x[1:8] |&gt;
 plot(x_irreg)
 x_df &lt;- x_irreg |&gt;
   as.data.frame(unnest = TRUE)
-# wrap refund::fpca_sc for use as FPCA method in tfb_fpc:
+# wrap refund::fpca_sc for use as FPCA method in tfb_fpc --
+# 1. define scoring function (simple weighted LS fit)
+fpca_scores &lt;- function(data_matrix, efunctions, mean, weights) {
+  w_mat &lt;- matrix(weights, ncol = length(weights), nrow = nrow(data_matrix),
+                  byrow = TRUE)
+  w_mat[is.na(data_matrix)] &lt;- 0
+  data_matrix[is.na(data_matrix)] &lt;- 0
+  data_wc &lt;- t((t(data_matrix) - mean) * sqrt(t(w_mat)))
+  t(qr.coef(qr(efunctions), t(data_wc) / sqrt(weights)))
+}
+# 2. define wrapper for fpca_sc:
 fpca_sc_wrapper &lt;- function(data, arg, pve = 0.995, ...) {
   data_mat &lt;- tfd(data) |&gt; as.matrix(interpolate = TRUE)
   fpca &lt;- refund::fpca.sc(
     Y = data_mat, argvals = attr(data_mat, "arg"), pve = pve, ...
   )
   c(fpca[c("mu", "efunctions", "scores", "npc")],
-    scoring_function = tf:::.fpc_wsvd_scores)
+    scoring_function = fpca_scores)
 }
 x_pc &lt;- tfb_fpc(x_df, method = fpca_sc_wrapper)
 lines(x_pc, col = 2, lty = 2)
