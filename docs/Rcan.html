@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {Rcan}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#Rcan-package'>
+<p>Cancer Registry Data Analysis and Visualisation</p></a></li>
 <li><a href='#csu_ageSpecific'><p>csu_ageSpecific</p></a></li>
 <li><a href='#csu_ageSpecific_top'><p>csu_ageSpecific_top</p></a></li>
 <li><a href='#csu_asr'><p>csu_asr</p></a></li>
@@ -45,8 +47,6 @@ function processMathHTML() {
 <p>ICD10 group detailed example</p></a></li>
 <li><a href='#ICD_group_GLOBOCAN'>
 <p>ICD10 group example</p></a></li>
-<li><a href='#Rcan-package'>
-<p>Cancer Registry Data Analysis and Visualisation</p></a></li>
 </ul>
 </div>
 <hr>
@@ -127,6 +127,137 @@ utils</td>
 <td>2020-05-19 11:40:07 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='Rcan-package'>
+Cancer Registry Data Analysis and Visualisation
+</h2><span id='topic+Rcan-package'></span><span id='topic+Rcan'></span>
+
+<h3>Description</h3>
+
+<p>Tools for basic and advance cancer statistics and graphics.
+	Groups individual data, merges registry data and population data, calculates age-specific rate, age-standardized rate, cumulative risk, estimated annual percentage rate with standards error. Creates graphics across variable and
+    time, such as age-specific trends, bar chart and period-cohort trends.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mathieu Laversanne [aut, cre], Jerome Vignat [aut], Cancer Surveillance Unit [cph]
+</p>
+<p>Maintainer: Mathieu Laversanne &lt;laversannem@iarc.fr&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://publications.iarc.fr/_publications/media/download/3753/609d0d7711047dd76d7f3dbaa25d7f041fcd013e.pdf">https://publications.iarc.fr/_publications/media/download/3753/609d0d7711047dd76d7f3dbaa25d7f041fcd013e.pdf</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+csu_group_cases">csu_group_cases</a></code>
+<code><a href="#topic+csu_merge_cases_pop">csu_merge_cases_pop</a></code>
+<code><a href="#topic+csu_asr">csu_asr</a></code>
+<code><a href="#topic+csu_cumrisk">csu_cumrisk</a></code>
+<code><a href="#topic+csu_eapc">csu_eapc</a></code>
+<code><a href="#topic+csu_ageSpecific">csu_ageSpecific</a></code>
+<code><a href="#topic+csu_ageSpecific_top">csu_ageSpecific_top</a></code>
+<code><a href="#topic+csu_bar_top">csu_bar_top</a></code>
+<code><a href="#topic+csu_time_trend">csu_time_trend</a></code>
+<code><a href="#topic+csu_trendCohortPeriod">csu_trendCohortPeriod</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+
+data(ICD_group_GLOBOCAN)
+data(data_individual_file)
+
+
+#group individual data by 
+#	5 year age group 
+#	ICD grouping from dataframe ICD_group_GLOBOCAN
+df_data_year &lt;- csu_group_cases(data_individual_file,
+  var_age="age",
+  group_by=c("sex", "regcode", "reglabel"),
+  df_ICD = ICD_group_GLOBOCAN,
+  var_ICD  ="site",
+  var_year = "doi")     
+
+head(df_data_year)
+# individual cases grouped by ICD and 5 years age group and year.
+readline(prompt="Press [enter] to continue to merge cases and population)")	
+
+
+data(data_population_file)	
+
+df_data &lt;- csu_merge_cases_pop(
+	df_data_year, 
+	data_population_file, 
+	var_age = "age_group",
+	var_cases = "cases",
+	var_py = "pop",
+	group_by = c("sex"))
+
+head(df_data)
+#Merge 5-years age grouped data with population by year (automatic) and sex
+readline(prompt="Press [enter] to continue to merge cases and population)")	
+
+
+data(csu_registry_data_2)
+				  
+# ASR with standard error with missing age.
+df_asr &lt;- csu_asr(csu_registry_data_2, 
+                  "age", "cases", "py",
+                  group_by = c("registry", "registry_label", "sex", "year", "ethnic" ),
+                  var_age_group = c("registry_label"), 
+                  var_st_err = "st_err")
+
+df_asr[1:4,]	
+
+
+
+# ASR with standard error with missing age.		  
+readline(prompt="Press [enter] to continue to EAPC")
+
+
+# EAPC with standard error		
+	  
+df_eapc &lt;- csu_eapc(df_asr,
+					"asr", "year",
+					group_by=c("registry", "registry_label", "sex", "ethnic" ))
+					
+df_eapc[1:4,]	
+
+# EAPC with standard error				  
+readline(prompt="Press [enter] to continue to age specific graph")
+
+data(csu_registry_data_1)
+
+# plot age specific rate for 1 population.
+df_colombia &lt;- subset(csu_registry_data_1, registry_label=="Colombia, Cali")
+
+csu_ageSpecific(df_colombia,
+			plot_title = "Colombia, Liver, male")
+				
+# plot age specific rate for 1 population, and comparison with CI5XI data.
+csu_ageSpecific(df_colombia,
+				plot_title = "Colombia, Liver, male",
+				CI5_comparison = "Liver")
+			
+# plot age specific rate for 4 population, legend at the bottom and comparison with CI5XI data.
+csu_ageSpecific(csu_registry_data_1,
+				group_by="registry_label",
+				legend=csu_trend_legend(position="bottom", nrow = 2),
+				plot_title = "Liver, male",
+				CI5_comparison = 16)
+	
+	
+</code></pre>
+
 <hr>
 <h2 id='csu_ageSpecific'>csu_ageSpecific</h2><span id='topic+csu_ageSpecific'></span>
 
@@ -3617,137 +3748,6 @@ df_data_icd &lt;- csu_group_cases(data_individual_file,
 	group_by=c("sex", "regcode", "reglabel"),
 	df_ICD = ICD_group_GLOBOCAN,
 	var_ICD  ="site") 
-</code></pre>
-
-<hr>
-<h2 id='Rcan-package'>
-Cancer Registry Data Analysis and Visualisation
-</h2><span id='topic+Rcan-package'></span><span id='topic+Rcan'></span>
-
-<h3>Description</h3>
-
-<p>Tools for basic and advance cancer statistics and graphics.
-	Groups individual data, merges registry data and population data, calculates age-specific rate, age-standardized rate, cumulative risk, estimated annual percentage rate with standards error. Creates graphics across variable and
-    time, such as age-specific trends, bar chart and period-cohort trends.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Mathieu Laversanne [aut, cre], Jerome Vignat [aut], Cancer Surveillance Unit [cph]
-</p>
-<p>Maintainer: Mathieu Laversanne &lt;laversannem@iarc.fr&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p><a href="https://publications.iarc.fr/_publications/media/download/3753/609d0d7711047dd76d7f3dbaa25d7f041fcd013e.pdf">https://publications.iarc.fr/_publications/media/download/3753/609d0d7711047dd76d7f3dbaa25d7f041fcd013e.pdf</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+csu_group_cases">csu_group_cases</a></code>
-<code><a href="#topic+csu_merge_cases_pop">csu_merge_cases_pop</a></code>
-<code><a href="#topic+csu_asr">csu_asr</a></code>
-<code><a href="#topic+csu_cumrisk">csu_cumrisk</a></code>
-<code><a href="#topic+csu_eapc">csu_eapc</a></code>
-<code><a href="#topic+csu_ageSpecific">csu_ageSpecific</a></code>
-<code><a href="#topic+csu_ageSpecific_top">csu_ageSpecific_top</a></code>
-<code><a href="#topic+csu_bar_top">csu_bar_top</a></code>
-<code><a href="#topic+csu_time_trend">csu_time_trend</a></code>
-<code><a href="#topic+csu_trendCohortPeriod">csu_trendCohortPeriod</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-
-data(ICD_group_GLOBOCAN)
-data(data_individual_file)
-
-
-#group individual data by 
-#	5 year age group 
-#	ICD grouping from dataframe ICD_group_GLOBOCAN
-df_data_year &lt;- csu_group_cases(data_individual_file,
-  var_age="age",
-  group_by=c("sex", "regcode", "reglabel"),
-  df_ICD = ICD_group_GLOBOCAN,
-  var_ICD  ="site",
-  var_year = "doi")     
-
-head(df_data_year)
-# individual cases grouped by ICD and 5 years age group and year.
-readline(prompt="Press [enter] to continue to merge cases and population)")	
-
-
-data(data_population_file)	
-
-df_data &lt;- csu_merge_cases_pop(
-	df_data_year, 
-	data_population_file, 
-	var_age = "age_group",
-	var_cases = "cases",
-	var_py = "pop",
-	group_by = c("sex"))
-
-head(df_data)
-#Merge 5-years age grouped data with population by year (automatic) and sex
-readline(prompt="Press [enter] to continue to merge cases and population)")	
-
-
-data(csu_registry_data_2)
-				  
-# ASR with standard error with missing age.
-df_asr &lt;- csu_asr(csu_registry_data_2, 
-                  "age", "cases", "py",
-                  group_by = c("registry", "registry_label", "sex", "year", "ethnic" ),
-                  var_age_group = c("registry_label"), 
-                  var_st_err = "st_err")
-
-df_asr[1:4,]	
-
-
-
-# ASR with standard error with missing age.		  
-readline(prompt="Press [enter] to continue to EAPC")
-
-
-# EAPC with standard error		
-	  
-df_eapc &lt;- csu_eapc(df_asr,
-					"asr", "year",
-					group_by=c("registry", "registry_label", "sex", "ethnic" ))
-					
-df_eapc[1:4,]	
-
-# EAPC with standard error				  
-readline(prompt="Press [enter] to continue to age specific graph")
-
-data(csu_registry_data_1)
-
-# plot age specific rate for 1 population.
-df_colombia &lt;- subset(csu_registry_data_1, registry_label=="Colombia, Cali")
-
-csu_ageSpecific(df_colombia,
-			plot_title = "Colombia, Liver, male")
-				
-# plot age specific rate for 1 population, and comparison with CI5XI data.
-csu_ageSpecific(df_colombia,
-				plot_title = "Colombia, Liver, male",
-				CI5_comparison = "Liver")
-			
-# plot age specific rate for 4 population, legend at the bottom and comparison with CI5XI data.
-csu_ageSpecific(csu_registry_data_1,
-				group_by="registry_label",
-				legend=csu_trend_legend(position="bottom", nrow = 2),
-				plot_title = "Liver, male",
-				CI5_comparison = 16)
-	
-	
 </code></pre>
 
 </main>

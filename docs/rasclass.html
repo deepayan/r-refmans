@@ -13,16 +13,16 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {rasclass}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#rasclass-package'><p>Supervised Raster Image Classification</p></a></li>
 <li><a href='#buildFormula'><p>Build a formula for Raster Classification</p></a></li>
 <li><a href='#checkRasclass'><p>Check rasclass object for internal consistency</p></a></li>
 <li><a href='#classifyRasclass'><p>Classsifier function for rasclass objects</p></a></li>
 <li><a href='#rasclass-class'><p>Class &quot;rasclass&quot;</p></a></li>
-<li><a href='#rasclass-package'><p>Supervised Raster Image Classification</p></a></li>
 <li><a href='#rasclassMlc'><p>Maximum likelihood classifier</p></a></li>
 <li><a href='#rasclassRaster-class'><p>Class &quot;rasclassRaster&quot;</p></a></li>
 <li><a href='#readRaster'><p>Read ESRI asciigrid files</p></a></li>
@@ -92,6 +92,109 @@ function processMathHTML() {
 <td>2016-05-02 06:31:45</td>
 </tr>
 </table>
+<hr>
+<h2 id='rasclass-package'>Supervised Raster Image Classification</h2><span id='topic+rasclass'></span><span id='topic+rasclass-package'></span>
+
+<h3>Description</h3>
+
+<p>This package is built to perform supervised, per-pixel based raster image classification.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The raster image classification is carried out by calling a sequence of functions that load data, calculate the classification grid and produce an accuracy assessment of the classification.
+</p>
+<p>The package contains the <a href="#topic+readRasterFolder">readRasterFolder</a> function to load a set of external data layers from a folder containing raster images in the ESRI asciigrid format (<em>.asc</em> file extension). All files in the specified folder are parsed and stored in a <a href="#topic+rasclass-class">rasclass-class</a> object. The requirements for reading the input raster files is that they are all in the same projection, are aligned and have the same grid-size (i.e. all raster files should have the same header). Furthermore one raster file has to be specified as sample data. Alternatively, data can also converted into the rasclass format from a dataframe using the <a href="#topic+setRasclassData">setRasclassData</a> function.
+</p>
+<p>For the classification, the package contains five supervised, per-pixel classification methods: Maximum Likelihood Classification, Multinomial Logistic Regression, Neural Networks, Random Forests and Support Vector Machines. There is only one classification function <a href="#topic+classifyRasclass">classifyRasclass</a> and the algorithm can be specified with as an argument. The output of the classifications is the classified raster grid and standard accuracy assessment indicators, including user and producer accuracies, the overall accuracy, the confusion matrix and the kappa coefficient.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Daniel Wiesmann <a href="mailto:daniel.wiesmann@ist.utl.pt">daniel.wiesmann@ist.utl.pt</a> and David Quinn <a href="mailto:djq@mit.edu">djq@mit.edu</a></p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+rasclass-class">rasclass-class</a></code>,
+<code><a href="#topic+rasclassRaster-class">rasclassRaster-class</a></code>,
+</p>
+<p><code><a href="#topic+readRaster">readRaster</a></code>,
+<code><a href="#topic+writeRaster">writeRaster</a></code>,
+</p>
+<p><code><a href="#topic+readRasterFolder">readRasterFolder</a></code>,
+<code><a href="#topic+setRasclassData">setRasclassData</a></code>,
+</p>
+<p><code><a href="#topic+buildFormula">buildFormula</a></code>,
+<code><a href="#topic+checkRasclass">checkRasclass</a></code>,
+</p>
+<p><code><a href="#topic+rasclassMlc">rasclassMlc</a></code>,
+<code><a href="#topic+classifyRasclass">classifyRasclass</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# If available, load data from external folder
+object &lt;- readRasterFolder(path = "mypath", samplename = "mysample",
+	filenames = c('myvar1.asc', 'myvar2.asc'))
+
+## End(Not run)
+
+# For this example, create artificial data
+mysample &lt;- c(rep(rep(c(1,2), each = 25), 25), rep(rep(c(3,4), each = 25), 25))
+mysample &lt;- mysample + sample(c(0, NA), 2500, replace = TRUE, prob = c(1, 50))
+myvar1 &lt;- rep(1:50, each = 50) + rnorm(2500, 0, 5)
+myvar2 &lt;- rep(rep(1:50), 50) + rnorm(2500, 0, 5)
+newdata &lt;- data.frame(mysample, myvar1, myvar2)
+
+# Prepare a rasclass object using the dataframe and specifying raster properties
+object &lt;- new('rasclass')
+object &lt;- setRasclassData(newdata, ncols = 50, nrows = 50,
+	xllcorner = 0, yllcorner = 0, cellsize = 1, NAvalue = -9999,
+	samplename = 'mysample')
+
+# Classify using each algorithm once
+outlist &lt;- list()
+outlist[['maximumLikelihood']] &lt;- classifyRasclass(object, method = 'maximumLikelihood')
+summary(outlist[['maximumLikelihood']])
+
+outlist[['logit']] &lt;- classifyRasclass(object, method = 'logit')
+summary(outlist[['logit']])
+
+outlist[['neuralNetwork']] &lt;- classifyRasclass(object, method = 'neuralNetwork')
+summary(outlist[['neuralNetwork']])
+
+outlist[['randomForest']] &lt;- classifyRasclass(object, method = 'randomForest')
+summary(outlist[['randomForest']])
+
+outlist[['supportVector']] &lt;- classifyRasclass(object, method = 'supportVector')
+summary(outlist[['supportVector']])
+
+# Store sample data as a rasclassRaster for display purposes
+mysample.ras &lt;- new('rasclassRaster')
+mysample.ras@grid &lt;- mysample
+mysample.ras@nrows &lt;- 50
+mysample.ras@ncols &lt;- 50
+mysample.ras@xllcorner &lt;- 0
+mysample.ras@yllcorner &lt;- 0
+mysample.ras@cellsize &lt;- 1
+mysample.ras@NAvalue &lt;- -9999
+
+# Plot results of each classifier
+opar &lt;- par(mfrow = c(2, 3))
+image(mysample.ras)
+title('Sample data')
+for(i in 1:length(outlist)) {
+	image(outlist[[i]]@predictedGrid)
+	title(names(outlist)[[i]])
+}
+par(opar)
+</code></pre>
+
 <hr>
 <h2 id='buildFormula'>Build a formula for Raster Classification</h2><span id='topic+buildFormula'></span><span id='topic+buildFormula+2Crasclass-method'></span>
 
@@ -519,109 +622,6 @@ par(opar)
 <p><code><a href="#topic+rasclassMlc">rasclassMlc</a></code>,
 <code><a href="#topic+classifyRasclass">classifyRasclass</a></code>
 </p>
-
-<hr>
-<h2 id='rasclass-package'>Supervised Raster Image Classification</h2><span id='topic+rasclass'></span><span id='topic+rasclass-package'></span>
-
-<h3>Description</h3>
-
-<p>This package is built to perform supervised, per-pixel based raster image classification.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The raster image classification is carried out by calling a sequence of functions that load data, calculate the classification grid and produce an accuracy assessment of the classification.
-</p>
-<p>The package contains the <a href="#topic+readRasterFolder">readRasterFolder</a> function to load a set of external data layers from a folder containing raster images in the ESRI asciigrid format (<em>.asc</em> file extension). All files in the specified folder are parsed and stored in a <a href="#topic+rasclass-class">rasclass-class</a> object. The requirements for reading the input raster files is that they are all in the same projection, are aligned and have the same grid-size (i.e. all raster files should have the same header). Furthermore one raster file has to be specified as sample data. Alternatively, data can also converted into the rasclass format from a dataframe using the <a href="#topic+setRasclassData">setRasclassData</a> function.
-</p>
-<p>For the classification, the package contains five supervised, per-pixel classification methods: Maximum Likelihood Classification, Multinomial Logistic Regression, Neural Networks, Random Forests and Support Vector Machines. There is only one classification function <a href="#topic+classifyRasclass">classifyRasclass</a> and the algorithm can be specified with as an argument. The output of the classifications is the classified raster grid and standard accuracy assessment indicators, including user and producer accuracies, the overall accuracy, the confusion matrix and the kappa coefficient.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Daniel Wiesmann <a href="mailto:daniel.wiesmann@ist.utl.pt">daniel.wiesmann@ist.utl.pt</a> and David Quinn <a href="mailto:djq@mit.edu">djq@mit.edu</a></p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+rasclass-class">rasclass-class</a></code>,
-<code><a href="#topic+rasclassRaster-class">rasclassRaster-class</a></code>,
-</p>
-<p><code><a href="#topic+readRaster">readRaster</a></code>,
-<code><a href="#topic+writeRaster">writeRaster</a></code>,
-</p>
-<p><code><a href="#topic+readRasterFolder">readRasterFolder</a></code>,
-<code><a href="#topic+setRasclassData">setRasclassData</a></code>,
-</p>
-<p><code><a href="#topic+buildFormula">buildFormula</a></code>,
-<code><a href="#topic+checkRasclass">checkRasclass</a></code>,
-</p>
-<p><code><a href="#topic+rasclassMlc">rasclassMlc</a></code>,
-<code><a href="#topic+classifyRasclass">classifyRasclass</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-# If available, load data from external folder
-object &lt;- readRasterFolder(path = "mypath", samplename = "mysample",
-	filenames = c('myvar1.asc', 'myvar2.asc'))
-
-## End(Not run)
-
-# For this example, create artificial data
-mysample &lt;- c(rep(rep(c(1,2), each = 25), 25), rep(rep(c(3,4), each = 25), 25))
-mysample &lt;- mysample + sample(c(0, NA), 2500, replace = TRUE, prob = c(1, 50))
-myvar1 &lt;- rep(1:50, each = 50) + rnorm(2500, 0, 5)
-myvar2 &lt;- rep(rep(1:50), 50) + rnorm(2500, 0, 5)
-newdata &lt;- data.frame(mysample, myvar1, myvar2)
-
-# Prepare a rasclass object using the dataframe and specifying raster properties
-object &lt;- new('rasclass')
-object &lt;- setRasclassData(newdata, ncols = 50, nrows = 50,
-	xllcorner = 0, yllcorner = 0, cellsize = 1, NAvalue = -9999,
-	samplename = 'mysample')
-
-# Classify using each algorithm once
-outlist &lt;- list()
-outlist[['maximumLikelihood']] &lt;- classifyRasclass(object, method = 'maximumLikelihood')
-summary(outlist[['maximumLikelihood']])
-
-outlist[['logit']] &lt;- classifyRasclass(object, method = 'logit')
-summary(outlist[['logit']])
-
-outlist[['neuralNetwork']] &lt;- classifyRasclass(object, method = 'neuralNetwork')
-summary(outlist[['neuralNetwork']])
-
-outlist[['randomForest']] &lt;- classifyRasclass(object, method = 'randomForest')
-summary(outlist[['randomForest']])
-
-outlist[['supportVector']] &lt;- classifyRasclass(object, method = 'supportVector')
-summary(outlist[['supportVector']])
-
-# Store sample data as a rasclassRaster for display purposes
-mysample.ras &lt;- new('rasclassRaster')
-mysample.ras@grid &lt;- mysample
-mysample.ras@nrows &lt;- 50
-mysample.ras@ncols &lt;- 50
-mysample.ras@xllcorner &lt;- 0
-mysample.ras@yllcorner &lt;- 0
-mysample.ras@cellsize &lt;- 1
-mysample.ras@NAvalue &lt;- -9999
-
-# Plot results of each classifier
-opar &lt;- par(mfrow = c(2, 3))
-image(mysample.ras)
-title('Sample data')
-for(i in 1:length(outlist)) {
-	image(outlist[[i]]@predictedGrid)
-	title(names(outlist)[[i]])
-}
-par(opar)
-</code></pre>
 
 <hr>
 <h2 id='rasclassMlc'>Maximum likelihood classifier</h2><span id='topic+rasclassMlc'></span><span id='topic+rasclassMlc+2Crasclass-method'></span>

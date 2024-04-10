@@ -13,7 +13,7 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {rliger}</h1>
 <h2>Contents</h2>
@@ -134,11 +134,11 @@ proportion</a></li>
 <table>
 <tr>
 <td>Version:</td>
-<td>2.0.0</td>
+<td>2.0.1</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-03-20</td>
+<td>2024-04-04</td>
 </tr>
 <tr>
 <td>Type:</td>
@@ -200,7 +200,7 @@ proportion</a></li>
 </tr>
 <tr>
 <td>Additional_repositories:</td>
-<td>https:/welch-lab.r-universe.dev,
+<td><a href="https://welch-lab.r-universe.dev">https://welch-lab.r-universe.dev</a>,
 <a href="https://blaserlab.r-universe.dev">https://blaserlab.r-universe.dev</a></td>
 </tr>
 <tr>
@@ -209,7 +209,7 @@ proportion</a></li>
 </tr>
 <tr>
 <td>Depends:</td>
-<td>methods, stats, utils, R (&ge; 3.4)</td>
+<td>methods, stats, utils, R (&ge; 3.5)</td>
 </tr>
 <tr>
 <td>Imports:</td>
@@ -233,7 +233,7 @@ testthat</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-20 17:41:29 UTC; wangych</td>
+<td>2024-04-04 17:03:16 UTC; wangych</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -241,7 +241,7 @@ testthat</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-20 22:10:02 UTC</td>
+<td>2024-04-04 23:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -353,7 +353,7 @@ Default <code>0</code>.</p>
 <tr><td><code id=".complexHeatmapDotPlot_+3A_viridisoption">viridisOption</code>, <code id=".complexHeatmapDotPlot_+3A_viridisdirection">viridisDirection</code></td>
 <td>
 <p>See argument <code>option</code> and
-<code>direction</code> of <code><a href="viridisLite.html#topic+viridis">viridis</a></code>. Default <code>"A"</code>
+<code>direction</code> of <code><a href="viridis.html#topic+viridis">viridis</a></code>. Default <code>"A"</code>
 and <code>-1</code>.</p>
 </td></tr>
 <tr><td><code id=".complexHeatmapDotPlot_+3A_...">...</code></td>
@@ -1006,27 +1006,32 @@ pbmc2 &lt;- as.liger(multiSampleMatrix, datasetVar = pbmc$dataset)
 pbmc2
 
 
-sce &lt;- SingleCellExperiment::SingleCellExperiment(
-    assays = list(counts = multiSampleMatrix)
-)
-sce$sample &lt;- pbmc$dataset
-pbmc3 &lt;- as.liger(sce, datasetVar = "sample")
-pbmc3
+if (requireNamespace("SingleCellExperiment", quietly = TRUE)) {
+    sce &lt;- SingleCellExperiment::SingleCellExperiment(
+        assays = list(counts = multiSampleMatrix)
+    )
+    sce$sample &lt;- pbmc$dataset
+    pbmc3 &lt;- as.liger(sce, datasetVar = "sample")
+    pbmc3
+}
 
-seu &lt;- SeuratObject::CreateSeuratObject(multiSampleMatrix)
-# Seurat creates variable "orig.ident" by identifying the cell barcode
-# prefixes, which is indeed what we need in this case. Users might need
-# to be careful and have it confirmed first.
-pbmc4 &lt;- as.liger(seu, datasetVar = "orig.ident")
-pbmc4
+if (requireNamespace("Seurat", quietly = TRUE)) {
+    seu &lt;- SeuratObject::CreateSeuratObject(multiSampleMatrix)
+    # Seurat creates variable "orig.ident" by identifying the cell barcode
+    # prefixes, which is indeed what we need in this case. Users might need
+    # to be careful and have it confirmed first.
+    pbmc4 &lt;- as.liger(seu, datasetVar = "orig.ident")
+    pbmc4
 
-# As per Seurat V5 updates with layered data, specifically helpful udner the
-# scenario of dataset integration. "counts" and etc for each datasets can be
-# split into layers.
-seu5 &lt;- seu
-seu5[["RNA"]] &lt;- split(seu5[["RNA"]], pbmc$dataset)
-print(SeuratObject::Layers(seu5))
-pbmc5 &lt;- as.liger(seu5)
+    # As per Seurat V5 updates with layered data, specifically helpful udner the
+    # scenario of dataset integration. "counts" and etc for each datasets can be
+    # split into layers.
+    seu5 &lt;- seu
+    seu5[["RNA"]] &lt;- split(seu5[["RNA"]], pbmc$dataset)
+    print(SeuratObject::Layers(seu5))
+    pbmc5 &lt;- as.liger(seu5)
+    pbmc5
+}
 
 </code></pre>
 
@@ -1897,10 +1902,14 @@ value.</p>
 
 <p>For convenience, the default <code>formatType = "10x"</code> directly fits the
 structure of cellranger output. <code>formatType = "anndata"</code> works for
-current AnnData H5AD file specification (see Details). If there a customized
-H5 file  structure is presented, any of the <code>rawData</code>,
+current AnnData H5AD file specification (see Details). If a customized H5
+file structure is presented, any of the <code>rawData</code>,
 <code>indicesName</code>, <code>indptrName</code>, <code>genesName</code>, <code>barcodesName</code>
 should be specified accordingly to override the <code>formatType</code> preset.
+</p>
+<p><b>DO</b> make a copy of the H5AD files because rliger functions write to
+the files and they will not be able to be read back to Python. This will be
+fixed in the future.
 </p>
 
 
@@ -1908,7 +1917,7 @@ should be specified accordingly to override the <code>formatType</code> preset.
 
 <pre><code class='language-R'>createH5LigerDataset(
   h5file,
-  formatType = "10X",
+  formatType = "10x",
   rawData = NULL,
   normData = NULL,
   scaleData = NULL,
@@ -1934,7 +1943,7 @@ should be specified accordingly to override the <code>formatType</code> preset.
 <tr><td><code id="createH5LigerDataset_+3A_formattype">formatType</code></td>
 <td>
 <p>Select preset of H5 file structure. Default <code>"10X"</code>.
-Current available option is only <code>"10X"</code>.</p>
+Alternatively, we also support <code>"anndata"</code> for H5AD files.</p>
 </td></tr>
 <tr><td><code id="createH5LigerDataset_+3A_rawdata">rawData</code>, <code id="createH5LigerDataset_+3A_indicesname">indicesName</code>, <code id="createH5LigerDataset_+3A_indptrname">indptrName</code></td>
 <td>
@@ -2008,7 +2017,9 @@ the AnnData was originally created.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>h5Path &lt;- system.file("extdata/ctrl.h5", package = "rliger")
-ld &lt;- createH5LigerDataset(h5Path)
+tempPath &lt;- tempfile(fileext = ".h5")
+file.copy(from = h5Path, to = tempPath)
+ld &lt;- createH5LigerDataset(tempPath)
 </code></pre>
 
 <hr>
@@ -2018,6 +2029,10 @@ ld &lt;- createH5LigerDataset(h5Path)
 
 <p>This function allows creating <a href="#topic+liger-class">liger</a> object from
 multiple datasets of various forms (See <code>rawData</code>).
+</p>
+<p><b>DO</b> make a copy of the H5AD files because rliger functions write to
+the files and they will not be able to be read back to Python. This will be
+fixed in the future.
 </p>
 
 
@@ -2039,6 +2054,8 @@ multiple datasets of various forms (See <code>rawData</code>).
   newH5 = TRUE,
   verbose = getOption("ligerVerbose", TRUE),
   ...,
+  raw.data = rawData,
+  take.gene.union = NULL,
   remove.missing = removeMissing,
   format.type = formatType,
   data.name = dataName,
@@ -2088,7 +2105,7 @@ already has the exact prefix or not. Logical value forces the action.</p>
 <tr><td><code id="createLiger_+3A_formattype">formatType</code></td>
 <td>
 <p>Select preset of H5 file structure. Current available
-options are <code>"10X"</code> and <code>"AnnData"</code>. Can be either a single
+options are <code>"10x"</code> and <code>"anndata"</code>. Can be either a single
 specification for all datasets or a character vector that match with each
 dataset.</p>
 </td></tr>
@@ -2125,9 +2142,13 @@ can be dangerous for large scale analysis.</p>
 <td>
 <p>Additional slot values that should be directly placed in object.</p>
 </td></tr>
-<tr><td><code id="createLiger_+3A_remove.missing">remove.missing</code>, <code id="createLiger_+3A_format.type">format.type</code>, <code id="createLiger_+3A_data.name">data.name</code>, <code id="createLiger_+3A_indices.name">indices.name</code>, <code id="createLiger_+3A_indptr.name">indptr.name</code>, <code id="createLiger_+3A_genes.name">genes.name</code>, <code id="createLiger_+3A_barcodes.name">barcodes.name</code></td>
+<tr><td><code id="createLiger_+3A_raw.data">raw.data</code>, <code id="createLiger_+3A_remove.missing">remove.missing</code>, <code id="createLiger_+3A_format.type">format.type</code>, <code id="createLiger_+3A_data.name">data.name</code>, <code id="createLiger_+3A_indices.name">indices.name</code>, <code id="createLiger_+3A_indptr.name">indptr.name</code>, <code id="createLiger_+3A_genes.name">genes.name</code>, <code id="createLiger_+3A_barcodes.name">barcodes.name</code></td>
 <td>
 <p><b>Deprecated.</b> See Usage section for replacement.</p>
+</td></tr>
+<tr><td><code id="createLiger_+3A_take.gene.union">take.gene.union</code></td>
+<td>
+<p>Defuncted. Will be ignored.</p>
 </td></tr>
 </table>
 
@@ -2147,13 +2168,16 @@ pbmc1 &lt;- createLiger(list(ctrl = ctrl.raw, stim = stim.raw))
 
 # Create from H5 files
 h5Path &lt;- system.file("extdata/ctrl.h5", package = "rliger")
-print(h5Path)
-lig &lt;- createLiger(list(ctrl = h5Path))
+tempPath &lt;- tempfile(fileext = ".h5")
+file.copy(from = h5Path, to = tempPath)
+lig &lt;- createLiger(list(ctrl = tempPath))
 
 # Create from other container object
-ctrl.seu &lt;- SeuratObject::CreateSeuratObject(ctrl.raw)
-stim.seu &lt;- SeuratObject::CreateSeuratObject(stim.raw)
-pbmc2 &lt;- createLiger(list(ctrl = ctrl.seu, stim = stim.seu))
+if (requireNamespace("SeuratObject", quietly = TRUE)) {
+    ctrl.seu &lt;- SeuratObject::CreateSeuratObject(ctrl.raw)
+    stim.seu &lt;- SeuratObject::CreateSeuratObject(stim.raw)
+    pbmc2 &lt;- createLiger(list(ctrl = ctrl.seu, stim = stim.seu))
+}
 </code></pre>
 
 <hr>
@@ -2374,7 +2398,10 @@ current working directory.</p>
 bmmc &lt;- normalize(bmmc)
 bmmc &lt;- selectGenes(bmmc)
 bmmc &lt;- scaleNotCenter(bmmc)
-if (requireNamespace("RcppPlanc", quietly = TRUE)) {
+if (requireNamespace("RcppPlanc", quietly = TRUE) &amp;&amp;
+    requireNamespace("GenomicRanges", quietly = TRUE) &amp;&amp;
+    requireNamespace("IRanges", quietly = TRUE) &amp;&amp;
+    requireNamespace("psych", quietly = TRUE)) {
     bmmc &lt;- runINMF(bmmc)
     bmmc &lt;- quantileNorm(bmmc)
     bmmc &lt;- normalizePeak(bmmc)
@@ -4290,10 +4317,13 @@ the gene and peak are not significantly linked.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-bmmc &lt;- normalize(bmmc)
-bmmc &lt;- selectGenes(bmmc)
-bmmc &lt;- scaleNotCenter(bmmc)
-if (requireNamespace("RcppPlanc", quietly = TRUE)) {
+if (requireNamespace("RcppPlanc", quietly = TRUE) &amp;&amp;
+    requireNamespace("GenomicRanges", quietly = TRUE) &amp;&amp;
+    requireNamespace("IRanges", quietly = TRUE) &amp;&amp;
+    requireNamespace("psych", quietly = TRUE)) {
+    bmmc &lt;- normalize(bmmc)
+    bmmc &lt;- selectGenes(bmmc)
+    bmmc &lt;- scaleNotCenter(bmmc)
     bmmc &lt;- runINMF(bmmc, miniBatchSize = 100)
     bmmc &lt;- quantileNorm(bmmc)
     bmmc &lt;- normalizePeak(bmmc)
@@ -7409,9 +7439,11 @@ cellMeta(pbmcPlot, "ctrl_cluster", "ctrl") &lt;-
     cellMeta(pbmcPlot, "leiden_cluster", "ctrl")
 cellMeta(pbmcPlot, "stim_cluster", "stim") &lt;-
     cellMeta(pbmcPlot, "leiden_cluster", "stim")
-plotSankey(pbmcPlot, "ctrl_cluster", "stim_cluster",
-           titles = c("control", "LIGER", "stim"),
-           prefixes = c("c", NA, "s"))
+if (requireNamespace("sankey", quietly = TRUE)) {
+    plotSankey(pbmcPlot, "ctrl_cluster", "stim_cluster",
+               titles = c("control", "LIGER", "stim"),
+               prefixes = c("c", NA, "s"))
+}
 </code></pre>
 
 <hr>
@@ -7575,7 +7607,7 @@ plotVarFeatures(pbmc)
 <p><code>plotVolcano</code> is a simple implementation and shares
 most of arguments with other rliger plotting functions.
 <code>plotEnhancedVolcano</code> is a wrapper function of
-<code><a href="EnhancedVolcano.html#topic+EnhancedVolcano">EnhancedVolcano</a></code>, which has provides
+<code>EnhancedVolcano::EnhancedVolcano()</code>, which has provides
 substantial amount of arguments for graphical control. However, that requires
 the installation of package &quot;EnhancedVolcano&quot;.
 </p>
@@ -7646,7 +7678,7 @@ Default <code>2</code> and <code>0.8</code>.</p>
 <td>
 <p>For <code>plotVolcano</code>, more theme setting arguments passed to
 <code><a href="#topic+.ggplotLigerTheme">.ggplotLigerTheme</a></code>. For <code>plotEnhancedVolcano</code>, arguments
-passed to <code><a href="EnhancedVolcano.html#topic+EnhancedVolcano">EnhancedVolcano</a></code>.</p>
+passed to <code>EnhancedVolcano::EnhancedVolcano()</code>.</p>
 </td></tr>
 </table>
 
@@ -7994,8 +8026,9 @@ Default <code>50</code>.</p>
 <td>
 <p>Character, numeric or logical selection of one dataset, out
 of all available datasets in <code>object</code>, to use as a &quot;reference&quot; for
-normalization. Default <code>NULL</code> use the dataset with the largest number of
-cells.</p>
+quantile normalization. Default <code>NULL</code> tries to find an RNA dataset with
+the largest number of cells; if no RNA dataset available, use the globally
+largest dataset.</p>
 </td></tr>
 <tr><td><code id="quantileNorm_+3A_mincells">minCells</code></td>
 <td>
@@ -8460,14 +8493,29 @@ to the currect version of structure. Default <code>TRUE</code>.</p>
 <pre><code class='language-R'># Save and read regular current-version liger object
 tempPath &lt;- tempfile(fileext = ".rds")
 saveRDS(pbmc, tempPath)
-pbmc &lt;- readLiger(tempPath)
+pbmc &lt;- readLiger(tempPath, dimredName = NULL)
 
 # Save and read H5-based liger object
 h5Path &lt;- system.file("extdata/ctrl.h5", package = "rliger")
-lig &lt;- createLiger(list(ctrl = h5Path))
+h5tempPath &lt;- tempfile(fileext = ".h5")
+file.copy(from = h5Path, to = h5tempPath)
+lig &lt;- createLiger(list(ctrl = h5tempPath))
 tempPath &lt;- tempfile(fileext = ".rds")
 saveRDS(lig, tempPath)
 lig &lt;- readLiger(tempPath)
+
+## Not run: 
+# Read a old liger object &lt;= 1.0.1
+# Assume the dimensionality reduction method applied was UMAP
+# Assume the clustering was derived with Louvain method
+lig &lt;- readLiger(
+    filename = "path/to/oldLiger.rds",
+    dimredName = "UMAP",
+    clusterName = "louvain",
+    update = TRUE
+)
+
+## End(Not run)
 </code></pre>
 
 <hr>
@@ -8561,7 +8609,7 @@ Default <code>NULL</code> does not subset features.</p>
 </p>
 
 <hr>
-<h2 id='reexports'>Objects exported from other packages</h2><span id='topic+reexports'></span><span id='topic++25+3E+25'></span>
+<h2 id='reexports'>Objects exported from other packages</h2><span id='topic+reexports'></span><span id='topic++25+3E+25'></span><span id='topic++25+3C+3E+25'></span>
 
 <h3>Description</h3>
 
@@ -8570,7 +8618,7 @@ below to see their documentation.
 </p>
 
 <dl>
-<dt>magrittr</dt><dd><p><code><a href="magrittr.html#topic+pipe">%&gt;%</a></code></p>
+<dt>magrittr</dt><dd><p><code><a href="magrittr.html#topic+compound">%&lt;&gt;%</a></code>, <code><a href="magrittr.html#topic+pipe">%&gt;%</a></code></p>
 </dd>
 </dl>
 
@@ -8746,7 +8794,9 @@ for data structure.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>h5Path &lt;- system.file("extdata/ctrl.h5", package = "rliger")
-lig &lt;- createLiger(list(ctrl = h5Path))
+tempPath &lt;- tempfile(fileext = ".h5")
+file.copy(from = h5Path, to = tempPath)
+lig &lt;- createLiger(list(ctrl = tempPath))
 # Now it is actually an invalid object! which is equivalent to what users
 # will get with `saveRDS(lig, "object.rds"); lig &lt;- readRDS("object.rds")``
 closeAllH5(lig)
@@ -8885,11 +8935,15 @@ pbmc &lt;- reverseMethData(pbmc, useDatasets = 2)
 
 <h3>Description</h3>
 
+<p><b>NOT STABLE</b> - This is an experimental function and is subject to change.
+</p>
 <p>Performs consensus integrative non-negative matrix factorization (c-iNMF)
-to return factorized <code class="reqn">H</code>, <code class="reqn">W</code>, and <code class="reqn">V</code> matrices. We run the
-regular iNMF multiple times with different random starts, and then take the
-consensus of frequently appearing factors from gene loading matrices, <code class="reqn">W</code>
-and <code class="reqn">V</code>. The cell factor loading <code class="reqn">H</code> matrices are eventually solved
+to return factorized <code class="reqn">H</code>, <code class="reqn">W</code>, and <code class="reqn">V</code> matrices. In order to
+address the non-convex nature of NMF, we built on the cNMF method proposed by
+D. Kotliar, 2019. We run the regular iNMF multiple times with different
+random starts, and cluster the pool of all the factors in <code class="reqn">W</code> and
+<code class="reqn">V</code>s and take the consensus of the clusters of the largest population.
+The cell factor loading <code class="reqn">H</code> matrices are eventually solved
 with the consensus <code class="reqn">W</code> and <code class="reqn">V</code> matrices.
 </p>
 <p>Please see <code><a href="#topic+runINMF">runINMF</a></code> for detailed introduction to the regular
@@ -9492,11 +9546,10 @@ it is recommended to set <code>splitReg = TRUE</code>.</p>
 </td></tr>
 <tr><td><code id="runGOEnrich_+3A_...">...</code></td>
 <td>
-<p>Additional arguments passed to
-<code>gprofiler2::<a href="gprofiler2.html#topic+gost">gost</a></code>. Arguments <code>query</code>,
-<code>custom_bg</code>, <code>domain_scope</code>, and <code>ordered_query</code> are
-pre-specified by this wrapper function. Users must set
-<code>organism = "mmusculus"</code> when working on mouse data.</p>
+<p>Additional arguments passed to <code>gprofiler2::gost()</code>.
+Arguments <code>query</code>, <code>custom_bg</code>, <code>domain_scope</code>, and
+<code>ordered_query</code> are pre-specified by this wrapper function. Users must
+set <code>organism = "mmusculus"</code> when working on mouse data.</p>
 </td></tr>
 </table>
 
@@ -9516,7 +9569,7 @@ result list contains two elements:
 <p>Meta information for the query.</p>
 </td></tr>
 </table>
-<p>See <code><a href="gprofiler2.html#topic+gost">gost</a></code>. for detailed explanation.
+<p>See <code>gprofiler2::gost()</code>. for detailed explanation.
 </p>
 
 
@@ -9532,7 +9585,9 @@ result list contains two elements:
 # Setting `significant = FALSE` because it's hard for a gene list obtained
 # from small test dataset to represent real-life biology.
 
-go &lt;- runGOEnrich(res, group = 0, significant = FALSE)
+if (requireNamespace("gprofiler2", quietly = TRUE)) {
+    go &lt;- runGOEnrich(res, group = 0, significant = FALSE)
+}
 
 </code></pre>
 
@@ -9607,7 +9662,12 @@ section for replacement.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-runGSEA(pbmcPlot)
+if (requireNamespace("org.Hs.eg.db", quietly = TRUE) &amp;&amp;
+    requireNamespace("reactome.db", quietly = TRUE) &amp;&amp;
+    requireNamespace("fgsea", quietly = TRUE) &amp;&amp;
+    requireNamespace("AnnotationDbi", quietly = TRUE)) {
+    runGSEA(pbmcPlot)
+}
 
 </code></pre>
 
@@ -11026,7 +11086,7 @@ method calls &quot;ligerDataset&quot; method&quot;, which then calls &quot;dgCMa
 feature to be scaled. &quot;liger&quot; method by default uses
 <code><a href="#topic+varFeatures">varFeatures</a>(object)</code>. &quot;ligerDataset&quot; method by default uses all
 features. &quot;Seurat&quot; method by default uses
-<code><a href="SeuratObject.html#topic+VariableFeatures">VariableFeatures</a>(object)</code>.</p>
+<code>Seurat::VariableFeatures(object)</code>.</p>
 </td></tr>
 <tr><td><code id="scaleNotCenter_+3A_chunk">chunk</code></td>
 <td>

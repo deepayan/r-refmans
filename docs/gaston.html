@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {gaston}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#gaston-package'><p> gaston</p></a></li>
 <li><a href='#AGT'><p>AGT data set</p></a></li>
 <li><a href='#as.bed.matrix'><p> Creation of a bed.matrix</p></a></li>
 <li><a href='#association.test'><p> Association Test</p></a></li>
@@ -25,7 +26,6 @@ function processMathHTML() {
 <li><a href='#bed.matrix-class'><p>Class <code>"bed.matrix"</code></p></a></li>
 <li><a href='#DM'><p>Dominance Matrix</p></a></li>
 <li><a href='#dupli'><p>Small data set to illustrate <code>SNP.rm.duplicates</code></p></a></li>
-<li><a href='#gaston-package'><p> gaston</p></a></li>
 <li><a href='#GRM'><p> Genetic Relationship Matrix</p></a></li>
 <li><a href='#is.autosome'><p> Autosomes and X, Y, MT chromosomes</p></a></li>
 <li><a href='#LCT'><p>LCT data set</p></a></li>
@@ -146,6 +146,138 @@ function processMathHTML() {
 <td>2023-12-07 09:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='gaston-package'> gaston </h2><span id='topic+gaston-package'></span><span id='topic+gaston'></span>
+
+<h3>Description</h3>
+
+<p>Manipulation of genetic data (SNPs), computation of Genetic Relationship Matrix, Linkage Disequilibrium, etc. 
+Efficient algorithms for Linear Mixed Model (AIREML, diagonalisation trick).</p>
+
+
+<h3>Introducing gaston</h3>
+
+<p>Gaston offers functions for efficient manipulation of 
+large genotype (SNP) matrices, and state-of-the-art implementation of algorithms
+to fit Linear Mixed Models, that can be used to compute heritability 
+estimates or to perform association tests.
+</p>
+<p>Thanks to the packages <code><a href="Rcpp.html#topic+Rcpp-package">Rcpp</a></code>, 
+<code><a href="RcppParallel.html#topic+RcppParallel-package">RcppParallel</a></code>,
+<code><a href="RcppEigen.html#topic+RcppEigen-package">RcppEigen</a></code>, gaston 
+functions are mainly written in C++. 
+</p>
+<p>Many functions are multithreaded;
+the number of threads can be setted through <code>RcppParallel</code>
+function <code><a href="RcppParallel.html#topic+setThreadOptions">setThreadOptions</a></code>.
+It is advised to try several values for the number of threads, as 
+using too many threads might be conterproductive due to an important
+overhead.
+</p>
+<p>Some functions have a <code>verbose</code> argument, which controls the
+function verbosity. To mute all functions at once you can use 
+<code>options(gaston.verbose = FALSE)</code>.
+</p>
+
+
+<h3>Genotype matrices</h3>
+
+<p>An S4 class for genotype matrices is defined, named <code><a href="#topic+bed.matrix">bed.matrix</a></code>.
+Each row corresponds to an individual, and each column to a SNP. They can
+be read from files using <code><a href="#topic+read.bed.matrix">read.bed.matrix</a></code> 
+and saved using <code><a href="#topic+write.bed.matrix">write.bed.matrix</a></code>.  The function <code><a href="#topic+read.vcf">read.vcf</a></code> reads
+VCF files.
+</p>
+<p>In first approach, a bed.matrix behaves as a &quot;read-only&quot; matrix containing only 
+0, 1, 2 and NAs, unless the genotypes are standardized (use <code><a href="#topic+standardize+3C-">standardize&lt;-</a></code>).
+They are stored in a compact form, each genotype being coded on 2 bits (hence
+4 genotypes per byte).
+</p>
+<p>Bed.matrices can be converted to numerical matrices with <code><a href="base.html#topic+as.matrix">as.matrix</a></code>,
+and multiplied with numeric vectors or matrices with <code>%*%</code> (this 
+feature can be used e.g. to simulate quantitative phenotypes, see a basic example in the example
+section of <code><a href="#topic+association.test">association.test</a></code>).
+</p>
+<p>It is possible to subset bed.matrices just as base matrices, writing e.g.
+<code>x[1:100,]</code> to extract the first 100 individuals, or <code>x[1:100,1000:1999]</code>
+for extract the SNPs 1000 to 1999 for these 100 individuals. The use of logical
+vectors for subsetting is allowed too. The functions 
+<code><a href="#topic+select.inds">select.inds</a></code> and <code><a href="#topic+select.snps">select.snps</a></code> can also be used for 
+subsetting with a nice syntax.
+</p>
+<p>Some basic descriptive statistics can be added to a bed.matrix with <code><a href="#topic+set.stats">set.stats</a></code> (since
+<code>gaston 1.4</code>, this function is called by default by all functions that create a bed.matrix, unless
+<code>options(gaston.auto.set.stats = FALSE)</code> was set.
+Hardy-Weinberg Equilibrium can be tested for all SNPs with <code><a href="#topic+set.hwe">set.hwe</a></code>. 
+</p>
+
+
+<h3>Crossproducts of standardized matrices</h3>
+
+<p>If <code class="reqn">X</code> is a standardized <code class="reqn">n\times q</code> genotype matrix, a Genetic Relationship Matrix 
+(GRM) of the individuals can be computed as
+</p>
+<p style="text-align: center;"><code class="reqn"> GRM = {1\over q-1} XX’ </code>
+</p>
+
+<p>where <code class="reqn">q</code> is the number of SNPs. 
+This computation is done by the function <code><a href="#topic+GRM">GRM</a></code>.  The eigen decomposition of the GRM produces
+the Principal Components (PC) of the data set. If needed, the loadings 
+corresponding to the PCs can be retrieved using <code><a href="#topic+bed.loadings">bed.loadings</a></code>.
+</p>
+<p>Doing the above crossproduct in the reverse order produces a moment estimate of the Linkage Disequilibrium:
+</p>
+<p style="text-align: center;"><code class="reqn"> LD = {1\over n-1} X’X </code>
+</p>
+
+<p>where <code class="reqn">n</code> is the number of individuals. This computation is done by the function
+<code><a href="#topic+LD">LD</a></code> (usually, only parts of the whole LD matrix is computed). This method is 
+also used by <code><a href="#topic+LD.thin">LD.thin</a></code> to extract a set of SNPs in low linkage disequilibrium
+(it is often recommended to perform this operation before computing the GRM).
+</p>
+
+
+<h3>Linear Mixed Models</h3>
+
+<p><code><a href="#topic+lmm.aireml">lmm.aireml</a></code> is a function for linear mixed models parameter estimation
+and BLUP computations. 
+</p>
+<p>The model considered is of the form
+</p>
+<p style="text-align: center;"><code class="reqn"> Y = X\beta + \omega_1 + \ldots + \omega_k + \varepsilon </code>
+</p>
+
+<p>with <code class="reqn"> \omega_i \sim N(0,\tau_i K_i) </code> for <code class="reqn"> i \in 1, \dots,k </code> and
+<code class="reqn"> \varepsilon \sim N(0,\sigma^2 I_n) </code>.
+</p>
+<p>Note that very often in genetics a mixed model is written as
+</p>
+<p style="text-align: center;"><code class="reqn"> Y = X\beta + Zu + \varepsilon </code>
+</p>
+
+<p>with <code class="reqn">Z</code> a standardized genotype matrix, and <code class="reqn">u\sim N(0, \tau I_q)</code>. In that case, 
+denoting <code class="reqn">\omega = Zu</code>, <code class="reqn">\omega \sim N(0, \tau ZZ')</code>
+and letting <code class="reqn">K=ZZ'</code> we get a mixed model of the previous form.
+</p>
+<p>When <code class="reqn">k=1</code> in the above general model (only one random term <code class="reqn">\omega</code>), the likelihood
+can be computed very efficiently using the eigen decomposition of 
+<code class="reqn">K = \mathrm{var}(\omega)</code>. This &quot;diagonalization trick&quot; 
+is used in <code><a href="#topic+lmm.diago.likelihood">lmm.diago.likelihood</a></code> and <code><a href="#topic+lmm.diago">lmm.diago</a></code>, to compute 
+the likelihood and for parameter estimation, respectively. 
+</p>
+<p>Two small functions complete this set of functions: <code><a href="#topic+lmm.simu">lmm.simu</a></code>, to 
+simulate data under a linear mixed model, and <code><a href="#topic+random.pm">random.pm</a></code>, to generate
+random positive matrices. Both are used in examples and can be useful for data simulation.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Hervé Perdry and Claire Dandine-Roulland
+</p>
+<p>Maintainer: Hervé Perdry
+</p>
+
 <hr>
 <h2 id='AGT'>AGT data set</h2><span id='topic+AGT'></span><span id='topic+AGT.gen'></span><span id='topic+AGT.fam'></span><span id='topic+AGT.bim'></span><span id='topic+AGT.pop'></span>
 
@@ -808,138 +940,6 @@ dim(D)
 <pre><code class='language-R'>data(dupli)
 x &lt;- as.bed.matrix(dupli.gen, fam = dupli.ped, bim = dupli.bim)
 </code></pre>
-
-<hr>
-<h2 id='gaston-package'> gaston </h2><span id='topic+gaston-package'></span><span id='topic+gaston'></span>
-
-<h3>Description</h3>
-
-<p>Manipulation of genetic data (SNPs), computation of Genetic Relationship Matrix, Linkage Disequilibrium, etc. 
-Efficient algorithms for Linear Mixed Model (AIREML, diagonalisation trick).</p>
-
-
-<h3>Introducing gaston</h3>
-
-<p>Gaston offers functions for efficient manipulation of 
-large genotype (SNP) matrices, and state-of-the-art implementation of algorithms
-to fit Linear Mixed Models, that can be used to compute heritability 
-estimates or to perform association tests.
-</p>
-<p>Thanks to the packages <code><a href="Rcpp.html#topic+Rcpp-package">Rcpp</a></code>, 
-<code><a href="RcppParallel.html#topic+RcppParallel-package">RcppParallel</a></code>,
-<code><a href="RcppEigen.html#topic+RcppEigen-package">RcppEigen</a></code>, gaston 
-functions are mainly written in C++. 
-</p>
-<p>Many functions are multithreaded;
-the number of threads can be setted through <code>RcppParallel</code>
-function <code><a href="RcppParallel.html#topic+setThreadOptions">setThreadOptions</a></code>.
-It is advised to try several values for the number of threads, as 
-using too many threads might be conterproductive due to an important
-overhead.
-</p>
-<p>Some functions have a <code>verbose</code> argument, which controls the
-function verbosity. To mute all functions at once you can use 
-<code>options(gaston.verbose = FALSE)</code>.
-</p>
-
-
-<h3>Genotype matrices</h3>
-
-<p>An S4 class for genotype matrices is defined, named <code><a href="#topic+bed.matrix">bed.matrix</a></code>.
-Each row corresponds to an individual, and each column to a SNP. They can
-be read from files using <code><a href="#topic+read.bed.matrix">read.bed.matrix</a></code> 
-and saved using <code><a href="#topic+write.bed.matrix">write.bed.matrix</a></code>.  The function <code><a href="#topic+read.vcf">read.vcf</a></code> reads
-VCF files.
-</p>
-<p>In first approach, a bed.matrix behaves as a &quot;read-only&quot; matrix containing only 
-0, 1, 2 and NAs, unless the genotypes are standardized (use <code><a href="#topic+standardize+3C-">standardize&lt;-</a></code>).
-They are stored in a compact form, each genotype being coded on 2 bits (hence
-4 genotypes per byte).
-</p>
-<p>Bed.matrices can be converted to numerical matrices with <code><a href="base.html#topic+as.matrix">as.matrix</a></code>,
-and multiplied with numeric vectors or matrices with <code>%*%</code> (this 
-feature can be used e.g. to simulate quantitative phenotypes, see a basic example in the example
-section of <code><a href="#topic+association.test">association.test</a></code>).
-</p>
-<p>It is possible to subset bed.matrices just as base matrices, writing e.g.
-<code>x[1:100,]</code> to extract the first 100 individuals, or <code>x[1:100,1000:1999]</code>
-for extract the SNPs 1000 to 1999 for these 100 individuals. The use of logical
-vectors for subsetting is allowed too. The functions 
-<code><a href="#topic+select.inds">select.inds</a></code> and <code><a href="#topic+select.snps">select.snps</a></code> can also be used for 
-subsetting with a nice syntax.
-</p>
-<p>Some basic descriptive statistics can be added to a bed.matrix with <code><a href="#topic+set.stats">set.stats</a></code> (since
-<code>gaston 1.4</code>, this function is called by default by all functions that create a bed.matrix, unless
-<code>options(gaston.auto.set.stats = FALSE)</code> was set.
-Hardy-Weinberg Equilibrium can be tested for all SNPs with <code><a href="#topic+set.hwe">set.hwe</a></code>. 
-</p>
-
-
-<h3>Crossproducts of standardized matrices</h3>
-
-<p>If <code class="reqn">X</code> is a standardized <code class="reqn">n\times q</code> genotype matrix, a Genetic Relationship Matrix 
-(GRM) of the individuals can be computed as
-</p>
-<p style="text-align: center;"><code class="reqn"> GRM = {1\over q-1} XX’ </code>
-</p>
-
-<p>where <code class="reqn">q</code> is the number of SNPs. 
-This computation is done by the function <code><a href="#topic+GRM">GRM</a></code>.  The eigen decomposition of the GRM produces
-the Principal Components (PC) of the data set. If needed, the loadings 
-corresponding to the PCs can be retrieved using <code><a href="#topic+bed.loadings">bed.loadings</a></code>.
-</p>
-<p>Doing the above crossproduct in the reverse order produces a moment estimate of the Linkage Disequilibrium:
-</p>
-<p style="text-align: center;"><code class="reqn"> LD = {1\over n-1} X’X </code>
-</p>
-
-<p>where <code class="reqn">n</code> is the number of individuals. This computation is done by the function
-<code><a href="#topic+LD">LD</a></code> (usually, only parts of the whole LD matrix is computed). This method is 
-also used by <code><a href="#topic+LD.thin">LD.thin</a></code> to extract a set of SNPs in low linkage disequilibrium
-(it is often recommended to perform this operation before computing the GRM).
-</p>
-
-
-<h3>Linear Mixed Models</h3>
-
-<p><code><a href="#topic+lmm.aireml">lmm.aireml</a></code> is a function for linear mixed models parameter estimation
-and BLUP computations. 
-</p>
-<p>The model considered is of the form
-</p>
-<p style="text-align: center;"><code class="reqn"> Y = X\beta + \omega_1 + \ldots + \omega_k + \varepsilon </code>
-</p>
-
-<p>with <code class="reqn"> \omega_i \sim N(0,\tau_i K_i) </code> for <code class="reqn"> i \in 1, \dots,k </code> and
-<code class="reqn"> \varepsilon \sim N(0,\sigma^2 I_n) </code>.
-</p>
-<p>Note that very often in genetics a mixed model is written as
-</p>
-<p style="text-align: center;"><code class="reqn"> Y = X\beta + Zu + \varepsilon </code>
-</p>
-
-<p>with <code class="reqn">Z</code> a standardized genotype matrix, and <code class="reqn">u\sim N(0, \tau I_q)</code>. In that case, 
-denoting <code class="reqn">\omega = Zu</code>, <code class="reqn">\omega \sim N(0, \tau ZZ')</code>
-and letting <code class="reqn">K=ZZ'</code> we get a mixed model of the previous form.
-</p>
-<p>When <code class="reqn">k=1</code> in the above general model (only one random term <code class="reqn">\omega</code>), the likelihood
-can be computed very efficiently using the eigen decomposition of 
-<code class="reqn">K = \mathrm{var}(\omega)</code>. This &quot;diagonalization trick&quot; 
-is used in <code><a href="#topic+lmm.diago.likelihood">lmm.diago.likelihood</a></code> and <code><a href="#topic+lmm.diago">lmm.diago</a></code>, to compute 
-the likelihood and for parameter estimation, respectively. 
-</p>
-<p>Two small functions complete this set of functions: <code><a href="#topic+lmm.simu">lmm.simu</a></code>, to 
-simulate data under a linear mixed model, and <code><a href="#topic+random.pm">random.pm</a></code>, to generate
-random positive matrices. Both are used in examples and can be useful for data simulation.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Hervé Perdry and Claire Dandine-Roulland
-</p>
-<p>Maintainer: Hervé Perdry
-</p>
 
 <hr>
 <h2 id='GRM'> Genetic Relationship Matrix</h2><span id='topic+GRM'></span>

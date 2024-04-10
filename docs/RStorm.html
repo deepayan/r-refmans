@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {RStorm}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#RStorm-package'>
+<p>Simulate a Streaming Process in [R]</p></a></li>
 <li><a href='#AddBolt'>
 <p>Function to add a <code>Bolt</code> to a <code>Topology</code> object to specify a stream.</p></a></li>
 <li><a href='#AddFinalize'>
@@ -40,8 +42,6 @@ function processMathHTML() {
 <p>Function to retrieve the names of all tracked objects using <code>SetTrack</code></p></a></li>
 <li><a href='#RStorm'>
 <p>Main function to run a stream.</p></a></li>
-<li><a href='#RStorm-package'>
-<p>Simulate a Streaming Process in [R]</p></a></li>
 <li><a href='#RStorm.env'>
 <p>Environment used by RStorm for internal storage of objects.</p></a></li>
 <li><a href='#sentences'><p>Sentences of the first section of the paper by Student Introducing the T-Test.</p></a></li>
@@ -118,6 +118,184 @@ function processMathHTML() {
 <td>2018-11-29 15:40:03 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='RStorm-package'>
+Simulate a Streaming Process in [R]
+</h2><span id='topic+RStorm-package'></span>
+
+<h3>Description</h3>
+
+<p>While streaming processing provides opportunities to deal with extremely large and ever growing data sets in (near) real time, the development of streaming algorithms for complex models is often cumbersome: the software packages that facilitate streaming processing in production environments do not provide statisticians with the simulation, estimation, and plotting tools they are used to. Developers of streaming algorithms would thus benefit from the flexibility of [R] to create, plot and compute data while developing streaming algorithms. RStorm implements a streaming architecture modeled on Storm for easy development and testing of streaming algorithms in [R]. Package RStorm is not intended as a production package, but rather a development tool for streaming algorithms. See the below examples for some of the usages of RStorm for the development and comparison of streaming algorithms.
+</p>
+<p>Details of the package, examples of streaming algorithms, and examples of the use of RStorm can be found at http://software.mauritskaptein.com/RStorm
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> RStorm</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 0.9 </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2013-07-26</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL-2 </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Maurits Kaptein
+</p>
+<p>Maintainer: Maurits Kaptein &lt;maurits@mauritskaptein.com&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="plyr.html#topic+ddply">ddply</a></code>
+<code><a href="#topic+RStorm">RStorm</a></code>
+<code><a href="#topic+Topology">Topology</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+##############################
+# a simple stream to compute a sum:
+##############################
+
+# create some data:
+x &lt;- seq(1, 1000)
+
+# start a topology
+topology &lt;- Topology(data.frame(x=x))
+
+# define a bolt and add it to the topology
+computeSum &lt;- function(x, ...){
+	sum &lt;- GetHash("sum")
+	if(is.data.frame(sum)){
+		x &lt;- sum + (x[1])
+	}
+	SetHash("sum", x)
+}
+topology &lt;- AddBolt(topology, Bolt(computeSum))
+
+# Run the stream:
+result &lt;- RStorm(topology)
+
+# Inspect the result
+print(GetHash("sum", result))
+
+#plot(topology)
+
+
+##############################
+# Example of a stream to compare two 
+# methods of streaming variance computation:
+##############################
+
+# Generate some data 
+set.seed(10)
+t &lt;- 100
+x &lt;- rnorm(t,0,1)
+# Look at the variance as computed by var():
+var(x)
+
+# Start a topology
+topology &lt;- Topology(data.frame(x=x))
+
+# Bolt for "Sum of Squares Method" with tracking over time
+var.SS &lt;- function(x, ...){
+	params &lt;- GetHash("params1")
+	if(!is.data.frame(params)){
+		params &lt;- list()
+		params$n &lt;- params$sum &lt;- params$sum2 &lt;- 0
+	}
+	n &lt;- params$n + 1
+	sum &lt;- params$sum + as.numeric(x[1])
+	sum2 &lt;- params$sum2 + as.numeric(x[1]^2)
+	if(n&gt;1){
+		var &lt;- 1/(n*(n-1)) * (n*sum2 - sum^2)
+	} else {
+		var &lt;- 0
+	}
+	SetHash("params1", data.frame(n=n, sum=sum, sum2=sum2, var=var))
+	TrackRow("var.SS", data.frame(var=var))
+}
+
+
+## Bolt for "Welford's" Method:
+
+var.Welford &lt;- function(x, ...){
+	x &lt;- as.numeric(x[1])
+	params &lt;- GetHash("params2")
+	if(!is.data.frame(params)){
+		params &lt;- list()
+		params$M &lt;- x
+		params$S &lt;- params$n &lt;- 0
+	}
+	n &lt;- params$n + 1
+	M &lt;- params$M + ( x - params$M) / n
+	S &lt;- params$S + (x - params$M)*(x-M)
+
+	if(n&gt;1){
+		var &lt;- S / (n-1)
+	} else {
+		var &lt;- 0
+	}
+	SetHash("params2", data.frame(n=n, M=M, S=S, var=var))
+	TrackRow("var.Welford", data.frame(var=var))
+}
+
+# Add both topologies to a Stream:
+topology &lt;- AddBolt(topology, Bolt(var.SS))
+topology &lt;- AddBolt(topology, Bolt(var.Welford))
+result &lt;- RStorm(topology)
+
+# Plot the results over the stream
+plot(c(1:t), GetTrack("var.Welford", result)$var, type="l")
+lines(c(1:t), GetTrack("var.SS", result)$var, col="red")
+
+
+### Similar, but with a dataset
+###  in which the mean is very large compared to the variance:
+x2 &lt;- rnorm(t,10^8,1)
+topology2 &lt;- Topology(data.frame(x=x2))
+topology2 &lt;- AddBolt(topology2, Bolt(var.SS))
+topology2 &lt;- AddBolt(topology2, Bolt(var.Welford))
+result2 &lt;- RStorm(topology2)
+
+# This time the standard SS methods screws up (mind the different y scale):
+# (And mind the fact that the SS method gives NEGATIVE variance)
+plot(c(1:t), GetTrack("var.Welford", result2)$var, type="l", ylim=c(-10, 11))
+lines(c(1:t), GetTrack("var.SS", result2)$var, col="red")
+
+
+</code></pre>
+
 <hr>
 <h2 id='AddBolt'>
 Function to add a <code>Bolt</code> to a <code>Topology</code> object to specify a stream.
@@ -1081,184 +1259,6 @@ Main function to run a stream.
 </code></pre>
 
 <hr>
-<h2 id='RStorm-package'>
-Simulate a Streaming Process in [R]
-</h2><span id='topic+RStorm-package'></span>
-
-<h3>Description</h3>
-
-<p>While streaming processing provides opportunities to deal with extremely large and ever growing data sets in (near) real time, the development of streaming algorithms for complex models is often cumbersome: the software packages that facilitate streaming processing in production environments do not provide statisticians with the simulation, estimation, and plotting tools they are used to. Developers of streaming algorithms would thus benefit from the flexibility of [R] to create, plot and compute data while developing streaming algorithms. RStorm implements a streaming architecture modeled on Storm for easy development and testing of streaming algorithms in [R]. Package RStorm is not intended as a production package, but rather a development tool for streaming algorithms. See the below examples for some of the usages of RStorm for the development and comparison of streaming algorithms.
-</p>
-<p>Details of the package, examples of streaming algorithms, and examples of the use of RStorm can be found at http://software.mauritskaptein.com/RStorm
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> RStorm</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 0.9 </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2013-07-26</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL-2 </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Maurits Kaptein
-</p>
-<p>Maintainer: Maurits Kaptein &lt;maurits@mauritskaptein.com&gt;
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="plyr.html#topic+ddply">ddply</a></code>
-<code><a href="#topic+RStorm">RStorm</a></code>
-<code><a href="#topic+Topology">Topology</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-##############################
-# a simple stream to compute a sum:
-##############################
-
-# create some data:
-x &lt;- seq(1, 1000)
-
-# start a topology
-topology &lt;- Topology(data.frame(x=x))
-
-# define a bolt and add it to the topology
-computeSum &lt;- function(x, ...){
-	sum &lt;- GetHash("sum")
-	if(is.data.frame(sum)){
-		x &lt;- sum + (x[1])
-	}
-	SetHash("sum", x)
-}
-topology &lt;- AddBolt(topology, Bolt(computeSum))
-
-# Run the stream:
-result &lt;- RStorm(topology)
-
-# Inspect the result
-print(GetHash("sum", result))
-
-#plot(topology)
-
-
-##############################
-# Example of a stream to compare two 
-# methods of streaming variance computation:
-##############################
-
-# Generate some data 
-set.seed(10)
-t &lt;- 100
-x &lt;- rnorm(t,0,1)
-# Look at the variance as computed by var():
-var(x)
-
-# Start a topology
-topology &lt;- Topology(data.frame(x=x))
-
-# Bolt for "Sum of Squares Method" with tracking over time
-var.SS &lt;- function(x, ...){
-	params &lt;- GetHash("params1")
-	if(!is.data.frame(params)){
-		params &lt;- list()
-		params$n &lt;- params$sum &lt;- params$sum2 &lt;- 0
-	}
-	n &lt;- params$n + 1
-	sum &lt;- params$sum + as.numeric(x[1])
-	sum2 &lt;- params$sum2 + as.numeric(x[1]^2)
-	if(n&gt;1){
-		var &lt;- 1/(n*(n-1)) * (n*sum2 - sum^2)
-	} else {
-		var &lt;- 0
-	}
-	SetHash("params1", data.frame(n=n, sum=sum, sum2=sum2, var=var))
-	TrackRow("var.SS", data.frame(var=var))
-}
-
-
-## Bolt for "Welford's" Method:
-
-var.Welford &lt;- function(x, ...){
-	x &lt;- as.numeric(x[1])
-	params &lt;- GetHash("params2")
-	if(!is.data.frame(params)){
-		params &lt;- list()
-		params$M &lt;- x
-		params$S &lt;- params$n &lt;- 0
-	}
-	n &lt;- params$n + 1
-	M &lt;- params$M + ( x - params$M) / n
-	S &lt;- params$S + (x - params$M)*(x-M)
-
-	if(n&gt;1){
-		var &lt;- S / (n-1)
-	} else {
-		var &lt;- 0
-	}
-	SetHash("params2", data.frame(n=n, M=M, S=S, var=var))
-	TrackRow("var.Welford", data.frame(var=var))
-}
-
-# Add both topologies to a Stream:
-topology &lt;- AddBolt(topology, Bolt(var.SS))
-topology &lt;- AddBolt(topology, Bolt(var.Welford))
-result &lt;- RStorm(topology)
-
-# Plot the results over the stream
-plot(c(1:t), GetTrack("var.Welford", result)$var, type="l")
-lines(c(1:t), GetTrack("var.SS", result)$var, col="red")
-
-
-### Similar, but with a dataset
-###  in which the mean is very large compared to the variance:
-x2 &lt;- rnorm(t,10^8,1)
-topology2 &lt;- Topology(data.frame(x=x2))
-topology2 &lt;- AddBolt(topology2, Bolt(var.SS))
-topology2 &lt;- AddBolt(topology2, Bolt(var.Welford))
-result2 &lt;- RStorm(topology2)
-
-# This time the standard SS methods screws up (mind the different y scale):
-# (And mind the fact that the SS method gives NEGATIVE variance)
-plot(c(1:t), GetTrack("var.Welford", result2)$var, type="l", ylim=c(-10, 11))
-lines(c(1:t), GetTrack("var.SS", result2)$var, col="red")
-
-
-</code></pre>
-
-<hr>
 <h2 id='RStorm.env'>
 Environment used by RStorm for internal storage of objects.
 </h2><span id='topic+RStorm.env'></span>
@@ -1343,7 +1343,6 @@ Function to store a <code>data.frame</code> during a stream.
 </td></tr>
 <tr><td><code id="SetHash_+3A_...">...</code></td>
 <td>
-
 
 </td></tr>
 </table>

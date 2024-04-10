@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {optimCheck}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#optimCheck'><p>Graphical and numerical checks for mode-finding routines.</p></a></li>
 <li><a href='#diff.optcheck'><p>Elementwise difference between potential and optimal solutions.</p></a></li>
 <li><a href='#optim_proj'><p>Projection plot test.</p></a></li>
 <li><a href='#optim_refit'><p>Refined optimization test.</p></a></li>
-<li><a href='#optimCheck'><p>Graphical and numerical checks for mode-finding routines.</p></a></li>
 <li><a href='#plot.optproj'><p>Projection plots for optimization routines.</p></a></li>
 <li><a href='#print.optcheck'><p>Print method for <code>optcheck</code> and <code>summary.optcheck</code> objects.</p></a></li>
 <li><a href='#summary.optproj'><p><code>summary</code> method for projection plots.</p></a></li>
@@ -109,6 +109,61 @@ function processMathHTML() {
 <td>2019-10-09 08:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='optimCheck'>Graphical and numerical checks for mode-finding routines.</h2><span id='topic+optimCheck'></span><span id='topic+optimCheck-package'></span>
+
+<h3>Description</h3>
+
+<p>Graphical and numerical checks for mode-finding routines.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># example: logistic regression
+ilogit &lt;- binomial()$linkinv
+
+# generate data
+p &lt;- sample(2:10,1) # number of parameters
+n &lt;- sample(1000:2000,1) # number of observations
+X &lt;- matrix(rnorm(n*p),n,p) # design matrix
+beta0 &lt;- rnorm(p, sd = .1) # true parameter values
+y &lt;- rbinom(n, size = 1, prob = ilogit(X %*% beta0)) # response
+
+# fit logistic regression
+bhat &lt;- coef(glm(y ~ X - 1, family = binomial))
+
+# check convergence
+
+# likelihood function
+loglik &lt;- function(beta, y, X) {
+  sum(dbinom(y, size = 1, prob = ilogit(X %*% beta), log = TRUE))
+}
+
+# projection plots
+bnames &lt;- parse(text = paste0("beta[", 1:p, "]"))
+system.time({
+  oproj &lt;- optim_proj(xsol = bhat,
+                      fun = function(beta) loglik(beta, y, X),
+                      xnames = bnames,
+                      xlab = "Coefficient", ylab = "Loglikelihood")
+})
+
+# numerical summary
+oproj # see ?summary.optproj for more information
+
+# elementwise differences between potential and optimal solution
+diff(oproj) # same as summary(oproj)$xdiff
+
+# refit general purpose optimizer starting from bhat
+# often faster than optim_proj, but less stable
+system.time({
+  orefit &lt;- optim_refit(xsol = bhat,
+                        fun = function(beta) loglik(beta, y, X))
+})
+orefit
+</code></pre>
+
 <hr>
 <h2 id='diff.optcheck'>Elementwise difference between potential and optimal solutions.</h2><span id='topic+diff.optcheck'></span><span id='topic+diff.summary.optcheck'></span><span id='topic+diff.optproj'></span><span id='topic+diff.summary.optproj'></span><span id='topic+diff.optrefit'></span><span id='topic+diff.summary.optrefit'></span>
 
@@ -306,61 +361,6 @@ diff(x, ...)
 
 <p><code>summary</code>, <code>print</code>, and <code>diff</code> for <code>optrefit</code> objects are available; see <code><a href="#topic+summary.optrefit">summary.optrefit</a></code>, <code><a href="#topic+print.optrefit">print.optrefit</a></code>, and <code><a href="#topic+diff.optrefit">diff.optrefit</a></code>.
 </p>
-
-<hr>
-<h2 id='optimCheck'>Graphical and numerical checks for mode-finding routines.</h2><span id='topic+optimCheck'></span><span id='topic+optimCheck-package'></span>
-
-<h3>Description</h3>
-
-<p>Graphical and numerical checks for mode-finding routines.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># example: logistic regression
-ilogit &lt;- binomial()$linkinv
-
-# generate data
-p &lt;- sample(2:10,1) # number of parameters
-n &lt;- sample(1000:2000,1) # number of observations
-X &lt;- matrix(rnorm(n*p),n,p) # design matrix
-beta0 &lt;- rnorm(p, sd = .1) # true parameter values
-y &lt;- rbinom(n, size = 1, prob = ilogit(X %*% beta0)) # response
-
-# fit logistic regression
-bhat &lt;- coef(glm(y ~ X - 1, family = binomial))
-
-# check convergence
-
-# likelihood function
-loglik &lt;- function(beta, y, X) {
-  sum(dbinom(y, size = 1, prob = ilogit(X %*% beta), log = TRUE))
-}
-
-# projection plots
-bnames &lt;- parse(text = paste0("beta[", 1:p, "]"))
-system.time({
-  oproj &lt;- optim_proj(xsol = bhat,
-                      fun = function(beta) loglik(beta, y, X),
-                      xnames = bnames,
-                      xlab = "Coefficient", ylab = "Loglikelihood")
-})
-
-# numerical summary
-oproj # see ?summary.optproj for more information
-
-# elementwise differences between potential and optimal solution
-diff(oproj) # same as summary(oproj)$xdiff
-
-# refit general purpose optimizer starting from bhat
-# often faster than optim_proj, but less stable
-system.time({
-  orefit &lt;- optim_refit(xsol = bhat,
-                        fun = function(beta) loglik(beta, y, X))
-})
-orefit
-</code></pre>
 
 <hr>
 <h2 id='plot.optproj'>Projection plots for optimization routines.</h2><span id='topic+plot.optproj'></span>

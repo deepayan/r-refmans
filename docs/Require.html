@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {Require}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#Require-package'><p>Require: Installing and Loading R Packages for Reproducible Workflows</p></a></li>
 <li><a href='#.downloadFileMasterMainAuth'><p>GITHUB_PAT-aware and <code>main</code>-<code>master</code>-aware download from GitHub</p></a></li>
 <li><a href='#archiveVersionsAvailable'><p>Available and archived versions</p></a></li>
 <li><a href='#availablePackagesOverride'><p>Create a custom &quot;available.packages&quot; object</p></a></li>
@@ -46,7 +47,6 @@ If the <code>.libPaths()</code> is changed during the testing,
 then that file will not be found, and install.packages will
 fail to install a package with an error of source file not found.
 See: <a href="https://github.com/HenrikBengtsson/startup/issues/19">https://github.com/HenrikBengtsson/startup/issues/19</a>.</a></li>
-<li><a href='#Require-package'><p>Require: Installing and Loading R Packages for Reproducible Workflows</p></a></li>
 <li><a href='#RequireCacheDir'><p>Path to (package) cache directory</p></a></li>
 <li><a href='#RequireOptions'><p><code>Require</code> options</p></a></li>
 <li><a href='#rversions'><p>R versions</p></a></li>
@@ -165,6 +165,354 @@ See: <a href="https://github.com/HenrikBengtsson/startup/issues/19">https://gith
 <td>2023-05-22 21:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='Require-package'>Require: Installing and Loading R Packages for Reproducible Workflows</h2><span id='topic+Require'></span><span id='topic+Require-package'></span><span id='topic+Install'></span>
+
+<h3>Description</h3>
+
+<p>A single key function, 'Require' that makes rerun-tolerant versions of 'install.packages' and 'require' for CRAN packages, packages no longer on CRAN (i.e., archived), specific versions of packages, and GitHub packages. This approach is developed to create reproducible workflows that are flexible and fast enough to use while in development stages, while able to build snapshots once a stable package collection is found. As with other functions in a reproducible workflow, this package emphasizes functions that return the same result whether it is the first or subsequent times running the function, with subsequent times being sufficiently fast that they can be run every time without undue waiting burden on the user or developer.
+</p>
+<p>This is an &quot;all in one&quot; function that will run <code>install.packages</code> for CRAN
+and GitHub <a href="https://github.com/">https://github.com/</a> packages and will install specific versions
+of each package if versions are specified either via an (in)equality (e.g.,
+<code>"glue (&gt;=1.6.2)"</code> or <code>"glue (==1.6.2)"</code> for an exact version) or with a
+<code>packageVersionFile</code>. If <code>require = TRUE</code>, the default, the function will
+then run <code>require</code> on all named packages that satisfy their version
+requirements. If packages are already installed (<code>packages</code> supplied), and
+their optional version numbers are satisfied, then the &quot;install&quot; component
+will be skipped.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>Require(
+  packages,
+  packageVersionFile,
+  libPaths,
+  install_githubArgs = list(),
+  install.packagesArgs = list(INSTALL_opts = "--no-multiarch"),
+  standAlone = getOption("Require.standAlone", FALSE),
+  install = getOption("Require.install", TRUE),
+  require = getOption("Require.require", TRUE),
+  repos = getOption("repos"),
+  purge = getOption("Require.purge", FALSE),
+  verbose = getOption("Require.verbose", FALSE),
+  type = getOption("pkgType"),
+  upgrade = FALSE,
+  ...
+)
+
+Install(
+  packages,
+  packageVersionFile,
+  libPaths,
+  install_githubArgs = list(),
+  install.packagesArgs = list(INSTALL_opts = "--no-multiarch"),
+  standAlone = getOption("Require.standAlone", FALSE),
+  install = TRUE,
+  repos = getOption("repos"),
+  purge = getOption("Require.purge", FALSE),
+  verbose = getOption("Require.verbose", FALSE),
+  type = getOption("pkgType"),
+  upgrade = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="Require-package_+3A_packages">packages</code></td>
+<td>
+<p>Character vector of packages to install via
+<code>install.packages</code>, then load (i.e., with <code>library</code>). If it is one package,
+it can be unquoted (as in <code>require</code>). In the case of a GitHub package, it
+will be assumed that the name of the repository is the name of the package.
+If this is not the case, then pass a named character vector here, where the
+names are the package names that could be different than the GitHub
+repository name.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_packageversionfile">packageVersionFile</code></td>
+<td>
+<p>Character string of a file name or logical. If
+<code>TRUE</code>, then this function will load the default file,
+<code>getOption("Require.packageVersionFile")</code>. If this argument is provided,
+then this will override all any packages passed to <code>packages</code>.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_libpaths">libPaths</code></td>
+<td>
+<p>The library path (or libraries) where all packages should be
+installed, and looked for to load (i.e., call <code>library</code>). This can be used
+to create isolated, stand alone package installations, if used with
+<code>standAlone = TRUE</code>. Currently, the path supplied here will be prepended to
+<code>.libPaths()</code> (temporarily during this call) to <code>Require</code> if
+<code>standAlone = FALSE</code> or will set (temporarily) <code>.libPaths()</code> to
+<code style="white-space: pre;">&#8288;c(libPaths, tail(libPaths(), 1)&#8288;</code> to keep base packages.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_install_githubargs">install_githubArgs</code></td>
+<td>
+<p>Deprecated. Values passed here are merged with
+<code>install.packagesArgs</code>, with the <code>install.packagesArgs</code> taking precedence
+if conflicting.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_install.packagesargs">install.packagesArgs</code></td>
+<td>
+<p>List of optional named arguments, passed to
+<code>install.packages</code>. Default is only <code>--no-multi-arch</code>, meaning that only
+the current architecture will be built and installed (e.g., 64 bit, not 32 bit,
+in many cases).</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_standalone">standAlone</code></td>
+<td>
+<p>Logical. If <code>TRUE</code>, all packages will be installed to and
+loaded from the <code>libPaths</code> only. NOTE: If <code>TRUE</code>, THIS WILL CHANGE THE
+USER'S <code>.libPaths()</code>, similar to e.g., the <code>checkpoint</code> package. If
+<code>FALSE</code>, then <code>libPath</code> will be prepended to <code>.libPaths()</code> during the
+<code>Require</code> call, resulting in shared packages, i.e., it will include the
+user's default package folder(s). This can be create dramatically faster
+installs if the user has a substantial number of the packages already in
+their personal library. Default <code>FALSE</code> to minimize package installing.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_install">install</code></td>
+<td>
+<p>Logical or &quot;force&quot;. If <code>FALSE</code>, this will not try to install
+anything. If <code>"force"</code>, then it will force installation of requested
+packages, mimicking a call to e.g., <code>install.packages</code>. If <code>TRUE</code>, the
+default, then this function will try to install any missing packages or
+dependencies.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_require">require</code></td>
+<td>
+<p>Logical or character string. If <code>TRUE</code>, the default, then the
+function will attempt to call <code>require</code> on all requested <code>packages</code>,
+possibly after they are installed. If a character string, then it will only
+call <code>require</code> on those specific packages (i.e., it will install the ones
+listed in <code>packages</code>, but load the packages listed in <code>require</code>)</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_repos">repos</code></td>
+<td>
+<p>The remote repository (e.g., a CRAN mirror), passed to either
+<code>install.packages</code>, <code>install_github</code> or <code>installVersions</code>.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_purge">purge</code></td>
+<td>
+<p>Logical. Should all caches be purged? Default is
+<code>getOption("Require.purge", FALSE)</code>. There is a lot of internal caching of
+results throughout the <code>Require</code> package. These help with speed and reduce
+calls to internet sources. However, sometimes these caches must be purged.
+The cached values are renewed when found to be too old, with the age limit.
+This maximum age can be set in seconds with the environment variable
+<code>R_AVAILABLE_PACKAGES_CACHE_CONTROL_MAX_AGE</code>, or if unset, defaults to 3600
+(one hour &ndash; see <code><a href="utils.html#topic+available.packages">utils::available.packages</a></code>).
+</p>
+<p>Internally, there are calls to <code>available.packages</code>.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_verbose">verbose</code></td>
+<td>
+<p>Numeric or logical indicating how verbose should the function
+be. If -1 or -2, then as little verbosity as possible. If 0 or FALSE,
+then minimal outputs; if <code>1</code> or TRUE, more outputs; <code>2</code> even more. NOTE: in
+<code>Require</code> function, when <code>verbose &gt;= 2</code>, the return object will have an
+attribute: <code>attr(.., "Require")</code> which has lots of information about the
+processes of the installs.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_type">type</code></td>
+<td>
+<p>See <code>utils::install.packages</code></p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_upgrade">upgrade</code></td>
+<td>
+<p>When <code>FALSE</code>, the default, will only upgrade a package when the
+version on in the local library is not adequate for the version requirements
+of the <code>packages</code>. Note: for convenience, <code>update</code>
+can be used for this argument.</p>
+</td></tr>
+<tr><td><code id="Require-package_+3A_...">...</code></td>
+<td>
+<p>Passed to <code>install.packages</code>. Good candidates are e.g., <code>type</code> or
+<code>dependencies</code>. This can be used with <code>install_githubArgs</code> or
+<code>install.packageArgs</code> which give individual options for those 2 internal
+function calls.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>Install</code> is the same as <code>Require(..., require = FALSE)</code>, for convenience.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>Require</code> is intended to replace <code>base::require</code>, thus it returns a
+logical, named vector indicating whether the named packages have been loaded.
+Because <code>Require</code> also has the ability to install packages, a return value of
+<code>FALSE</code> does not mean that it did not install correctly; rather, it means it
+did not attach with <code>require</code>, which could be because it did not install
+correctly, or also because e.g., <code>require = FALSE</code>.
+</p>
+<p><code>standAlone</code> will either put the <code>Require</code>d packages and their dependencies
+<em>all</em> within the <code>libPaths</code> (if <code>TRUE</code>) or if <code>FALSE</code> will only install
+packages and their dependencies that are otherwise not installed in
+<code>.libPaths()[1]</code>, i.e., the current active R package directory. Any packages
+or dependencies that are not yet installed will be installed in <code>libPaths</code>.
+</p>
+
+
+<h3>GitHub Package</h3>
+
+<p>Follows <code>remotes::install_github</code> standard. As with
+<code>remotes::install_github</code>, it is not possible to specify a past version of
+a GitHub package unless that version is a tag or the user passes the SHA
+that had that package version. Similarly, if a developer does a local
+install e.g., via <code>pkgload::install</code>, of an active project, this package
+will not be able know of the GitHub state, and thus <code>pkgSnapshot</code> will not
+be able to recover this state as there is no SHA associated with a local
+installation. Use <code>Require</code> (or <code>remotes::install_github</code>) to create a
+record of the GitHub state.
+</p>
+
+
+<h3>Package Snapshots</h3>
+
+<p>To build a snapshot of the desired packages and
+their versions, first run <code>Require</code> with all packages, then <code>pkgSnapshot</code>.
+If a <code>libPaths</code> is used, it must be used in both functions.
+</p>
+
+
+<h3>Mutual Dependencies</h3>
+
+<p>This function works best if all required
+packages are called within one <code>Require</code> call, as all dependencies can be
+identified together, and all package versions will be addressed (if there
+are no conflicts), allowing a call to <code>pkgSnapshot()</code> to take a snapshot or
+&quot;record&quot; of the current collection of packages and versions.
+</p>
+
+
+<h3>Local Cache of Packages</h3>
+
+<p>When installing new packages, <code>Require</code>
+will put all source and binary files in an R-version specific subfolder of
+<code>getOption("Require.RPackageCache")</code> whose default is <code>RPackageCache()</code>,
+meaning <em>cache packages locally in a project-independent location</em>, and
+will reuse them if needed. To turn off this feature, set
+<code>options("Require.RPackageCache" = FALSE)</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>For advanced use and diagnosis, the user can set <code>verbose = TRUE</code> or
+<code>1</code> or <code>2</code> (or via <code>options("Require.verbose")</code>). This will attach an
+attribute <code>attr(obj, "Require")</code> to the output of this function.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Eliot J B McIntire <a href="mailto:eliot.mcintire@canada.ca">eliot.mcintire@canada.ca</a> (<a href="https://orcid.org/0000-0002-6914-8316">ORCID</a>)
+</p>
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> Alex M Chubaty <a href="mailto:achubaty@for-cast.ca">achubaty@for-cast.ca</a> (<a href="https://orcid.org/0000-0001-7146-8135">ORCID</a>) [contributor]
+</p>
+</li>
+<li><p> Her Majesty the Queen in Right of Canada, as represented by the Minister of Natural Resources Canada [copyright holder]
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://Require.predictiveecology.org">https://Require.predictiveecology.org</a>
+</p>
+</li>
+<li> <p><a href="https://github.com/PredictiveEcology/Require">https://github.com/PredictiveEcology/Require</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/PredictiveEcology/Require/issues">https://github.com/PredictiveEcology/Require/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# simple usage, like conditional install.packages then library
+opts &lt;- Require:::.setupExample()
+
+library(Require)
+getCRANrepos(ind = 1)
+Require("stats") # analogous to require(stats), but it checks for
+#   pkg dependencies, and installs them, if missing
+
+if (Require:::.runLongExamples()) {
+  # Install in a new local library (libPaths)
+  tempPkgFolder &lt;- file.path(tempdir(), "Packages")
+  # use standAlone, means it will put it in libPaths, even if it already exists
+  #   in another local library (e.g., personal library)
+  Install("crayon", libPaths = tempPkgFolder, standAlone = TRUE)
+
+  # make a package version snapshot of installed packages
+  tf &lt;- tempfile()
+  (pkgSnapshot(tf, standAlone = TRUE))
+
+  # Change the libPaths to emulate a new computer or project
+  tempPkgFolder &lt;- file.path(tempdir(), "Packages2")
+  # Reinstall and reload the exact version from previous
+  Require(packageVersionFile = tf, libPaths = tempPkgFolder, standAlone = TRUE)
+
+  # Mutual dependencies, only installs once -- e.g., curl
+  tempPkgFolder &lt;- file.path(tempdir(), "Packages")
+  Install(c("remotes", "testit"), libPaths = tempPkgFolder, standAlone = TRUE)
+
+  # Mutual dependencies, only installs once -- e.g., curl
+  tempPkgFolder &lt;- file.path(tempdir(), "Packages")
+  Install(c("covr", "httr"), libPaths = tempPkgFolder, standAlone = TRUE)
+
+  #####################################################################################
+  # Isolated projects -- Use a project folder and pass to libPaths or set .libPaths() #
+  #####################################################################################
+  # GitHub packages
+  ProjectPackageFolder &lt;- file.path(tempdir(), "ProjectA")
+  Require("PredictiveEcology/fpCompare@development",
+    libPaths = ProjectPackageFolder, standAlone = FALSE
+  )
+
+  Install("PredictiveEcology/fpCompare@development",
+    libPaths = ProjectPackageFolder,
+    standAlone = TRUE
+  ) # the latest version on GitHub
+
+  ############################################################################
+  # Mixing and matching GitHub, CRAN, with and without version numbering
+  ############################################################################
+  pkgs &lt;- c(
+    "remotes (&lt;=2.4.1)", # old version
+    "digest (&gt;= 0.6.28)", # recent version
+    "PredictiveEcology/fpCompare@a0260b8476b06628bba0ae73af3430cce9620ca0" # exact version
+  )
+  Require::Require(pkgs, libPaths = ProjectPackageFolder)
+  Require:::.cleanup(opts)
+}
+
+## End(Not run)
+
+</code></pre>
+
 <hr>
 <h2 id='.downloadFileMasterMainAuth'>GITHUB_PAT-aware and <code>main</code>-<code>master</code>-aware download from GitHub</h2><span id='topic+.downloadFileMasterMainAuth'></span>
 
@@ -1771,354 +2119,6 @@ See: <a href="https://github.com/HenrikBengtsson/startup/issues/19">https://gith
 <h3>Usage</h3>
 
 <pre><code class='language-R'>R_TESTSomit()
-</code></pre>
-
-<hr>
-<h2 id='Require-package'>Require: Installing and Loading R Packages for Reproducible Workflows</h2><span id='topic+Require'></span><span id='topic+Require-package'></span><span id='topic+Install'></span>
-
-<h3>Description</h3>
-
-<p>A single key function, 'Require' that makes rerun-tolerant versions of 'install.packages' and 'require' for CRAN packages, packages no longer on CRAN (i.e., archived), specific versions of packages, and GitHub packages. This approach is developed to create reproducible workflows that are flexible and fast enough to use while in development stages, while able to build snapshots once a stable package collection is found. As with other functions in a reproducible workflow, this package emphasizes functions that return the same result whether it is the first or subsequent times running the function, with subsequent times being sufficiently fast that they can be run every time without undue waiting burden on the user or developer.
-</p>
-<p>This is an &quot;all in one&quot; function that will run <code>install.packages</code> for CRAN
-and GitHub <a href="https://github.com/">https://github.com/</a> packages and will install specific versions
-of each package if versions are specified either via an (in)equality (e.g.,
-<code>"glue (&gt;=1.6.2)"</code> or <code>"glue (==1.6.2)"</code> for an exact version) or with a
-<code>packageVersionFile</code>. If <code>require = TRUE</code>, the default, the function will
-then run <code>require</code> on all named packages that satisfy their version
-requirements. If packages are already installed (<code>packages</code> supplied), and
-their optional version numbers are satisfied, then the &quot;install&quot; component
-will be skipped.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>Require(
-  packages,
-  packageVersionFile,
-  libPaths,
-  install_githubArgs = list(),
-  install.packagesArgs = list(INSTALL_opts = "--no-multiarch"),
-  standAlone = getOption("Require.standAlone", FALSE),
-  install = getOption("Require.install", TRUE),
-  require = getOption("Require.require", TRUE),
-  repos = getOption("repos"),
-  purge = getOption("Require.purge", FALSE),
-  verbose = getOption("Require.verbose", FALSE),
-  type = getOption("pkgType"),
-  upgrade = FALSE,
-  ...
-)
-
-Install(
-  packages,
-  packageVersionFile,
-  libPaths,
-  install_githubArgs = list(),
-  install.packagesArgs = list(INSTALL_opts = "--no-multiarch"),
-  standAlone = getOption("Require.standAlone", FALSE),
-  install = TRUE,
-  repos = getOption("repos"),
-  purge = getOption("Require.purge", FALSE),
-  verbose = getOption("Require.verbose", FALSE),
-  type = getOption("pkgType"),
-  upgrade = FALSE,
-  ...
-)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="Require-package_+3A_packages">packages</code></td>
-<td>
-<p>Character vector of packages to install via
-<code>install.packages</code>, then load (i.e., with <code>library</code>). If it is one package,
-it can be unquoted (as in <code>require</code>). In the case of a GitHub package, it
-will be assumed that the name of the repository is the name of the package.
-If this is not the case, then pass a named character vector here, where the
-names are the package names that could be different than the GitHub
-repository name.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_packageversionfile">packageVersionFile</code></td>
-<td>
-<p>Character string of a file name or logical. If
-<code>TRUE</code>, then this function will load the default file,
-<code>getOption("Require.packageVersionFile")</code>. If this argument is provided,
-then this will override all any packages passed to <code>packages</code>.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_libpaths">libPaths</code></td>
-<td>
-<p>The library path (or libraries) where all packages should be
-installed, and looked for to load (i.e., call <code>library</code>). This can be used
-to create isolated, stand alone package installations, if used with
-<code>standAlone = TRUE</code>. Currently, the path supplied here will be prepended to
-<code>.libPaths()</code> (temporarily during this call) to <code>Require</code> if
-<code>standAlone = FALSE</code> or will set (temporarily) <code>.libPaths()</code> to
-<code style="white-space: pre;">&#8288;c(libPaths, tail(libPaths(), 1)&#8288;</code> to keep base packages.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_install_githubargs">install_githubArgs</code></td>
-<td>
-<p>Deprecated. Values passed here are merged with
-<code>install.packagesArgs</code>, with the <code>install.packagesArgs</code> taking precedence
-if conflicting.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_install.packagesargs">install.packagesArgs</code></td>
-<td>
-<p>List of optional named arguments, passed to
-<code>install.packages</code>. Default is only <code>--no-multi-arch</code>, meaning that only
-the current architecture will be built and installed (e.g., 64 bit, not 32 bit,
-in many cases).</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_standalone">standAlone</code></td>
-<td>
-<p>Logical. If <code>TRUE</code>, all packages will be installed to and
-loaded from the <code>libPaths</code> only. NOTE: If <code>TRUE</code>, THIS WILL CHANGE THE
-USER'S <code>.libPaths()</code>, similar to e.g., the <code>checkpoint</code> package. If
-<code>FALSE</code>, then <code>libPath</code> will be prepended to <code>.libPaths()</code> during the
-<code>Require</code> call, resulting in shared packages, i.e., it will include the
-user's default package folder(s). This can be create dramatically faster
-installs if the user has a substantial number of the packages already in
-their personal library. Default <code>FALSE</code> to minimize package installing.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_install">install</code></td>
-<td>
-<p>Logical or &quot;force&quot;. If <code>FALSE</code>, this will not try to install
-anything. If <code>"force"</code>, then it will force installation of requested
-packages, mimicking a call to e.g., <code>install.packages</code>. If <code>TRUE</code>, the
-default, then this function will try to install any missing packages or
-dependencies.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_require">require</code></td>
-<td>
-<p>Logical or character string. If <code>TRUE</code>, the default, then the
-function will attempt to call <code>require</code> on all requested <code>packages</code>,
-possibly after they are installed. If a character string, then it will only
-call <code>require</code> on those specific packages (i.e., it will install the ones
-listed in <code>packages</code>, but load the packages listed in <code>require</code>)</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_repos">repos</code></td>
-<td>
-<p>The remote repository (e.g., a CRAN mirror), passed to either
-<code>install.packages</code>, <code>install_github</code> or <code>installVersions</code>.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_purge">purge</code></td>
-<td>
-<p>Logical. Should all caches be purged? Default is
-<code>getOption("Require.purge", FALSE)</code>. There is a lot of internal caching of
-results throughout the <code>Require</code> package. These help with speed and reduce
-calls to internet sources. However, sometimes these caches must be purged.
-The cached values are renewed when found to be too old, with the age limit.
-This maximum age can be set in seconds with the environment variable
-<code>R_AVAILABLE_PACKAGES_CACHE_CONTROL_MAX_AGE</code>, or if unset, defaults to 3600
-(one hour &ndash; see <code><a href="utils.html#topic+available.packages">utils::available.packages</a></code>).
-</p>
-<p>Internally, there are calls to <code>available.packages</code>.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_verbose">verbose</code></td>
-<td>
-<p>Numeric or logical indicating how verbose should the function
-be. If -1 or -2, then as little verbosity as possible. If 0 or FALSE,
-then minimal outputs; if <code>1</code> or TRUE, more outputs; <code>2</code> even more. NOTE: in
-<code>Require</code> function, when <code>verbose &gt;= 2</code>, the return object will have an
-attribute: <code>attr(.., "Require")</code> which has lots of information about the
-processes of the installs.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_type">type</code></td>
-<td>
-<p>See <code>utils::install.packages</code></p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_upgrade">upgrade</code></td>
-<td>
-<p>When <code>FALSE</code>, the default, will only upgrade a package when the
-version on in the local library is not adequate for the version requirements
-of the <code>packages</code>. Note: for convenience, <code>update</code>
-can be used for this argument.</p>
-</td></tr>
-<tr><td><code id="Require-package_+3A_...">...</code></td>
-<td>
-<p>Passed to <code>install.packages</code>. Good candidates are e.g., <code>type</code> or
-<code>dependencies</code>. This can be used with <code>install_githubArgs</code> or
-<code>install.packageArgs</code> which give individual options for those 2 internal
-function calls.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p><code>Install</code> is the same as <code>Require(..., require = FALSE)</code>, for convenience.
-</p>
-
-
-<h3>Value</h3>
-
-<p><code>Require</code> is intended to replace <code>base::require</code>, thus it returns a
-logical, named vector indicating whether the named packages have been loaded.
-Because <code>Require</code> also has the ability to install packages, a return value of
-<code>FALSE</code> does not mean that it did not install correctly; rather, it means it
-did not attach with <code>require</code>, which could be because it did not install
-correctly, or also because e.g., <code>require = FALSE</code>.
-</p>
-<p><code>standAlone</code> will either put the <code>Require</code>d packages and their dependencies
-<em>all</em> within the <code>libPaths</code> (if <code>TRUE</code>) or if <code>FALSE</code> will only install
-packages and their dependencies that are otherwise not installed in
-<code>.libPaths()[1]</code>, i.e., the current active R package directory. Any packages
-or dependencies that are not yet installed will be installed in <code>libPaths</code>.
-</p>
-
-
-<h3>GitHub Package</h3>
-
-<p>Follows <code>remotes::install_github</code> standard. As with
-<code>remotes::install_github</code>, it is not possible to specify a past version of
-a GitHub package unless that version is a tag or the user passes the SHA
-that had that package version. Similarly, if a developer does a local
-install e.g., via <code>pkgload::install</code>, of an active project, this package
-will not be able know of the GitHub state, and thus <code>pkgSnapshot</code> will not
-be able to recover this state as there is no SHA associated with a local
-installation. Use <code>Require</code> (or <code>remotes::install_github</code>) to create a
-record of the GitHub state.
-</p>
-
-
-<h3>Package Snapshots</h3>
-
-<p>To build a snapshot of the desired packages and
-their versions, first run <code>Require</code> with all packages, then <code>pkgSnapshot</code>.
-If a <code>libPaths</code> is used, it must be used in both functions.
-</p>
-
-
-<h3>Mutual Dependencies</h3>
-
-<p>This function works best if all required
-packages are called within one <code>Require</code> call, as all dependencies can be
-identified together, and all package versions will be addressed (if there
-are no conflicts), allowing a call to <code>pkgSnapshot()</code> to take a snapshot or
-&quot;record&quot; of the current collection of packages and versions.
-</p>
-
-
-<h3>Local Cache of Packages</h3>
-
-<p>When installing new packages, <code>Require</code>
-will put all source and binary files in an R-version specific subfolder of
-<code>getOption("Require.RPackageCache")</code> whose default is <code>RPackageCache()</code>,
-meaning <em>cache packages locally in a project-independent location</em>, and
-will reuse them if needed. To turn off this feature, set
-<code>options("Require.RPackageCache" = FALSE)</code>.
-</p>
-
-
-<h3>Note</h3>
-
-<p>For advanced use and diagnosis, the user can set <code>verbose = TRUE</code> or
-<code>1</code> or <code>2</code> (or via <code>options("Require.verbose")</code>). This will attach an
-attribute <code>attr(obj, "Require")</code> to the output of this function.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Eliot J B McIntire <a href="mailto:eliot.mcintire@canada.ca">eliot.mcintire@canada.ca</a> (<a href="https://orcid.org/0000-0002-6914-8316">ORCID</a>)
-</p>
-<p>Other contributors:
-</p>
-
-<ul>
-<li><p> Alex M Chubaty <a href="mailto:achubaty@for-cast.ca">achubaty@for-cast.ca</a> (<a href="https://orcid.org/0000-0001-7146-8135">ORCID</a>) [contributor]
-</p>
-</li>
-<li><p> Her Majesty the Queen in Right of Canada, as represented by the Minister of Natural Resources Canada [copyright holder]
-</p>
-</li></ul>
-
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://Require.predictiveecology.org">https://Require.predictiveecology.org</a>
-</p>
-</li>
-<li> <p><a href="https://github.com/PredictiveEcology/Require">https://github.com/PredictiveEcology/Require</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/PredictiveEcology/Require/issues">https://github.com/PredictiveEcology/Require/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-# simple usage, like conditional install.packages then library
-opts &lt;- Require:::.setupExample()
-
-library(Require)
-getCRANrepos(ind = 1)
-Require("stats") # analogous to require(stats), but it checks for
-#   pkg dependencies, and installs them, if missing
-
-if (Require:::.runLongExamples()) {
-  # Install in a new local library (libPaths)
-  tempPkgFolder &lt;- file.path(tempdir(), "Packages")
-  # use standAlone, means it will put it in libPaths, even if it already exists
-  #   in another local library (e.g., personal library)
-  Install("crayon", libPaths = tempPkgFolder, standAlone = TRUE)
-
-  # make a package version snapshot of installed packages
-  tf &lt;- tempfile()
-  (pkgSnapshot(tf, standAlone = TRUE))
-
-  # Change the libPaths to emulate a new computer or project
-  tempPkgFolder &lt;- file.path(tempdir(), "Packages2")
-  # Reinstall and reload the exact version from previous
-  Require(packageVersionFile = tf, libPaths = tempPkgFolder, standAlone = TRUE)
-
-  # Mutual dependencies, only installs once -- e.g., curl
-  tempPkgFolder &lt;- file.path(tempdir(), "Packages")
-  Install(c("remotes", "testit"), libPaths = tempPkgFolder, standAlone = TRUE)
-
-  # Mutual dependencies, only installs once -- e.g., curl
-  tempPkgFolder &lt;- file.path(tempdir(), "Packages")
-  Install(c("covr", "httr"), libPaths = tempPkgFolder, standAlone = TRUE)
-
-  #####################################################################################
-  # Isolated projects -- Use a project folder and pass to libPaths or set .libPaths() #
-  #####################################################################################
-  # GitHub packages
-  ProjectPackageFolder &lt;- file.path(tempdir(), "ProjectA")
-  Require("PredictiveEcology/fpCompare@development",
-    libPaths = ProjectPackageFolder, standAlone = FALSE
-  )
-
-  Install("PredictiveEcology/fpCompare@development",
-    libPaths = ProjectPackageFolder,
-    standAlone = TRUE
-  ) # the latest version on GitHub
-
-  ############################################################################
-  # Mixing and matching GitHub, CRAN, with and without version numbering
-  ############################################################################
-  pkgs &lt;- c(
-    "remotes (&lt;=2.4.1)", # old version
-    "digest (&gt;= 0.6.28)", # recent version
-    "PredictiveEcology/fpCompare@a0260b8476b06628bba0ae73af3430cce9620ca0" # exact version
-  )
-  Require::Require(pkgs, libPaths = ProjectPackageFolder)
-  Require:::.cleanup(opts)
-}
-
-## End(Not run)
-
 </code></pre>
 
 <hr>

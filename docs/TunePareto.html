@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {TunePareto}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#TunePareto-package'>
+<p>Multi-objective parameter tuning for classifiers</p></a></li>
 <li><a href='#allCombinations'>
 <p>Build a list of all possible combinations of parameter values</p></a></li>
 <li><a href='#as.interval'>
@@ -52,8 +54,6 @@ function processMathHTML() {
 <p>Train a TunePareto classifier</p></a></li>
 <li><a href='#tunePareto'>
 <p>Generic function for multi-objective parameter tuning of classifiers</p></a></li>
-<li><a href='#TunePareto-package'>
-<p>Multi-objective parameter tuning for classifiers</p></a></li>
 <li><a href='#tuneParetoClassifier'>
 <p>Create a classifier object</p></a></li>
 </ul>
@@ -119,6 +119,88 @@ function processMathHTML() {
 <td>2023-10-02 14:40:05 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='TunePareto-package'>
+Multi-objective parameter tuning for classifiers
+</h2><span id='topic+TunePareto-package'></span><span id='topic+TunePareto'></span>
+
+<h3>Description</h3>
+
+<p>Generic methods for parameter tuning of classification algorithms using multiple scoring functions
+</p>
+
+
+<h3>Details</h3>
+
+<p>The methods of this package allow to assess the performance of classifiers with respect to certain parameter values and multiple scoring functions, such as the cross-validation error or the sensitivity. It provides the <code><a href="#topic+tunePareto">tunePareto</a></code> function which can be configured to run most common classification methods implemented in R. Several sampling strategies for parameters are supplied, including Latin Hypercube sampling, quasi-random sequences, and evolutionary algorithms.
+</p>
+<p>Classifiers are wrapped in generic <code>TuneParetoClassifier</code> objects which can be created using <code><a href="#topic+tuneParetoClassifier">tuneParetoClassifier</a></code>. For state-of-the-art classifiers, the package includes the corresponding wrapper objects (see <code><a href="#topic+tunePareto.knn">tunePareto.knn</a></code>, <code><a href="#topic+tunePareto.tree">tunePareto.tree</a></code>, <code><a href="#topic+tunePareto.randomForest">tunePareto.randomForest</a></code>, <code><a href="#topic+tunePareto.svm">tunePareto.svm</a></code>, <code><a href="#topic+tunePareto.NaiveBayes">tunePareto.NaiveBayes</a></code>). 
+</p>
+<p>The method tests combinations of the supplied classifier parameters according to the supplied scoring functions and calculates the Pareto front of optimal parameter configurations. The Pareto fronts can be visualized using <code><a href="#topic+plotDominationGraph">plotDominationGraph</a></code>, <code><a href="#topic+plotParetoFronts2D">plotParetoFronts2D</a></code> and <code><a href="#topic+plotObjectivePairs">plotObjectivePairs</a></code>.
+</p>
+<p>A number of predefined scoring functions are provided (see <code><a href="#topic+predefinedObjectiveFunctions">predefinedObjectiveFunctions</a></code>), but the user is free to implement own scores (see <code><a href="#topic+createObjective">createObjective</a></code>).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Christoph Müssel, Ludwig Lausser, Hans Kestler
+</p>
+<p>Maintainer: Hans Kestler &lt;hans.kestler@uni-ulm.de&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Christoph Müssel, Ludwig Lausser, Markus Maucher, Hans A. Kestler (2012). Multi-Objective Parameter Selection for Classifiers. Journal of Statistical Software, 46(5), 1-27. DOI https://doi.org/10.18637/jss.v046.i05.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# optimize the 'cost' and 'kernel' parameters of an SVM according
+# to CV error and CV Specificity on the 'iris' data set
+# using several predefined values for the cost
+r &lt;- tunePareto(data = iris[, -ncol(iris)], 
+                labels = iris[, ncol(iris)],
+                classifier=tunePareto.svm(),
+                cost=c(0.001,0.01,0.1,1,10), 
+                kernel=c("linear", "polynomial", 
+                         "radial", "sigmoid"),
+                objectiveFunctions=list(cvError(10, 10), 
+                                        cvSpecificity(10, 10, caseClass="setosa")))
+
+# print Pareto-optimal solutions
+print(r)
+
+# use a continuous interval for the 'cost' parameter 
+# and optimize it using evolutionary algorithms and
+# parallel execution with snowfall
+library(snowfall)
+sfInit(parallel=TRUE, cpus=2, type="SOCK")
+r &lt;- tunePareto(data = iris[, -ncol(iris)], 
+                 labels = iris[, ncol(iris)],
+                 classifier = tunePareto.svm(), 
+                 cost = as.interval(0.001,10), 
+                 kernel = c("linear", "polynomial",
+                            "radial", "sigmoid"),
+                 sampleType="evolution",
+                 numCombinations=20,
+                 numIterations=20,                      
+                 objectiveFunctions = list(cvError(10, 10),
+                                           cvSensitivity(10, 10, caseClass="setosa"),
+                                           cvSpecificity(10, 10, caseClass="setosa")),
+                useSnowfall=TRUE)
+sfStop()
+
+# print Pareto-optimal solutions
+print(r)
+
+# plot the Pareto fronts
+plotDominationGraph(r, legend.x="topright")
+</code></pre>
+
 <hr>
 <h2 id='allCombinations'>
 Build a list of all possible combinations of parameter values
@@ -2061,88 +2143,6 @@ print(tunePareto(data = iris[, -ncol(iris)],
                                            cvSensitivity(10, 10, caseClass="setosa"),
                                            cvSpecificity(10, 10, caseClass="setosa"))))
 
-</code></pre>
-
-<hr>
-<h2 id='TunePareto-package'>
-Multi-objective parameter tuning for classifiers
-</h2><span id='topic+TunePareto-package'></span><span id='topic+TunePareto'></span>
-
-<h3>Description</h3>
-
-<p>Generic methods for parameter tuning of classification algorithms using multiple scoring functions
-</p>
-
-
-<h3>Details</h3>
-
-<p>The methods of this package allow to assess the performance of classifiers with respect to certain parameter values and multiple scoring functions, such as the cross-validation error or the sensitivity. It provides the <code><a href="#topic+tunePareto">tunePareto</a></code> function which can be configured to run most common classification methods implemented in R. Several sampling strategies for parameters are supplied, including Latin Hypercube sampling, quasi-random sequences, and evolutionary algorithms.
-</p>
-<p>Classifiers are wrapped in generic <code>TuneParetoClassifier</code> objects which can be created using <code><a href="#topic+tuneParetoClassifier">tuneParetoClassifier</a></code>. For state-of-the-art classifiers, the package includes the corresponding wrapper objects (see <code><a href="#topic+tunePareto.knn">tunePareto.knn</a></code>, <code><a href="#topic+tunePareto.tree">tunePareto.tree</a></code>, <code><a href="#topic+tunePareto.randomForest">tunePareto.randomForest</a></code>, <code><a href="#topic+tunePareto.svm">tunePareto.svm</a></code>, <code><a href="#topic+tunePareto.NaiveBayes">tunePareto.NaiveBayes</a></code>). 
-</p>
-<p>The method tests combinations of the supplied classifier parameters according to the supplied scoring functions and calculates the Pareto front of optimal parameter configurations. The Pareto fronts can be visualized using <code><a href="#topic+plotDominationGraph">plotDominationGraph</a></code>, <code><a href="#topic+plotParetoFronts2D">plotParetoFronts2D</a></code> and <code><a href="#topic+plotObjectivePairs">plotObjectivePairs</a></code>.
-</p>
-<p>A number of predefined scoring functions are provided (see <code><a href="#topic+predefinedObjectiveFunctions">predefinedObjectiveFunctions</a></code>), but the user is free to implement own scores (see <code><a href="#topic+createObjective">createObjective</a></code>).
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Christoph Müssel, Ludwig Lausser, Hans Kestler
-</p>
-<p>Maintainer: Hans Kestler &lt;hans.kestler@uni-ulm.de&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Christoph Müssel, Ludwig Lausser, Markus Maucher, Hans A. Kestler (2012). Multi-Objective Parameter Selection for Classifiers. Journal of Statistical Software, 46(5), 1-27. DOI https://doi.org/10.18637/jss.v046.i05.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# optimize the 'cost' and 'kernel' parameters of an SVM according
-# to CV error and CV Specificity on the 'iris' data set
-# using several predefined values for the cost
-r &lt;- tunePareto(data = iris[, -ncol(iris)], 
-                labels = iris[, ncol(iris)],
-                classifier=tunePareto.svm(),
-                cost=c(0.001,0.01,0.1,1,10), 
-                kernel=c("linear", "polynomial", 
-                         "radial", "sigmoid"),
-                objectiveFunctions=list(cvError(10, 10), 
-                                        cvSpecificity(10, 10, caseClass="setosa")))
-
-# print Pareto-optimal solutions
-print(r)
-
-# use a continuous interval for the 'cost' parameter 
-# and optimize it using evolutionary algorithms and
-# parallel execution with snowfall
-library(snowfall)
-sfInit(parallel=TRUE, cpus=2, type="SOCK")
-r &lt;- tunePareto(data = iris[, -ncol(iris)], 
-                 labels = iris[, ncol(iris)],
-                 classifier = tunePareto.svm(), 
-                 cost = as.interval(0.001,10), 
-                 kernel = c("linear", "polynomial",
-                            "radial", "sigmoid"),
-                 sampleType="evolution",
-                 numCombinations=20,
-                 numIterations=20,                      
-                 objectiveFunctions = list(cvError(10, 10),
-                                           cvSensitivity(10, 10, caseClass="setosa"),
-                                           cvSpecificity(10, 10, caseClass="setosa")),
-                useSnowfall=TRUE)
-sfStop()
-
-# print Pareto-optimal solutions
-print(r)
-
-# plot the Pareto fronts
-plotDominationGraph(r, legend.x="topright")
 </code></pre>
 
 <hr>

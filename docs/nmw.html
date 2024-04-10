@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {nmw}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#nmw-package'><p>Understanding Nonlinear Mixed Effects Modeling for Population Pharmacokinetics</p></a></li>
 <li><a href='#AddCox'><p>Add a Covariate Column to an Existing NONMEM dataset</p></a></li>
 <li><a href='#CombDmExPc'><p>Combine the demographics(DM), dosing(EX), and DV(PC) tables into a new NONMEM dataset</p></a></li>
 <li><a href='#CovStep'><p>Covariance Step</p></a></li>
@@ -25,7 +26,6 @@ function processMathHTML() {
 <li><a href='#EstStep'><p>Estimation Step</p></a></li>
 <li><a href='#InitStep'><p>Initialization Step</p></a></li>
 <li><a href='#MinUtil'><p>Internal Min Util Functions</p></a></li>
-<li><a href='#nmw-package'><p>Understanding Nonlinear Mixed Effects Modeling for Population Pharmacokinetics</p></a></li>
 <li><a href='#Objs'><p>Internal Obj Functions</p></a></li>
 <li><a href='#TabStep'><p>Table Step</p></a></li>
 <li><a href='#TrimOut'><p>Trimming and beutifying NONMEM original OUTPUT file</p></a></li>
@@ -93,6 +93,113 @@ Pharmacokinetics</td>
 <td>2023-05-10 03:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='nmw-package'>Understanding Nonlinear Mixed Effects Modeling for Population Pharmacokinetics</h2><span id='topic+nmw-package'></span><span id='topic+nmw'></span>
+
+<h3>Description</h3>
+
+<p>This shows how NONMEM(R) &lt;http://www.iconplc.com/innovation/nonmem/&gt; software works.</p>
+
+
+<h3>Details</h3>
+
+<p>This package explains 'First Order(FO) approximation' method, 'First Order Conditional Estimation(FOCE)' method, and 'Laplacian(LAPL)' method of NONMEM software.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kyun-Seop Bae &lt;k@acr.kr&gt;</p>
+
+
+<h3>References</h3>
+
+  
+<ol>
+<li><p> NONMEM Users guide
+</p>
+</li>
+<li><p> Wang Y. Derivation of various NONMEM estimation methods. J Pharmacokinet Pharmacodyn. 2007.
+</p>
+</li>
+<li><p> Kang D, Bae K, Houk BE, Savic RM, Karlsson MO. Standard Error of Empirical Bayes Estimate in NONMEM(R) VI. K J Physiol Pharmacol. 2012.
+</p>
+</li>
+<li><p> Kim M, Yim D, Bae K. R-based reproduction of the estimation process hidden behind NONMEM Part 1: First order approximation method. 2015.
+</p>
+</li>
+<li><p> Bae K, Yim D. R-based reproduction of the estimation process hidden behind NONMEM Part 2: First order conditional estimation. 2016.
+</p>
+</li></ol>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>DataAll = Theoph
+colnames(DataAll) = c("ID", "BWT", "DOSE", "TIME", "DV")
+DataAll[,"ID"] = as.numeric(as.character(DataAll[,"ID"]))
+
+nTheta = 3
+nEta = 3
+nEps = 2
+
+THETAinit = c(2, 50, 0.1)
+OMinit = matrix(c(0.2, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.2), nrow=nEta, ncol=nEta)
+SGinit = diag(c(0.1, 0.1))
+
+LB = rep(0, nTheta) # Lower bound
+UB = rep(1000000, nTheta) # Upper bound
+
+FGD = deriv(~DOSE/(TH2*exp(ETA2))*TH1*exp(ETA1)/(TH1*exp(ETA1) - TH3*exp(ETA3))*
+             (exp(-TH3*exp(ETA3)*TIME)-exp(-TH1*exp(ETA1)*TIME)),
+            c("ETA1","ETA2","ETA3"),
+            function.arg=c("TH1", "TH2", "TH3", "ETA1", "ETA2", "ETA3", "DOSE", "TIME"),
+            func=TRUE, hessian=TRUE)
+H = deriv(~F + F*EPS1 + EPS2, c("EPS1", "EPS2"), function.arg=c("F", "EPS1", "EPS2"), func=TRUE)
+
+PRED = function(THETA, ETA, DATAi)
+{
+  FGDres = FGD(THETA[1], THETA[2], THETA[3], ETA[1], ETA[2], ETA[3], DOSE=320, DATAi[,"TIME"]) 
+  Gres = attr(FGDres, "gradient")
+  Hres = attr(H(FGDres, 0, 0), "gradient")
+  
+  if (e$METHOD == "LAPL") {
+    Dres = attr(FGDres, "hessian")
+    Res = cbind(FGDres, Gres, Hres, Dres[,1,1], Dres[,2,1], Dres[,2,2], Dres[,3,])
+    colnames(Res) = c("F", "G1", "G2", "G3", "H1", "H2", "D11", "D21", "D22", "D31", "D32", "D33") 
+  } else {
+    Res = cbind(FGDres, Gres, Hres)
+    colnames(Res) = c("F", "G1", "G2", "G3", "H1", "H2") 
+  }
+  return(Res)
+}
+
+####### First Order Approximation Method # Commented out for the CRAN CPU time
+#InitStep(DataAll, THETAinit=THETAinit, OMinit=OMinit, SGinit=SGinit, LB=LB, UB=UB, 
+#         Pred=PRED, METHOD="ZERO")
+#(EstRes = EstStep())           # 4 sec
+#(CovRes = CovStep())           # 2 sec
+#PostHocEta() # Using e$FinalPara from EstStep()
+#TabStep()    
+
+######## First Order Conditional Estimation with Interaction Method
+#InitStep(DataAll, THETAinit=THETAinit, OMinit=OMinit, SGinit=SGinit, LB=LB, UB=UB, 
+#         Pred=PRED, METHOD="COND")
+#(EstRes = EstStep())           # 2 min
+#(CovRes = CovStep())           # 1 min
+#get("EBE", envir=e)
+#TabStep()
+
+######## Laplacian Approximation with Interacton Method
+#InitStep(DataAll, THETAinit=THETAinit, OMinit=OMinit, SGinit=SGinit, LB=LB, UB=UB, 
+#         Pred=PRED, METHOD="LAPL")
+#(EstRes = EstStep())           # 4 min
+#(CovRes = CovStep())           # 1 min
+#get("EBE", envir=e)
+#TabStep()
+</code></pre>
+
 <hr>
 <h2 id='AddCox'>Add a Covariate Column to an Existing NONMEM dataset</h2><span id='topic+AddCox'></span>
 
@@ -499,113 +606,6 @@ InitStep(DataAll, THETAinit=THETAinit, OMinit=OMinit, SGinit=SGinit, LB=LB, UB=U
 <h3>Details</h3>
 
 <p>These are not to be called by the user.</p>
-
-<hr>
-<h2 id='nmw-package'>Understanding Nonlinear Mixed Effects Modeling for Population Pharmacokinetics</h2><span id='topic+nmw-package'></span><span id='topic+nmw'></span>
-
-<h3>Description</h3>
-
-<p>This shows how NONMEM(R) &lt;http://www.iconplc.com/innovation/nonmem/&gt; software works.</p>
-
-
-<h3>Details</h3>
-
-<p>This package explains 'First Order(FO) approximation' method, 'First Order Conditional Estimation(FOCE)' method, and 'Laplacian(LAPL)' method of NONMEM software.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Kyun-Seop Bae &lt;k@acr.kr&gt;</p>
-
-
-<h3>References</h3>
-
-  
-<ol>
-<li><p> NONMEM Users guide
-</p>
-</li>
-<li><p> Wang Y. Derivation of various NONMEM estimation methods. J Pharmacokinet Pharmacodyn. 2007.
-</p>
-</li>
-<li><p> Kang D, Bae K, Houk BE, Savic RM, Karlsson MO. Standard Error of Empirical Bayes Estimate in NONMEM(R) VI. K J Physiol Pharmacol. 2012.
-</p>
-</li>
-<li><p> Kim M, Yim D, Bae K. R-based reproduction of the estimation process hidden behind NONMEM Part 1: First order approximation method. 2015.
-</p>
-</li>
-<li><p> Bae K, Yim D. R-based reproduction of the estimation process hidden behind NONMEM Part 2: First order conditional estimation. 2016.
-</p>
-</li></ol>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>DataAll = Theoph
-colnames(DataAll) = c("ID", "BWT", "DOSE", "TIME", "DV")
-DataAll[,"ID"] = as.numeric(as.character(DataAll[,"ID"]))
-
-nTheta = 3
-nEta = 3
-nEps = 2
-
-THETAinit = c(2, 50, 0.1)
-OMinit = matrix(c(0.2, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.2), nrow=nEta, ncol=nEta)
-SGinit = diag(c(0.1, 0.1))
-
-LB = rep(0, nTheta) # Lower bound
-UB = rep(1000000, nTheta) # Upper bound
-
-FGD = deriv(~DOSE/(TH2*exp(ETA2))*TH1*exp(ETA1)/(TH1*exp(ETA1) - TH3*exp(ETA3))*
-             (exp(-TH3*exp(ETA3)*TIME)-exp(-TH1*exp(ETA1)*TIME)),
-            c("ETA1","ETA2","ETA3"),
-            function.arg=c("TH1", "TH2", "TH3", "ETA1", "ETA2", "ETA3", "DOSE", "TIME"),
-            func=TRUE, hessian=TRUE)
-H = deriv(~F + F*EPS1 + EPS2, c("EPS1", "EPS2"), function.arg=c("F", "EPS1", "EPS2"), func=TRUE)
-
-PRED = function(THETA, ETA, DATAi)
-{
-  FGDres = FGD(THETA[1], THETA[2], THETA[3], ETA[1], ETA[2], ETA[3], DOSE=320, DATAi[,"TIME"]) 
-  Gres = attr(FGDres, "gradient")
-  Hres = attr(H(FGDres, 0, 0), "gradient")
-  
-  if (e$METHOD == "LAPL") {
-    Dres = attr(FGDres, "hessian")
-    Res = cbind(FGDres, Gres, Hres, Dres[,1,1], Dres[,2,1], Dres[,2,2], Dres[,3,])
-    colnames(Res) = c("F", "G1", "G2", "G3", "H1", "H2", "D11", "D21", "D22", "D31", "D32", "D33") 
-  } else {
-    Res = cbind(FGDres, Gres, Hres)
-    colnames(Res) = c("F", "G1", "G2", "G3", "H1", "H2") 
-  }
-  return(Res)
-}
-
-####### First Order Approximation Method # Commented out for the CRAN CPU time
-#InitStep(DataAll, THETAinit=THETAinit, OMinit=OMinit, SGinit=SGinit, LB=LB, UB=UB, 
-#         Pred=PRED, METHOD="ZERO")
-#(EstRes = EstStep())           # 4 sec
-#(CovRes = CovStep())           # 2 sec
-#PostHocEta() # Using e$FinalPara from EstStep()
-#TabStep()    
-
-######## First Order Conditional Estimation with Interaction Method
-#InitStep(DataAll, THETAinit=THETAinit, OMinit=OMinit, SGinit=SGinit, LB=LB, UB=UB, 
-#         Pred=PRED, METHOD="COND")
-#(EstRes = EstStep())           # 2 min
-#(CovRes = CovStep())           # 1 min
-#get("EBE", envir=e)
-#TabStep()
-
-######## Laplacian Approximation with Interacton Method
-#InitStep(DataAll, THETAinit=THETAinit, OMinit=OMinit, SGinit=SGinit, LB=LB, UB=UB, 
-#         Pred=PRED, METHOD="LAPL")
-#(EstRes = EstStep())           # 4 min
-#(CovRes = CovStep())           # 1 min
-#get("EBE", envir=e)
-#TabStep()
-</code></pre>
 
 <hr>
 <h2 id='Objs'>Internal Obj Functions</h2><span id='topic+ObjEta'></span><span id='topic+Oi'></span><span id='topic+Oi0'></span><span id='topic+Oi1'></span><span id='topic+Obj'></span><span id='topic+OiS0'></span><span id='topic+OiS1'></span><span id='topic+CalcSmat'></span><span id='topic+PostHocEta'></span>

@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {patchDVI}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#patchDVI'><p>patch Sweave source references into .dvi file</p></a></li>
 <li><a href='#defSconcordance'>
 <p>Support for non-Sweave concordances.</p></a></li>
 <li><a href='#DVIspecials'><p> Get and set DVI specials</p></a></li>
@@ -26,7 +27,6 @@ function processMathHTML() {
 <li><a href='#knitPDF'><p>Knit a File and Patch</p></a></li>
 <li><a href='#needsPackages'>
 <p>Check for and optionally install packages used by document.</p></a></li>
-<li><a href='#patchDVI'><p>patch Sweave source references into .dvi file</p></a></li>
 <li><a href='#patchLog'>
 <p>Patch a LaTeX log file.</p></a></li>
 <li><a href='#pdf_documentC'>
@@ -124,6 +124,162 @@ dvipdfmx.</td>
 <td>2023-03-14 16:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='patchDVI'>patch Sweave source references into .dvi file</h2><span id='topic+patchDVI'></span><span id='topic+patchSynctex'></span><span id='topic+patchDVI-package'></span>
+
+<h3>Description</h3>
+
+<p>This package allows
+source references in .dvi files to refer to the actual source file,
+rather than the intermediate .tex file.  Dvi previewers such as yap
+and xdvi can make use of these source references to jump directly
+to the part of a document corresponding to a particular source line, and
+the previewer can send messages to editors to jump to the source
+corresponding to a location in the preview.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>patchDVI(f, newname = f, patchLog = TRUE)
+patchSynctex(f, newname=f, uncompress="pdftk %s output %s uncompress",
+	     fromDVI = NULL, patchLog = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="patchDVI_+3A_f">f</code></td>
+<td>
+<p> A character value giving the name of the .dvi or .synctex file to patch </p>
+</td></tr>
+<tr><td><code id="patchDVI_+3A_newname">newname</code></td>
+<td>
+<p> Output will go to this file; by default to overwrite the original </p>
+</td></tr>
+<tr><td><code id="patchDVI_+3A_patchlog">patchLog</code></td>
+<td>
+<p> Whether to attempt to patch the &lsquo;<span class="file">.log</span>&rsquo; file </p>
+</td></tr>
+<tr><td><code id="patchDVI_+3A_uncompress">uncompress</code></td>
+<td>
+<p> External command to uncompress a compressed PDF file </p>
+</td></tr>
+<tr><td><code id="patchDVI_+3A_fromdvi">fromDVI</code></td>
+<td>
+<p> Name of DVI file in which to find concordance </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function works with <code>Sweave</code> with option <code>concordance=TRUE</code>
+and some related functions.
+</p>
+<p>Using <code>patchDVI</code> requires a change to the usual Sweave workflow, as follows:
+</p>
+<p>1.  Write the source file in .Rnw.  Include the </p>
+<pre>\SweaveOpts{concordance=TRUE}</pre><p> option to
+enable the patching.
+</p>
+<p>2.  Use Sweave to convert the file to .tex format.
+</p>
+<p>3.  Use latex to process the .tex file into a .dvi file or .pdf file.
+</p>
+<p>4.  Run <code>patchDVI</code> on the .dvi file or the .synctex file to patch in the Rnw links.
+</p>
+<p>5.  Use the previewer on the patched .dvi file or the original .pdf file.
+</p>
+<p>All the information needed for the patching is stored in the .dvi file, so these 5 steps
+can be run from the command line, there's no need to keep an R session running (though they'll
+all work from within one session as well).  At some distant date in the future maybe
+the previewers will learn how to read the concordance info, and step 4 will no longer be
+necessary.
+</p>
+<p>The <code>patchLog</code> option makes use of the new <code><a href="#topic+patchLog">patchLog</a></code> function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A string containing a message about what was done.
+</p>
+
+
+<h3>Note</h3>
+
+<p>In a .dvi file, the concordance is stored in a TeX &quot;special&quot; in the following format (as of version 0.5):
+<code>concordance:&lt;oldname&gt;:&lt;newname&gt;:&lt;firstline&gt; &lt;rle pairs&gt;*</code>.  Here <code>&lt;oldname&gt;</code>
+is the name of the .tex file to replace, <code>&lt;newname&gt;</code> is the name of the .Rnw file
+to substitute for it, and <code>&lt;firstline&gt;</code> is the line number from the .Rnw file of the
+first line in the .tex file.
+</p>
+<p>The <code>&lt;rle pairs&gt;</code> are a sequence of pairs
+(length, value), separated by spaces (no parentheses), with the length indicating
+the number of repetitions of the value.  Using <code><a href="base.html#topic+inverse.rle">inverse.rle</a></code> these are converted
+to a sequence of differences in the line numbers of the concordance.
+</p>
+<p>Since colons are used to delimit the elements, they must not be used
+in <code>&lt;oldname&gt;</code> or <code>&lt;newname&gt;</code>:  names like
+&lsquo;<span class="file">C:/source.Rnw</span>&rsquo; will not work.
+</p>
+<p>For example, a concordance might contain
+</p>
+<pre>\Sconcordance{\concordance:optimization.tex:optimization.Rnw:1 2 1 2 4 39 1 1 4 ...}</pre>
+<p>saying that source references to optimization.tex should be replaced with
+optimization.Rnw.  Line 1 of the .tex file corresponds to line 1 of the .Rnw file.
+The diffs for successive lines are <code>1 1 4 4 1 &lt;repeated 39 times&gt; 4 ...</code>, so
+the corresponding lines in the .Rnw file (including the first) are <code>1 2 3 7 11 12 13 ...</code>.
+</p>
+<p>The same format is used in a stream object in a .pdf file. (Version 2.12.2 and
+earlier of R used a different format which was actually invalid according to
+the PDF specification.)  This is not always
+successfully read by the patching code, because some versions of <code>pdflatex</code>
+compress parts of the file, and <code>patchDVI</code> currently can't read compressed parts
+of files.  We suggest installing the <code>pdftk</code> open source PDF toolkit
+(available from <a href="https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/">https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/</a>) to decompress
+the file; <code>patchSynctex</code> will make use of it
+if found.  The <code>uncompress</code> argument can be modified to call a different
+uncompress utility.  The Latex commands
+<code style="white-space: pre;">&#8288;\pdfcompresslevel=0\pdfobjcompresslevel=0&#8288;</code> at the start
+of your document instruct <code>pdflatex</code> not to compress the file, but
+some Latex packages (e.g. beamer) will override these settings.
+</p>
+<p>If your workflow involves using <code>latex</code> and <code>dvipdfm</code>, then you will
+need a recent enough version of <code>latex</code> that supports the <code>-synctex=1</code>
+option, and then you can specify the name of the &lsquo;<span class="file">.dvi</span>&rsquo; file
+in the <code>fromDVI</code> argument.
+</p>
+<p>This format is subject to change in future R releases.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> Duncan Murdoch </p>
+
+
+<h3>References</h3>
+
+<p> The yap previewer is part of MikTeX, from www.miktex.org. </p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+DVIspecials">DVIspecials</a></code> for the function to read .dvi files,
+<code><a href="#topic+SweaveMiktex">SweaveMiktex</a></code> for a simple script to run Sweave, MikTeX and patchDVI.</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+patchDVI("mypaper.dvi")
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='defSconcordance'>
 Support for non-Sweave concordances.
@@ -506,162 +662,6 @@ to each entry.
 <pre><code class='language-R'># This shouldn't do anything, as patchDVI must already be
 # installed!
 needsPackages("patchDVI")
-</code></pre>
-
-<hr>
-<h2 id='patchDVI'>patch Sweave source references into .dvi file</h2><span id='topic+patchDVI'></span><span id='topic+patchSynctex'></span><span id='topic+patchDVI-package'></span>
-
-<h3>Description</h3>
-
-<p>This package allows
-source references in .dvi files to refer to the actual source file,
-rather than the intermediate .tex file.  Dvi previewers such as yap
-and xdvi can make use of these source references to jump directly
-to the part of a document corresponding to a particular source line, and
-the previewer can send messages to editors to jump to the source
-corresponding to a location in the preview.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>patchDVI(f, newname = f, patchLog = TRUE)
-patchSynctex(f, newname=f, uncompress="pdftk %s output %s uncompress",
-	     fromDVI = NULL, patchLog = TRUE)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="patchDVI_+3A_f">f</code></td>
-<td>
-<p> A character value giving the name of the .dvi or .synctex file to patch </p>
-</td></tr>
-<tr><td><code id="patchDVI_+3A_newname">newname</code></td>
-<td>
-<p> Output will go to this file; by default to overwrite the original </p>
-</td></tr>
-<tr><td><code id="patchDVI_+3A_patchlog">patchLog</code></td>
-<td>
-<p> Whether to attempt to patch the &lsquo;<span class="file">.log</span>&rsquo; file </p>
-</td></tr>
-<tr><td><code id="patchDVI_+3A_uncompress">uncompress</code></td>
-<td>
-<p> External command to uncompress a compressed PDF file </p>
-</td></tr>
-<tr><td><code id="patchDVI_+3A_fromdvi">fromDVI</code></td>
-<td>
-<p> Name of DVI file in which to find concordance </p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>This function works with <code>Sweave</code> with option <code>concordance=TRUE</code>
-and some related functions.
-</p>
-<p>Using <code>patchDVI</code> requires a change to the usual Sweave workflow, as follows:
-</p>
-<p>1.  Write the source file in .Rnw.  Include the </p>
-<pre>\SweaveOpts{concordance=TRUE}</pre><p> option to
-enable the patching.
-</p>
-<p>2.  Use Sweave to convert the file to .tex format.
-</p>
-<p>3.  Use latex to process the .tex file into a .dvi file or .pdf file.
-</p>
-<p>4.  Run <code>patchDVI</code> on the .dvi file or the .synctex file to patch in the Rnw links.
-</p>
-<p>5.  Use the previewer on the patched .dvi file or the original .pdf file.
-</p>
-<p>All the information needed for the patching is stored in the .dvi file, so these 5 steps
-can be run from the command line, there's no need to keep an R session running (though they'll
-all work from within one session as well).  At some distant date in the future maybe
-the previewers will learn how to read the concordance info, and step 4 will no longer be
-necessary.
-</p>
-<p>The <code>patchLog</code> option makes use of the new <code><a href="#topic+patchLog">patchLog</a></code> function.
-</p>
-
-
-<h3>Value</h3>
-
-<p>A string containing a message about what was done.
-</p>
-
-
-<h3>Note</h3>
-
-<p>In a .dvi file, the concordance is stored in a TeX &quot;special&quot; in the following format (as of version 0.5):
-<code>concordance:&lt;oldname&gt;:&lt;newname&gt;:&lt;firstline&gt; &lt;rle pairs&gt;*</code>.  Here <code>&lt;oldname&gt;</code>
-is the name of the .tex file to replace, <code>&lt;newname&gt;</code> is the name of the .Rnw file
-to substitute for it, and <code>&lt;firstline&gt;</code> is the line number from the .Rnw file of the
-first line in the .tex file.
-</p>
-<p>The <code>&lt;rle pairs&gt;</code> are a sequence of pairs
-(length, value), separated by spaces (no parentheses), with the length indicating
-the number of repetitions of the value.  Using <code><a href="base.html#topic+inverse.rle">inverse.rle</a></code> these are converted
-to a sequence of differences in the line numbers of the concordance.
-</p>
-<p>Since colons are used to delimit the elements, they must not be used
-in <code>&lt;oldname&gt;</code> or <code>&lt;newname&gt;</code>:  names like
-&lsquo;<span class="file">C:/source.Rnw</span>&rsquo; will not work.
-</p>
-<p>For example, a concordance might contain
-</p>
-<pre>\Sconcordance{\concordance:optimization.tex:optimization.Rnw:1 2 1 2 4 39 1 1 4 ...}</pre>
-<p>saying that source references to optimization.tex should be replaced with
-optimization.Rnw.  Line 1 of the .tex file corresponds to line 1 of the .Rnw file.
-The diffs for successive lines are <code>1 1 4 4 1 &lt;repeated 39 times&gt; 4 ...</code>, so
-the corresponding lines in the .Rnw file (including the first) are <code>1 2 3 7 11 12 13 ...</code>.
-</p>
-<p>The same format is used in a stream object in a .pdf file. (Version 2.12.2 and
-earlier of R used a different format which was actually invalid according to
-the PDF specification.)  This is not always
-successfully read by the patching code, because some versions of <code>pdflatex</code>
-compress parts of the file, and <code>patchDVI</code> currently can't read compressed parts
-of files.  We suggest installing the <code>pdftk</code> open source PDF toolkit
-(available from <a href="https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/">https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/</a>) to decompress
-the file; <code>patchSynctex</code> will make use of it
-if found.  The <code>uncompress</code> argument can be modified to call a different
-uncompress utility.  The Latex commands
-<code style="white-space: pre;">&#8288;\pdfcompresslevel=0\pdfobjcompresslevel=0&#8288;</code> at the start
-of your document instruct <code>pdflatex</code> not to compress the file, but
-some Latex packages (e.g. beamer) will override these settings.
-</p>
-<p>If your workflow involves using <code>latex</code> and <code>dvipdfm</code>, then you will
-need a recent enough version of <code>latex</code> that supports the <code>-synctex=1</code>
-option, and then you can specify the name of the &lsquo;<span class="file">.dvi</span>&rsquo; file
-in the <code>fromDVI</code> argument.
-</p>
-<p>This format is subject to change in future R releases.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p> Duncan Murdoch </p>
-
-
-<h3>References</h3>
-
-<p> The yap previewer is part of MikTeX, from www.miktex.org. </p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+DVIspecials">DVIspecials</a></code> for the function to read .dvi files,
-<code><a href="#topic+SweaveMiktex">SweaveMiktex</a></code> for a simple script to run Sweave, MikTeX and patchDVI.</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-patchDVI("mypaper.dvi")
-
-## End(Not run)
 </code></pre>
 
 <hr>

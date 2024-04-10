@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {scuba}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#scuba-package'><p>The Scuba Package</p></a></li>
 <li><a href='#air'><p>Air</p></a></li>
 <li><a href='#ascent'><p>Ascent Rate or Time</p></a></li>
 <li><a href='#baron'>
@@ -56,7 +57,6 @@ function processMathHTML() {
 <li><a href='#print.dive'><p>Print a Dive Profile</p></a></li>
 <li><a href='#saturated.state'><p>Saturated Tissue State</p></a></li>
 <li><a href='#scuba-internal'><p>Internal scuba functions</p></a></li>
-<li><a href='#scuba-package'><p>The Scuba Package</p></a></li>
 <li><a href='#scuba.constants'><p>Constants for Use in Scuba Package</p></a></li>
 <li><a href='#scuba.disclaimer'>
 <p>Disclaimer for Scuba Library</p></a></li>
@@ -142,6 +142,452 @@ function processMathHTML() {
 <td>2022-10-18 10:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='scuba-package'>The Scuba Package</h2><span id='topic+scuba-package'></span><span id='topic+scuba'></span>
+
+<h3>Description</h3>
+
+<p>This is a summary of the features of 
+<code>scuba</code>, a package in <code>R</code>
+that performs theoretical calculations
+about scuba diving &mdash; dive profiles,
+decompression models, gas toxicity and so on.
+</p>
+
+
+<h3>Details</h3>
+
+<p><code>scuba</code> is a package for performing
+calculations in the theory of scuba diving.
+The package supports
+</p>
+
+<ul>
+<li><p> creation, manipulation and plotting of dive profiles
+</p>
+</li>
+<li><p> gas diffusion models 
+</p>
+</li>
+<li><p> decompression calculations
+</p>
+</li>
+<li><p> gas toxicity calculations.
+</p>
+</li></ul>
+
+<p>The <code>scuba</code> package is intended only
+for use in research and education about the mathematical
+and statistical basis of decompression theory. It is emphatically
+not designed for actual use in scuba diving and related activities.
+See the detailed disclaimer in <code><a href="#topic+scuba.disclaimer">scuba.disclaimer</a></code>.
+</p>
+<p>Following is a summary of the main features of the package.
+For a more detailed explanation, with illustrations, see
+the vignette <em>Introduction to the Scuba package</em> which
+accompanies the package. 
+</p>
+
+
+<h3>Dive profiles</h3>
+
+<p>A <em>dive profile</em> gives the diver's depth as a function of elapsed
+time during a scuba dive. The command <code><a href="#topic+dive">dive</a></code> creates an
+object representing a dive profile.
+</p>
+<p>A dive profile is piecewise linear: it is a series of <em>stages</em>
+that join successive <em>waypoints</em>. Each waypoint is specified
+by the depth and elapsed time when it is reached. The stage between
+two waypoints is either a sojourn at a fixed depth, or an ascent or
+descent at a constant rate.
+</p>
+<p>The function <code><a href="#topic+dive">dive</a></code> interprets its arguments
+as a sequence of actions or events occurring during the dive.
+If an argument is a vector of length 2, it is interpreted
+as <code>c(depth,time)</code> specifying the depth and duration
+of a stage of the dive. If the argument is a single number,
+it is interpreted as a depth, meaning that the diver ascends or
+descends to this depth.
+</p>
+<p>For example, the command
+<code>d &lt;- dive(c(18, 45))</code> specifies a dive to 18 metres
+for 45 minutes. The command <code>d &lt;- dive(c(18, 45), c(5,3))</code>
+specifies a dive to 18 metres for 45 minutes followed by a safety stop
+at 5 metres for 3 minutes. Multilevel dives with any number of stages
+are specified in the same way. A dive object may include
+periods spent at the surface (depth zero) and may therefore represent
+a succession of dives separated by surface intervals. For example,
+<code>d &lt;- dive(c(30,15),c(9,1),c(5,5),c(0,60),c(12,60),c(5,5))</code>
+represents two dives (with safety stops)
+separated by a one-hour surface interval.
+</p>
+<p>The resulting object <code>d</code> is an object of class <code>"dive"</code>.
+It can be plotted as a conventional dive profile graph by executing
+the command <code>plot(d)</code>. It can be printed as a table of depths and times
+by typing its name <code>d</code>, or by executing
+<code>print(d,seconds=FALSE)</code> to print times to the nearest minute.
+A summary of the dive (with such information as the average depth,
+maximum depth and the main stages of the dive) can be printed
+by typing <code>summary(d)</code>.
+</p>
+<p>By default, the function <code><a href="#topic+dive">dive</a></code> fills in some details
+about the dive. It assumes that the diver breathes compressed air;
+the dive starts and ends at the surface
+(depth zero); the diver descends 
+at the default descent rate of 30 metres per minute; and the diver
+ascends at the default ascent rate of 18 metres per minute.
+These defaults can be changed by giving extra arguments to the
+function <code><a href="#topic+dive">dive</a></code>.
+</p>
+<p>Dive profiles can also be modified after they are created: see below.
+</p>
+
+
+<h3>Real Dive Profiles</h3>
+
+<p>Dive profiles may also be uploaded from your dive computer
+and studied in the <span class="pkg">scuba</span> package. First convert the
+uploaded profile data to a <code>data.frame</code> with two columns,
+the first column containing the elapsed time and the second column
+containing the depth (in metres) recorded at each time. The elapsed
+times can be either a vector of character strings
+in minutes-and-seconds format
+<code>mm:ss</code> or hours-minutes seconds <code>hh:mm:ss</code>,
+or a vector of integer times measured in <em>seconds</em>
+of elapsed time, or an object of class <code><a href="base.html#topic+difftime">difftime</a></code>
+containing the elapsed times in any time unit. Then pass this data
+frame as an argument to the function <code><a href="#topic+dive">dive</a></code>.
+</p>
+<p>An example of such a data frame, uploaded from a dive computer,
+is provided in the <code><a href="#topic+baron">baron</a></code> dataset supplied with the
+package. See the help file for
+<code><a href="#topic+baron">baron</a></code> for an example of how to convert a data frame
+to a <code>"dive"</code> object.
+</p>
+<p>The package also provides 12 real dive profiles that have already been
+converted to <code>"dive"</code> objects.
+See the help files for <code><a href="#topic+pedro">pedro</a></code> and <code><a href="#topic+deepmine">deepmine</a></code>.
+</p>
+
+
+<h3>Decompression Calculations</h3>
+
+<p>The <span class="pkg">scuba</span> package performs the mathematical calculations of
+decompression theory:
+</p>
+
+<ul>
+<li><p> the theoretical No Decompression Limit (maximum duration of a
+no-decompression dive to a specified depth) can be computed by
+<code><a href="#topic+ndl">ndl</a>(depth)</code>
+</p>
+</li>
+<li><p> the quantity of nitrogen dissolved in the diver's body
+after a dive <code>d</code> can be computed by <code><a href="#topic+haldane">haldane</a>(d)</code>
+</p>
+</li>
+<li><p> the quantity of nitrogen dissolved in the diver's body
+at each instant <b>during</b> a dive <code>d</code> can be computed by
+<code><a href="#topic+haldane">haldane</a>(d, progressive=TRUE)</code>
+or plotted interactively by <code><a href="#topic+showstates">showstates</a>(d)</code>.
+</p>
+</li></ul>
+
+<p>These calculations are based on the classical theory of
+decompression originated by Haldane (Boycott et al, 1908).
+The diver's body is idealised
+as a set of independent compartments, each connected directly to the
+breathing gas, and governed by classical (exponential) diffusion.
+</p>
+<p>The model parameters (the number of compartments, their diffusion
+rates, and the maximum tolerated nitrogen tension in each compartment)
+may be chosen by the user.
+By default, the model parameters are taken from the DSAT model
+which is the basis of the PADI Recreational Dive Planner.
+Alternatively, the user can choose from a variety of standard compartment
+models using the command <code><a href="#topic+pickmodel">pickmodel</a></code>, or
+construct a new model using <code><a href="#topic+hm">hm</a></code>.
+</p>
+<p>No-decompression limits (the maximum duration of a no-decompression
+dive to a given depth) can be calculated using the function
+<code><a href="#topic+ndl">ndl</a></code>. For example <code>ndl(30)</code> gives the 
+theoretical NDL for a dive to 30 metres,
+predicted by the DSAT model. To use the classical US Navy model instead,
+type <code>ndl(30, model="USN")</code> or <code>ndl(30, model=pickmodel("USN"))</code>.
+</p>
+<p>The &lsquo;best&rsquo;
+double no-decompression dive to given depths <code>d1</code> and <code>d2</code>
+can be calculated by <code><a href="#topic+bestdoubledive">bestdoubledive</a></code> according to
+the algorithm of Baddeley and Bassom (2012).
+</p>
+<p>The nitrogen tension (the quantity of dissolved nitrogen,
+in atmospheres absolute) in the diver's body after 
+a dive, can be calculated using the function
+<code><a href="#topic+haldane">haldane</a></code>. If <code>d</code> is a dive object
+then <code>haldane(d)</code> returns a data frame containing the
+nitrogen tissue tensions (ata) at the end of the dive,
+in each of the 8 tissue compartments
+of the DSAT model. 
+To use the US Navy model instead,
+type <code>haldane(d, "USN")</code> or <code>haldane(d, pickmodel("USN"))</code>.
+</p>
+<p>To compute the nitrogen tissue tensions at each waypoint during the
+dive, use <code><a href="#topic+haldane">haldane</a>(d, progressive=TRUE)</code>.
+</p>
+<p>To visualise the nitrogen tissue tensions during the dive,
+use the interactive function <code><a href="#topic+showstates">showstates</a></code>.
+This plots the dive and waits for you to click on
+a position in the graph. The tissue tensions at that
+instant are displayed as a bar plot.
+</p>
+<p>The total oxygen toxicity incurred during a dive can be computed
+by <code><a href="#topic+oxtox">oxtox</a></code>.
+</p>
+<p>Oxygen partial pressure at each stage of a dive is computed
+by <code><a href="#topic+ppO2">ppO2</a></code>.
+</p>
+<p>Bubble theory calculations are not yet implemented.
+</p>
+
+
+<h3>Nitrox and trimix</h3>
+
+<p>A <b>breathing gas</b> is represented by an object of class <code>"gas"</code>.
+The object <code>air</code> is a representation of compressed air
+(21% oxygen, 79% nitrogen) as an object of this class.
+(Don't reassign another value to this object!!!)
+</p>
+<p>Nitrox mixtures (mixtures of oxygen and nitrogen) can be
+represented using the function <code><a href="#topic+nitrox">nitrox</a></code>.
+For example, EAN 32 is represented by <code>nitrox(0.32)</code>.
+</p>
+<p>Trimix (a mixture of oxygen, nitrogen and helium) can also be
+represented, using the command <code><a href="#topic+trimix">trimix</a></code>.
+For example, Trimix 15/50
+(containing 15% oxygen, 50% helium and 35% nitrogen)
+is represented by <code>trimix(0.15, 0.5)</code>.
+</p>
+<p>There are methods for <code>print</code> and <code>summary</code>
+for gas objects.
+</p>
+<p>Decompression calculations (<code><a href="#topic+haldane">haldane</a></code>,
+<code><a href="#topic+ndl">ndl</a></code>, <code><a href="#topic+showstates">showstates</a></code>)
+also work with nitrox and trimix.
+</p>
+<p>Decompression calculations with trimix require a Haldane model
+that includes parameters for Helium diffusion.
+Use <code>pickmodel("Z")</code> to select the Buehlmann ZH-L16A model,
+or <code><a href="#topic+hm">hm</a></code> to create a new model that includes
+Helium diffusion.
+</p>
+<p>Standard nitrox calculations are also available, for example
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+    <code><a href="#topic+ead">ead</a></code> </td><td style="text-align: left;">
+    equivalent air depth</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+    <code><a href="#topic+mod">mod</a></code> </td><td style="text-align: left;">
+    maximum operating depth</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+    <code><a href="#topic+maxmix">maxmix</a></code> </td><td style="text-align: left;">
+    richest nitrox mix for a given depth
+  </td>
+</tr>
+
+</table>
+
+<p>The total oxygen toxicity incurred during a nitrox or trimix dive
+can be computed by <code><a href="#topic+oxtox">oxtox</a></code>.
+Oxygen partial pressure at each stage of a dive is computed
+by <code><a href="#topic+ppO2">ppO2</a></code>.
+</p>
+
+
+<h3>Diving on different gases</h3>
+
+<p>Every <code>"dive"</code> object contains information
+about the breathing gas or gases used in the dive.
+This information is determined when the <code>"dive"</code> object is
+created (by the function <code><a href="#topic+dive">dive</a></code>). The default
+breathing gas is air.
+</p>
+<p>The function <code><a href="#topic+dive">dive</a></code> interprets its arguments
+as a sequence of actions or events occurring during the dive.
+If an argument is a vector of length 2, it is interpreted
+as <code>c(depth,time)</code> specifying the depth and duration
+of a stage of the dive. If the argument is a single number,
+it is interpreted as a depth, meaning that the diver ascends or
+descends to this depth.
+</p>
+<p>Each argument to <code><a href="#topic+dive">dive</a></code> may also be a &quot;gas&quot; object,
+like <code>nitrox(0.32)</code>, 
+which means that the diver switches to this gas.
+</p>
+<p>So, for example,
+<code>dive(nitrox(0.32), c(30,20))</code>
+means a dive to 30 metres for 20 minutes conducted on EAN 32
+(Nitrox 0.32) from start to finish.
+The command
+<code>dive(c(30,20), 5, nitrox(0.36), c(5,3))</code> means
+a dive on air to 30 metres for 20 minutes, ascending to 5 metres
+while breathing air, then switching to EAN 36 for a safety stop
+at 5 metres for 3 minutes.
+</p>
+<p>Alternatively you can use the argument <code>tanklist</code> to
+specify a list of tanks of breathing gas (with optional names
+like <code>"travel"</code> and <code>"deco"</code>) and change between tanks at different
+stages of the dive using an argument of the form <code>tank=number</code>
+or <code>tank=name</code>. The tank list of a dive object can be extracted
+using <code><a href="#topic+tanklist">tanklist</a></code> and modified using
+<code><a href="#topic+tanklist">tanklist</a>&lt;-</code>.
+</p>
+
+
+<h3>Manipulating dive profiles</h3>
+
+<p>Dive profiles can also be manipulated after they are created.
+This allows you, for example, to modify the deepest portion
+of a dive (diving to a deeper depth or for a longer duration),
+to abort a dive prematurely, to cut-and-paste several dives together,
+or to consider the tissue saturation incurred by a particular
+segment of a dive.
+</p>
+<p>The commands <code><a href="#topic+depths.dive">depths.dive</a></code> and <code><a href="#topic+times.dive">times.dive</a></code>
+extract the depths and elapsed times at each waypoint during the dive.
+The depths can be modified using <code><a href="#topic+depths.dive+3C-">depths.dive&lt;-</a></code>. For
+example <code>d &lt;- dive(c(30,20))</code> creates a dive to 30 metres for 20
+minutes, starting and finishing at the surface;
+to change the depth to 35 metres, type <code>depths.dive(d)[2:3] &lt;- 35</code>.
+Similarly the elapsed times can be modified using
+<code><a href="#topic+times.dive+3C-">times.dive&lt;-</a></code>. It may be more convenient to use the
+functions <code><a href="#topic+durations.dive">durations.dive</a></code> and
+<code><a href="#topic+durations.dive+3C-">durations.dive&lt;-</a></code> which give the duration of each stage
+(the time between two successive waypoints). 
+For example <code>durations.dive(d)[2] &lt;- 25</code> would mean that the
+diver now spends 25 minutes at the bottom instead of 20 minutes.
+</p>
+<p>To extract only part of a dive profile, use <code><a href="#topic+chop.dive">chop.dive</a></code>.
+</p>
+<p>To paste together two dive profiles or fragments of dive profiles,
+simply give them as arguments to <code><a href="#topic+dive">dive</a></code>.
+</p>
+
+
+<h3>Changing the breathing gases</h3>
+
+<p>A dive object has a <em>tank list</em> which is a list of the
+tanks of breathing gas that were used (or were available to be used)
+during the dive. The function <code><a href="#topic+tanklist">tanklist</a></code> returns
+this list, and the function <code><a href="#topic+tanklist">tanklist</a>&lt;-</code> changes the list.
+</p>
+<p>For example,
+<code>d &lt;- dive(c(30,20), c(5,5))</code> is a dive conducted using air.
+To modify it to a dive that used nitrox EANx 32, simply type
+<code>tanklist(d) &lt;- list(nitrox(0.32))</code>.
+Again <code>d &lt;- dive(air, c(30,40), 6, nitrox(0.5), c(6,3), c(3,3))</code> is a
+dive conducted using air (tank 1) for the deep section and EANx 50
+(tank 2) for the decompression stops at 6 metres and 3 metres.
+To change the contents of tank 1 to EANx 32, type
+<code>tanklist(d) &lt;- list(nitrox(0.32), nitrox(0.5))</code> or
+just <code>tanklist(d)[[1]] &lt;- nitrox(0.32)</code>. 
+To associate a name which
+each tank, give names to the entries in the tank list, for example
+<code>tanklist(d) &lt;- list(deep=nitrox(0.32), deco=nitrox(0.5))</code>
+or just assign <code>names(tanklist(d)) &lt;- c("deep", "deco")</code>.
+</p>
+<p>The <em>selection</em> of tanks,
+i.e. which tank is actually used at each stage of the
+dive, is specified by the function <code><a href="#topic+whichtank">whichtank</a></code>.
+The command <code>whichtank(d)</code>
+returns a vector of integers or character strings,
+identifying which tank in the tank list is in use at each
+waypoint during the dive. That is, <code>whichtank(d)[i]</code> is the tank
+in use at the <code>i</code>th waypoint during the dive.
+The vector <code>whichtank(d)</code> has the same length as the vectors
+<code>depths.dive(d)</code> and <code>times.dive(d)</code>.
+</p>
+<p>To change the selection of tanks at each stage during the dive,
+use the function <code><a href="#topic+whichtank">whichtank</a>&lt;-</code>. For example,
+<code>d &lt;- dive(air, c(30,40), 6, nitrox(0.5), c(6,3), c(3,3))</code> is a
+dive conducted using air (tank 1) for the deep section and EANx 50
+(tank 2) for the
+decompression stops at 6 metres and 3 metres. To change this
+so that the deco gas is only used at the 3-metre stop, type
+<code>whichtank(d) &lt;- ifelse(depths.dive(d) &lt; 3, 1, 2)</code>.
+Alternatively <code>whichtank(d)[depths.dive(d) &gt; 3] &lt;- 1</code>
+would select tank 1 for all parts of the dive deeper than 3 metres.
+These manipulations are usually easier to understand if the tanks
+have names. For example typing
+<code>names(tanklist(d)) &lt;- c("deep", "deco")</code> we could then
+type <code>whichtank(d) &lt;- ifelse(depths.dive(d) &lt; 3, "deep", "deco")</code>
+or <code>whichtank(d)[depths.dive(d) &gt; 3] &lt;- "deep"</code>.
+</p>
+
+
+<h3>Licence</h3>
+
+<p>This library and its documentation are usable under the terms of the &quot;GNU 
+General Public License&quot;, a copy of which is distributed with the package.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Adrian Baddeley <a href="mailto:Adrian.Baddeley@curtin.edu.au">Adrian.Baddeley@curtin.edu.au</a>
+with contributions from Vittorio Broglio
+and Pedro Antonio Neves.
+</p>
+
+
+<h3>References</h3>
+
+<p>Baddeley, A. (2013) <em>Introduction to the scuba package</em>.
+Vignette accompanying this package.
+</p>
+<p>Baddeley, A. and Bassom, A.P. (2011)
+Classical theory of decompression and the design of scuba diving tables.
+<em>The Mathematical Scientist</em> <b>36</b>, 75-88.
+</p>
+<p>Bookspan, J. (1995) Diving physiology in plain English.
+Undersea and Hyperbaric Medicine Society, Kensington, Maryland (USA).
+ISBN 0-930406-13-3.
+</p>
+<p>Boycott, A.E. Damant, G.C.C. and Haldane, J.S. (1908)
+The prevention of compressed air illness.
+<em>Journal of Hygiene</em> (London) <b>8</b>, 342&ndash;443.
+</p>
+<p>Brubakk, A.O. and Neuman, T.S. (eds.) (2003)
+Bennett and Elliott's Physiology and Medicine of Diving.
+5th Edition. Saunders. ISBN 0-7020-2571-2
+</p>
+<p>Buehlmann, A.A. (1983)
+<em>Dekompression - Dekompressionskrankheit</em>.
+Springer-Verlag.
+</p>
+<p>Buehlmann, A.A., Voellm, E.B. and Nussberger, P. (2002)
+<em>Tauchmedizin</em>. 5e Auflage. Springer-Verlag.
+</p>
+<p>Tikvisis, P. and Gerth, W.A. (2003)
+Decompression Theory. 
+In Brubakk and Neuman (2003), Chapter 10.1, pages 419-454.
+</p>
+<p>Wienke, B.R. (1994)
+<em>Basic diving physics and applications</em>.
+Best Publishing Co.
+</p>
+<p>Workman, R.D. (1965) Calculation of decompression schedules
+for nitrogen-oxygen and helium-oxygen dives.
+Research Report 6-65. US Navy Experimental Diving Unit.
+Washington DC. 
+</p>
+
 <hr>
 <h2 id='air'>Air</h2><span id='topic+air'></span><span id='topic+is.air'></span>
 
@@ -3704,452 +4150,6 @@ timetaken(start, finish, uprate, downrate)
 <h3>Details</h3>
 
 <p>Not yet documented.
-</p>
-
-<hr>
-<h2 id='scuba-package'>The Scuba Package</h2><span id='topic+scuba-package'></span><span id='topic+scuba'></span>
-
-<h3>Description</h3>
-
-<p>This is a summary of the features of 
-<code>scuba</code>, a package in <code>R</code>
-that performs theoretical calculations
-about scuba diving &mdash; dive profiles,
-decompression models, gas toxicity and so on.
-</p>
-
-
-<h3>Details</h3>
-
-<p><code>scuba</code> is a package for performing
-calculations in the theory of scuba diving.
-The package supports
-</p>
-
-<ul>
-<li><p> creation, manipulation and plotting of dive profiles
-</p>
-</li>
-<li><p> gas diffusion models 
-</p>
-</li>
-<li><p> decompression calculations
-</p>
-</li>
-<li><p> gas toxicity calculations.
-</p>
-</li></ul>
-
-<p>The <code>scuba</code> package is intended only
-for use in research and education about the mathematical
-and statistical basis of decompression theory. It is emphatically
-not designed for actual use in scuba diving and related activities.
-See the detailed disclaimer in <code><a href="#topic+scuba.disclaimer">scuba.disclaimer</a></code>.
-</p>
-<p>Following is a summary of the main features of the package.
-For a more detailed explanation, with illustrations, see
-the vignette <em>Introduction to the Scuba package</em> which
-accompanies the package. 
-</p>
-
-
-<h3>Dive profiles</h3>
-
-<p>A <em>dive profile</em> gives the diver's depth as a function of elapsed
-time during a scuba dive. The command <code><a href="#topic+dive">dive</a></code> creates an
-object representing a dive profile.
-</p>
-<p>A dive profile is piecewise linear: it is a series of <em>stages</em>
-that join successive <em>waypoints</em>. Each waypoint is specified
-by the depth and elapsed time when it is reached. The stage between
-two waypoints is either a sojourn at a fixed depth, or an ascent or
-descent at a constant rate.
-</p>
-<p>The function <code><a href="#topic+dive">dive</a></code> interprets its arguments
-as a sequence of actions or events occurring during the dive.
-If an argument is a vector of length 2, it is interpreted
-as <code>c(depth,time)</code> specifying the depth and duration
-of a stage of the dive. If the argument is a single number,
-it is interpreted as a depth, meaning that the diver ascends or
-descends to this depth.
-</p>
-<p>For example, the command
-<code>d &lt;- dive(c(18, 45))</code> specifies a dive to 18 metres
-for 45 minutes. The command <code>d &lt;- dive(c(18, 45), c(5,3))</code>
-specifies a dive to 18 metres for 45 minutes followed by a safety stop
-at 5 metres for 3 minutes. Multilevel dives with any number of stages
-are specified in the same way. A dive object may include
-periods spent at the surface (depth zero) and may therefore represent
-a succession of dives separated by surface intervals. For example,
-<code>d &lt;- dive(c(30,15),c(9,1),c(5,5),c(0,60),c(12,60),c(5,5))</code>
-represents two dives (with safety stops)
-separated by a one-hour surface interval.
-</p>
-<p>The resulting object <code>d</code> is an object of class <code>"dive"</code>.
-It can be plotted as a conventional dive profile graph by executing
-the command <code>plot(d)</code>. It can be printed as a table of depths and times
-by typing its name <code>d</code>, or by executing
-<code>print(d,seconds=FALSE)</code> to print times to the nearest minute.
-A summary of the dive (with such information as the average depth,
-maximum depth and the main stages of the dive) can be printed
-by typing <code>summary(d)</code>.
-</p>
-<p>By default, the function <code><a href="#topic+dive">dive</a></code> fills in some details
-about the dive. It assumes that the diver breathes compressed air;
-the dive starts and ends at the surface
-(depth zero); the diver descends 
-at the default descent rate of 30 metres per minute; and the diver
-ascends at the default ascent rate of 18 metres per minute.
-These defaults can be changed by giving extra arguments to the
-function <code><a href="#topic+dive">dive</a></code>.
-</p>
-<p>Dive profiles can also be modified after they are created: see below.
-</p>
-
-
-<h3>Real Dive Profiles</h3>
-
-<p>Dive profiles may also be uploaded from your dive computer
-and studied in the <span class="pkg">scuba</span> package. First convert the
-uploaded profile data to a <code>data.frame</code> with two columns,
-the first column containing the elapsed time and the second column
-containing the depth (in metres) recorded at each time. The elapsed
-times can be either a vector of character strings
-in minutes-and-seconds format
-<code>mm:ss</code> or hours-minutes seconds <code>hh:mm:ss</code>,
-or a vector of integer times measured in <em>seconds</em>
-of elapsed time, or an object of class <code><a href="base.html#topic+difftime">difftime</a></code>
-containing the elapsed times in any time unit. Then pass this data
-frame as an argument to the function <code><a href="#topic+dive">dive</a></code>.
-</p>
-<p>An example of such a data frame, uploaded from a dive computer,
-is provided in the <code><a href="#topic+baron">baron</a></code> dataset supplied with the
-package. See the help file for
-<code><a href="#topic+baron">baron</a></code> for an example of how to convert a data frame
-to a <code>"dive"</code> object.
-</p>
-<p>The package also provides 12 real dive profiles that have already been
-converted to <code>"dive"</code> objects.
-See the help files for <code><a href="#topic+pedro">pedro</a></code> and <code><a href="#topic+deepmine">deepmine</a></code>.
-</p>
-
-
-<h3>Decompression Calculations</h3>
-
-<p>The <span class="pkg">scuba</span> package performs the mathematical calculations of
-decompression theory:
-</p>
-
-<ul>
-<li><p> the theoretical No Decompression Limit (maximum duration of a
-no-decompression dive to a specified depth) can be computed by
-<code><a href="#topic+ndl">ndl</a>(depth)</code>
-</p>
-</li>
-<li><p> the quantity of nitrogen dissolved in the diver's body
-after a dive <code>d</code> can be computed by <code><a href="#topic+haldane">haldane</a>(d)</code>
-</p>
-</li>
-<li><p> the quantity of nitrogen dissolved in the diver's body
-at each instant <b>during</b> a dive <code>d</code> can be computed by
-<code><a href="#topic+haldane">haldane</a>(d, progressive=TRUE)</code>
-or plotted interactively by <code><a href="#topic+showstates">showstates</a>(d)</code>.
-</p>
-</li></ul>
-
-<p>These calculations are based on the classical theory of
-decompression originated by Haldane (Boycott et al, 1908).
-The diver's body is idealised
-as a set of independent compartments, each connected directly to the
-breathing gas, and governed by classical (exponential) diffusion.
-</p>
-<p>The model parameters (the number of compartments, their diffusion
-rates, and the maximum tolerated nitrogen tension in each compartment)
-may be chosen by the user.
-By default, the model parameters are taken from the DSAT model
-which is the basis of the PADI Recreational Dive Planner.
-Alternatively, the user can choose from a variety of standard compartment
-models using the command <code><a href="#topic+pickmodel">pickmodel</a></code>, or
-construct a new model using <code><a href="#topic+hm">hm</a></code>.
-</p>
-<p>No-decompression limits (the maximum duration of a no-decompression
-dive to a given depth) can be calculated using the function
-<code><a href="#topic+ndl">ndl</a></code>. For example <code>ndl(30)</code> gives the 
-theoretical NDL for a dive to 30 metres,
-predicted by the DSAT model. To use the classical US Navy model instead,
-type <code>ndl(30, model="USN")</code> or <code>ndl(30, model=pickmodel("USN"))</code>.
-</p>
-<p>The &lsquo;best&rsquo;
-double no-decompression dive to given depths <code>d1</code> and <code>d2</code>
-can be calculated by <code><a href="#topic+bestdoubledive">bestdoubledive</a></code> according to
-the algorithm of Baddeley and Bassom (2012).
-</p>
-<p>The nitrogen tension (the quantity of dissolved nitrogen,
-in atmospheres absolute) in the diver's body after 
-a dive, can be calculated using the function
-<code><a href="#topic+haldane">haldane</a></code>. If <code>d</code> is a dive object
-then <code>haldane(d)</code> returns a data frame containing the
-nitrogen tissue tensions (ata) at the end of the dive,
-in each of the 8 tissue compartments
-of the DSAT model. 
-To use the US Navy model instead,
-type <code>haldane(d, "USN")</code> or <code>haldane(d, pickmodel("USN"))</code>.
-</p>
-<p>To compute the nitrogen tissue tensions at each waypoint during the
-dive, use <code><a href="#topic+haldane">haldane</a>(d, progressive=TRUE)</code>.
-</p>
-<p>To visualise the nitrogen tissue tensions during the dive,
-use the interactive function <code><a href="#topic+showstates">showstates</a></code>.
-This plots the dive and waits for you to click on
-a position in the graph. The tissue tensions at that
-instant are displayed as a bar plot.
-</p>
-<p>The total oxygen toxicity incurred during a dive can be computed
-by <code><a href="#topic+oxtox">oxtox</a></code>.
-</p>
-<p>Oxygen partial pressure at each stage of a dive is computed
-by <code><a href="#topic+ppO2">ppO2</a></code>.
-</p>
-<p>Bubble theory calculations are not yet implemented.
-</p>
-
-
-<h3>Nitrox and trimix</h3>
-
-<p>A <b>breathing gas</b> is represented by an object of class <code>"gas"</code>.
-The object <code>air</code> is a representation of compressed air
-(21% oxygen, 79% nitrogen) as an object of this class.
-(Don't reassign another value to this object!!!)
-</p>
-<p>Nitrox mixtures (mixtures of oxygen and nitrogen) can be
-represented using the function <code><a href="#topic+nitrox">nitrox</a></code>.
-For example, EAN 32 is represented by <code>nitrox(0.32)</code>.
-</p>
-<p>Trimix (a mixture of oxygen, nitrogen and helium) can also be
-represented, using the command <code><a href="#topic+trimix">trimix</a></code>.
-For example, Trimix 15/50
-(containing 15% oxygen, 50% helium and 35% nitrogen)
-is represented by <code>trimix(0.15, 0.5)</code>.
-</p>
-<p>There are methods for <code>print</code> and <code>summary</code>
-for gas objects.
-</p>
-<p>Decompression calculations (<code><a href="#topic+haldane">haldane</a></code>,
-<code><a href="#topic+ndl">ndl</a></code>, <code><a href="#topic+showstates">showstates</a></code>)
-also work with nitrox and trimix.
-</p>
-<p>Decompression calculations with trimix require a Haldane model
-that includes parameters for Helium diffusion.
-Use <code>pickmodel("Z")</code> to select the Buehlmann ZH-L16A model,
-or <code><a href="#topic+hm">hm</a></code> to create a new model that includes
-Helium diffusion.
-</p>
-<p>Standard nitrox calculations are also available, for example
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-    <code><a href="#topic+ead">ead</a></code> </td><td style="text-align: left;">
-    equivalent air depth</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-    <code><a href="#topic+mod">mod</a></code> </td><td style="text-align: left;">
-    maximum operating depth</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-    <code><a href="#topic+maxmix">maxmix</a></code> </td><td style="text-align: left;">
-    richest nitrox mix for a given depth
-  </td>
-</tr>
-
-</table>
-
-<p>The total oxygen toxicity incurred during a nitrox or trimix dive
-can be computed by <code><a href="#topic+oxtox">oxtox</a></code>.
-Oxygen partial pressure at each stage of a dive is computed
-by <code><a href="#topic+ppO2">ppO2</a></code>.
-</p>
-
-
-<h3>Diving on different gases</h3>
-
-<p>Every <code>"dive"</code> object contains information
-about the breathing gas or gases used in the dive.
-This information is determined when the <code>"dive"</code> object is
-created (by the function <code><a href="#topic+dive">dive</a></code>). The default
-breathing gas is air.
-</p>
-<p>The function <code><a href="#topic+dive">dive</a></code> interprets its arguments
-as a sequence of actions or events occurring during the dive.
-If an argument is a vector of length 2, it is interpreted
-as <code>c(depth,time)</code> specifying the depth and duration
-of a stage of the dive. If the argument is a single number,
-it is interpreted as a depth, meaning that the diver ascends or
-descends to this depth.
-</p>
-<p>Each argument to <code><a href="#topic+dive">dive</a></code> may also be a &quot;gas&quot; object,
-like <code>nitrox(0.32)</code>, 
-which means that the diver switches to this gas.
-</p>
-<p>So, for example,
-<code>dive(nitrox(0.32), c(30,20))</code>
-means a dive to 30 metres for 20 minutes conducted on EAN 32
-(Nitrox 0.32) from start to finish.
-The command
-<code>dive(c(30,20), 5, nitrox(0.36), c(5,3))</code> means
-a dive on air to 30 metres for 20 minutes, ascending to 5 metres
-while breathing air, then switching to EAN 36 for a safety stop
-at 5 metres for 3 minutes.
-</p>
-<p>Alternatively you can use the argument <code>tanklist</code> to
-specify a list of tanks of breathing gas (with optional names
-like <code>"travel"</code> and <code>"deco"</code>) and change between tanks at different
-stages of the dive using an argument of the form <code>tank=number</code>
-or <code>tank=name</code>. The tank list of a dive object can be extracted
-using <code><a href="#topic+tanklist">tanklist</a></code> and modified using
-<code><a href="#topic+tanklist">tanklist</a>&lt;-</code>.
-</p>
-
-
-<h3>Manipulating dive profiles</h3>
-
-<p>Dive profiles can also be manipulated after they are created.
-This allows you, for example, to modify the deepest portion
-of a dive (diving to a deeper depth or for a longer duration),
-to abort a dive prematurely, to cut-and-paste several dives together,
-or to consider the tissue saturation incurred by a particular
-segment of a dive.
-</p>
-<p>The commands <code><a href="#topic+depths.dive">depths.dive</a></code> and <code><a href="#topic+times.dive">times.dive</a></code>
-extract the depths and elapsed times at each waypoint during the dive.
-The depths can be modified using <code><a href="#topic+depths.dive+3C-">depths.dive&lt;-</a></code>. For
-example <code>d &lt;- dive(c(30,20))</code> creates a dive to 30 metres for 20
-minutes, starting and finishing at the surface;
-to change the depth to 35 metres, type <code>depths.dive(d)[2:3] &lt;- 35</code>.
-Similarly the elapsed times can be modified using
-<code><a href="#topic+times.dive+3C-">times.dive&lt;-</a></code>. It may be more convenient to use the
-functions <code><a href="#topic+durations.dive">durations.dive</a></code> and
-<code><a href="#topic+durations.dive+3C-">durations.dive&lt;-</a></code> which give the duration of each stage
-(the time between two successive waypoints). 
-For example <code>durations.dive(d)[2] &lt;- 25</code> would mean that the
-diver now spends 25 minutes at the bottom instead of 20 minutes.
-</p>
-<p>To extract only part of a dive profile, use <code><a href="#topic+chop.dive">chop.dive</a></code>.
-</p>
-<p>To paste together two dive profiles or fragments of dive profiles,
-simply give them as arguments to <code><a href="#topic+dive">dive</a></code>.
-</p>
-
-
-<h3>Changing the breathing gases</h3>
-
-<p>A dive object has a <em>tank list</em> which is a list of the
-tanks of breathing gas that were used (or were available to be used)
-during the dive. The function <code><a href="#topic+tanklist">tanklist</a></code> returns
-this list, and the function <code><a href="#topic+tanklist">tanklist</a>&lt;-</code> changes the list.
-</p>
-<p>For example,
-<code>d &lt;- dive(c(30,20), c(5,5))</code> is a dive conducted using air.
-To modify it to a dive that used nitrox EANx 32, simply type
-<code>tanklist(d) &lt;- list(nitrox(0.32))</code>.
-Again <code>d &lt;- dive(air, c(30,40), 6, nitrox(0.5), c(6,3), c(3,3))</code> is a
-dive conducted using air (tank 1) for the deep section and EANx 50
-(tank 2) for the decompression stops at 6 metres and 3 metres.
-To change the contents of tank 1 to EANx 32, type
-<code>tanklist(d) &lt;- list(nitrox(0.32), nitrox(0.5))</code> or
-just <code>tanklist(d)[[1]] &lt;- nitrox(0.32)</code>. 
-To associate a name which
-each tank, give names to the entries in the tank list, for example
-<code>tanklist(d) &lt;- list(deep=nitrox(0.32), deco=nitrox(0.5))</code>
-or just assign <code>names(tanklist(d)) &lt;- c("deep", "deco")</code>.
-</p>
-<p>The <em>selection</em> of tanks,
-i.e. which tank is actually used at each stage of the
-dive, is specified by the function <code><a href="#topic+whichtank">whichtank</a></code>.
-The command <code>whichtank(d)</code>
-returns a vector of integers or character strings,
-identifying which tank in the tank list is in use at each
-waypoint during the dive. That is, <code>whichtank(d)[i]</code> is the tank
-in use at the <code>i</code>th waypoint during the dive.
-The vector <code>whichtank(d)</code> has the same length as the vectors
-<code>depths.dive(d)</code> and <code>times.dive(d)</code>.
-</p>
-<p>To change the selection of tanks at each stage during the dive,
-use the function <code><a href="#topic+whichtank">whichtank</a>&lt;-</code>. For example,
-<code>d &lt;- dive(air, c(30,40), 6, nitrox(0.5), c(6,3), c(3,3))</code> is a
-dive conducted using air (tank 1) for the deep section and EANx 50
-(tank 2) for the
-decompression stops at 6 metres and 3 metres. To change this
-so that the deco gas is only used at the 3-metre stop, type
-<code>whichtank(d) &lt;- ifelse(depths.dive(d) &lt; 3, 1, 2)</code>.
-Alternatively <code>whichtank(d)[depths.dive(d) &gt; 3] &lt;- 1</code>
-would select tank 1 for all parts of the dive deeper than 3 metres.
-These manipulations are usually easier to understand if the tanks
-have names. For example typing
-<code>names(tanklist(d)) &lt;- c("deep", "deco")</code> we could then
-type <code>whichtank(d) &lt;- ifelse(depths.dive(d) &lt; 3, "deep", "deco")</code>
-or <code>whichtank(d)[depths.dive(d) &gt; 3] &lt;- "deep"</code>.
-</p>
-
-
-<h3>Licence</h3>
-
-<p>This library and its documentation are usable under the terms of the &quot;GNU 
-General Public License&quot;, a copy of which is distributed with the package.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Adrian Baddeley <a href="mailto:Adrian.Baddeley@curtin.edu.au">Adrian.Baddeley@curtin.edu.au</a>
-with contributions from Vittorio Broglio
-and Pedro Antonio Neves.
-</p>
-
-
-<h3>References</h3>
-
-<p>Baddeley, A. (2013) <em>Introduction to the scuba package</em>.
-Vignette accompanying this package.
-</p>
-<p>Baddeley, A. and Bassom, A.P. (2011)
-Classical theory of decompression and the design of scuba diving tables.
-<em>The Mathematical Scientist</em> <b>36</b>, 75-88.
-</p>
-<p>Bookspan, J. (1995) Diving physiology in plain English.
-Undersea and Hyperbaric Medicine Society, Kensington, Maryland (USA).
-ISBN 0-930406-13-3.
-</p>
-<p>Boycott, A.E. Damant, G.C.C. and Haldane, J.S. (1908)
-The prevention of compressed air illness.
-<em>Journal of Hygiene</em> (London) <b>8</b>, 342&ndash;443.
-</p>
-<p>Brubakk, A.O. and Neuman, T.S. (eds.) (2003)
-Bennett and Elliott's Physiology and Medicine of Diving.
-5th Edition. Saunders. ISBN 0-7020-2571-2
-</p>
-<p>Buehlmann, A.A. (1983)
-<em>Dekompression - Dekompressionskrankheit</em>.
-Springer-Verlag.
-</p>
-<p>Buehlmann, A.A., Voellm, E.B. and Nussberger, P. (2002)
-<em>Tauchmedizin</em>. 5e Auflage. Springer-Verlag.
-</p>
-<p>Tikvisis, P. and Gerth, W.A. (2003)
-Decompression Theory. 
-In Brubakk and Neuman (2003), Chapter 10.1, pages 419-454.
-</p>
-<p>Wienke, B.R. (1994)
-<em>Basic diving physics and applications</em>.
-Best Publishing Co.
-</p>
-<p>Workman, R.D. (1965) Calculation of decompression schedules
-for nitrogen-oxygen and helium-oxygen dives.
-Research Report 6-65. US Navy Experimental Diving Unit.
-Washington DC. 
 </p>
 
 <hr>

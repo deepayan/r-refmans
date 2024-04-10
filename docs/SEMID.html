@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {SEMID}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#SEMID-package'><p>SEMID package documentation.</p></a></li>
 <li><a href='#ancestors'><p>All ancestors of a collection of nodes</p></a></li>
 <li><a href='#ancestralID'><p>Determines which edges in a mixed graph are ancestralID-identifiable</p></a></li>
 <li><a href='#ancestralIdentifyStep'><p>Perform one iteration of ancestral identification.</p></a></li>
@@ -89,7 +90,6 @@ decomposition.</a></li>
 <li><a href='#print.LfhtcIDResult'><p>Prints a LfhtcIDResult object</p></a></li>
 <li><a href='#print.SEMIDResult'><p>Prints a SEMIDResult object</p></a></li>
 <li><a href='#semID'><p>Identifiability of linear structural equation models.</p></a></li>
-<li><a href='#SEMID-package'><p>SEMID package documentation.</p></a></li>
 <li><a href='#siblings'><p>All siblings of a collection of nodes</p></a></li>
 <li><a href='#stronglyConnectedComponent'><p>Strongly connected component</p></a></li>
 <li><a href='#subsetsOfSize'><p>Returns all subsets of a certain size</p></a></li>
@@ -195,6 +195,136 @@ decomposition.</a></li>
 <td>2023-07-19 14:00:11 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='SEMID-package'>SEMID package documentation.</h2><span id='topic+SEMID-package'></span><span id='topic+SEMID'></span>
+
+<h3>Description</h3>
+
+<p>SEMID provides a number of methods for testing the global/generic
+identifiability of mixed graphs and latent-factor graphs.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The only functions you're likely to need from <span class="pkg">SEMID</span> are
+<code><a href="#topic+semID">semID</a></code> and <code><a href="#topic+lfhtcID">lfhtcID</a></code>. A complete description of all package features, along
+with examples, can be found at <a href="https://github.com/Lucaweihs/SEMID">https://github.com/Lucaweihs/SEMID</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>###
+# Checking the generic identifiability of parameters in a mixed graph.
+###
+
+# Mixed graphs are specified by their directed adjacency matrix L and
+# bidirected adjacency matrix O.
+L = t(matrix(
+ c(0, 1, 1, 0, 0,
+   0, 0, 1, 1, 1,
+   0, 0, 0, 1, 0,
+   0, 0, 0, 0, 1,
+   0, 0, 0, 0, 0), 5, 5))
+
+O = t(matrix(
+ c(0, 0, 0, 1, 0,
+   0, 0, 1, 0, 1,
+   0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0), 5, 5)); O=O+t(O)
+
+# Create a mixed graph object
+graph = MixedGraph(L, O)
+
+# We can plot what this mixed graph looks like, blue edges are directed
+# red edges are bidirected.
+plot(graph)
+
+# Without using decomposition techniques we can't identify all nodes
+# just using the half-trek criterion
+htcID(graph, tianDecompose = FALSE)
+
+# The edgewiseTSID function can show that all edges are generically
+# identifiable without proprocessing with decomposition techniques
+edgewiseTSID(graph, tianDecompose = FALSE)
+
+# The above shows that all edges in the graph are generically identifiable.
+# See the help of edgewiseTSID to find out more information about what
+# else is returned by edgewiseTSID.
+
+###
+# Checking generic parameter identifiability using the generalGenericID
+# function
+###
+
+L = t(matrix(
+ c(0, 1, 0, 0, 0,
+   0, 0, 0, 1, 1,
+   0, 0, 0, 1, 0,
+   0, 1, 0, 0, 1,
+   0, 0, 0, 1, 0), 5, 5))
+
+O = t(matrix(
+ c(0, 0, 0, 0, 0,
+   0, 0, 1, 0, 1,
+   0, 0, 0, 1, 0,
+   0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0), 5, 5)); O=O+t(O)
+
+# Create a mixed graph object
+graph = MixedGraph(L, O)
+
+# Now lets define an "identification step" function corresponding to
+# using the edgewise identification algorithm but with subsets
+# controlled by 1.
+restrictedEdgewiseIdentifyStep &lt;- function(mixedGraph,
+                                            unsolvedParents,
+                                            solvedParents,
+                                            identifier) {
+     return(edgewiseIdentifyStep(mixedGraph, unsolvedParents,
+                                 solvedParents, identifier,
+                                 subsetSizeControl = 1))
+}
+
+# Now we run an identification algorithm that iterates between the
+# htc and the "restricted" edgewise identification algorithm
+generalGenericID(graph, list(htcIdentifyStep,
+                               restrictedEdgewiseIdentifyStep),
+	                 tianDecompose = FALSE)
+
+# We can do better (fewer unsolved parents) if we don't restrict the edgewise
+# identifier algorithm as much
+generalGenericID(graph, list(htcIdentifyStep, edgewiseIdentifyStep),
+                  tianDecompose = FALSE)
+
+###
+# Checking the generic identifiability of parameters in a latent-factor graph.
+###
+
+# Latent digraphs are specified by their directed adjacency matrix L
+library(SEMID)
+L = matrix(c(0, 1, 0, 0, 0, 0,
+             0, 0, 1, 0, 0, 0,
+             0, 0, 0, 0, 0, 0,
+             0, 0, 0, 0, 1, 0,
+             0, 0, 0, 0, 0, 0,
+             1, 1, 1, 1, 1, 0), 6, 6, byrow=TRUE)
+observedNodes = seq(1,5)
+latentNodes = c(6)
+
+# Create the latent digraph object corresponding to L
+g = LatentDigraph(L, observedNodes, latentNodes)
+
+# Plot latent digraph
+plot(g)
+
+# We can identify all nodes by the latent-factor half-trek criterion
+lfhtcID(g)
+
+</code></pre>
+
 <hr>
 <h2 id='ancestors'>All ancestors of a collection of nodes</h2><span id='topic+ancestors'></span><span id='topic+ancestors.LatentDigraphFixedOrder'></span><span id='topic+ancestors.LatentDigraph'></span><span id='topic+ancestors.MixedGraph'></span>
 
@@ -4006,136 +4136,6 @@ semID(graph)
 demo(SEMID)
 
 ## End(Not run)
-</code></pre>
-
-<hr>
-<h2 id='SEMID-package'>SEMID package documentation.</h2><span id='topic+SEMID-package'></span><span id='topic+SEMID'></span>
-
-<h3>Description</h3>
-
-<p>SEMID provides a number of methods for testing the global/generic
-identifiability of mixed graphs and latent-factor graphs.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The only functions you're likely to need from <span class="pkg">SEMID</span> are
-<code><a href="#topic+semID">semID</a></code> and <code><a href="#topic+lfhtcID">lfhtcID</a></code>. A complete description of all package features, along
-with examples, can be found at <a href="https://github.com/Lucaweihs/SEMID">https://github.com/Lucaweihs/SEMID</a>.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>###
-# Checking the generic identifiability of parameters in a mixed graph.
-###
-
-# Mixed graphs are specified by their directed adjacency matrix L and
-# bidirected adjacency matrix O.
-L = t(matrix(
- c(0, 1, 1, 0, 0,
-   0, 0, 1, 1, 1,
-   0, 0, 0, 1, 0,
-   0, 0, 0, 0, 1,
-   0, 0, 0, 0, 0), 5, 5))
-
-O = t(matrix(
- c(0, 0, 0, 1, 0,
-   0, 0, 1, 0, 1,
-   0, 0, 0, 0, 0,
-   0, 0, 0, 0, 0,
-   0, 0, 0, 0, 0), 5, 5)); O=O+t(O)
-
-# Create a mixed graph object
-graph = MixedGraph(L, O)
-
-# We can plot what this mixed graph looks like, blue edges are directed
-# red edges are bidirected.
-plot(graph)
-
-# Without using decomposition techniques we can't identify all nodes
-# just using the half-trek criterion
-htcID(graph, tianDecompose = FALSE)
-
-# The edgewiseTSID function can show that all edges are generically
-# identifiable without proprocessing with decomposition techniques
-edgewiseTSID(graph, tianDecompose = FALSE)
-
-# The above shows that all edges in the graph are generically identifiable.
-# See the help of edgewiseTSID to find out more information about what
-# else is returned by edgewiseTSID.
-
-###
-# Checking generic parameter identifiability using the generalGenericID
-# function
-###
-
-L = t(matrix(
- c(0, 1, 0, 0, 0,
-   0, 0, 0, 1, 1,
-   0, 0, 0, 1, 0,
-   0, 1, 0, 0, 1,
-   0, 0, 0, 1, 0), 5, 5))
-
-O = t(matrix(
- c(0, 0, 0, 0, 0,
-   0, 0, 1, 0, 1,
-   0, 0, 0, 1, 0,
-   0, 0, 0, 0, 0,
-   0, 0, 0, 0, 0), 5, 5)); O=O+t(O)
-
-# Create a mixed graph object
-graph = MixedGraph(L, O)
-
-# Now lets define an "identification step" function corresponding to
-# using the edgewise identification algorithm but with subsets
-# controlled by 1.
-restrictedEdgewiseIdentifyStep &lt;- function(mixedGraph,
-                                            unsolvedParents,
-                                            solvedParents,
-                                            identifier) {
-     return(edgewiseIdentifyStep(mixedGraph, unsolvedParents,
-                                 solvedParents, identifier,
-                                 subsetSizeControl = 1))
-}
-
-# Now we run an identification algorithm that iterates between the
-# htc and the "restricted" edgewise identification algorithm
-generalGenericID(graph, list(htcIdentifyStep,
-                               restrictedEdgewiseIdentifyStep),
-	                 tianDecompose = FALSE)
-
-# We can do better (fewer unsolved parents) if we don't restrict the edgewise
-# identifier algorithm as much
-generalGenericID(graph, list(htcIdentifyStep, edgewiseIdentifyStep),
-                  tianDecompose = FALSE)
-
-###
-# Checking the generic identifiability of parameters in a latent-factor graph.
-###
-
-# Latent digraphs are specified by their directed adjacency matrix L
-library(SEMID)
-L = matrix(c(0, 1, 0, 0, 0, 0,
-             0, 0, 1, 0, 0, 0,
-             0, 0, 0, 0, 0, 0,
-             0, 0, 0, 0, 1, 0,
-             0, 0, 0, 0, 0, 0,
-             1, 1, 1, 1, 1, 0), 6, 6, byrow=TRUE)
-observedNodes = seq(1,5)
-latentNodes = c(6)
-
-# Create the latent digraph object corresponding to L
-g = LatentDigraph(L, observedNodes, latentNodes)
-
-# Plot latent digraph
-plot(g)
-
-# We can identify all nodes by the latent-factor half-trek criterion
-lfhtcID(g)
-
 </code></pre>
 
 <hr>

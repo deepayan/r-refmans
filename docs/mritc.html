@@ -13,17 +13,17 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {mritc}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#mritc-package'><p>MRI Tissue Classification Package</p></a></li>
 <li><a href='#emnormmix'><p>Estimate the Parameters of a Normal Mixture Model Using the EM Algorithm</p></a></li>
 <li><a href='#initNormMix'><p>Get the Initial Estimate of the Parameters of a Normal Mixture Model</p></a></li>
 <li><a href='#makeMRIspatial'><p>Obtain Spatial Features of a Mask of an MR Image</p></a></li>
 <li><a href='#measureMRI'><p>Compare the Predicted Classsification Results with the Truth</p></a></li>
 <li><a href='#mritc'><p>MRI Tissue Classification Using Various Methods</p></a></li>
-<li><a href='#mritc-package'><p>MRI Tissue Classification Package</p></a></li>
 <li><a href='#plot.mritc'><p>Plot Method for Class &quot;mritc&quot;</p></a></li>
 <li><a href='#print.mritc'><p>Print Method for Class &quot;mritc&quot;</p></a></li>
 <li><a href='#readMRI'><p>Read an MR Image into an Array</p></a></li>
@@ -110,6 +110,157 @@ oro.nifti (&ge; 0.4.0)</td>
 <td>2023-01-27 14:10:04 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='mritc-package'>MRI Tissue Classification Package</h2><span id='topic+mritc-package'></span>
+
+<h3>Description</h3>
+
+<p>Use various methods to do MRI tissue classification.
+</p>
+
+
+<h3>Introduction</h3>
+
+<p>This package provides tools for MRI tissue
+classification using normal mixture models and hidden Markov normal
+mixture models (with the partial volume effect and intensity non-uniformity
+addressed) fitted by various methods.
+</p>
+<p>Magnetic resonance imaging (MRI) is used to
+identify the major tissues within a subject's brain. 
+Classification is usually based on a single image providing one
+measurement for each volume element, or voxel, in a discretization of
+the brain.  A simple model for MRI tissue classification views each voxel
+as homogeneous, belonging entirely to one of the three major tissue
+types (cerebrospinal fluid (CSF), gray matter (GM), and white matter
+(WM));  the intensity of voxels are thus normally
+distributed with means and variances depending on the tissue types
+of their voxels.
+The tissue types are not known and need to be identified from the
+image. The assumption that all tissue types are independent leads to
+a simple normal mixture model with parameters estimated by the EM
+algorithm and tissue types assigned using the Bayes classifier.
+</p>
+<p>Since nearby voxels tend to be of the same tissue type, a Markov
+random field model (a model from the Potts model family is used
+in this case) can be used to capture the spatial similarity of
+voxels by assigning homogeneity relationship among tissue types of
+neighboring voxels.
+Again, given the tissue types, the intensity of voxels are
+independently and normally distributed with means and
+variances depending on their tissue types.
+Furthermore, the Markov random field model defined on finite space
+is referred to as the hidden Markov model. Therefore the model
+combine the normal mixture part and the Potts model part is called
+the hidden Markov normal mixture model.
+This model can be fitted by the Iterated Conditional Mode algorithm,
+the Hidden Markov Random Field EM algorithm, or a Markov chain Monte
+Carlo approach. 
+</p>
+<p>A more realistic model than the one just described would take into
+account the fact that the volume elements are not homogeneous;
+while some may contain only one tissue type, others on the interface
+will contain two or possibly three different tissue types. This
+phenomenon is called the partial volume (PV) effect.
+One approach to address the PV effect is to introduce
+intermediate classes. Usually this is
+done by introducing two more classes: the combination of the CSF and
+the GM and the combination of the GM and the WM.
+Voxels containing WM and CSF are very rare and are ignored.
+This helps reduce confounding in estimation and a number of studies
+have used this approach.  Among these methods, the Gaussian partial volume
+hidden Markov random field models fitted by the modified EM algorithm
+appears to be more competitive in performance.
+A new approach to this problem is to construct a higher resolution
+image in which each voxel is divided into eight subvoxels.
+For each voxel
+the measured value is the sum of the unobserved measurements for the
+subvoxels. The subvoxels are in turn assumed to be homogeneous and
+follow the simpler model described above. 
+</p>
+<p>Intensity non-uniformity is an artifact that the signal intensity
+varies smoothly across an image. It is caused by combination
+and interaction of effects from the device, pulse sequence, and
+object. A commonly used approach to tackle it is to assume the 
+the measured signal is equal to true signal multiplied by bias field
+associated with the intensity non-uniformity plus some noise. 
+The bias field needs to be spatially smoothly varying and is modeled
+as either jointly normally distributed, or a linear combination of
+smooth spline or polynomial basis functions. Instead, we propose using
+a locally smoothed prior on the bias field.
+</p>
+<p>A Bayesian hierarchical model aiming at modeling the partial volume
+effect and intensity non-uniformity simultaneously was proposed.
+Instead of splitting the task into different steps, the framework
+harmoniously integrates several sub-models addressing different issues
+in the MRI classification, through specification of the likelihood function
+and prior distributions. This approach could provide more accurate
+tissue classification and also allow more effective estimation of the
+proportion of each voxel that belongs to each of the major tissue
+types.
+</p>
+<p>Besides brain image segmentation, the methods provided in this package can be used for 
+classification of other spatial data as well.
+</p>
+
+
+<h3>Usage</h3>
+
+<p>The function <code><a href="#topic+readMRI">readMRI</a></code> and
+<code><a href="#topic+writeMRI">writeMRI</a></code> are I/O
+functions for MRI data. Right now, the &quot;Analyze&quot;, &quot;NIfTI&quot;, and raw
+byte (unsigned with 1 byte per element in the byte stream) gzip
+formats are supported.
+</p>
+<p>For each MR image, there has to be a corresponding array, <code>mask</code>,
+with values 1 and 0. Voxels with value 1 are inside the brain and 0
+are outside.
+Tissue classification is conducted on voxels inside the brain.
+</p>
+<p>The functions <code><a href="#topic+mritc.em">mritc.em</a></code>, <code><a href="#topic+mritc.icm">mritc.icm</a></code>,
+<code><a href="#topic+mritc.hmrfem">mritc.hmrfem</a></code>, and
+<code><a href="#topic+mritc.bayes">mritc.bayes</a></code>
+are used
+to conduct the MRI tissue classification using the normal mixture
+model fitted by the EM algorithm, the hidden Markov normal
+mixture model at the voxel level fitted by the Iterated
+Conditional Mode algorithm, the Hidden Markov Random Field EM
+algorithm,
+or the Bayesian method (with or without the PV 
+or bias field correction).  The function
+<code><a href="#topic+mritc.pvhmrfem">mritc.pvhmrfem</a></code> is for classification using Gaussian
+partial volume hidden Markov random field models fitted by the
+modified EM algorithm.
+Different components of the normal mixture model correspond to
+different tissue types. The number of components is flexible,
+say using five components model to address the PV effect by
+<code><a href="#topic+mritc.em">mritc.em</a></code>, <code><a href="#topic+mritc.icm">mritc.icm</a></code>,
+<code><a href="#topic+mritc.hmrfem">mritc.hmrfem</a></code>, or <code><a href="#topic+mritc.bayes">mritc.bayes</a></code>.
+</p>
+<p>In order to use the previous functions, the parameters of the
+normal mixture model and the Potts model have to be specified.
+Some parameters can be obtained using the functions
+<code><a href="#topic+initOtsu">initOtsu</a></code> and <code><a href="#topic+makeMRIspatial">makeMRIspatial</a></code>.
+There are default values for other parameters.
+</p>
+<p>The function <code><a href="#topic+mritc">mritc</a></code> integrates all methods together,
+provides a uniform platform with easier usage, and generates an object
+of class &quot;mritc&quot; , for which generic functions
+<code><a href="#topic+print.mritc">print.mritc</a></code>, <code><a href="#topic+summary.mritc">summary.mritc</a></code>,
+and <code><a href="#topic+plot.mritc">plot.mritc</a></code> are provided. 
+</p>
+
+
+<h3>Computation Issues</h3>
+
+<p>To improve the speed, the table lookup method was used in various
+places; vectorized computation was used to take advantage of
+conditional independence. 
+Some computations are performed by <b>C</b>
+code, and the <b>OpenMP</b> is used to parallelize key loops in
+the <b>C</b> code. Sparse matrix multiplication is adopted as well.
+</p>
+
 <hr>
 <h2 id='emnormmix'>Estimate the Parameters of a Normal Mixture Model Using the EM Algorithm </h2><span id='topic+emnormmix'></span>
 
@@ -907,157 +1058,6 @@ model and the expectation-maximization algorithm
                  c(91,109,91), format="rawb.gz")
   tc.icm &lt;- mritc(T1, mask, method="ICM")
 </code></pre>
-
-<hr>
-<h2 id='mritc-package'>MRI Tissue Classification Package</h2><span id='topic+mritc-package'></span>
-
-<h3>Description</h3>
-
-<p>Use various methods to do MRI tissue classification.
-</p>
-
-
-<h3>Introduction</h3>
-
-<p>This package provides tools for MRI tissue
-classification using normal mixture models and hidden Markov normal
-mixture models (with the partial volume effect and intensity non-uniformity
-addressed) fitted by various methods.
-</p>
-<p>Magnetic resonance imaging (MRI) is used to
-identify the major tissues within a subject's brain. 
-Classification is usually based on a single image providing one
-measurement for each volume element, or voxel, in a discretization of
-the brain.  A simple model for MRI tissue classification views each voxel
-as homogeneous, belonging entirely to one of the three major tissue
-types (cerebrospinal fluid (CSF), gray matter (GM), and white matter
-(WM));  the intensity of voxels are thus normally
-distributed with means and variances depending on the tissue types
-of their voxels.
-The tissue types are not known and need to be identified from the
-image. The assumption that all tissue types are independent leads to
-a simple normal mixture model with parameters estimated by the EM
-algorithm and tissue types assigned using the Bayes classifier.
-</p>
-<p>Since nearby voxels tend to be of the same tissue type, a Markov
-random field model (a model from the Potts model family is used
-in this case) can be used to capture the spatial similarity of
-voxels by assigning homogeneity relationship among tissue types of
-neighboring voxels.
-Again, given the tissue types, the intensity of voxels are
-independently and normally distributed with means and
-variances depending on their tissue types.
-Furthermore, the Markov random field model defined on finite space
-is referred to as the hidden Markov model. Therefore the model
-combine the normal mixture part and the Potts model part is called
-the hidden Markov normal mixture model.
-This model can be fitted by the Iterated Conditional Mode algorithm,
-the Hidden Markov Random Field EM algorithm, or a Markov chain Monte
-Carlo approach. 
-</p>
-<p>A more realistic model than the one just described would take into
-account the fact that the volume elements are not homogeneous;
-while some may contain only one tissue type, others on the interface
-will contain two or possibly three different tissue types. This
-phenomenon is called the partial volume (PV) effect.
-One approach to address the PV effect is to introduce
-intermediate classes. Usually this is
-done by introducing two more classes: the combination of the CSF and
-the GM and the combination of the GM and the WM.
-Voxels containing WM and CSF are very rare and are ignored.
-This helps reduce confounding in estimation and a number of studies
-have used this approach.  Among these methods, the Gaussian partial volume
-hidden Markov random field models fitted by the modified EM algorithm
-appears to be more competitive in performance.
-A new approach to this problem is to construct a higher resolution
-image in which each voxel is divided into eight subvoxels.
-For each voxel
-the measured value is the sum of the unobserved measurements for the
-subvoxels. The subvoxels are in turn assumed to be homogeneous and
-follow the simpler model described above. 
-</p>
-<p>Intensity non-uniformity is an artifact that the signal intensity
-varies smoothly across an image. It is caused by combination
-and interaction of effects from the device, pulse sequence, and
-object. A commonly used approach to tackle it is to assume the 
-the measured signal is equal to true signal multiplied by bias field
-associated with the intensity non-uniformity plus some noise. 
-The bias field needs to be spatially smoothly varying and is modeled
-as either jointly normally distributed, or a linear combination of
-smooth spline or polynomial basis functions. Instead, we propose using
-a locally smoothed prior on the bias field.
-</p>
-<p>A Bayesian hierarchical model aiming at modeling the partial volume
-effect and intensity non-uniformity simultaneously was proposed.
-Instead of splitting the task into different steps, the framework
-harmoniously integrates several sub-models addressing different issues
-in the MRI classification, through specification of the likelihood function
-and prior distributions. This approach could provide more accurate
-tissue classification and also allow more effective estimation of the
-proportion of each voxel that belongs to each of the major tissue
-types.
-</p>
-<p>Besides brain image segmentation, the methods provided in this package can be used for 
-classification of other spatial data as well.
-</p>
-
-
-<h3>Usage</h3>
-
-<p>The function <code><a href="#topic+readMRI">readMRI</a></code> and
-<code><a href="#topic+writeMRI">writeMRI</a></code> are I/O
-functions for MRI data. Right now, the &quot;Analyze&quot;, &quot;NIfTI&quot;, and raw
-byte (unsigned with 1 byte per element in the byte stream) gzip
-formats are supported.
-</p>
-<p>For each MR image, there has to be a corresponding array, <code>mask</code>,
-with values 1 and 0. Voxels with value 1 are inside the brain and 0
-are outside.
-Tissue classification is conducted on voxels inside the brain.
-</p>
-<p>The functions <code><a href="#topic+mritc.em">mritc.em</a></code>, <code><a href="#topic+mritc.icm">mritc.icm</a></code>,
-<code><a href="#topic+mritc.hmrfem">mritc.hmrfem</a></code>, and
-<code><a href="#topic+mritc.bayes">mritc.bayes</a></code>
-are used
-to conduct the MRI tissue classification using the normal mixture
-model fitted by the EM algorithm, the hidden Markov normal
-mixture model at the voxel level fitted by the Iterated
-Conditional Mode algorithm, the Hidden Markov Random Field EM
-algorithm,
-or the Bayesian method (with or without the PV 
-or bias field correction).  The function
-<code><a href="#topic+mritc.pvhmrfem">mritc.pvhmrfem</a></code> is for classification using Gaussian
-partial volume hidden Markov random field models fitted by the
-modified EM algorithm.
-Different components of the normal mixture model correspond to
-different tissue types. The number of components is flexible,
-say using five components model to address the PV effect by
-<code><a href="#topic+mritc.em">mritc.em</a></code>, <code><a href="#topic+mritc.icm">mritc.icm</a></code>,
-<code><a href="#topic+mritc.hmrfem">mritc.hmrfem</a></code>, or <code><a href="#topic+mritc.bayes">mritc.bayes</a></code>.
-</p>
-<p>In order to use the previous functions, the parameters of the
-normal mixture model and the Potts model have to be specified.
-Some parameters can be obtained using the functions
-<code><a href="#topic+initOtsu">initOtsu</a></code> and <code><a href="#topic+makeMRIspatial">makeMRIspatial</a></code>.
-There are default values for other parameters.
-</p>
-<p>The function <code><a href="#topic+mritc">mritc</a></code> integrates all methods together,
-provides a uniform platform with easier usage, and generates an object
-of class &quot;mritc&quot; , for which generic functions
-<code><a href="#topic+print.mritc">print.mritc</a></code>, <code><a href="#topic+summary.mritc">summary.mritc</a></code>,
-and <code><a href="#topic+plot.mritc">plot.mritc</a></code> are provided. 
-</p>
-
-
-<h3>Computation Issues</h3>
-
-<p>To improve the speed, the table lookup method was used in various
-places; vectorized computation was used to take advantage of
-conditional independence. 
-Some computations are performed by <b>C</b>
-code, and the <b>OpenMP</b> is used to parallelize key loops in
-the <b>C</b> code. Sparse matrix multiplication is adopted as well.
-</p>
 
 <hr>
 <h2 id='plot.mritc'>Plot Method for Class &quot;mritc&quot;</h2><span id='topic+plot.mritc'></span>

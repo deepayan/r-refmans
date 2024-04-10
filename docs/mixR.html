@@ -13,17 +13,17 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {mixR}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#mixR-package'><p>Finite Mixture Modeling for Raw and Binned Data</p></a></li>
 <li><a href='#bin'><p>Binning the Raw Data</p></a></li>
 <li><a href='#bs.test'><p>Bootstrap Likelihood Ratio Test for Finite Mixture Models</p></a></li>
 <li><a href='#density.mixfitEM'><p>The Density of Finite Mixture Models</p></a></li>
 <li><a href='#initz'><p>Initialization of the EM Algorithm</p></a></li>
 <li><a href='#mixfit'><p>Finite Mixture Modeling for Raw Data and Binned Data</p></a></li>
-<li><a href='#mixR-package'><p>Finite Mixture Modeling for Raw and Binned Data</p></a></li>
 <li><a href='#plot.bootEM'><p>Plot Bootstrap Likelihood Ratio Test</p></a></li>
 <li><a href='#plot.mixfitEM'><p>Plotting the Fitted Mixture Models</p></a></li>
 <li><a href='#plot.selectEM'><p>Plot Method for Class <code>selectEM</code></p></a></li>
@@ -130,6 +130,147 @@ function processMathHTML() {
 <td>2021-06-01 15:10:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='mixR-package'>Finite Mixture Modeling for Raw and Binned Data</h2><span id='topic+mixR'></span><span id='topic+mixR-package'></span>
+
+<h3>Description</h3>
+
+<p>The package <code>mixR</code> performs maximum likelihood estimation for finite
+mixture models for families including Normal, Weibull, Gamma and Lognormal via EM algorithm.
+It also conducts model selection by using information criteria or bootstrap likelihood ratio
+test. The data used for mixture model fitting can be raw data or binned data. The model fitting
+is accelerated by using R package Rcpp.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Finite mixture models can be represented by
+</p>
+<p style="text-align: center;"><code class="reqn">f(x; \Phi) = \sum_{j = 1}^g \pi_j f_j(x; \theta_j)</code>
+</p>
+
+<p>where <code class="reqn">f(x; \Phi)</code> is the probability density function (p.d.f.) or probability mass function
+(p.m.f.) of the mixture model, <code class="reqn">f_j(x; \theta_j)</code> is the p.d.f. or p.m.f. of the <code class="reqn">j</code>th
+component of the mixture model, <code class="reqn">\pi_j</code> is the proportion of the <code class="reqn">j</code>th component and
+<code class="reqn">\theta_j</code> is the parameter of the <code class="reqn">j</code>th component, which can be a scalar or a vector,
+<code class="reqn">\Phi</code> is a vector of all the parameters of the mixture model. The maximum likelihood
+estimate of the parameter vector <code class="reqn">\Phi</code> can be obtained by using
+the EM algorithm (Dempster <em>et al</em>, 1977).
+The binned data is present sometimes instead of the raw data, for the reason of storage
+convenience or necessity. The binned data is recorded in the form of <code class="reqn">(a_i, b_i, n_i)</code>
+where <code class="reqn">a_i</code> is the lower bound of the <code class="reqn">i</code>th bin, <code class="reqn">b_i</code> is
+the upper bound of the <code class="reqn">i</code>th bin, and <code class="reqn">n_i</code> is the number of observations that fall
+in the <code class="reqn">i</code>th bin, for <code class="reqn">i = 1, \dots, r</code>, and <code class="reqn">r</code> is the total number of bins.
+</p>
+<p>To obtain maximum likelihood estimate of the finite mixture model for binned data, we can
+introduce two types of latent variables <code class="reqn">x</code> and <code class="reqn">z</code>, where<code class="reqn">x</code> represents the
+value of the unknown raw data, and <code class="reqn">z</code> is a vector of zeros and one indicating the
+component that <code class="reqn">x</code> belongs to. To use the EM algorithm we first write the complete-data
+log-likelihood
+</p>
+<p style="text-align: center;"><code class="reqn">Q(\Phi; \Phi^{(p)}) = \sum_{j = 1}^{g} \sum_{i = 1}^r n_i z^{(p)} [\log f(x^{(p)}; \theta_j)
+ + \log \pi_j ]</code>
+</p>
+
+<p>where <code class="reqn">z^{(p)}</code> is the expected value of <code class="reqn">z</code> given the estimated value of <code class="reqn">\Phi</code>
+and expected value <code class="reqn">x^{(p)}</code> at <code class="reqn">p</code>th iteration. The estimated value of <code class="reqn">\Phi</code>
+can be updated iteratively via the E-step, in which we estimate <code class="reqn">\Phi</code> by maximizing
+the complete-data loglikelihood, and M-step, in which we calculate the expected value of
+the latent variables <code class="reqn">x</code> and <code class="reqn">z</code>. The EM algorithm is terminated by using a stopping
+rule.
+The M-step of the EM algorithm may or may not have closed-form solution (e.g. the Weibull
+mixture model or Gamma mixture model). If not, an iterative approach like Newton's algorithm
+or bisection method may be used.
+</p>
+<p>For a given data set, when we have no prior information about the number of components
+<code class="reqn">g</code>, its value should be estimated from the data. Because mixture models don't satisfy
+the regularity condition for the likelihood ratio test (which requires that the true
+parameter under the null hypothesis should be in the interior of the parameter space
+of the full model under the alternative hypothesis), a bootstrap approach is usually
+used in the literature (see McLachlan (1987, 2004), Feng and McCulloch (1996)). The general
+step of bootstrap likelihood ratio test is as follows.
+</p>
+
+<ol>
+<li><p> For the given data <code class="reqn">x</code>, estimate <code class="reqn">\Phi</code> under both the null and the alternative
+hypothesis to get <code class="reqn">\hat\Phi_0</code> and <code class="reqn">\hat\Phi_1</code>. Calculate the observed log-likelihood
+<code class="reqn">\ell(x; \hat\Phi_0)</code> and <code class="reqn">\ell(x; \hat\Phi_1)</code>. The likelihood ratio test
+statistic is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">w_0 = -2(\ell(x; \hat\Phi_0) - \ell(x; \hat\Phi_1)).</code>
+</p>
+
+</li>
+<li><p> Generate random data of the same size as the original data <code class="reqn">x</code> from the model
+under the null hypothesis using estimated parameter <code class="reqn">\hat\Phi_0</code>, then repeat step
+1 using the simulated data. Repeat this process for <code class="reqn">B</code> times to get a vector of the
+simulated likelihood ratio test statistics <code class="reqn">w_1^{1}, \dots, w_1^{B}</code>.
+</p>
+</li>
+<li><p> Calculate the empirical p-value
+</p>
+<p style="text-align: center;"><code class="reqn">p = \frac{1}{B} \sum_{i=1}^B I(w_1^{(i)} &gt; w_0)</code>
+</p>
+
+<p>where <code class="reqn">I</code> is the indicator function.
+</p>
+</li></ol>
+
+<p>This package does the following three things.
+</p>
+
+<ol>
+<li><p> Fitting finite mixture models for both raw data and binned data by using
+EM algorithm, together with Newton-Raphson algorithm and bisection method.
+</p>
+</li>
+<li><p> Do parametric bootstrap likelihood ratio test for two candidate models.
+</p>
+</li>
+<li><p> Do model selection by Bayesian information criterion.
+</p>
+</li></ol>
+
+<p>To speed up computation, the EM algorithm is fulfilled in C++ by using Rcpp
+(Eddelbuettel and Francois (2011)).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Youjiao Yu <a href="mailto:jiaoisjiao@gmail.com">jiaoisjiao@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Dempster, A. P., Laird, N. M., and Rubin, D. B. Maximum likelihood from incomplete data
+via the EM algorithm. <em>Journal of the royal statistical society. Series B
+(methodological)</em>, pages 1-38, 1977.
+</p>
+<p>Dirk Eddelbuettel and Romain Francois (2011). Rcpp: Seamless R and C++ Integration.
+<em>Journal of Statistical Software</em>, 40(8), 1-18. URL http://www.jstatsoft.org/v40/i08/.
+</p>
+<p>Efron, B. Bootstrap methods: Another look at the jackknife. <em>Ann. Statist.</em>,
+7(1):1-26, 01 1979.
+</p>
+<p>Feng, Z. D. and McCulloch, C. E. Using bootstrap likelihood ratios in finite mixture
+models. <em>Journal of the Royal Statistical Society. Series B (Methodological)</em>,
+pages 609-617, 1996.
+</p>
+<p>Lo, Y., Mendell, N. R., and Rubin, D. B. Testing the number of components in a normal
+mixture. <em>Biometrika</em>, 88(3):767-778, 2001.
+</p>
+<p>McLachlan, G. J. On bootstrapping the likelihood ratio test statistic for the number
+of components in a normal mixture. <em>Applied statistics</em>, pages 318-324, 1987.
+</p>
+<p>McLachlan, G. and Jones, P. Fitting mixture models to grouped and truncated data via
+the EM algorithm. <em>Biometrics</em>, pages 571-578, 1988.
+</p>
+<p>McLachlan, G. and Peel, D. <em>Finite mixture models</em>. John Wiley &amp; Sons, 2004.
+</p>
+
 <hr>
 <h2 id='bin'>Binning the Raw Data</h2><span id='topic+bin'></span>
 
@@ -718,147 +859,6 @@ fit4 &lt;- mixfit(x, ncomp = 2, ev = TRUE)  # setting the same variance
 ## fit10 &lt;- mixfit(data, ncomp = 2, family = "lnorm")  # binned data
 
 </code></pre>
-
-<hr>
-<h2 id='mixR-package'>Finite Mixture Modeling for Raw and Binned Data</h2><span id='topic+mixR'></span><span id='topic+mixR-package'></span>
-
-<h3>Description</h3>
-
-<p>The package <code>mixR</code> performs maximum likelihood estimation for finite
-mixture models for families including Normal, Weibull, Gamma and Lognormal via EM algorithm.
-It also conducts model selection by using information criteria or bootstrap likelihood ratio
-test. The data used for mixture model fitting can be raw data or binned data. The model fitting
-is accelerated by using R package Rcpp.
-</p>
-
-
-<h3>Details</h3>
-
-<p>Finite mixture models can be represented by
-</p>
-<p style="text-align: center;"><code class="reqn">f(x; \Phi) = \sum_{j = 1}^g \pi_j f_j(x; \theta_j)</code>
-</p>
-
-<p>where <code class="reqn">f(x; \Phi)</code> is the probability density function (p.d.f.) or probability mass function
-(p.m.f.) of the mixture model, <code class="reqn">f_j(x; \theta_j)</code> is the p.d.f. or p.m.f. of the <code class="reqn">j</code>th
-component of the mixture model, <code class="reqn">\pi_j</code> is the proportion of the <code class="reqn">j</code>th component and
-<code class="reqn">\theta_j</code> is the parameter of the <code class="reqn">j</code>th component, which can be a scalar or a vector,
-<code class="reqn">\Phi</code> is a vector of all the parameters of the mixture model. The maximum likelihood
-estimate of the parameter vector <code class="reqn">\Phi</code> can be obtained by using
-the EM algorithm (Dempster <em>et al</em>, 1977).
-The binned data is present sometimes instead of the raw data, for the reason of storage
-convenience or necessity. The binned data is recorded in the form of <code class="reqn">(a_i, b_i, n_i)</code>
-where <code class="reqn">a_i</code> is the lower bound of the <code class="reqn">i</code>th bin, <code class="reqn">b_i</code> is
-the upper bound of the <code class="reqn">i</code>th bin, and <code class="reqn">n_i</code> is the number of observations that fall
-in the <code class="reqn">i</code>th bin, for <code class="reqn">i = 1, \dots, r</code>, and <code class="reqn">r</code> is the total number of bins.
-</p>
-<p>To obtain maximum likelihood estimate of the finite mixture model for binned data, we can
-introduce two types of latent variables <code class="reqn">x</code> and <code class="reqn">z</code>, where<code class="reqn">x</code> represents the
-value of the unknown raw data, and <code class="reqn">z</code> is a vector of zeros and one indicating the
-component that <code class="reqn">x</code> belongs to. To use the EM algorithm we first write the complete-data
-log-likelihood
-</p>
-<p style="text-align: center;"><code class="reqn">Q(\Phi; \Phi^{(p)}) = \sum_{j = 1}^{g} \sum_{i = 1}^r n_i z^{(p)} [\log f(x^{(p)}; \theta_j)
- + \log \pi_j ]</code>
-</p>
-
-<p>where <code class="reqn">z^{(p)}</code> is the expected value of <code class="reqn">z</code> given the estimated value of <code class="reqn">\Phi</code>
-and expected value <code class="reqn">x^{(p)}</code> at <code class="reqn">p</code>th iteration. The estimated value of <code class="reqn">\Phi</code>
-can be updated iteratively via the E-step, in which we estimate <code class="reqn">\Phi</code> by maximizing
-the complete-data loglikelihood, and M-step, in which we calculate the expected value of
-the latent variables <code class="reqn">x</code> and <code class="reqn">z</code>. The EM algorithm is terminated by using a stopping
-rule.
-The M-step of the EM algorithm may or may not have closed-form solution (e.g. the Weibull
-mixture model or Gamma mixture model). If not, an iterative approach like Newton's algorithm
-or bisection method may be used.
-</p>
-<p>For a given data set, when we have no prior information about the number of components
-<code class="reqn">g</code>, its value should be estimated from the data. Because mixture models don't satisfy
-the regularity condition for the likelihood ratio test (which requires that the true
-parameter under the null hypothesis should be in the interior of the parameter space
-of the full model under the alternative hypothesis), a bootstrap approach is usually
-used in the literature (see McLachlan (1987, 2004), Feng and McCulloch (1996)). The general
-step of bootstrap likelihood ratio test is as follows.
-</p>
-
-<ol>
-<li><p> For the given data <code class="reqn">x</code>, estimate <code class="reqn">\Phi</code> under both the null and the alternative
-hypothesis to get <code class="reqn">\hat\Phi_0</code> and <code class="reqn">\hat\Phi_1</code>. Calculate the observed log-likelihood
-<code class="reqn">\ell(x; \hat\Phi_0)</code> and <code class="reqn">\ell(x; \hat\Phi_1)</code>. The likelihood ratio test
-statistic is defined as
-</p>
-<p style="text-align: center;"><code class="reqn">w_0 = -2(\ell(x; \hat\Phi_0) - \ell(x; \hat\Phi_1)).</code>
-</p>
-
-</li>
-<li><p> Generate random data of the same size as the original data <code class="reqn">x</code> from the model
-under the null hypothesis using estimated parameter <code class="reqn">\hat\Phi_0</code>, then repeat step
-1 using the simulated data. Repeat this process for <code class="reqn">B</code> times to get a vector of the
-simulated likelihood ratio test statistics <code class="reqn">w_1^{1}, \dots, w_1^{B}</code>.
-</p>
-</li>
-<li><p> Calculate the empirical p-value
-</p>
-<p style="text-align: center;"><code class="reqn">p = \frac{1}{B} \sum_{i=1}^B I(w_1^{(i)} &gt; w_0)</code>
-</p>
-
-<p>where <code class="reqn">I</code> is the indicator function.
-</p>
-</li></ol>
-
-<p>This package does the following three things.
-</p>
-
-<ol>
-<li><p> Fitting finite mixture models for both raw data and binned data by using
-EM algorithm, together with Newton-Raphson algorithm and bisection method.
-</p>
-</li>
-<li><p> Do parametric bootstrap likelihood ratio test for two candidate models.
-</p>
-</li>
-<li><p> Do model selection by Bayesian information criterion.
-</p>
-</li></ol>
-
-<p>To speed up computation, the EM algorithm is fulfilled in C++ by using Rcpp
-(Eddelbuettel and Francois (2011)).
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Youjiao Yu <a href="mailto:jiaoisjiao@gmail.com">jiaoisjiao@gmail.com</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Dempster, A. P., Laird, N. M., and Rubin, D. B. Maximum likelihood from incomplete data
-via the EM algorithm. <em>Journal of the royal statistical society. Series B
-(methodological)</em>, pages 1-38, 1977.
-</p>
-<p>Dirk Eddelbuettel and Romain Francois (2011). Rcpp: Seamless R and C++ Integration.
-<em>Journal of Statistical Software</em>, 40(8), 1-18. URL http://www.jstatsoft.org/v40/i08/.
-</p>
-<p>Efron, B. Bootstrap methods: Another look at the jackknife. <em>Ann. Statist.</em>,
-7(1):1-26, 01 1979.
-</p>
-<p>Feng, Z. D. and McCulloch, C. E. Using bootstrap likelihood ratios in finite mixture
-models. <em>Journal of the Royal Statistical Society. Series B (Methodological)</em>,
-pages 609-617, 1996.
-</p>
-<p>Lo, Y., Mendell, N. R., and Rubin, D. B. Testing the number of components in a normal
-mixture. <em>Biometrika</em>, 88(3):767-778, 2001.
-</p>
-<p>McLachlan, G. J. On bootstrapping the likelihood ratio test statistic for the number
-of components in a normal mixture. <em>Applied statistics</em>, pages 318-324, 1987.
-</p>
-<p>McLachlan, G. and Jones, P. Fitting mixture models to grouped and truncated data via
-the EM algorithm. <em>Biometrics</em>, pages 571-578, 1988.
-</p>
-<p>McLachlan, G. and Peel, D. <em>Finite mixture models</em>. John Wiley &amp; Sons, 2004.
-</p>
 
 <hr>
 <h2 id='plot.bootEM'>Plot Bootstrap Likelihood Ratio Test</h2><span id='topic+plot.bootEM'></span>

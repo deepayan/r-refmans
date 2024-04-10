@@ -13,17 +13,17 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {factor.switching}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#factor.switching-package'>
+<p>Post-Processing MCMC Outputs of Bayesian Factor Analytic Models</p></a></li>
 <li><a href='#compareMultipleChains'>
 <p>Compare multiple chains</p></a></li>
 <li><a href='#credible.region'>
 <p>Compute a simultaneous credible region (rectangle) from a sample for a vector valued parameter.</p></a></li>
-<li><a href='#factor.switching-package'>
-<p>Post-Processing MCMC Outputs of Bayesian Factor Analytic Models</p></a></li>
 <li><a href='#plot.rsp'>
 <p>Plot posterior means and credible regions</p></a></li>
 <li><a href='#procrustes_switching'>
@@ -99,6 +99,120 @@ function processMathHTML() {
 <td>2024-02-12 13:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='factor.switching-package'>
+Post-Processing MCMC Outputs of Bayesian Factor Analytic Models
+</h2><span id='topic+factor.switching-package'></span><span id='topic+factor.switching'></span>
+
+<h3>Description</h3>
+
+<p>A well known identifiability issue in factor analytic models is the invariance with respect to orthogonal transformations. This problem burdens the inference under a Bayesian setup, where Markov chain Monte Carlo (MCMC) methods are used to generate samples from the posterior distribution. The package applies a series of rotation, sign and permutation transformations (Papastamoulis and Ntzoufras (2022) &lt;DOI:10.1007/s11222-022-10084-4&gt;) into raw MCMC samples of factor loadings, which are provided by the user. The post-processed output is identifiable and can be used for MCMC inference on any parametric function of factor loadings. Comparison of multiple MCMC chains is also possible.  
+</p>
+<p>There are three alternative schemes for minimizing the objective function. 
+</p>
+
+<ol>
+<li><p>Exact <code><a href="#topic+rsp_exact">rsp_exact</a></code>
+</p>
+</li>
+<li><p>Partial Simulated Annealing <code><a href="#topic+rsp_partial_sa">rsp_partial_sa</a></code>
+</p>
+</li>
+<li><p>Full simulated annealing <code><a href="#topic+rsp_full_sa">rsp_full_sa</a></code>
+</p>
+</li></ol>
+
+<p>The exact algorithm solves <code class="reqn">2^q</code> assignment problems per MCMC iteration, where <code class="reqn">q</code> denotes the number of factors of the fitted model. For typical values of  the number of factors (e.g. <code class="reqn">q&lt;11</code>) the exact scheme should be preferred. Otherwise, the two approximate algorithms based on simulated annealing may be considered. The Partial simulated annealing is more efficient than the full simulated annealing scheme. 
+</p>
+<p>In cases of parallel MCMC chains, applying the RSP algorithm for each chain separately will  identify the factor loadings within each chain. However, the results will not be comparable between chains. The comparison of multiple MCMC chains is doable via the <code><a href="#topic+compareMultipleChains">compareMultipleChains</a></code> function. 
+</p>
+
+
+<h3>Details</h3>
+
+<p>The DESCRIPTION file:
+
+Index of help topics:
+</p>
+<pre>
+compareMultipleChains   Compare multiple chains
+credible.region         Compute a simultaneous credible region
+                        (rectangle) from a sample for a vector valued
+                        parameter.
+factor.switching-package
+                        Post-Processing MCMC Outputs of Bayesian Factor
+                        Analytic Models
+plot.rsp                Plot posterior means and credible regions
+procrustes_switching    Orthogonal Procrustes rotations
+rsp_exact               Rotation-Sign-Permutation (RSP) algorithm
+                        (Exact scheme)
+rsp_full_sa             Rotation-Sign-Permutation (RSP) algorithm (Full
+                        Simulated Annealing)
+rsp_partial_sa          Rotation-Sign-Permutation (RSP) algorithm
+                        (Partial Simulated Annealing)
+small_posterior_2chains
+                        Example data
+switch_and_permute      Apply sign switchings and column permutations
+weighted_procrustes_switching
+                        Weighted Orthogonal Procrustes rotations
+</pre>
+
+
+<h3>Author(s)</h3>
+
+<p>Panagiotis Papastamoulis
+</p>
+<p>Maintainer: Panagiotis Papastamoulis
+</p>
+
+
+<h3>References</h3>
+
+<p>Papastamoulis, P. and Ntzoufras, I. (2022).
+On the identifiability of Bayesian Factor Analytic models.
+<em>Statistics and Computing</em>, 32, 23 (2022) https://doi.org/10.1007/s11222-022-10084-4.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+rsp_exact">rsp_exact</a></code>, <code><a href="#topic+plot.rsp">plot.rsp</a></code>, <code><a href="#topic+compareMultipleChains">compareMultipleChains</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>	# load 2 chains each one consisting of a 
+	#	small mcmc sample of 100 iterations
+	#	with p=6 variables and q=2 factors.
+	data(small_posterior_2chains)
+	Nchains &lt;- length(small_posterior_2chains)
+	reorderedPosterior &lt;- vector('list',length=Nchains)
+	# post-process the 2 chains
+	for(i in 1:Nchains){
+		reorderedPosterior[[i]] &lt;- rsp_exact( lambda_mcmc = small_posterior_2chains[[i]], 
+				maxIter = 100, 
+				threshold = 1e-6, 
+				verbose=TRUE )
+	}
+	#	plot posterior summary for chain 1:
+	plot(reorderedPosterior[[1]])
+	#	plot posterior summary for chain 2:
+	plot(reorderedPosterior[[2]])
+	# make them comparable
+	makeThemSimilar &lt;- compareMultipleChains(rspObjectList=reorderedPosterior)
+	# plot the traces of both chains
+	oldpar &lt;- par(no.readonly =TRUE)
+	par(mfcol=c(2,6),mar=c(4,4,2,1))
+	plot(makeThemSimilar,auto.layout=FALSE,density=FALSE,
+		ylim=c(-1.1,1.1),smooth=FALSE,col=c('red','blue'))
+	legend('topright',c('post-processed chain 1', 
+		'post-processed chain 2'),lty=1:2,col=c('red','blue'))
+	par(oldpar)
+	# you can also use the summary of mcmc.list
+	summary(makeThemSimilar)
+</code></pre>
+
 <hr>
 <h2 id='compareMultipleChains'>
 Compare multiple chains
@@ -261,120 +375,6 @@ Simultaneous posterior probability statements from Monte Carlo output.
     names(show) &lt;- c("Empirical", "Desired")
     print(show)
   }
-</code></pre>
-
-<hr>
-<h2 id='factor.switching-package'>
-Post-Processing MCMC Outputs of Bayesian Factor Analytic Models
-</h2><span id='topic+factor.switching-package'></span><span id='topic+factor.switching'></span>
-
-<h3>Description</h3>
-
-<p>A well known identifiability issue in factor analytic models is the invariance with respect to orthogonal transformations. This problem burdens the inference under a Bayesian setup, where Markov chain Monte Carlo (MCMC) methods are used to generate samples from the posterior distribution. The package applies a series of rotation, sign and permutation transformations (Papastamoulis and Ntzoufras (2022) &lt;DOI:10.1007/s11222-022-10084-4&gt;) into raw MCMC samples of factor loadings, which are provided by the user. The post-processed output is identifiable and can be used for MCMC inference on any parametric function of factor loadings. Comparison of multiple MCMC chains is also possible.  
-</p>
-<p>There are three alternative schemes for minimizing the objective function. 
-</p>
-
-<ol>
-<li><p>Exact <code><a href="#topic+rsp_exact">rsp_exact</a></code>
-</p>
-</li>
-<li><p>Partial Simulated Annealing <code><a href="#topic+rsp_partial_sa">rsp_partial_sa</a></code>
-</p>
-</li>
-<li><p>Full simulated annealing <code><a href="#topic+rsp_full_sa">rsp_full_sa</a></code>
-</p>
-</li></ol>
-
-<p>The exact algorithm solves <code class="reqn">2^q</code> assignment problems per MCMC iteration, where <code class="reqn">q</code> denotes the number of factors of the fitted model. For typical values of  the number of factors (e.g. <code class="reqn">q&lt;11</code>) the exact scheme should be preferred. Otherwise, the two approximate algorithms based on simulated annealing may be considered. The Partial simulated annealing is more efficient than the full simulated annealing scheme. 
-</p>
-<p>In cases of parallel MCMC chains, applying the RSP algorithm for each chain separately will  identify the factor loadings within each chain. However, the results will not be comparable between chains. The comparison of multiple MCMC chains is doable via the <code><a href="#topic+compareMultipleChains">compareMultipleChains</a></code> function. 
-</p>
-
-
-<h3>Details</h3>
-
-<p>The DESCRIPTION file:
-
-Index of help topics:
-</p>
-<pre>
-compareMultipleChains   Compare multiple chains
-credible.region         Compute a simultaneous credible region
-                        (rectangle) from a sample for a vector valued
-                        parameter.
-factor.switching-package
-                        Post-Processing MCMC Outputs of Bayesian Factor
-                        Analytic Models
-plot.rsp                Plot posterior means and credible regions
-procrustes_switching    Orthogonal Procrustes rotations
-rsp_exact               Rotation-Sign-Permutation (RSP) algorithm
-                        (Exact scheme)
-rsp_full_sa             Rotation-Sign-Permutation (RSP) algorithm (Full
-                        Simulated Annealing)
-rsp_partial_sa          Rotation-Sign-Permutation (RSP) algorithm
-                        (Partial Simulated Annealing)
-small_posterior_2chains
-                        Example data
-switch_and_permute      Apply sign switchings and column permutations
-weighted_procrustes_switching
-                        Weighted Orthogonal Procrustes rotations
-</pre>
-
-
-<h3>Author(s)</h3>
-
-<p>Panagiotis Papastamoulis
-</p>
-<p>Maintainer: Panagiotis Papastamoulis
-</p>
-
-
-<h3>References</h3>
-
-<p>Papastamoulis, P. and Ntzoufras, I. (2022).
-On the identifiability of Bayesian Factor Analytic models.
-<em>Statistics and Computing</em>, 32, 23 (2022) https://doi.org/10.1007/s11222-022-10084-4.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+rsp_exact">rsp_exact</a></code>, <code><a href="#topic+plot.rsp">plot.rsp</a></code>, <code><a href="#topic+compareMultipleChains">compareMultipleChains</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>	# load 2 chains each one consisting of a 
-	#	small mcmc sample of 100 iterations
-	#	with p=6 variables and q=2 factors.
-	data(small_posterior_2chains)
-	Nchains &lt;- length(small_posterior_2chains)
-	reorderedPosterior &lt;- vector('list',length=Nchains)
-	# post-process the 2 chains
-	for(i in 1:Nchains){
-		reorderedPosterior[[i]] &lt;- rsp_exact( lambda_mcmc = small_posterior_2chains[[i]], 
-				maxIter = 100, 
-				threshold = 1e-6, 
-				verbose=TRUE )
-	}
-	#	plot posterior summary for chain 1:
-	plot(reorderedPosterior[[1]])
-	#	plot posterior summary for chain 2:
-	plot(reorderedPosterior[[2]])
-	# make them comparable
-	makeThemSimilar &lt;- compareMultipleChains(rspObjectList=reorderedPosterior)
-	# plot the traces of both chains
-	oldpar &lt;- par(no.readonly =TRUE)
-	par(mfcol=c(2,6),mar=c(4,4,2,1))
-	plot(makeThemSimilar,auto.layout=FALSE,density=FALSE,
-		ylim=c(-1.1,1.1),smooth=FALSE,col=c('red','blue'))
-	legend('topright',c('post-processed chain 1', 
-		'post-processed chain 2'),lty=1:2,col=c('red','blue'))
-	par(oldpar)
-	# you can also use the summary of mcmc.list
-	summary(makeThemSimilar)
 </code></pre>
 
 <hr>

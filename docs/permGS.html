@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {permGS}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#permGS'><p>permGS</p></a></li>
 <li><a href='#createPermGS'><p>createPermGS</p></a></li>
 <li><a href='#exactLR'><p>exactLR</p></a></li>
 <li><a href='#imputeHeinze'><p>imputeHeinze</p></a></li>
@@ -25,7 +26,6 @@ function processMathHTML() {
 <li><a href='#imputeIPZ'><p>imputeIPZ</p></a></li>
 <li><a href='#nextStage'><p>nextStage</p></a></li>
 <li><a href='#parseFormula'><p>Parse formula of survival model</p></a></li>
-<li><a href='#permGS'><p>permGS</p></a></li>
 <li><a href='#permHeinze'><p>Convenience function which calls createPermGS and nextStage to perform fixed sample size permutation test with Heinze method</p></a></li>
 <li><a href='#permIPT'><p>Convenience function which calls createPermGS and nextStage to perform fixed sample size permutation test with IPT method</p></a></li>
 <li><a href='#permIPZ'><p>Convenience function which calls createPermGS and nextStage to perform fixed sample size permutation test with IPZ method</p></a></li>
@@ -115,6 +115,68 @@ Permute block preserving group sizes, randomization blocks</a></li>
 <td>2017-08-07 23:29:17 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='permGS'>permGS</h2><span id='topic+permGS'></span><span id='topic+permGS-package'></span>
+
+<h3>Description</h3>
+
+<p>This package implements permutational group-sequential tests for time-to-event data based on (weighted) log-rank
+test statistics. It supports exact permutation test when the censoring distributions are equal in the treatment
+and the control group and the approximate imputation-permutation methods of Heinze et al. (2003) and Wang et al. (2010)
+and  when the censoring distributions are different. Permutations can be stratified, i.e. only patients within the
+same stratum are treated as exchangeable. Rejection boundaries are monotone and finite even when only a random
+subset of all permutations is used. One- and Two-sided testing possible.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Matthias Brueckner <a href="mailto:m.bruckner@lancaster.ac.uk">m.bruckner@lancaster.ac.uk</a>, Franz Koenig <a href="mailto:Franz.Koenig@meduniwien.ac.at">Franz.Koenig@meduniwien.ac.at</a>, Martin Posch <a href="mailto:martin.posch@meduniwien.ac.at">martin.posch@meduniwien.ac.at</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Brueckner, M., Koenig, F. and Posch, M. Group-sequential permutation tests for time-to-event data.
+</p>
+<p>Heinze, G., Gnant, M. and Schemper, M. Exact Log-Rank Tests for Unequal Follow-Up. Biometrics, 59(4), December 2003.
+</p>
+<p>Wang, R., Lagakos, S.~W. and Gray, R.~J. Testing and interval estimation for two-sample survival comparisons with small sample sizes and unequal censoring. Biostatistics, 11(4), 676&ndash;692, January 2010.
+</p>
+<p>Kelly, P., Zhou, Y., Whitehead, N. J., Stallard, N. and Bowman, C. Sequentially testing for a gene–drug interaction in a genomewide analysis. Statistics in Medicine, 27(11), 2022&ndash;2034, May 2008.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## IPZ method based on logrank test with 1000 restricted random permutations
+x &lt;- createPermGS(1000, TRUE, "IPZ", type="logrank")
+
+T &lt;- rexp(100) ## event times
+R &lt;- runif(100, 0, 12)  ## recruitment times
+Z &lt;- rbinom(100, 1, 0.5)  ## treatment assignment
+C &lt;- rexp(100) ## drop-out times
+
+## two-stage design
+t1 &lt;- 9  ## calendar time of interim analysis
+t2 &lt;- 18  ## calendar time of final analysis
+
+## Stage 1
+data.t1 &lt;- data.frame(time=pmin(T, C, max(0, (t1-R))), status=(T&lt;=pmin(C, t1-R)), trt=Z)
+data.t1 &lt;- data.t1[R &lt;= t1,] 
+x &lt;- nextStage(x, 0.00153, Surv(time, status) ~ trt, data.t1)
+summary(x)
+
+if(!x$results$reject[1]) { ## Stage 2
+   data.t2 &lt;- data.frame(time=pmin(T, C, max(0, (t2-R))), status=(T&lt;=pmin(C, t2-R)), trt=Z)
+   data.t2 &lt;- data.t2[R &lt;= t2,]
+   data.t2$strata &lt;- rep.int(c(1,2), c(nrow(data.t1), nrow(data.t2)-nrow(data.t1)))
+   x &lt;- nextStage(x, alpha=0.025, Surv(time, status) ~ trt + strata(strata), data.t2)           
+   summary(x)
+}
+
+</code></pre>
+
 <hr>
 <h2 id='createPermGS'>createPermGS</h2><span id='topic+createPermGS'></span>
 
@@ -479,68 +541,6 @@ if(!x$results$reject[1]) {
 
 <p>data.frame containing the parsed variables
 </p>
-
-<hr>
-<h2 id='permGS'>permGS</h2><span id='topic+permGS'></span><span id='topic+permGS-package'></span>
-
-<h3>Description</h3>
-
-<p>This package implements permutational group-sequential tests for time-to-event data based on (weighted) log-rank
-test statistics. It supports exact permutation test when the censoring distributions are equal in the treatment
-and the control group and the approximate imputation-permutation methods of Heinze et al. (2003) and Wang et al. (2010)
-and  when the censoring distributions are different. Permutations can be stratified, i.e. only patients within the
-same stratum are treated as exchangeable. Rejection boundaries are monotone and finite even when only a random
-subset of all permutations is used. One- and Two-sided testing possible.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Matthias Brueckner <a href="mailto:m.bruckner@lancaster.ac.uk">m.bruckner@lancaster.ac.uk</a>, Franz Koenig <a href="mailto:Franz.Koenig@meduniwien.ac.at">Franz.Koenig@meduniwien.ac.at</a>, Martin Posch <a href="mailto:martin.posch@meduniwien.ac.at">martin.posch@meduniwien.ac.at</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Brueckner, M., Koenig, F. and Posch, M. Group-sequential permutation tests for time-to-event data.
-</p>
-<p>Heinze, G., Gnant, M. and Schemper, M. Exact Log-Rank Tests for Unequal Follow-Up. Biometrics, 59(4), December 2003.
-</p>
-<p>Wang, R., Lagakos, S.~W. and Gray, R.~J. Testing and interval estimation for two-sample survival comparisons with small sample sizes and unequal censoring. Biostatistics, 11(4), 676&ndash;692, January 2010.
-</p>
-<p>Kelly, P., Zhou, Y., Whitehead, N. J., Stallard, N. and Bowman, C. Sequentially testing for a gene–drug interaction in a genomewide analysis. Statistics in Medicine, 27(11), 2022&ndash;2034, May 2008.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## IPZ method based on logrank test with 1000 restricted random permutations
-x &lt;- createPermGS(1000, TRUE, "IPZ", type="logrank")
-
-T &lt;- rexp(100) ## event times
-R &lt;- runif(100, 0, 12)  ## recruitment times
-Z &lt;- rbinom(100, 1, 0.5)  ## treatment assignment
-C &lt;- rexp(100) ## drop-out times
-
-## two-stage design
-t1 &lt;- 9  ## calendar time of interim analysis
-t2 &lt;- 18  ## calendar time of final analysis
-
-## Stage 1
-data.t1 &lt;- data.frame(time=pmin(T, C, max(0, (t1-R))), status=(T&lt;=pmin(C, t1-R)), trt=Z)
-data.t1 &lt;- data.t1[R &lt;= t1,] 
-x &lt;- nextStage(x, 0.00153, Surv(time, status) ~ trt, data.t1)
-summary(x)
-
-if(!x$results$reject[1]) { ## Stage 2
-   data.t2 &lt;- data.frame(time=pmin(T, C, max(0, (t2-R))), status=(T&lt;=pmin(C, t2-R)), trt=Z)
-   data.t2 &lt;- data.t2[R &lt;= t2,]
-   data.t2$strata &lt;- rep.int(c(1,2), c(nrow(data.t1), nrow(data.t2)-nrow(data.t1)))
-   x &lt;- nextStage(x, alpha=0.025, Surv(time, status) ~ trt + strata(strata), data.t2)           
-   summary(x)
-}
-
-</code></pre>
 
 <hr>
 <h2 id='permHeinze'>Convenience function which calls createPermGS and nextStage to perform fixed sample size permutation test with Heinze method</h2><span id='topic+permHeinze'></span>

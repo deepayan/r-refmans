@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {FITSio}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#FITSio-package'><p>FITS file input-output functions</p></a></li>
 <li><a href='#axVec'><p>Generate axis vector for image</p></a></li>
 <li><a href='#closeHdr'>
 <p>Format and close FITS header</p></a></li>
-<li><a href='#FITSio-package'><p>FITS file input-output functions</p></a></li>
 <li><a href='#makeFITSimHdr'>
 <p>Generate header for FITS image</p></a></li>
 <li><a href='#modifyHeader'>
@@ -106,6 +106,143 @@ function processMathHTML() {
 <td>2021-04-03 19:10:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='FITSio-package'>FITS file input-output functions
+</h2><span id='topic+FITSio-package'></span><span id='topic+FITSio'></span>
+
+<h3>Description</h3>
+
+<p>FITS, the Flexible
+Image Transport System, is
+a standard data format for astronomy.
+This package contains
+functions to read files with FITS file image and binary and ASCII table formats
+and to write FITS image files.  The functions comply with the standards
+defined by the International Astronomical Union's FITS Working Group.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> FITSio</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 2.1-6</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2021-03-28</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL (&gt;= 2)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+LazyLoad: </td><td style="text-align: left;"> yes</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>At the high level, this package contains functions to read
+single FITS Header and Data Units (HDUs) containing image and binary
+table extensions, and one to write FITS image
+files.  <code>readFITS</code> automatically
+recognizes
+image (multi-dimensional arrays) and binary table extensions, returning a
+list with data, header, and scaling information.
+<code>readFrameFromFITS</code> returns an <span class="rlang"><b>R</b></span> data frame from a single binary
+table HDU.  Both functions accept an argument to pick out the
+<em>n</em>th HDU in a larger file.
+Binary table complex, and array
+descriptor data types are not implemented in this release due to a lack
+of examples for testing.  8, 16, 24, and 32-bit bit arrays return as integers.  Other lengths
+are not supported.
+</p>
+<p>For writing, the package contains the high-level function
+<code>writeFITSim</code> to write FITS
+images, along with a minor extension to efficiently write
+data in 16-bit integers, <code>writeFITSim16i</code>.
+</p>
+<p>A set of mid-level functions enables reading files with
+combinations of HDUs: <code>readFITSheader</code> reads headers,
+<code>readFITSarray</code> reads image extensions, and
+<code>readFITSbintable</code> reads binary table extensions.
+<code>readFITStable</code> reads ASCII table extensions.
+<code>readFITS</code> and <code>readFrameFromFITS</code> invoke these functions to
+do the actual reading.
+</p>
+<p>Function <code>axVec</code> generates a vector for image axis labeling from
+data in an image FITS file.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Andrew Harris &lt;harris@astro.umd.edu&gt;, with contributions from
+Eric H. Neilsen, Jr. and Bi Cheng Wu
+</p>
+
+
+<h3>References</h3>
+
+<p>Hanisch et al., <em>Astron.\ Astrophys.</em> 376, 359-380 (2001)
+</p>
+<p><a href="https://fits.gsfc.nasa.gov/">https://fits.gsfc.nasa.gov/</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>require(FITSio)
+## Make test image with axis information, write to disk
+Z &lt;- matrix(1:15, ncol = 3)
+filename &lt;- paste(tempdir(), "test.fits", sep="")
+writeFITSim(Z, file = filename, c1 = "Test FITS file",
+            crpix = c(1,1), crvaln = c(10, 100), cdeltn = c(8, 2),
+            ctypen = c("Distance", "Time"),
+            cunitn = c("Furlongs", "Fortnights"))
+
+## Read image back and display
+X &lt;-  readFITS(filename)
+ax1 &lt;- axVec(1, X$axDat)          # Make axis vector for image
+ax2 &lt;- axVec(2, X$axDat)
+xlab &lt;- X$axDat$ctype[1]
+ylab &lt;- paste(X$axDat$ctype[2], " [", X$axDat$cunit[2], "]", sep = "")
+image(ax1, ax2, X$imDat, xlab = xlab, ylab = ylab)
+str(X)
+X$axDat                           # Display data frame with axis data
+X$hdr[1:10]                       # Header sample
+X$hdr[which(X$hdr=="BITPIX")+1]   # BITPIX value from header
+
+### Read back in, modify data, header, and axis data information,
+## then write modified version as new file
+Z &lt;-  readFITS(filename)
+  Z$imDat &lt;- Z$imDat + 300
+  Z$header &lt;- addKwv('SCALE', 1.03, 'test header mod', header=Z$header)
+  # Z$axDat &lt;- edit(Z$axDat)  # interactive edit
+  Z$axDat$cdelt[2] &lt;- 20
+filename2 &lt;- paste(tempdir(), "test.fits", sep="")
+writeFITSim(Z$imDat, file=filename2, axDat=Z$axDat, header=Z$header)
+
+## Clean up files to avoid clutter
+unlink(filename)
+unlink(filename2)
+</code></pre>
+
 <hr>
 <h2 id='axVec'>Generate axis vector for image</h2><span id='topic+axVec'></span>
 
@@ -275,143 +412,6 @@ header &lt;- makeFITSimHdr(X, crpixn = c(1,1), crvaln = c(10, 100),
                         header = header)
 # finish and close out header
 tmp &lt;- closeHdr(header) 
-</code></pre>
-
-<hr>
-<h2 id='FITSio-package'>FITS file input-output functions
-</h2><span id='topic+FITSio-package'></span><span id='topic+FITSio'></span>
-
-<h3>Description</h3>
-
-<p>FITS, the Flexible
-Image Transport System, is
-a standard data format for astronomy.
-This package contains
-functions to read files with FITS file image and binary and ASCII table formats
-and to write FITS image files.  The functions comply with the standards
-defined by the International Astronomical Union's FITS Working Group.
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> FITSio</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 2.1-6</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2021-03-28</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL (&gt;= 2)</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-LazyLoad: </td><td style="text-align: left;"> yes</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>At the high level, this package contains functions to read
-single FITS Header and Data Units (HDUs) containing image and binary
-table extensions, and one to write FITS image
-files.  <code>readFITS</code> automatically
-recognizes
-image (multi-dimensional arrays) and binary table extensions, returning a
-list with data, header, and scaling information.
-<code>readFrameFromFITS</code> returns an <span class="rlang"><b>R</b></span> data frame from a single binary
-table HDU.  Both functions accept an argument to pick out the
-<em>n</em>th HDU in a larger file.
-Binary table complex, and array
-descriptor data types are not implemented in this release due to a lack
-of examples for testing.  8, 16, 24, and 32-bit bit arrays return as integers.  Other lengths
-are not supported.
-</p>
-<p>For writing, the package contains the high-level function
-<code>writeFITSim</code> to write FITS
-images, along with a minor extension to efficiently write
-data in 16-bit integers, <code>writeFITSim16i</code>.
-</p>
-<p>A set of mid-level functions enables reading files with
-combinations of HDUs: <code>readFITSheader</code> reads headers,
-<code>readFITSarray</code> reads image extensions, and
-<code>readFITSbintable</code> reads binary table extensions.
-<code>readFITStable</code> reads ASCII table extensions.
-<code>readFITS</code> and <code>readFrameFromFITS</code> invoke these functions to
-do the actual reading.
-</p>
-<p>Function <code>axVec</code> generates a vector for image axis labeling from
-data in an image FITS file.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Andrew Harris &lt;harris@astro.umd.edu&gt;, with contributions from
-Eric H. Neilsen, Jr. and Bi Cheng Wu
-</p>
-
-
-<h3>References</h3>
-
-<p>Hanisch et al., <em>Astron.\ Astrophys.</em> 376, 359-380 (2001)
-</p>
-<p><a href="https://fits.gsfc.nasa.gov/">https://fits.gsfc.nasa.gov/</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>require(FITSio)
-## Make test image with axis information, write to disk
-Z &lt;- matrix(1:15, ncol = 3)
-filename &lt;- paste(tempdir(), "test.fits", sep="")
-writeFITSim(Z, file = filename, c1 = "Test FITS file",
-            crpix = c(1,1), crvaln = c(10, 100), cdeltn = c(8, 2),
-            ctypen = c("Distance", "Time"),
-            cunitn = c("Furlongs", "Fortnights"))
-
-## Read image back and display
-X &lt;-  readFITS(filename)
-ax1 &lt;- axVec(1, X$axDat)          # Make axis vector for image
-ax2 &lt;- axVec(2, X$axDat)
-xlab &lt;- X$axDat$ctype[1]
-ylab &lt;- paste(X$axDat$ctype[2], " [", X$axDat$cunit[2], "]", sep = "")
-image(ax1, ax2, X$imDat, xlab = xlab, ylab = ylab)
-str(X)
-X$axDat                           # Display data frame with axis data
-X$hdr[1:10]                       # Header sample
-X$hdr[which(X$hdr=="BITPIX")+1]   # BITPIX value from header
-
-### Read back in, modify data, header, and axis data information,
-## then write modified version as new file
-Z &lt;-  readFITS(filename)
-  Z$imDat &lt;- Z$imDat + 300
-  Z$header &lt;- addKwv('SCALE', 1.03, 'test header mod', header=Z$header)
-  # Z$axDat &lt;- edit(Z$axDat)  # interactive edit
-  Z$axDat$cdelt[2] &lt;- 20
-filename2 &lt;- paste(tempdir(), "test.fits", sep="")
-writeFITSim(Z$imDat, file=filename2, axDat=Z$axDat, header=Z$header)
-
-## Clean up files to avoid clutter
-unlink(filename)
-unlink(filename2)
 </code></pre>
 
 <hr>

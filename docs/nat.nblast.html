@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {nat.nblast}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#nat.nblast-package'><p>Neuron similarity, search and clustering tools</p></a></li>
 <li><a href='#['><p>Extract parts of a sparse <code>spam</code> matrix</p></a></li>
 <li><a href='#calc_dists_dotprods'><p>Calculate distances and dot products between two sets of neurons</p></a></li>
 <li><a href='#calc_prob_mat'><p>Calculate probability matrix from distances and dot products between neuron</p>
@@ -29,7 +30,6 @@ non-matching sets of neurons</a></li>
 <li><a href='#fctraces20'><p>20 traced Drosophila neurons from Chiang et al 2011</p></a></li>
 <li><a href='#fill_in_sparse_score_mat'><p>Add one or more submatrices to a sparse score matrix</p></a></li>
 <li><a href='#fill_pairs_sparse_score_mat'><p>Add forwards, reverse and self scores for a pair of neurons to a sparse score matrix</p></a></li>
-<li><a href='#nat.nblast-package'><p>Neuron similarity, search and clustering tools</p></a></li>
 <li><a href='#nblast'><p>Calculate similarity score for neuron morphologies</p></a></li>
 <li><a href='#nblast_allbyall'><p>Wrapper function to compute all by all NBLAST scores for a set of neurons</p></a></li>
 <li><a href='#NeuriteBlast'><p>Produce similarity score for neuron morphologies</p></a></li>
@@ -140,6 +140,121 @@ Similarity and Clustering</td>
 <td>2023-06-14 08:20:09 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='nat.nblast-package'>Neuron similarity, search and clustering tools</h2><span id='topic+nat.nblast-package'></span><span id='topic+nat.nblast'></span>
+
+<h3>Description</h3>
+
+<p><b>nat.nblast</b> provides tools to compare neuronal morphology using the
+NBLAST algorithm (Costa et al. 2016).
+</p>
+
+
+<h3>Similarity and search</h3>
+
+<p>The main entry point for similarity and search functions is
+<code><a href="#topic+nblast">nblast</a></code>. Traced neurons will normally be converted to the
+<code><a href="nat.html#topic+dotprops">dotprops</a></code> format for search. When multiple neurons are
+compared they should be in a <code><a href="nat.html#topic+neuronlist">neuronlist</a></code> object.
+</p>
+<p>The current NBLAST version (2) depends on a scoring matrix. Default
+matrices trained using <em>Drosophila</em> neurons in the FCWB template brain
+space are distributed with this package (see <code><a href="#topic+smat.fcwb">smat.fcwb</a></code>); see
+<b>Scoring Matrices</b> section below for creating new scoring matrices.
+</p>
+<p><code>nblast</code> makes use of a more flexible but more complicated function
+<code>NeuriteBlast</code> which includes several additional options. The function
+<code>WeightedNNBasedLinesetMatching</code> provides the primitive functionality
+of finding the nearest neighbour distances and absolute dot products for
+two sets of segments. Neither of these functions are intended for end use.
+</p>
+<p>Calculating all by all similarity scores is facilitated by the
+<code><a href="#topic+nblast_allbyall">nblast_allbyall</a></code> function which can take either a
+<code><a href="nat.html#topic+neuronlist">neuronlist</a></code> as input or a character vector naming (a subset)
+of neurons in a (large) <code><a href="nat.html#topic+neuronlist">neuronlist</a></code>. The
+<code><a href="nat.html#topic+neuronlist">neuronlist</a></code> containing the input neurons should be resident in
+memory i.e. not the <code><a href="nat.html#topic+neuronlistfh">neuronlistfh</a></code>.
+</p>
+
+
+<h3>Clustering</h3>
+
+<p>Once an all by all similarity score matrix is available it can be used as
+the input to a variety of clustering algorithms. <code><a href="#topic+nhclust">nhclust</a></code>
+provides a convenient wrapper for R's hierarchical clustering function
+<code><a href="stats.html#topic+hclust">hclust</a></code>. If you wish to use another clustering function, then
+you can use the <code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code> to convert a raw similarity
+score matrix into a normalised distance matrix (or R <code><a href="stats.html#topic+dist">dist</a></code>
+object) suitable for clustering. If you need a similarity matrix or want to
+modify the normalisation then you can use <code><a href="#topic+sub_score_mat">sub_score_mat</a></code>.
+</p>
+<p>Note that raw NBLAST scores are not symmetric (i.e. S(A,B) is not equal to
+S(B,A)) so before clustering we construct a symmetric similarity/distance
+matrix <code>1/2 * ( S(A,B)/S(A,A) + S(B,A)/S(B,B) )</code>. See
+<code><a href="#topic+sub_score_mat">sub_score_mat</a></code>'s documentation for details.
+</p>
+
+
+<h3>Cached scores</h3>
+
+<p>Although NBLAST is fast and can be parallelised, it makes sense to cache to
+disk all by all similarity scores for a group of neurons that will be
+subject to repeated clustering or other analysis. The matrix can simply be
+saved to disk and then reloaded using base R functions like
+<code><a href="base.html#topic+save">save</a></code> and <code><a href="base.html#topic+load">load</a></code>. <code><a href="#topic+sub_score_mat">sub_score_mat</a></code> and
+<code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code> can be used to extract a subset of scores from
+this raw score matrix. For large matrices, the <code>bigmemory</code> or
+<code>ff</code> packages allow matrices to be stored on disk and portions loaded
+into memory on demand. <code><a href="#topic+sub_score_mat">sub_score_mat</a></code> and
+<code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code> work equally well for regular in-memory matrices
+and these disk-backed matrices.
+</p>
+<p>To give an example, for 16,129 neurons from the flycircuit.tw dataset, the
+260,144,641 comparisons took about 250 hours of compute time (half a day on
+~20 cores). When saved to disk as single precision (i.e. 4 bytes per score)
+<code>ff</code> matrix they occupy just over 1Gb.
+</p>
+
+
+<h3>Calculating scoring matrices</h3>
+
+<p>The NBLAST algorithm depends on appropriately calibrated scoring matrices.
+These encapsulate the log odds ratio that a pair of segments come from two
+structurally related neurons rather than two unrelated neurons, given the
+observed distance and absolute dot product of the two segments. Scoring
+matrices can be constructed using the <code><a href="#topic+create_scoringmatrix">create_scoringmatrix</a></code>
+function, supplying a set of matching neurons and a set of non-matching
+neurons. See the <code>create_scoringmatrix</code> documentation for links to
+lower-level functions that provide finer control over construction of the
+scoring matrix.
+</p>
+
+
+<h3>Package Options</h3>
+
+<p>There is one package option <code>nat.nblast.defaultsmat</code> which is
+<code>NULL</code> by default, but could for example be set to one of the scoring
+matrices included with the package such as <code>"smat.fcwb"</code> or to a new
+user-constructed matrix.
+</p>
+
+
+<h3>References</h3>
+
+<p>Costa, M., Ostrovsky, A.D., Manton, J.D., Prohaska, S., and
+Jefferis, G.S.X.E. (2014). NBLAST: Rapid, sensitive comparison of neuronal
+structure and construction of neuron family databases. bioRxiv preprint.
+<a href="https://doi.org/10.1101/006346">doi:10.1101/006346</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+nblast">nblast</a></code>, <code><a href="#topic+smat.fcwb">smat.fcwb</a></code>,
+<code><a href="#topic+nhclust">nhclust</a></code>, <code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code>,
+<code><a href="#topic+sub_score_mat">sub_score_mat</a></code>, <code><a href="#topic+create_scoringmatrix">create_scoringmatrix</a></code>
+</p>
+
 <hr>
 <h2 id='+5B'>Extract parts of a sparse <code>spam</code> matrix</h2><span id='topic++5B'></span><span id='topic++5B+2Cspam+2Ccharacter+2Ccharacter+2Clogical-method'></span><span id='topic++5B+2Cspam+2Ccharacter+2Ccharacter+2Cmissing-method'></span><span id='topic++5B+2Cspam+2Ccharacter+2Cmissing+2Clogical-method'></span><span id='topic++5B+2Cspam+2Ccharacter+2Cmissing+2Cmissing-method'></span><span id='topic++5B+2Cspam+2Cmissing+2Ccharacter+2Clogical-method'></span><span id='topic++5B+2Cspam+2Cmissing+2Ccharacter+2Cmissing-method'></span>
 
@@ -718,121 +833,6 @@ column names must have matches in <code>sparse_matrix</code>.</p>
 <h3>Value</h3>
 
 <p>A sparse matrix (of class <code><a href="spam.html#topic+spam">spam</a></code>) with the specified score entries filled.
-</p>
-
-<hr>
-<h2 id='nat.nblast-package'>Neuron similarity, search and clustering tools</h2><span id='topic+nat.nblast-package'></span><span id='topic+nat.nblast'></span>
-
-<h3>Description</h3>
-
-<p><b>nat.nblast</b> provides tools to compare neuronal morphology using the
-NBLAST algorithm (Costa et al. 2016).
-</p>
-
-
-<h3>Similarity and search</h3>
-
-<p>The main entry point for similarity and search functions is
-<code><a href="#topic+nblast">nblast</a></code>. Traced neurons will normally be converted to the
-<code><a href="nat.html#topic+dotprops">dotprops</a></code> format for search. When multiple neurons are
-compared they should be in a <code><a href="nat.html#topic+neuronlist">neuronlist</a></code> object.
-</p>
-<p>The current NBLAST version (2) depends on a scoring matrix. Default
-matrices trained using <em>Drosophila</em> neurons in the FCWB template brain
-space are distributed with this package (see <code><a href="#topic+smat.fcwb">smat.fcwb</a></code>); see
-<b>Scoring Matrices</b> section below for creating new scoring matrices.
-</p>
-<p><code>nblast</code> makes use of a more flexible but more complicated function
-<code>NeuriteBlast</code> which includes several additional options. The function
-<code>WeightedNNBasedLinesetMatching</code> provides the primitive functionality
-of finding the nearest neighbour distances and absolute dot products for
-two sets of segments. Neither of these functions are intended for end use.
-</p>
-<p>Calculating all by all similarity scores is facilitated by the
-<code><a href="#topic+nblast_allbyall">nblast_allbyall</a></code> function which can take either a
-<code><a href="nat.html#topic+neuronlist">neuronlist</a></code> as input or a character vector naming (a subset)
-of neurons in a (large) <code><a href="nat.html#topic+neuronlist">neuronlist</a></code>. The
-<code><a href="nat.html#topic+neuronlist">neuronlist</a></code> containing the input neurons should be resident in
-memory i.e. not the <code><a href="nat.html#topic+neuronlistfh">neuronlistfh</a></code>.
-</p>
-
-
-<h3>Clustering</h3>
-
-<p>Once an all by all similarity score matrix is available it can be used as
-the input to a variety of clustering algorithms. <code><a href="#topic+nhclust">nhclust</a></code>
-provides a convenient wrapper for R's hierarchical clustering function
-<code><a href="stats.html#topic+hclust">hclust</a></code>. If you wish to use another clustering function, then
-you can use the <code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code> to convert a raw similarity
-score matrix into a normalised distance matrix (or R <code><a href="stats.html#topic+dist">dist</a></code>
-object) suitable for clustering. If you need a similarity matrix or want to
-modify the normalisation then you can use <code><a href="#topic+sub_score_mat">sub_score_mat</a></code>.
-</p>
-<p>Note that raw NBLAST scores are not symmetric (i.e. S(A,B) is not equal to
-S(B,A)) so before clustering we construct a symmetric similarity/distance
-matrix <code>1/2 * ( S(A,B)/S(A,A) + S(B,A)/S(B,B) )</code>. See
-<code><a href="#topic+sub_score_mat">sub_score_mat</a></code>'s documentation for details.
-</p>
-
-
-<h3>Cached scores</h3>
-
-<p>Although NBLAST is fast and can be parallelised, it makes sense to cache to
-disk all by all similarity scores for a group of neurons that will be
-subject to repeated clustering or other analysis. The matrix can simply be
-saved to disk and then reloaded using base R functions like
-<code><a href="base.html#topic+save">save</a></code> and <code><a href="base.html#topic+load">load</a></code>. <code><a href="#topic+sub_score_mat">sub_score_mat</a></code> and
-<code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code> can be used to extract a subset of scores from
-this raw score matrix. For large matrices, the <code>bigmemory</code> or
-<code>ff</code> packages allow matrices to be stored on disk and portions loaded
-into memory on demand. <code><a href="#topic+sub_score_mat">sub_score_mat</a></code> and
-<code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code> work equally well for regular in-memory matrices
-and these disk-backed matrices.
-</p>
-<p>To give an example, for 16,129 neurons from the flycircuit.tw dataset, the
-260,144,641 comparisons took about 250 hours of compute time (half a day on
-~20 cores). When saved to disk as single precision (i.e. 4 bytes per score)
-<code>ff</code> matrix they occupy just over 1Gb.
-</p>
-
-
-<h3>Calculating scoring matrices</h3>
-
-<p>The NBLAST algorithm depends on appropriately calibrated scoring matrices.
-These encapsulate the log odds ratio that a pair of segments come from two
-structurally related neurons rather than two unrelated neurons, given the
-observed distance and absolute dot product of the two segments. Scoring
-matrices can be constructed using the <code><a href="#topic+create_scoringmatrix">create_scoringmatrix</a></code>
-function, supplying a set of matching neurons and a set of non-matching
-neurons. See the <code>create_scoringmatrix</code> documentation for links to
-lower-level functions that provide finer control over construction of the
-scoring matrix.
-</p>
-
-
-<h3>Package Options</h3>
-
-<p>There is one package option <code>nat.nblast.defaultsmat</code> which is
-<code>NULL</code> by default, but could for example be set to one of the scoring
-matrices included with the package such as <code>"smat.fcwb"</code> or to a new
-user-constructed matrix.
-</p>
-
-
-<h3>References</h3>
-
-<p>Costa, M., Ostrovsky, A.D., Manton, J.D., Prohaska, S., and
-Jefferis, G.S.X.E. (2014). NBLAST: Rapid, sensitive comparison of neuronal
-structure and construction of neuron family databases. bioRxiv preprint.
-<a href="https://doi.org/10.1101/006346">doi:10.1101/006346</a>.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+nblast">nblast</a></code>, <code><a href="#topic+smat.fcwb">smat.fcwb</a></code>,
-<code><a href="#topic+nhclust">nhclust</a></code>, <code><a href="#topic+sub_dist_mat">sub_dist_mat</a></code>,
-<code><a href="#topic+sub_score_mat">sub_score_mat</a></code>, <code><a href="#topic+create_scoringmatrix">create_scoringmatrix</a></code>
 </p>
 
 <hr>

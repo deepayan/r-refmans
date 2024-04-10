@@ -13,18 +13,18 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {mmpp}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#mmpp-package'><p>A package for Computing Similarity and Distance Metrics for Marked Point Process Data</p></a></li>
 <li><a href='#coocmetric'><p>Metrics for Point Process Realizations Based on Co-occurrence</p></a></li>
 <li><a href='#fmetric'><p>Compute Filter-based Metrics in a Functional Space Between Marked Point Processes</p></a></li>
 <li><a href='#ieimetric'><p>Compute Inter Event Interval-based Metric Between Marked Point Processes</p></a></li>
 <li><a href='#iipmetric'><p>Compute Intensity Inner Product Metrics</p></a></li>
 <li><a href='#k2d'><p>Convert Kernel Matrix to Distance Matrix</p></a></li>
 <li><a href='#Miyagi20030626'><p>The aftershock data of 26th July 2003 earthquake of M6.2 at the northern Miyagi-Ken Japan</p></a></li>
-<li><a href='#mmpp-package'><p>A package for Computing Similarity and Distance Metrics for Marked Point Process Data</p></a></li>
 <li><a href='#splitMPP'><p>Split MPP Data by Sliding Time Window</p></a></li>
 </ul>
 </div>
@@ -82,6 +82,169 @@ Processes</td>
 <td>2017-09-29 04:07:37 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='mmpp-package'>A package for Computing Similarity and Distance Metrics for Marked Point Process Data</h2><span id='topic+mmpp'></span><span id='topic+mmpp-package'></span>
+
+<h3>Description</h3>
+
+<p>This packages is used to calculate various similarity and distance measures for sample sequences of both simple and marked temporal point processes.
+</p>
+
+
+<h3>Details</h3>
+
+<p>A simple temporal point process (SPP) is an important class of time series, where the sample realization of the process is solely composed of the times at which events occur. Particular examples of point process data are neuronal spike patterns or spike trains, and a large number of distance and similarity metrics for those data have been proposed. A marked point process (MPP) is an extension of a simple temporal point process, in which a certain vector valued mark is associated with each of the temporal points in the SPP. Analysis of MPPs are of practical importance because instances of MPPs include recordings of natural disasters such as earthquakes and tornadoes.
+This package implements a number of distance and similarity metrics for SPP, and also extends those metrics for dealing with MPP.
+It provides a systematic and unified platform for calculating the similarities and distances between SPP, and support marked point process to offer a platform for performing metric-based analysis of earthquakes, tornados, epidemics, or stock exchange data.
+</p>
+<p>The package has functions <code>coocmetric</code>, <code>fmetric</code>, <code>ieimetric</code>, and <code>iipmetric</code> for calculating similarity or distance between two sample sequences. A sample dataset <code>Miyagi20030626</code> is included in the package. It offers utility two functions: <code>splitMPP</code>, which splits a sample sequence into a list of partial sequences by using a sliding window, and <code>k2d</code>, which transforms a similarity matrix to a distance matrix and vice versa.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Author: Hideitsu Hino <a href="mailto:hinohide@cs.tsukuba.ac.jp">hinohide@cs.tsukuba.ac.jp</a>, Ken Takano, Yuki Yoshikawa, and Noboru Murata
+</p>
+
+
+<h3>References</h3>
+
+<p>R. Quian Quiroga, T. Kreuz, and P. Grassberger. Event synchronization: a simple and fast method to measure synchronicity and time delay patterns, Physical Review E, Vol. 66(4), 041904, 2002.
+</p>
+<p>J. D. Hunter and G. Milton. Amplitude and frequency dependence of spike timing: implications for dynamic regulation, Journal of Neurophysiology, Vol. 90, pp. 387-94, 2003.
+</p>
+<p>M. C. W. van Rossum. A Novel Spike Distance. Neural Computation, Vol. 13(4), pp. 751-763, 2001.
+</p>
+<p>S. Schreiber, J.M. Fellous, P.H. Tiesinga, and T.J. Sejnowski. A new correlation-based measure of spike timing reliability, Neurocomputing, Vols. 52-54, pp. 925-931, 2003.
+</p>
+<p>T. Kreuz, J.S. Haas, A. Morelli, H.D.I. Abarbanel, and A. Politi. Measuring spike train synchrony, Journal of Neuroscience Methods, Vol. 165(1), pp. 151-161, 2007.
+</p>
+<p>A.R.C. Paiva, I. Park, and J.C. Principe. A reproducing kernel Hilbert space framework for spike train signal processing, Neural Computation, Vol. 21(2), pp. 424-449, 2009.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## An example to show that the prediction error of the magnitude based on
+## 1-nearest neighbor predictor can be reduced by taking marks into account.
+## It will take about 5 minutes if you run this example
+## Not run: 
+library(mmpp)
+data(Miyagi20030626)
+## split the original MPP by using 3-hour time window
+sMiyagi &lt;- splitMPP(Miyagi20030626,h=60*60*3,scaleMarks=TRUE)$S
+
+## target of the prediction is the maximum magnitude in the window
+y &lt;- NULL
+for(i in 1:length(sMiyagi)){
+  y &lt;- c(y, max(sMiyagi[[i]]$magnitude))
+}
+
+y &lt;- y[-1]
+sMiyagi[[length(sMiyagi)]] &lt;- NULL
+
+## number of whole partial MPPs splitted by a 3-hour time window
+N &lt;- length(sMiyagi)
+## training samples are past one week data
+Ntr &lt;- 24*7/3
+## number of different prediction methods
+Nd &lt;- 10
+
+err &lt;- matrix(0, N-Ntr, Nd)
+colnames(err) &lt;- c("f SPP","iip SPP","cooc smooth SPP","cooc count SPP","iei SPP",
+                   "f MPP","iip MPP","cooc smooth MPP","cooc count MPP","iei MPP")
+
+## predict the max magnitude in the next 3-hour based on the similarity
+## between the current partial point process and the 7-days past partial point process
+cat("running prediction experiment")
+for(t in 1:(N-Ntr)){
+  cat(".")
+  qid &lt;- Ntr+t
+  q &lt;- sMiyagi[[qid]]
+
+  ## simple PP
+  ## fmetric with tau=1
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,fmetric(q$time,sMiyagi[[qid-i]]$time))
+  }
+  err[t,1] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## iipmetric with tau=1
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,iipmetric(q$time,sMiyagi[[qid-i]]$time))
+  }
+  err[t,2] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## coocmetric (smooth) with tau=1
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,coocmetric(q$time,sMiyagi[[qid-i]]$time,type="smooth"))
+  }
+  err[t,3] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## coocmetric (count)
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,coocmetric(q$time,sMiyagi[[qid-i]]$time,type="count"))
+  }
+  err[t,4] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## iei metric
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,ieimetric(q$time,sMiyagi[[qid-i]]$time))
+  }
+  err[t,5] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## marked PP with latitude, longitude, depth, and magnitude
+  ## fmetric with tau=1
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,fmetric(q,sMiyagi[[qid-i]]))
+  }
+  err[t,6] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## iipmetric with tau=1
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,iipmetric(q,sMiyagi[[qid-i]]))
+  }
+  err[t,7] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## coocmetric (smooth) with tau=1
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,coocmetric(q,sMiyagi[[qid-i]],type="smooth"))
+  }
+  err[t,8] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## coocmetric (count)
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,coocmetric(q,sMiyagi[[qid-i]],type="count"))
+  }
+  err[t,9] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+  ## iei metric
+  sim2query &lt;- NULL
+  for(i in 1:Ntr){
+    sim2query &lt;- c(sim2query,ieimetric(q,sMiyagi[[qid-i]]))
+  }
+  err[t,10] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
+
+}
+cat("done\n")
+print(colMeans(err))
+##f SPP      iip SPP     cooc smooth SPP  cooc count SPP  iei SPP
+##0.7002634  0.6839529   0.7263602        0.6632930       0.7905148
+##f MPP      iip MPP     cooc smooth MPP  cooc count MPP  iei MPP
+##0.6839529  0.6317594   0.6643804        0.6622056       0.7698548
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='coocmetric'>Metrics for Point Process Realizations Based on Co-occurrence</h2><span id='topic+coocmetric'></span>
 
@@ -583,169 +746,6 @@ Another simple way is exponential map (<code>method="exp"</code>), i.e., k(x,y) 
 
 <p><code>SAPP</code> R package available at <a href="https://cran.r-project.org">https://cran.r-project.org</a>
 </p>
-
-<hr>
-<h2 id='mmpp-package'>A package for Computing Similarity and Distance Metrics for Marked Point Process Data</h2><span id='topic+mmpp'></span><span id='topic+mmpp-package'></span>
-
-<h3>Description</h3>
-
-<p>This packages is used to calculate various similarity and distance measures for sample sequences of both simple and marked temporal point processes.
-</p>
-
-
-<h3>Details</h3>
-
-<p>A simple temporal point process (SPP) is an important class of time series, where the sample realization of the process is solely composed of the times at which events occur. Particular examples of point process data are neuronal spike patterns or spike trains, and a large number of distance and similarity metrics for those data have been proposed. A marked point process (MPP) is an extension of a simple temporal point process, in which a certain vector valued mark is associated with each of the temporal points in the SPP. Analysis of MPPs are of practical importance because instances of MPPs include recordings of natural disasters such as earthquakes and tornadoes.
-This package implements a number of distance and similarity metrics for SPP, and also extends those metrics for dealing with MPP.
-It provides a systematic and unified platform for calculating the similarities and distances between SPP, and support marked point process to offer a platform for performing metric-based analysis of earthquakes, tornados, epidemics, or stock exchange data.
-</p>
-<p>The package has functions <code>coocmetric</code>, <code>fmetric</code>, <code>ieimetric</code>, and <code>iipmetric</code> for calculating similarity or distance between two sample sequences. A sample dataset <code>Miyagi20030626</code> is included in the package. It offers utility two functions: <code>splitMPP</code>, which splits a sample sequence into a list of partial sequences by using a sliding window, and <code>k2d</code>, which transforms a similarity matrix to a distance matrix and vice versa.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Author: Hideitsu Hino <a href="mailto:hinohide@cs.tsukuba.ac.jp">hinohide@cs.tsukuba.ac.jp</a>, Ken Takano, Yuki Yoshikawa, and Noboru Murata
-</p>
-
-
-<h3>References</h3>
-
-<p>R. Quian Quiroga, T. Kreuz, and P. Grassberger. Event synchronization: a simple and fast method to measure synchronicity and time delay patterns, Physical Review E, Vol. 66(4), 041904, 2002.
-</p>
-<p>J. D. Hunter and G. Milton. Amplitude and frequency dependence of spike timing: implications for dynamic regulation, Journal of Neurophysiology, Vol. 90, pp. 387-94, 2003.
-</p>
-<p>M. C. W. van Rossum. A Novel Spike Distance. Neural Computation, Vol. 13(4), pp. 751-763, 2001.
-</p>
-<p>S. Schreiber, J.M. Fellous, P.H. Tiesinga, and T.J. Sejnowski. A new correlation-based measure of spike timing reliability, Neurocomputing, Vols. 52-54, pp. 925-931, 2003.
-</p>
-<p>T. Kreuz, J.S. Haas, A. Morelli, H.D.I. Abarbanel, and A. Politi. Measuring spike train synchrony, Journal of Neuroscience Methods, Vol. 165(1), pp. 151-161, 2007.
-</p>
-<p>A.R.C. Paiva, I. Park, and J.C. Principe. A reproducing kernel Hilbert space framework for spike train signal processing, Neural Computation, Vol. 21(2), pp. 424-449, 2009.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## An example to show that the prediction error of the magnitude based on
-## 1-nearest neighbor predictor can be reduced by taking marks into account.
-## It will take about 5 minutes if you run this example
-## Not run: 
-library(mmpp)
-data(Miyagi20030626)
-## split the original MPP by using 3-hour time window
-sMiyagi &lt;- splitMPP(Miyagi20030626,h=60*60*3,scaleMarks=TRUE)$S
-
-## target of the prediction is the maximum magnitude in the window
-y &lt;- NULL
-for(i in 1:length(sMiyagi)){
-  y &lt;- c(y, max(sMiyagi[[i]]$magnitude))
-}
-
-y &lt;- y[-1]
-sMiyagi[[length(sMiyagi)]] &lt;- NULL
-
-## number of whole partial MPPs splitted by a 3-hour time window
-N &lt;- length(sMiyagi)
-## training samples are past one week data
-Ntr &lt;- 24*7/3
-## number of different prediction methods
-Nd &lt;- 10
-
-err &lt;- matrix(0, N-Ntr, Nd)
-colnames(err) &lt;- c("f SPP","iip SPP","cooc smooth SPP","cooc count SPP","iei SPP",
-                   "f MPP","iip MPP","cooc smooth MPP","cooc count MPP","iei MPP")
-
-## predict the max magnitude in the next 3-hour based on the similarity
-## between the current partial point process and the 7-days past partial point process
-cat("running prediction experiment")
-for(t in 1:(N-Ntr)){
-  cat(".")
-  qid &lt;- Ntr+t
-  q &lt;- sMiyagi[[qid]]
-
-  ## simple PP
-  ## fmetric with tau=1
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,fmetric(q$time,sMiyagi[[qid-i]]$time))
-  }
-  err[t,1] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## iipmetric with tau=1
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,iipmetric(q$time,sMiyagi[[qid-i]]$time))
-  }
-  err[t,2] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## coocmetric (smooth) with tau=1
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,coocmetric(q$time,sMiyagi[[qid-i]]$time,type="smooth"))
-  }
-  err[t,3] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## coocmetric (count)
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,coocmetric(q$time,sMiyagi[[qid-i]]$time,type="count"))
-  }
-  err[t,4] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## iei metric
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,ieimetric(q$time,sMiyagi[[qid-i]]$time))
-  }
-  err[t,5] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## marked PP with latitude, longitude, depth, and magnitude
-  ## fmetric with tau=1
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,fmetric(q,sMiyagi[[qid-i]]))
-  }
-  err[t,6] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## iipmetric with tau=1
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,iipmetric(q,sMiyagi[[qid-i]]))
-  }
-  err[t,7] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## coocmetric (smooth) with tau=1
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,coocmetric(q,sMiyagi[[qid-i]],type="smooth"))
-  }
-  err[t,8] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## coocmetric (count)
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,coocmetric(q,sMiyagi[[qid-i]],type="count"))
-  }
-  err[t,9] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-  ## iei metric
-  sim2query &lt;- NULL
-  for(i in 1:Ntr){
-    sim2query &lt;- c(sim2query,ieimetric(q,sMiyagi[[qid-i]]))
-  }
-  err[t,10] &lt;- abs(y[qid]-y[t:(Ntr+t-1)][which.max(sim2query)])
-
-}
-cat("done\n")
-print(colMeans(err))
-##f SPP      iip SPP     cooc smooth SPP  cooc count SPP  iei SPP
-##0.7002634  0.6839529   0.7263602        0.6632930       0.7905148
-##f MPP      iip MPP     cooc smooth MPP  cooc count MPP  iei MPP
-##0.6839529  0.6317594   0.6643804        0.6622056       0.7698548
-
-## End(Not run)
-</code></pre>
 
 <hr>
 <h2 id='splitMPP'>Split MPP Data by Sliding Time Window</h2><span id='topic+splitMPP'></span>

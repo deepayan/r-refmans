@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {IHSEP}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#IHSEP-package'>
+<p>Inhomogeneous Self-exciting Process</p></a></li>
 <li><a href='#asep'>
 <p>An IHSEP data set</p></a></li>
 <li><a href='#conv.seq'><p>Sequence convolution</p>
@@ -25,8 +27,6 @@ conv.seq calculates the convolution of two sequences</a></li>
 <li><a href='#h.fn'><p>Mean Intensity Function of the Self-Exciting Point Process</p></a></li>
 <li><a href='#h.fn.exp'><p>Mean Intensity of the Self-Exciting Point Process With an</p>
 Exponential Excitation Function</a></li>
-<li><a href='#IHSEP-package'>
-<p>Inhomogeneous Self-exciting Process</p></a></li>
 <li><a href='#mloglik0'>
 <p>Minus loglikelihood of an IHSEP model</p></a></li>
 <li><a href='#mloglik1a'>
@@ -135,6 +135,119 @@ function for Hawkes processes and is not meant for external use.</a></li>
 <td>2022-09-16 21:56:05 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='IHSEP-package'>
+Inhomogeneous Self-exciting Process
+</h2><span id='topic+IHSEP-package'></span><span id='topic+IHSEP'></span>
+
+<h3>Description</h3>
+
+<p>Simulates the (inhomogeneous) Self-exciting point process (SEPP), or
+Hawkes process, on <code class="reqn">[0,T]</code> with a given (possibly time-varying)
+baseline/background intensity function <code class="reqn">nu</code> and excitation
+function (fertility rate function) <code class="reqn">g</code>.  Or calculate the
+likelihood of an SEPP with baseline intensity <code class="reqn">nu</code> and excitation
+function <code class="reqn">g</code> for a given set of event times on <code class="reqn">[0,T]</code>.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> IHSEP</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.0</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2014-05-12</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL(&gt;=2)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Feng Chen &lt;feng.chen@unsw.edu.au&gt;
+</p>
+<p>Maintainer: Feng Chen &lt;feng.chen@unsw.edu.au&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Feng Chen and Peter Hall (2013). Inference for a nonstationary
+self-exciting point process with an application in ultra-high frequency
+financial data modeling.  Journal of Applied Probability
+50(4):1006-1024.
+</p>
+<p>Feng Chen and Peter Hall (2016). Nonparametric Estimation for
+Self-Exciting Point Processes &ndash; A Parsimonious Approach. Journal of
+Computational and Graphical Statistics 25(1): 209-224. 
+</p>
+<p>Alan G Hawkes (1971). Spectra of some self-exciting and mutually
+exciting point processes. Biometrika 58(1):83-90.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+## simulate the times of a Poisson process on [0,1] with intensity
+## function nu(t)=100*(2+cos(2*pi*t)).
+tms &lt;- simPois(int=function(x)100*(2+cos(2*pi*x)),int.M=300)
+## calculate a nonparametric estimate of the intensity function
+int &lt;- lpint::lpint(tms,Tau=1)
+matplot(int$x,int$y+qnorm(0.975)*outer(int$se,c(-1,0,1)),type="l",lty=c(2,1,2),
+        col=1,xlab="t",ylab="nu(t)")
+curve(100*(2+cos(2*pi*x)),add=TRUE,col="red")
+
+## simulate an IHSEP on [0,1] with baseline intensity function
+## nu(t)=100*(2+cos(2*pi*t)) and excitation function
+## g(t)=0.5*8*exp(-8*t)
+asep &lt;- simHawkes1(nu=function(x)200*(2+cos(2*pi*x)),nuM=600,
+                              g=function(x)8*exp(-16*x),gM=8)
+## get the birth times of all generations and sort in ascending order 
+tms &lt;- sort(unlist(asep))
+## calculate the minus loglikelihood of an SEPP with the true parameters 
+mloglik1a(tms,TT=1,nu=function(x)200*(2+cos(2*pi*x)),
+          g=function(x)8*exp(-16*x),Ig=function(x)8/16*(1-exp(-18*x)))
+## calculate the MLE for the parameter assuming known parametric forms
+## of the baseline intensity and excitation functions  
+est &lt;- optim(c(400,200,2*pi,8,16),
+             function(p){
+               mloglik1a(jtms=tms,TT=1,
+                         nu=function(x)p[1]+p[2]*cos(p[3]*x),
+                         g=function(x)p[4]*exp(-p[5]*x),
+                         Ig=function(x)p[4]/p[5]*(1-exp(-p[5]*x)))
+             },
+             hessian=TRUE,control=list(maxit=5000,trace=TRUE))
+## point estimate by MLE
+est$par
+## standard error estimates:
+diag(solve(est$hessian))^0.5
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='asep'>
 An IHSEP data set
@@ -368,119 +481,6 @@ y &lt;- sapply(x,h.fn.exp,nu=nu,g.p=c(2,1));
 h &lt;- splinefun(x,y);
 g &lt;- function(x)2*exp(-x)
 round(nu(x)+sapply(x,function(x)integrate(function(u)g(x-u)*h(u),0,x)$value) - y,5)
-</code></pre>
-
-<hr>
-<h2 id='IHSEP-package'>
-Inhomogeneous Self-exciting Process
-</h2><span id='topic+IHSEP-package'></span><span id='topic+IHSEP'></span>
-
-<h3>Description</h3>
-
-<p>Simulates the (inhomogeneous) Self-exciting point process (SEPP), or
-Hawkes process, on <code class="reqn">[0,T]</code> with a given (possibly time-varying)
-baseline/background intensity function <code class="reqn">nu</code> and excitation
-function (fertility rate function) <code class="reqn">g</code>.  Or calculate the
-likelihood of an SEPP with baseline intensity <code class="reqn">nu</code> and excitation
-function <code class="reqn">g</code> for a given set of event times on <code class="reqn">[0,T]</code>.
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> IHSEP</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 1.0</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2014-05-12</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL(&gt;=2)</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Feng Chen &lt;feng.chen@unsw.edu.au&gt;
-</p>
-<p>Maintainer: Feng Chen &lt;feng.chen@unsw.edu.au&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Feng Chen and Peter Hall (2013). Inference for a nonstationary
-self-exciting point process with an application in ultra-high frequency
-financial data modeling.  Journal of Applied Probability
-50(4):1006-1024.
-</p>
-<p>Feng Chen and Peter Hall (2016). Nonparametric Estimation for
-Self-Exciting Point Processes &ndash; A Parsimonious Approach. Journal of
-Computational and Graphical Statistics 25(1): 209-224. 
-</p>
-<p>Alan G Hawkes (1971). Spectra of some self-exciting and mutually
-exciting point processes. Biometrika 58(1):83-90.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-## simulate the times of a Poisson process on [0,1] with intensity
-## function nu(t)=100*(2+cos(2*pi*t)).
-tms &lt;- simPois(int=function(x)100*(2+cos(2*pi*x)),int.M=300)
-## calculate a nonparametric estimate of the intensity function
-int &lt;- lpint::lpint(tms,Tau=1)
-matplot(int$x,int$y+qnorm(0.975)*outer(int$se,c(-1,0,1)),type="l",lty=c(2,1,2),
-        col=1,xlab="t",ylab="nu(t)")
-curve(100*(2+cos(2*pi*x)),add=TRUE,col="red")
-
-## simulate an IHSEP on [0,1] with baseline intensity function
-## nu(t)=100*(2+cos(2*pi*t)) and excitation function
-## g(t)=0.5*8*exp(-8*t)
-asep &lt;- simHawkes1(nu=function(x)200*(2+cos(2*pi*x)),nuM=600,
-                              g=function(x)8*exp(-16*x),gM=8)
-## get the birth times of all generations and sort in ascending order 
-tms &lt;- sort(unlist(asep))
-## calculate the minus loglikelihood of an SEPP with the true parameters 
-mloglik1a(tms,TT=1,nu=function(x)200*(2+cos(2*pi*x)),
-          g=function(x)8*exp(-16*x),Ig=function(x)8/16*(1-exp(-18*x)))
-## calculate the MLE for the parameter assuming known parametric forms
-## of the baseline intensity and excitation functions  
-est &lt;- optim(c(400,200,2*pi,8,16),
-             function(p){
-               mloglik1a(jtms=tms,TT=1,
-                         nu=function(x)p[1]+p[2]*cos(p[3]*x),
-                         g=function(x)p[4]*exp(-p[5]*x),
-                         Ig=function(x)p[4]/p[5]*(1-exp(-p[5]*x)))
-             },
-             hessian=TRUE,control=list(maxit=5000,trace=TRUE))
-## point estimate by MLE
-est$par
-## standard error estimates:
-diag(solve(est$hessian))^0.5
-
-## End(Not run)
 </code></pre>
 
 <hr>

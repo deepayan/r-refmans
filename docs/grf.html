@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {grf}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#grf-package'><p>grf: Generalized Random Forests</p></a></li>
 <li><a href='#average_late'><p>Average LATE (removed)</p></a></li>
 <li><a href='#average_partial_effect'><p>Average partial effect (removed)</p></a></li>
 <li><a href='#average_treatment_effect'><p>Get doubly robust estimates of average treatment effects.</p></a></li>
@@ -47,7 +48,6 @@ which is then written into 'dot_string'.</a></li>
 <li><a href='#get_scores.instrumental_forest'><p>Doubly robust scores for estimating the average conditional local average treatment effect.</p></a></li>
 <li><a href='#get_scores.multi_arm_causal_forest'><p>Compute doubly robust scores for a multi arm causal forest.</p></a></li>
 <li><a href='#get_tree'><p>Retrieve a single tree from a trained forest object.</p></a></li>
-<li><a href='#grf-package'><p>grf: Generalized Random Forests</p></a></li>
 <li><a href='#instrumental_forest'><p>Intrumental forest</p></a></li>
 <li><a href='#leaf_stats.causal_forest'><p>Calculate summary stats given a set of samples for causal forests.</p></a></li>
 <li><a href='#leaf_stats.default'><p>A default leaf_stats for forests classes without a leaf_stats method</p>
@@ -191,6 +191,169 @@ sandwich (&ge; 2.4-0)</td>
 <td>2024-02-25 07:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='grf-package'>grf: Generalized Random Forests</h2><span id='topic+grf'></span><span id='topic+grf-package'></span>
+
+<h3>Description</h3>
+
+<p>A package for forest-based statistical estimation and inference. GRF provides non-parametric methods for heterogeneous treatment effects estimation (optionally using right-censored outcomes, multiple treatment arms or outcomes, or instrumental variables), as well as least-squares regression, quantile regression, and survival regression, all with support for missing covariates.
+</p>
+<p>In addition, GRF supports 'honest' estimation (where one subset of the data is used for choosing splits, and another for populating the leaves of the tree), and confidence intervals for least-squares regression and treatment effect estimation.
+</p>
+<p>Some helpful links for getting started:
+</p>
+<p>* The R package documentation contains usage examples and method reference (<a href="https://grf-labs.github.io/grf/">https://grf-labs.github.io/grf/</a>).
+</p>
+<p>* The GRF reference gives a detailed description of the GRF algorithm and includes troubleshooting suggestions (<a href="https://grf-labs.github.io/grf/REFERENCE.html">https://grf-labs.github.io/grf/REFERENCE.html</a>).
+</p>
+<p>* For community questions and answers around usage, see Github issues labelled 'question' (<a href="https://github.com/grf-labs/grf/issues?q=label%3Aquestion">https://github.com/grf-labs/grf/issues?q=label%3Aquestion</a>).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Erik Sverdrup <a href="mailto:erik.sverdrup@monash.edu">erik.sverdrup@monash.edu</a>
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> Julie Tibshirani <a href="mailto:jtibs@cs.stanford.edu">jtibs@cs.stanford.edu</a>
+</p>
+</li>
+<li><p> Susan Athey
+</p>
+</li>
+<li><p> Stefan Wager
+</p>
+</li></ul>
+
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> Rina Friedberg [contributor]
+</p>
+</li>
+<li><p> Vitor Hadad [contributor]
+</p>
+</li>
+<li><p> David Hirshberg [contributor]
+</p>
+</li>
+<li><p> Luke Miner [contributor]
+</p>
+</li>
+<li><p> Marvin Wright [contributor]
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/grf-labs/grf">https://github.com/grf-labs/grf</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/grf-labs/grf/issues">https://github.com/grf-labs/grf/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# The following script demonstrates how to use GRF for heterogeneous treatment
+# effect estimation. For examples of how to use other types of forest,
+# please consult the documentation on the relevant forest methods (quantile_forest,
+# instrumental_forest, etc.).
+
+# Generate data.
+n &lt;- 2000; p &lt;- 10
+X &lt;- matrix(rnorm(n*p), n, p)
+X.test &lt;- matrix(0, 101, p)
+X.test[,1] &lt;- seq(-2, 2, length.out = 101)
+
+# Train a causal forest.
+W &lt;- rbinom(n, 1, 0.4 + 0.2 * (X[,1] &gt; 0))
+Y &lt;- pmax(X[,1], 0) * W + X[,2] + pmin(X[,3], 0) + rnorm(n)
+tau.forest &lt;- causal_forest(X, Y, W)
+
+# Estimate treatment effects for the training data using out-of-bag prediction.
+tau.hat.oob &lt;- predict(tau.forest)
+hist(tau.hat.oob$predictions)
+
+# Estimate treatment effects for the test sample.
+tau.hat &lt;- predict(tau.forest, X.test)
+plot(X.test[,1], tau.hat$predictions, ylim = range(tau.hat$predictions, 0, 2),
+	xlab = "x", ylab = "tau", type = "l")
+lines(X.test[,1], pmax(0, X.test[,1]), col = 2, lty = 2)
+
+# Estimate the conditional average treatment effect on the full sample (CATE).
+average_treatment_effect(tau.forest, target.sample = "all")
+
+# Estimate the conditional average treatment effect on the treated sample (CATT).
+average_treatment_effect(tau.forest, target.sample = "treated")
+
+# Add confidence intervals for heterogeneous treatment effects; growing more
+# trees is now recommended.
+tau.forest &lt;- causal_forest(X, Y, W, num.trees = 4000)
+tau.hat &lt;- predict(tau.forest, X.test, estimate.variance = TRUE)
+sigma.hat &lt;- sqrt(tau.hat$variance.estimates)
+
+ylim &lt;- range(tau.hat$predictions + 1.96 * sigma.hat, tau.hat$predictions - 1.96 * sigma.hat, 0, 2)
+plot(X.test[,1], tau.hat$predictions, ylim = ylim, xlab = "x", ylab = "tau", type = "l")
+lines(X.test[,1], tau.hat$predictions + 1.96 * sigma.hat, col = 1, lty = 2)
+lines(X.test[,1], tau.hat$predictions - 1.96 * sigma.hat, col = 1, lty = 2)
+lines(X.test[,1], pmax(0, X.test[,1]), col = 2, lty = 1)
+
+# In some examples, pre-fitting models for Y and W separately may
+# be helpful (e.g., if different models use different covariates).
+# In some applications, one may even want to get Y.hat and W.hat
+# using a completely different method (e.g., boosting).
+
+# Generate new data.
+n &lt;- 4000; p &lt;- 20
+X &lt;- matrix(rnorm(n * p), n, p)
+TAU &lt;- 1 / (1 + exp(-X[, 3]))
+W &lt;- rbinom(n ,1, 1 / (1 + exp(-X[, 1] - X[, 2])))
+Y &lt;- pmax(X[, 2] + X[, 3], 0) + rowMeans(X[, 4:6]) / 2 + W * TAU + rnorm(n)
+
+forest.W &lt;- regression_forest(X, W, tune.parameters = "all")
+W.hat &lt;- predict(forest.W)$predictions
+
+forest.Y &lt;- regression_forest(X, Y, tune.parameters = "all")
+Y.hat &lt;- predict(forest.Y)$predictions
+
+forest.Y.varimp &lt;- variable_importance(forest.Y)
+
+# Note: Forests may have a hard time when trained on very few variables
+# (e.g., ncol(X) = 1, 2, or 3). We recommend not being too aggressive
+# in selection.
+selected.vars &lt;- which(forest.Y.varimp / mean(forest.Y.varimp) &gt; 0.2)
+
+tau.forest &lt;- causal_forest(X[, selected.vars], Y, W,
+                           W.hat = W.hat, Y.hat = Y.hat,
+                           tune.parameters = "all")
+
+# See if a causal forest succeeded in capturing heterogeneity by plotting
+# the TOC and calculating a 95% CI for the AUTOC.
+train &lt;- sample(1:n, n / 2)
+train.forest &lt;- causal_forest(X[train, ], Y[train], W[train])
+eval.forest &lt;- causal_forest(X[-train, ], Y[-train], W[-train])
+rate &lt;- rank_average_treatment_effect(eval.forest,
+                                      predict(train.forest, X[-train, ])$predictions)
+plot(rate)
+paste("AUTOC:", round(rate$estimate, 2), "+/", round(1.96 * rate$std.err, 2))
+
+
+</code></pre>
+
 <hr>
 <h2 id='average_late'>Average LATE (removed)</h2><span id='topic+average_late'></span>
 
@@ -2370,169 +2533,6 @@ q.forest &lt;- quantile_forest(X, Y, quantiles = c(0.1, 0.5, 0.9))
 # Examine a particular tree.
 q.tree &lt;- get_tree(q.forest, 3)
 q.tree$nodes
-
-
-</code></pre>
-
-<hr>
-<h2 id='grf-package'>grf: Generalized Random Forests</h2><span id='topic+grf'></span><span id='topic+grf-package'></span>
-
-<h3>Description</h3>
-
-<p>A package for forest-based statistical estimation and inference. GRF provides non-parametric methods for heterogeneous treatment effects estimation (optionally using right-censored outcomes, multiple treatment arms or outcomes, or instrumental variables), as well as least-squares regression, quantile regression, and survival regression, all with support for missing covariates.
-</p>
-<p>In addition, GRF supports 'honest' estimation (where one subset of the data is used for choosing splits, and another for populating the leaves of the tree), and confidence intervals for least-squares regression and treatment effect estimation.
-</p>
-<p>Some helpful links for getting started:
-</p>
-<p>* The R package documentation contains usage examples and method reference (<a href="https://grf-labs.github.io/grf/">https://grf-labs.github.io/grf/</a>).
-</p>
-<p>* The GRF reference gives a detailed description of the GRF algorithm and includes troubleshooting suggestions (<a href="https://grf-labs.github.io/grf/REFERENCE.html">https://grf-labs.github.io/grf/REFERENCE.html</a>).
-</p>
-<p>* For community questions and answers around usage, see Github issues labelled 'question' (<a href="https://github.com/grf-labs/grf/issues?q=label%3Aquestion">https://github.com/grf-labs/grf/issues?q=label%3Aquestion</a>).
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Erik Sverdrup <a href="mailto:erik.sverdrup@monash.edu">erik.sverdrup@monash.edu</a>
-</p>
-<p>Authors:
-</p>
-
-<ul>
-<li><p> Julie Tibshirani <a href="mailto:jtibs@cs.stanford.edu">jtibs@cs.stanford.edu</a>
-</p>
-</li>
-<li><p> Susan Athey
-</p>
-</li>
-<li><p> Stefan Wager
-</p>
-</li></ul>
-
-<p>Other contributors:
-</p>
-
-<ul>
-<li><p> Rina Friedberg [contributor]
-</p>
-</li>
-<li><p> Vitor Hadad [contributor]
-</p>
-</li>
-<li><p> David Hirshberg [contributor]
-</p>
-</li>
-<li><p> Luke Miner [contributor]
-</p>
-</li>
-<li><p> Marvin Wright [contributor]
-</p>
-</li></ul>
-
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://github.com/grf-labs/grf">https://github.com/grf-labs/grf</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/grf-labs/grf/issues">https://github.com/grf-labs/grf/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# The following script demonstrates how to use GRF for heterogeneous treatment
-# effect estimation. For examples of how to use other types of forest,
-# please consult the documentation on the relevant forest methods (quantile_forest,
-# instrumental_forest, etc.).
-
-# Generate data.
-n &lt;- 2000; p &lt;- 10
-X &lt;- matrix(rnorm(n*p), n, p)
-X.test &lt;- matrix(0, 101, p)
-X.test[,1] &lt;- seq(-2, 2, length.out = 101)
-
-# Train a causal forest.
-W &lt;- rbinom(n, 1, 0.4 + 0.2 * (X[,1] &gt; 0))
-Y &lt;- pmax(X[,1], 0) * W + X[,2] + pmin(X[,3], 0) + rnorm(n)
-tau.forest &lt;- causal_forest(X, Y, W)
-
-# Estimate treatment effects for the training data using out-of-bag prediction.
-tau.hat.oob &lt;- predict(tau.forest)
-hist(tau.hat.oob$predictions)
-
-# Estimate treatment effects for the test sample.
-tau.hat &lt;- predict(tau.forest, X.test)
-plot(X.test[,1], tau.hat$predictions, ylim = range(tau.hat$predictions, 0, 2),
-	xlab = "x", ylab = "tau", type = "l")
-lines(X.test[,1], pmax(0, X.test[,1]), col = 2, lty = 2)
-
-# Estimate the conditional average treatment effect on the full sample (CATE).
-average_treatment_effect(tau.forest, target.sample = "all")
-
-# Estimate the conditional average treatment effect on the treated sample (CATT).
-average_treatment_effect(tau.forest, target.sample = "treated")
-
-# Add confidence intervals for heterogeneous treatment effects; growing more
-# trees is now recommended.
-tau.forest &lt;- causal_forest(X, Y, W, num.trees = 4000)
-tau.hat &lt;- predict(tau.forest, X.test, estimate.variance = TRUE)
-sigma.hat &lt;- sqrt(tau.hat$variance.estimates)
-
-ylim &lt;- range(tau.hat$predictions + 1.96 * sigma.hat, tau.hat$predictions - 1.96 * sigma.hat, 0, 2)
-plot(X.test[,1], tau.hat$predictions, ylim = ylim, xlab = "x", ylab = "tau", type = "l")
-lines(X.test[,1], tau.hat$predictions + 1.96 * sigma.hat, col = 1, lty = 2)
-lines(X.test[,1], tau.hat$predictions - 1.96 * sigma.hat, col = 1, lty = 2)
-lines(X.test[,1], pmax(0, X.test[,1]), col = 2, lty = 1)
-
-# In some examples, pre-fitting models for Y and W separately may
-# be helpful (e.g., if different models use different covariates).
-# In some applications, one may even want to get Y.hat and W.hat
-# using a completely different method (e.g., boosting).
-
-# Generate new data.
-n &lt;- 4000; p &lt;- 20
-X &lt;- matrix(rnorm(n * p), n, p)
-TAU &lt;- 1 / (1 + exp(-X[, 3]))
-W &lt;- rbinom(n ,1, 1 / (1 + exp(-X[, 1] - X[, 2])))
-Y &lt;- pmax(X[, 2] + X[, 3], 0) + rowMeans(X[, 4:6]) / 2 + W * TAU + rnorm(n)
-
-forest.W &lt;- regression_forest(X, W, tune.parameters = "all")
-W.hat &lt;- predict(forest.W)$predictions
-
-forest.Y &lt;- regression_forest(X, Y, tune.parameters = "all")
-Y.hat &lt;- predict(forest.Y)$predictions
-
-forest.Y.varimp &lt;- variable_importance(forest.Y)
-
-# Note: Forests may have a hard time when trained on very few variables
-# (e.g., ncol(X) = 1, 2, or 3). We recommend not being too aggressive
-# in selection.
-selected.vars &lt;- which(forest.Y.varimp / mean(forest.Y.varimp) &gt; 0.2)
-
-tau.forest &lt;- causal_forest(X[, selected.vars], Y, W,
-                           W.hat = W.hat, Y.hat = Y.hat,
-                           tune.parameters = "all")
-
-# See if a causal forest succeeded in capturing heterogeneity by plotting
-# the TOC and calculating a 95% CI for the AUTOC.
-train &lt;- sample(1:n, n / 2)
-train.forest &lt;- causal_forest(X[train, ], Y[train], W[train])
-eval.forest &lt;- causal_forest(X[-train, ], Y[-train], W[-train])
-rate &lt;- rank_average_treatment_effect(eval.forest,
-                                      predict(train.forest, X[-train, ])$predictions)
-plot(rate)
-paste("AUTOC:", round(rate$estimate, 2), "+/", round(1.96 * rate$std.err, 2))
 
 
 </code></pre>

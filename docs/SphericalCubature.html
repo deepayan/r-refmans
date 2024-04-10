@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {SphericalCubature}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#SphericalCubature-package'>
+<p>Numerical integration over spheres and balls in n-dimensions; multivariate polar/spherical coordinates</p></a></li>
 <li><a href='#adaptIntegrateBallTri'><p>Adaptive integration over the unit ball</p></a></li>
 <li><a href='#adaptIntegrateSpherePolar'><p>Adaptive integration over sphere or ball in n-dimensions</p></a></li>
 <li><a href='#adaptIntegrateSphereTri'><p>Adaptive integration over spherical triangles</p></a></li>
@@ -25,8 +27,6 @@ function processMathHTML() {
 <li><a href='#integrateSphereStroud11'><p>Integrate a function over the sphere in n-dimensions.</p></a></li>
 <li><a href='#rect2polar'><p>n-dimensional polar coordinate transformations</p></a></li>
 <li><a href='#sphereArea'><p>Surface area of spheres, volumes of balls in n-dimensions.</p></a></li>
-<li><a href='#SphericalCubature-package'>
-<p>Numerical integration over spheres and balls in n-dimensions; multivariate polar/spherical coordinates</p></a></li>
 <li><a href='#SphericalMisc'><p>Miscellaneous internal functions used by SphericalCubature package.</p></a></li>
 </ul>
 </div>
@@ -91,6 +91,196 @@ abind</td>
 <td>2021-01-10 17:10:35 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='SphericalCubature-package'>
+Numerical integration over spheres and balls in n-dimensions; multivariate polar/spherical coordinates</h2><span id='topic+SphericalCubature-package'></span><span id='topic+SphericalCubature'></span>
+
+<h3>Description</h3>
+
+<p>Provides functions to integrate a function f(x)=f(x[1],...,x[n])
+over the unit sphere and unit ball in n-dimensional Euclidean space:
+</p>
+<p style="text-align: center;"><code class="reqn">\int_S f(s) ds \quad \quad \quad \quad \mathrm{and} \quad \quad \quad \int_B f(x) dx,</code>
+</p>
+
+<p>where the first integral is over the unit sphere S, an (n-1) dimensional surface,
+and the second integral is over the unit ball B, an n dimensional solid.
+Vector valued integrands are allowed in some functions; see functions with an argument named <code>fDim</code>.
+</p>
+<p>Integration over general sphers and balls can be done by adjusting the integrand function: if S2 is sphere with center x0 and radius R and B2 is a ball with
+same center and radius, a simple change of variable shows that 
+</p>
+<p style="text-align: center;"><code class="reqn">\int_{S2} f(t) dt = \int_S R^{n-1} f(x0+R s) ds  \quad \quad \quad \mathrm{and}  \quad \quad \int_{B2} f(y) dy = \int_B R^n f(x0+R x) dx.</code>
+</p>
+
+<p>See the example in <code><a href="#topic+adaptIntegrateBallTri">adaptIntegrateBallTri</a></code>.
+</p>
+<p>The package also includes functions to convert to/from polar coordinates in higher dimensions.
+</p>
+<p>There are three cubature methods:
+</p>
+
+<ol>
+<li><p> exact methods for polynomials in any dimension (fast)
+</p>
+</li>
+<li><p> a method due to Stroud for smooth integrands  on the sphere (in 
+dimensions n=3,4,...,16) (slower)
+</p>
+</li>
+<li><p> adaptive methods for integrands with different behavior in different regions (slowest) 
+</p>
+</li></ol>
+
+<p>Methods 2 and 3 are approximations: like any numerical quadrature
+algorithm, they may give inaccurate results if the integrand changes abruptly on a small region.
+This happens even in one dimension, and is more difficult to find and deal with
+in higher dimensions.  (One attempt to handle this difficulty is the 'split' versions of the adaptive methods,
+functions <code>adaptIntegrateSpherePolarSplit()</code> and <code>adaptIntegrateBallPolarSplit()</code>,
+where one can split the region of integration based on knowledge of the integrand.
+This can also be done in functions <code>adaptIntegrateSphereTri()</code> and <code>adaptIntegrateBallTri()</code>
+by specifying an appropriate partition in the simplices.)
+</p>
+<p>It is expected that these methods will yield several significant digits, but not
+many digits of precision.  This seems to be the state of the art in multivariate integration.
+</p>
+<p>Version 1.1 of this package introduces new methods to integrate over spheres.  
+Earlier versions used only polar coordinate representations of the sphere.  Now one
+can use both polar representaions and triangulations of the sphere.  The latter has advantages in
+some cases: it avoids the problems with polar coordinates giving regions that are sometimes
+rectangles and sometimes triangles (which occurs at the poles), triangles can be approximately
+equal area in any dimension, etc.  While adding these new routines,
+names became confusing.  Apologies to anyone who has trouble because of this, but it seems
+better in the long run to explicitly name functions based on their approach.  Hence
+<code>adaptIntegrateSphere()</code> has been renamed <code>adaptIntegrateSpherePolar()</code> to indicate
+that it uses polar coordinates, while the functions <code>adaptIntegrateSphereTri()</code> and 
+<code>adaptIntegrateBallTri()</code> uses spherical triangles. 
+</p>
+<p>An explicit goal was to get beyond the cases where n=2, so some 
+efficiency has been sacrificed. In all the methods, the higher the 
+dimension n, the longer the compute time.  For methods 2 and 3, compute
+times get noticeable when n &gt; 5.  One application 
+that motivated this package required the ability to work reliably with integrands that have 
+spikes. That requires some sort of adaptive technique, with the possibility of telling
+the integration algorithm where the spikes are.
+</p>
+<p>This package is an attempt to provide methods for integrating
+over spheres and balls in multiple dimensions, not a final answer.  One possible improvement is speed:
+coding routines in C would give a significant increase in speed.  
+Another possible extension is to include other multivariate integration
+methods,  e.g. the package R2cuba.  This may provide a way to approximate 
+higher dimensional integrals in some cases, if the integrand is well behaved.
+</p>
+<p>Please let me know if you find any mistakes. Constructive comments for improvements are welcome.  
+Fixing bugs or implementing suggestions will be dependent on my workload.
+</p>
+<p>Version history: 
+</p>
+
+<ul>
+<li><p> 1.0.0 (2013-05-16) original package
+</p>
+</li>
+<li><p> 1.0.1 (2013-05-24) fix mistake in <code>adaptIntegrateBallPolarSplit</code>, fix example in <code>integratePolynomialSphere</code>, add more documentation
+</p>
+</li>
+<li><p> 1.0.2 (2013-12-18) add function <code>adaptIntegrateSphereTri3d</code> to integrate over spherical triangles in 3-dimensions
+</p>
+</li>
+<li><p> 1.1 (2016-05-14) add function <code>adaptIntegrateSphereTri</code> to integrate over spherical triangles in n-dimensions. 
+</p>
+</li>
+<li><p> 1.2 (2016-07-23) improve <code>adaptIntegrateSphereTri</code> where the integration over octants worked, but integrals over other subdivisions did not.
+New version works over any subdivision that doesn't cross into different octants (this is checked). 
+Minor changes to documentation were made and more checks on input values were added.
+</p>
+</li>
+<li><p> 1.3 (2017-09-16)  Improve changes in version 1.2: remove the restricition on simplices in <code>adaptIntegrateSphereTri</code>:  
+the input simplices are analyzed and if a simplex is in more than one orthant, it is automatically subdivided, giving a 
+list of simplices that exactly cover the same part of the sphere and respect each orthant.
+Fix adaptIntegrateSphericalCubatureTri to correctly pass optional arguments to the integrand function. 
+Change the word &quot;octant&quot; to &quot;orthant&quot; throughout the code to stress that the code works in higher dimensions.
+</p>
+</li>
+<li><p> 1.4 (2017-09-16) minor tweaks
+</p>
+</li>
+<li><p> 1.5 (2021-01-04) (a) Fix bug in function <code>rect2polar()</code> (conversion from rectangular to 
+polar coordinates) that occurred along an axis.  Thanks to Prof. Eckard Liebscher for 
+finding this mistake. (b) Add function <code>adaptIntegrateBallSimplices()</code>.  
+(c) Use the new function <code>adaptIntegrateVectorFunc()</code> from package
+SimplicialCubature to handle the 2-dimensional case of integrating over a sphere. 
+(d) Add a required argument to function <code>adaptIntegrateSphereTri()</code>.
+(e) Add function <code>adaptIntegrateBallRadial()</code> to integrate a radial function over the unit ball. 
+(f) Recode function <code>Orthants()</code> to be a standalone
+function, not requiring package <code>mvmesh</code>. (g) add to documentation.
+</p>
+</li></ul>
+
+
+
+<h3>Author(s)</h3>
+
+<p>John P. Nolan
+</p>
+<p>Maintainer: John P. Nolan &lt;jpnolan@american.edu&gt;
+</p>
+<p>This research was supported by an agreement with Cornell University, Operations 
+Research &amp; Information Engineering, under contract W911NF-12-1-0385 from the Army 
+Research Development and Engineering Command.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+integrateSpherePolynomial">integrateSpherePolynomial</a></code>, <code><a href="#topic+integrateBallPolynomial">integrateBallPolynomial</a></code>, 
+<code><a href="#topic+integrateSphereStroud11">integrateSphereStroud11</a></code>, <code><a href="#topic+sphereArea">sphereArea</a></code>, <code><a href="#topic+ballVolume">ballVolume</a></code>,
+<code><a href="#topic+polar2rect">polar2rect</a></code>, <code><a href="#topic+rect2polar">rect2polar</a></code>, 
+<code><a href="#topic+adaptIntegrateSpherePolar">adaptIntegrateSpherePolar</a></code>, <code><a href="#topic+adaptIntegrateSpherePolarSplit">adaptIntegrateSpherePolarSplit</a></code>, 
+<code><a href="#topic+adaptIntegrateSphereTri">adaptIntegrateSphereTri</a></code>, <code><a href="#topic+adaptIntegrateSphereTri3d">adaptIntegrateSphereTri3d</a></code>,
+<code><a href="#topic+adaptIntegrateBallPolar">adaptIntegrateBallPolar</a></code>, <code><a href="#topic+adaptIntegrateBallPolarSplit">adaptIntegrateBallPolarSplit</a></code>,
+<code><a href="#topic+adaptIntegrateBallTri">adaptIntegrateBallTri</a></code>, 
+<code><a href="#topic+adaptIntegrateBallRadial">adaptIntegrateBallRadial</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#  integral should just be the area of sphere in n dimensions
+f1 &lt;- function( x ) { return(1.0) }
+n &lt;- 3
+adaptIntegrateBallTri( f1, n )   # exact answer = volume of ball = (4/3)*pi = 4.18879
+
+# other methods
+integrateSphereStroud11( f1, n )
+adaptIntegrateSpherePolar( f1, n )$integral 
+# exact value for a polynomial
+p &lt;- list(coef=1.0,k=matrix( rep(0L,n), nrow=1,ncol=n))
+integrateSpherePolynomial( p )
+
+# test of exact polynomial integration
+f2 &lt;- function( x ) { return(x[1]^2) }
+sphereArea(n)/n # exact answer
+integrateSphereStroud11( f2, n )
+p &lt;- list(coef=1.0,k=matrix( c(2L,rep(0L,n-1)), nrow=1) )
+integrateSpherePolynomial( p )
+adaptIntegrateSpherePolar( f2, n )$integral
+
+# integration over a ball
+adaptIntegrateSphereTri( f1, n ) # exact answer = surface area of sphere = 4*pi = 12.56637
+
+# vector valued integrands
+f3 &lt;- function( x ) { c( x[1]^2, x[2]^3 ) }
+adaptIntegrateBallTri( f3, n, fDim=2 )
+adaptIntegrateSphereTri( f3, n, fDim=2 )
+
+# radial function
+g &lt;- function( x ) { sum(x^2) }
+adaptIntegrateBallRadial( g, n=3 )
+
+# for more examples enter:   demo(SphericalCubature)
+</code></pre>
+
 <hr>
 <h2 id='adaptIntegrateBallTri'>Adaptive integration over the unit ball</h2><span id='topic+adaptIntegrateBallTri'></span><span id='topic+adaptIntegrateBallRadial'></span>
 
@@ -960,197 +1150,6 @@ ballVolume(n, R = 1)
 
 <pre><code class='language-R'>sphereArea(n=5)
 ballVolume(n=5)
-</code></pre>
-
-<hr>
-<h2 id='SphericalCubature-package'>
-Numerical integration over spheres and balls in n-dimensions; multivariate polar/spherical coordinates</h2><span id='topic+SphericalCubature-package'></span><span id='topic+SphericalCubature'></span>
-
-<h3>Description</h3>
-
-<p>Provides functions to integrate a function f(x)=f(x[1],...,x[n])
-over the unit sphere and unit ball in n-dimensional Euclidean space:
-</p>
-<p style="text-align: center;"><code class="reqn">\int_S f(s) ds \quad \quad \quad \quad \mathrm{and} \quad \quad \quad \int_B f(x) dx,</code>
-</p>
-
-<p>where the first integral is over the unit sphere S, an (n-1) dimensional surface,
-and the second integral is over the unit ball B, an n dimensional solid.
-Vector valued integrands are allowed in some functions; see functions with an argument named <code>fDim</code>.
-</p>
-<p>Integration over general sphers and balls can be done by adjusting the integrand function: if S2 is sphere with center x0 and radius R and B2 is a ball with
-same center and radius, a simple change of variable shows that 
-</p>
-<p style="text-align: center;"><code class="reqn">\int_{S2} f(t) dt = \int_S R^{n-1} f(x0+R s) ds  \quad \quad \quad \mathrm{and}  \quad \quad \int_{B2} f(y) dy = \int_B R^n f(x0+R x) dx.</code>
-</p>
-
-<p>See the example in <code><a href="#topic+adaptIntegrateBallTri">adaptIntegrateBallTri</a></code>.
-</p>
-<p>The package also includes functions to convert to/from polar coordinates in higher dimensions.
-</p>
-<p>There are three cubature methods:
-</p>
-
-<ol>
-<li><p> exact methods for polynomials in any dimension (fast)
-</p>
-</li>
-<li><p> a method due to Stroud for smooth integrands  on the sphere (in 
-dimensions n=3,4,...,16) (slower)
-</p>
-</li>
-<li><p> adaptive methods for integrands with different behavior in different regions (slowest) 
-</p>
-</li></ol>
-
-<p>Methods 2 and 3 are approximations: like any numerical quadrature
-algorithm, they may give inaccurate results if the integrand changes abruptly on a small region.
-This happens even in one dimension, and is more difficult to find and deal with
-in higher dimensions.  (One attempt to handle this difficulty is the 'split' versions of the adaptive methods,
-functions <code>adaptIntegrateSpherePolarSplit()</code> and <code>adaptIntegrateBallPolarSplit()</code>,
-where one can split the region of integration based on knowledge of the integrand.
-This can also be done in functions <code>adaptIntegrateSphereTri()</code> and <code>adaptIntegrateBallTri()</code>
-by specifying an appropriate partition in the simplices.)
-</p>
-<p>It is expected that these methods will yield several significant digits, but not
-many digits of precision.  This seems to be the state of the art in multivariate integration.
-</p>
-<p>Version 1.1 of this package introduces new methods to integrate over spheres.  
-Earlier versions used only polar coordinate representations of the sphere.  Now one
-can use both polar representaions and triangulations of the sphere.  The latter has advantages in
-some cases: it avoids the problems with polar coordinates giving regions that are sometimes
-rectangles and sometimes triangles (which occurs at the poles), triangles can be approximately
-equal area in any dimension, etc.  While adding these new routines,
-names became confusing.  Apologies to anyone who has trouble because of this, but it seems
-better in the long run to explicitly name functions based on their approach.  Hence
-<code>adaptIntegrateSphere()</code> has been renamed <code>adaptIntegrateSpherePolar()</code> to indicate
-that it uses polar coordinates, while the functions <code>adaptIntegrateSphereTri()</code> and 
-<code>adaptIntegrateBallTri()</code> uses spherical triangles. 
-</p>
-<p>An explicit goal was to get beyond the cases where n=2, so some 
-efficiency has been sacrificed. In all the methods, the higher the 
-dimension n, the longer the compute time.  For methods 2 and 3, compute
-times get noticeable when n &gt; 5.  One application 
-that motivated this package required the ability to work reliably with integrands that have 
-spikes. That requires some sort of adaptive technique, with the possibility of telling
-the integration algorithm where the spikes are.
-</p>
-<p>This package is an attempt to provide methods for integrating
-over spheres and balls in multiple dimensions, not a final answer.  One possible improvement is speed:
-coding routines in C would give a significant increase in speed.  
-Another possible extension is to include other multivariate integration
-methods,  e.g. the package R2cuba.  This may provide a way to approximate 
-higher dimensional integrals in some cases, if the integrand is well behaved.
-
-</p>
-<p>Please let me know if you find any mistakes. Constructive comments for improvements are welcome.  
-Fixing bugs or implementing suggestions will be dependent on my workload.
-</p>
-<p>Version history: 
-</p>
-
-<ul>
-<li><p> 1.0.0 (2013-05-16) original package
-</p>
-</li>
-<li><p> 1.0.1 (2013-05-24) fix mistake in <code>adaptIntegrateBallPolarSplit</code>, fix example in <code>integratePolynomialSphere</code>, add more documentation
-</p>
-</li>
-<li><p> 1.0.2 (2013-12-18) add function <code>adaptIntegrateSphereTri3d</code> to integrate over spherical triangles in 3-dimensions
-</p>
-</li>
-<li><p> 1.1 (2016-05-14) add function <code>adaptIntegrateSphereTri</code> to integrate over spherical triangles in n-dimensions. 
-</p>
-</li>
-<li><p> 1.2 (2016-07-23) improve <code>adaptIntegrateSphereTri</code> where the integration over octants worked, but integrals over other subdivisions did not.
-New version works over any subdivision that doesn't cross into different octants (this is checked). 
-Minor changes to documentation were made and more checks on input values were added.
-</p>
-</li>
-<li><p> 1.3 (2017-09-16)  Improve changes in version 1.2: remove the restricition on simplices in <code>adaptIntegrateSphereTri</code>:  
-the input simplices are analyzed and if a simplex is in more than one orthant, it is automatically subdivided, giving a 
-list of simplices that exactly cover the same part of the sphere and respect each orthant.
-Fix adaptIntegrateSphericalCubatureTri to correctly pass optional arguments to the integrand function. 
-Change the word &quot;octant&quot; to &quot;orthant&quot; throughout the code to stress that the code works in higher dimensions.
-</p>
-</li>
-<li><p> 1.4 (2017-09-16) minor tweaks
-</p>
-</li>
-<li><p> 1.5 (2021-01-04) (a) Fix bug in function <code>rect2polar()</code> (conversion from rectangular to 
-polar coordinates) that occurred along an axis.  Thanks to Prof. Eckard Liebscher for 
-finding this mistake. (b) Add function <code>adaptIntegrateBallSimplices()</code>.  
-(c) Use the new function <code>adaptIntegrateVectorFunc()</code> from package
-SimplicialCubature to handle the 2-dimensional case of integrating over a sphere. 
-(d) Add a required argument to function <code>adaptIntegrateSphereTri()</code>.
-(e) Add function <code>adaptIntegrateBallRadial()</code> to integrate a radial function over the unit ball. 
-(f) Recode function <code>Orthants()</code> to be a standalone
-function, not requiring package <code>mvmesh</code>. (g) add to documentation.
-</p>
-</li></ul>
-
-
-
-<h3>Author(s)</h3>
-
-<p>John P. Nolan
-</p>
-<p>Maintainer: John P. Nolan &lt;jpnolan@american.edu&gt;
-</p>
-<p>This research was supported by an agreement with Cornell University, Operations 
-Research &amp; Information Engineering, under contract W911NF-12-1-0385 from the Army 
-Research Development and Engineering Command.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+integrateSpherePolynomial">integrateSpherePolynomial</a></code>, <code><a href="#topic+integrateBallPolynomial">integrateBallPolynomial</a></code>, 
-<code><a href="#topic+integrateSphereStroud11">integrateSphereStroud11</a></code>, <code><a href="#topic+sphereArea">sphereArea</a></code>, <code><a href="#topic+ballVolume">ballVolume</a></code>,
-<code><a href="#topic+polar2rect">polar2rect</a></code>, <code><a href="#topic+rect2polar">rect2polar</a></code>, 
-<code><a href="#topic+adaptIntegrateSpherePolar">adaptIntegrateSpherePolar</a></code>, <code><a href="#topic+adaptIntegrateSpherePolarSplit">adaptIntegrateSpherePolarSplit</a></code>, 
-<code><a href="#topic+adaptIntegrateSphereTri">adaptIntegrateSphereTri</a></code>, <code><a href="#topic+adaptIntegrateSphereTri3d">adaptIntegrateSphereTri3d</a></code>,
-<code><a href="#topic+adaptIntegrateBallPolar">adaptIntegrateBallPolar</a></code>, <code><a href="#topic+adaptIntegrateBallPolarSplit">adaptIntegrateBallPolarSplit</a></code>,
-<code><a href="#topic+adaptIntegrateBallTri">adaptIntegrateBallTri</a></code>, 
-<code><a href="#topic+adaptIntegrateBallRadial">adaptIntegrateBallRadial</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>#  integral should just be the area of sphere in n dimensions
-f1 &lt;- function( x ) { return(1.0) }
-n &lt;- 3
-adaptIntegrateBallTri( f1, n )   # exact answer = volume of ball = (4/3)*pi = 4.18879
-
-# other methods
-integrateSphereStroud11( f1, n )
-adaptIntegrateSpherePolar( f1, n )$integral 
-# exact value for a polynomial
-p &lt;- list(coef=1.0,k=matrix( rep(0L,n), nrow=1,ncol=n))
-integrateSpherePolynomial( p )
-
-# test of exact polynomial integration
-f2 &lt;- function( x ) { return(x[1]^2) }
-sphereArea(n)/n # exact answer
-integrateSphereStroud11( f2, n )
-p &lt;- list(coef=1.0,k=matrix( c(2L,rep(0L,n-1)), nrow=1) )
-integrateSpherePolynomial( p )
-adaptIntegrateSpherePolar( f2, n )$integral
-
-# integration over a ball
-adaptIntegrateSphereTri( f1, n ) # exact answer = surface area of sphere = 4*pi = 12.56637
-
-# vector valued integrands
-f3 &lt;- function( x ) { c( x[1]^2, x[2]^3 ) }
-adaptIntegrateBallTri( f3, n, fDim=2 )
-adaptIntegrateSphereTri( f3, n, fDim=2 )
-
-# radial function
-g &lt;- function( x ) { sum(x^2) }
-adaptIntegrateBallRadial( g, n=3 )
-
-# for more examples enter:   demo(SphericalCubature)
 </code></pre>
 
 <hr>

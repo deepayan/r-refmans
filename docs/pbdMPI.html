@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {pbdMPI}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#pbdMPI-package'><p>R Interface to MPI (Programming with Big Data in R Project)</p></a></li>
 <li><a href='#allgather-methods'><p> All Ranks Gather Objects from Every Rank</p></a></li>
 <li><a href='#allreduce-method'><p> All Ranks Receive a Reduction of Objects from Every Rank</p></a></li>
 <li><a href='#alltoall'><p> All to All</p></a></li>
@@ -52,7 +53,6 @@ function processMathHTML() {
 <li><a href='#isend-method'><p> A Rank Send (Nonblocking) an Object to the Other Rank</p></a></li>
 <li><a href='#MPI array pointers'><p> Set or Get MPI Array Pointers in R</p></a></li>
 <li><a href='#Package Tools'><p>Functions for Get/Print MPI_COMM Pointer (Address)</p></a></li>
-<li><a href='#pbdMPI-package'><p>R Interface to MPI (Programming with Big Data in R Project)</p></a></li>
 <li><a href='#probe'><p> Probe Functions</p></a></li>
 <li><a href='#recv-method'><p> A Rank Receives (Blocking) an Object from the Other Rank</p></a></li>
 <li><a href='#reduce-method'><p> A Rank Receive a Reduction of Objects from Every Rank</p></a></li>
@@ -161,6 +161,209 @@ MS-MPI Redistributable Package) on Windows.</td>
 <td>2023-12-10 10:50:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='pbdMPI-package'>R Interface to MPI (Programming with Big Data in R Project)</h2><span id='topic+pbdMPI-package'></span><span id='topic+pbdMPI'></span>
+
+<h3>Description</h3>
+
+<p>A simplified, efficient, interface to MPI for HPC clusters. It is
+a derivation and rethinking of the Rmpi package that embraces the
+prevalent parallel programming style on HPC clusters. Beyond the
+interface, a collection of functions for global work with distributed
+data is included. It is based on S4 classes and methods.
+</p>
+
+
+<h3>Details</h3>
+
+<p>This package requires an MPI library (OpenMPI, MPICH2, or LAM/MPI). Standard
+installation in an R session with
+<br />
+<code>&gt; install.packages("pbdMPI")</code> <br />
+should work in most cases. 
+</p>
+<p>On HPC clusters, <strong>it is
+strongly recommended that you check with your HPC cluster documentation for 
+specific requirements, such as 
+<a href="https://en.wikipedia.org/wiki/Environment_Modules_(software)">module</a>
+software environments.</strong> Some module examples relevant to R and MPI
+are <br />
+<code>$ module load openmpi</code> <br />
+<code>$ module load openblas</code> <br />
+<code>$ module load flexiblas</code> <br />
+<code>$ module load r</code> <br />
+possibly giving specific versions and possibly with some upper case letters.
+Although module software environments are widely used, the specific module
+names and their dependence structure are not standard across cluster
+installations. The command <br />
+<code>$ module avail</code> <br />
+usually lists the available software modules on your cluster.
+</p>
+<p>To install on the Unix command line after
+downloading the source file, use <code>R CMD INSTALL</code>. <br />
+<br />
+If the MPI library is not found, after checking that you are loading the 
+correct module environments, the following arguments can be used to
+specify its non-standard location on your system
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+  Argument </td><td style="text-align: left;"> Default </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>--with-mpi-type</code>    </td><td style="text-align: left;"> <code>OPENMPI</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>--with-mpi-include</code> </td><td style="text-align: left;"> <code>${MPI_ROOT}/include</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>--with-mpi-libpath</code> </td><td style="text-align: left;"> <code>${MPI_ROOT}/lib</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>--with-mpi</code>         </td><td style="text-align: left;"> <code>${MPI_ROOT}</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>where <code>${MPI_ROOT}</code> is the path to the MPI root.
+See the package source file <code>pbdMPI/configure</code> for details.
+</p>
+<p>Loading <code>library(pbdMPI)</code> sets a few global variables, including the
+environment <code>.pbd_env</code>, where many defaults are set, and initializes MPI.
+In most cases, the defaults should not be modified. Rather, the parameters
+of the functions that use them should be changed. <strong>All codes must end
+with <code><a href="#topic+finalize">finalize</a>()</code> to cleanly exit MPI.</strong>
+</p>
+<p>Most functions are assumed to run as Single Program, Multiple Data (SPMD),
+i.e. in batch mode. SPMD is based on cooperation between parallel copies of a
+single program, which is more scalable than a manager-workers approach that is
+natural in interactive programming. Interactivity with an HPC cluster is more
+efficiently handled by a client-server approach, such as that enabled by the
+<a href="https://cran.r-project.org/package=remoter">remoter</a> package.
+</p>
+<p>On most clusters, codes run with <code>mpirun</code> or 
+<code>mpiexec</code> and <code>Rscript</code>, such as <br />
+<code>&gt; mpiexec -np 2 Rscript some_code.r</code> <br />
+where <code>some_code.r</code> contains the entire SPMD program. The MPI 
+Standard 4.0 recommends <code>mpiexec</code> over <code>mpirun</code>. Some
+MPI implementations may have minor differences between the two but under
+OpenMPI 5.0 they are synonyms that produce the same behavior. 
+</p>
+<p>The package source files provide several examples based on <span class="pkg">pbdMPI</span>,
+such as
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+  Directory </td><td style="text-align: left;"> Examples </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>pbdMPI/inst/examples/test_spmd/</code>        </td><td style="text-align: left;"> main SPMD functions </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>pbdMPI/inst/examples/test_rmpi/</code>        </td><td style="text-align: left;"> analogues to <span class="pkg">Rmpi</span> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>pbdMPI/inst/examples/test_parallel/</code>    </td><td style="text-align: left;"> analogues to <span class="pkg">parallel</span> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>pbdMPI/inst/examples/test_performance/</code> </td><td style="text-align: left;"> performance tests </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>pbdMPI/inst/examples/test_s4/</code>          </td><td style="text-align: left;"> S4 extension </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>pbdMPI/inst/examples/test_cs/</code>          </td><td style="text-align: left;"> client/server examples </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  <code>pbdMPI/inst/examples/test_long_vector/</code> </td><td style="text-align: left;"> long vector examples </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>where <code>test_long_vector</code> needs a recompile with setting
+</p>
+<p><code>#define MPI_LONG_DEBUG 1</code>
+</p>
+<p>in <code>pbdMPI/src/pkg_constant.h</code>.
+</p>
+<p>The current version is mainly written and tested under OpenMPI
+environments on Linux systems (CentOS 7, RHEL 8, Xubuntu). Also, it is tested
+on macOS with Homebrew-installed OpenMPI and under MPICH2 environments on 
+Windows systems, although the primary target systems are HPC clusters running
+Linux OS.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Wei-Chen Chen <a href="mailto:wccsnow@gmail.com">wccsnow@gmail.com</a>, George Ostrouchov,
+Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
+</p>
+
+
+<h3>References</h3>
+
+<p>Programming with Big Data in R Website:
+<a href="https://pbdr.org/">https://pbdr.org/</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+allgather">allgather</a>()</code>,
+<code><a href="#topic+allreduce">allreduce</a>()</code>,
+<code><a href="#topic+bcast">bcast</a>()</code>,
+<code><a href="#topic+gather">gather</a>()</code>,
+<code><a href="#topic+reduce">reduce</a>()</code>,
+<code><a href="#topic+scatter">scatter</a>()</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+### On command line, run each demo with 2 processors by
+### (Use Rscript.exe on Windows systems)
+# mpiexec -np 2 Rscript -e "demo(allgather,'pbdMPI',ask=F,echo=F)"
+# mpiexec -np 2 Rscript -e "demo(allreduce,'pbdMPI',ask=F,echo=F)"
+# mpiexec -np 2 Rscript -e "demo(bcast,'pbdMPI',ask=F,echo=F)"
+# mpiexec -np 2 Rscript -e "demo(gather,'pbdMPI',ask=F,echo=F)"
+# mpiexec -np 2 Rscript -e "demo(reduce,'pbdMPI',ask=F,echo=F)"
+# mpiexec -np 2 Rscript -e "demo(scatter,'pbdMPI',ask=F,echo=F)"
+### Or
+# execmpi("demo(allgather,'pbdMPI',ask=F,echo=F)", nranks = 2L)
+# execmpi("demo(allreduce,'pbdMPI',ask=F,echo=F)", nranks = 2L)
+# execmpi("demo(bcast,'pbdMPI',ask=F,echo=F)", nranks = 2L)
+# execmpi("demo(gather,'pbdMPI',ask=F,echo=F)", nranks = 2L)
+# execmpi("demo(reduce,'pbdMPI',ask=F,echo=F)", nranks = 2L)
+# execmpi("demo(scatter,'pbdMPI',ask=F,echo=F)", nranks = 2L)
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='allgather-methods'> All Ranks Gather Objects from Every Rank </h2><span id='topic+allgather-methods'></span><span id='topic+allgather+2CANY+2Cmissing+2Cmissing-method'></span><span id='topic+allgather+2Cinteger+2Cinteger+2Cmissing-method'></span><span id='topic+allgather+2Cnumeric+2Cnumeric+2Cmissing-method'></span><span id='topic+allgather+2Craw+2Craw+2Cmissing-method'></span><span id='topic+allgather+2CANY+2Cmissing+2Cinteger-method'></span><span id='topic+allgather+2CANY+2CANY+2Cinteger-method'></span><span id='topic+allgather+2Cinteger+2Cinteger+2Cinteger-method'></span><span id='topic+allgather+2Cnumeric+2Cnumeric+2Cinteger-method'></span><span id='topic+allgather+2Craw+2Craw+2Cinteger-method'></span><span id='topic+allgather'></span><span id='topic+allgatherv'></span>
 
@@ -273,8 +476,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -296,7 +498,6 @@ comm.print(y)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -388,8 +589,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -416,7 +616,6 @@ comm.print(y)
 finalize()
 "
 pbdMPI::execmpi(spmd.code = spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -676,8 +875,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -734,7 +932,6 @@ comm.print(unlist(y))
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -809,8 +1006,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -826,7 +1022,6 @@ comm.print(y)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -1343,8 +1538,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -1366,7 +1560,6 @@ comm.print(y)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -1568,8 +1761,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -1597,7 +1789,6 @@ comm.print(alljid)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -1899,8 +2090,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -1916,7 +2106,6 @@ comm.print(X.gbd, all.rank = TRUE)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -4199,8 +4388,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 22processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 22processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -4219,210 +4407,6 @@ addr.mpi.comm.ptr(ptr1.new)
 finalize()
 "
 pbdMPI::execmpi(spmd.code = spmd.code, nranks = 2L)
-
-</code></pre>
-
-<hr>
-<h2 id='pbdMPI-package'>R Interface to MPI (Programming with Big Data in R Project)</h2><span id='topic+pbdMPI-package'></span><span id='topic+pbdMPI'></span>
-
-<h3>Description</h3>
-
-<p>A simplified, efficient, interface to MPI for HPC clusters. It is
-a derivation and rethinking of the Rmpi package that embraces the
-prevalent parallel programming style on HPC clusters. Beyond the
-interface, a collection of functions for global work with distributed
-data is included. It is based on S4 classes and methods.
-</p>
-
-
-<h3>Details</h3>
-
-<p>This package requires an MPI library (OpenMPI, MPICH2, or LAM/MPI). Standard
-installation in an R session with
-<br />
-<code>&gt; install.packages("pbdMPI")</code> <br />
-should work in most cases. 
-</p>
-<p>On HPC clusters, <strong>it is
-strongly recommended that you check with your HPC cluster documentation for 
-specific requirements, such as 
-<a href="https://en.wikipedia.org/wiki/Environment_Modules_(software)">module</a>
-software environments.</strong> Some module examples relevant to R and MPI
-are <br />
-<code>$ module load openmpi</code> <br />
-<code>$ module load openblas</code> <br />
-<code>$ module load flexiblas</code> <br />
-<code>$ module load r</code> <br />
-possibly giving specific versions and possibly with some upper case letters.
-Although module software environments are widely used, the specific module
-names and their dependence structure are not standard across cluster
-installations. The command <br />
-<code>$ module avail</code> <br />
-usually lists the available software modules on your cluster.
-</p>
-<p>To install on the Unix command line after
-downloading the source file, use <code>R CMD INSTALL</code>. <br />
-<br />
-If the MPI library is not found, after checking that you are loading the 
-correct module environments, the following arguments can be used to
-specify its non-standard location on your system
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-  Argument </td><td style="text-align: left;"> Default </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>--with-mpi-type</code>    </td><td style="text-align: left;"> <code>OPENMPI</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>--with-mpi-include</code> </td><td style="text-align: left;"> <code>${MPI_ROOT}/include</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>--with-mpi-libpath</code> </td><td style="text-align: left;"> <code>${MPI_ROOT}/lib</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>--with-mpi</code>         </td><td style="text-align: left;"> <code>${MPI_ROOT}</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>where <code>${MPI_ROOT}</code> is the path to the MPI root.
-See the package source file <code>pbdMPI/configure</code> for details.
-</p>
-<p>Loading <code>library(pbdMPI)</code> sets a few global variables, including the
-environment <code>.pbd_env</code>, where many defaults are set, and initializes MPI.
-In most cases, the defaults should not be modified. Rather, the parameters
-of the functions that use them should be changed. <strong>All codes must end
-with <code><a href="#topic+finalize">finalize</a>()</code> to cleanly exit MPI.</strong>
-</p>
-<p>Most functions are assumed to run as Single Program, Multiple Data (SPMD),
-i.e. in batch mode. SPMD is based on cooperation between parallel copies of a
-single program, which is more scalable than a manager-workers approach that is
-natural in interactive programming. Interactivity with an HPC cluster is more
-efficiently handled by a client-server approach, such as that enabled by the
-<a href="https://cran.r-project.org/package=remoter">remoter</a> package.
-</p>
-<p>On most clusters, codes run with <code>mpirun</code> or 
-<code>mpiexec</code> and <code>Rscript</code>, such as <br />
-<code>&gt; mpiexec -np 2 Rscript some_code.r</code> <br />
-where <code>some_code.r</code> contains the entire SPMD program. The MPI 
-Standard 4.0 recommends <code>mpiexec</code> over <code>mpirun</code>. Some
-MPI implementations may have minor differences between the two but under
-OpenMPI 5.0 they are synonyms that produce the same behavior. 
-</p>
-<p>The package source files provide several examples based on <span class="pkg">pbdMPI</span>,
-such as
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-  Directory </td><td style="text-align: left;"> Examples </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>pbdMPI/inst/examples/test_spmd/</code>        </td><td style="text-align: left;"> main SPMD functions </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>pbdMPI/inst/examples/test_rmpi/</code>        </td><td style="text-align: left;"> analogues to <span class="pkg">Rmpi</span> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>pbdMPI/inst/examples/test_parallel/</code>    </td><td style="text-align: left;"> analogues to <span class="pkg">parallel</span> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>pbdMPI/inst/examples/test_performance/</code> </td><td style="text-align: left;"> performance tests </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>pbdMPI/inst/examples/test_s4/</code>          </td><td style="text-align: left;"> S4 extension </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>pbdMPI/inst/examples/test_cs/</code>          </td><td style="text-align: left;"> client/server examples </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  <code>pbdMPI/inst/examples/test_long_vector/</code> </td><td style="text-align: left;"> long vector examples </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>where <code>test_long_vector</code> needs a recompile with setting
-</p>
-<p><code>#define MPI_LONG_DEBUG 1</code>
-</p>
-<p>in <code>pbdMPI/src/pkg_constant.h</code>.
-</p>
-<p>The current version is mainly written and tested under OpenMPI
-environments on Linux systems (CentOS 7, RHEL 8, Xubuntu). Also, it is tested
-on macOS with Homebrew-installed OpenMPI and under MPICH2 environments on 
-Windows systems, although the primary target systems are HPC clusters running
-Linux OS.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Wei-Chen Chen <a href="mailto:wccsnow@gmail.com">wccsnow@gmail.com</a>, George Ostrouchov,
-Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
-</p>
-
-
-<h3>References</h3>
-
-<p>Programming with Big Data in R Website:
-<a href="https://pbdr.org/">https://pbdr.org/</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+allgather">allgather</a>()</code>,
-<code><a href="#topic+allreduce">allreduce</a>()</code>,
-<code><a href="#topic+bcast">bcast</a>()</code>,
-<code><a href="#topic+gather">gather</a>()</code>,
-<code><a href="#topic+reduce">reduce</a>()</code>,
-<code><a href="#topic+scatter">scatter</a>()</code>.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-### On command line, run each demo with 2 processors by
-### (Use Rscript.exe on Windows systems)
-# mpiexec -np 2 Rscript -e "demo(allgather,'pbdMPI',ask=F,echo=F)"
-# mpiexec -np 2 Rscript -e "demo(allreduce,'pbdMPI',ask=F,echo=F)"
-# mpiexec -np 2 Rscript -e "demo(bcast,'pbdMPI',ask=F,echo=F)"
-# mpiexec -np 2 Rscript -e "demo(gather,'pbdMPI',ask=F,echo=F)"
-# mpiexec -np 2 Rscript -e "demo(reduce,'pbdMPI',ask=F,echo=F)"
-# mpiexec -np 2 Rscript -e "demo(scatter,'pbdMPI',ask=F,echo=F)"
-### Or
-# execmpi("demo(allgather,'pbdMPI',ask=F,echo=F)", nranks = 2L)
-# execmpi("demo(allreduce,'pbdMPI',ask=F,echo=F)", nranks = 2L)
-# execmpi("demo(bcast,'pbdMPI',ask=F,echo=F)", nranks = 2L)
-# execmpi("demo(gather,'pbdMPI',ask=F,echo=F)", nranks = 2L)
-# execmpi("demo(reduce,'pbdMPI',ask=F,echo=F)", nranks = 2L)
-# execmpi("demo(scatter,'pbdMPI',ask=F,echo=F)", nranks = 2L)
-
-## End(Not run)
 </code></pre>
 
 <hr>
@@ -4626,8 +4610,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -4650,7 +4633,6 @@ comm.print(y, rank.print = 1)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -4743,8 +4725,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -4771,7 +4752,6 @@ comm.print(y)
 finalize()
 "
 pbdMPI::execmpi(spmd.code = spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -4890,8 +4870,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -4912,7 +4891,6 @@ comm.print(y)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -5265,8 +5243,7 @@ Drew Schmidt, Pragneshkumar Patel, and Hao Yu.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.code &lt;- "
@@ -5289,7 +5266,6 @@ comm.print(y, rank.print = 1)
 finalize()
 "
 pbdMPI::execmpi(spmd.code, nranks = 2L)
-
 </code></pre>
 
 <hr>
@@ -6312,8 +6288,7 @@ The recommended way is to run under shell command.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>
-### Save code in a file "demo.r" and run with 2 processors by
+<pre><code class='language-R'>### Save code in a file "demo.r" and run with 2 processors by
 ### SHELL&gt; mpiexec -np 2 Rscript demo.r
 
 spmd.file &lt;- tempfile()
@@ -6323,7 +6298,6 @@ allreduce(2)
 finalize()
 ", file = spmd.file)
 pbdMPI::execmpi(spmd.file = spmd.file, nranks = 2L)
-
 </code></pre>
 
 <hr>

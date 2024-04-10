@@ -13,16 +13,16 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {archetypal}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#archetypal-package'><p>Finds the Archetypal Analysis of a Data Frame</p></a></li>
 <li><a href='#AbsoluteTemperature'>
 <p>Global Absolute Temperature data set for Northern Hemisphere 1969-2013</p></a></li>
 <li><a href='#align_archetypes_from_list'><p>Align archetypes from a list either by the most frequent found or by using a given archetype</p></a></li>
 <li><a href='#archetypal'><p>archetypal: Finds the archetypal analysis of a data frame by using a variant of the PCHA algorithm</p></a></li>
-<li><a href='#archetypal-package'><p>Finds the Archetypal Analysis of a Data Frame</p></a></li>
 <li><a href='#check_Bmatrix'><p>Function which checks B matrix of Archetypal Analysis  Y ~ A B Y</p>
 in order to find the used rows for creating each archetype
 and the relevant used weights.</a></li>
@@ -160,6 +160,198 @@ plot3D, entropy</td>
 <td>2022-07-04 12:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='archetypal-package'>Finds the Archetypal Analysis of a Data Frame</h2><span id='topic+archetypal-package'></span>
+
+<h3>Description</h3>
+
+<p>Performs archetypal analysis by using Principal Convex Hull Analysis (PCHA) 
+under a full control of all algorithmic parameters. 
+It contains a set of functions for determining the initial solution, the optimal 
+algorithmic parameters and the optimal number of archetypes.
+Post run tools are also available for the assessment of the derived solution. 
+</p>
+
+
+<h3>Compute Archetypal Analysis (AA)</h3>
+
+<p>The main function is <code><a href="#topic+archetypal">archetypal</a></code> which is a variant of PCHA algorithm, see [1], [2],
+suitable for R language. It provides control to the entire set of involved parameters  and has two main options:   
+</p>
+
+<ol>
+<li><p> initialrows = NULL, then a method from &quot;projected_convexhull&quot;, &quot;convexhull&quot;,<br />
+&quot;partitioned_convexhul&quot;, &quot;furthestsum&quot;, &quot;outmost&quot;, &quot;random&quot; is used
+</p>
+</li>
+<li><p> initialrows = (a vector of kappas rows), then given rows form the initial solution for AA
+</p>
+</li></ol>
+ 
+<p>This is the main function of the package, but extensive trials has shown that:
+</p>
+
+<ul>
+<li><p> AA may be very difficult to run if a random initial solution has been chosen
+</p>
+</li>
+<li><p> for the same data set the final Sum of Squared Errors (SSE) may be much smaller
+if initial solution is close to the final one
+</p>
+</li>
+<li><p> even the quality of AA done is affected from the starting point
+</p>
+</li></ul>
+
+<p>This is the reason why we have developed a whole set of methods for choosing initial solution for the PCHA algorithm.
+</p>
+
+
+<h3>Find a time efficient initial approximation for AA</h3>
+
+ 
+<p>There are three functions that work with the Convex Hull (CH) of data set.
+</p>
+
+<ol>
+<li>  <p><code><a href="#topic+find_outmost_convexhull_points">find_outmost_convexhull_points</a></code> computes the CH of all points    
+</p>
+</li>
+<li> <p><code><a href="#topic+find_outmost_projected_convexhull_points">find_outmost_projected_convexhull_points</a></code> computes the CH for
+all possible combinations of variables taken by <code>npr</code> (default=2)
+</p>
+</li>
+<li> <p><code><a href="#topic+find_outmost_partitioned_convexhull_points">find_outmost_partitioned_convexhull_points</a></code> makes <code>np</code> partitions
+of data frame (defualt=10), then computes CH for each partition and finally gives the CH of overall union  
+</p>
+</li></ol>
+
+<p>The most simple method for estimating an initial solution is <code><a href="#topic+find_outmost_points">find_outmost_points</a></code>
+where we just compute the outermost points, i.e. those that are the most frequent outermost for all
+available points.
+</p>
+<p>The default method &quot;FurthestSum&quot; (FS) of PCHA (see [1], [2]) is used by <code><a href="#topic+find_furthestsum_points">find_furthestsum_points</a></code> which applies
+FS for <code>nfurthest</code> times (default=10) and then finds the most frequent points. 
+</p>
+<p>Of course &quot;random&quot; method is available for comparison reasons and that gives a random
+set of kappas points as initial solution. 
+</p>
+<p>All methods give the number of rows for the input data frame as integers. Attention needed if your data frame
+has row names which are integers but not identical to <code>1:dim(df)[1]</code>.
+</p>
+
+
+<h3>Find the optimal number of archetypes</h3>
+
+<p>For that task <code><a href="#topic+find_optimal_kappas">find_optimal_kappas</a></code> is available which 
+runs for each kappas from 1 to maxkappas (default=15) ntrials (default=10) times AA, 
+stores SSE, VarianceExplained from each run and then computes knee or elbow point by using UIK method, see [3].
+</p>
+
+
+<h3>Determining the optimal updating parameters</h3>
+
+<p>Extensive trials have shown us that choosing the proper values for algorithmic updating parameters 
+(<code>muAup, muAdown, muBup, muBdown</code>) can speed up remarkably the process. That is the task of
+<code><a href="#topic+find_pcha_optimal_parameters">find_pcha_optimal_parameters</a></code> which  conducts a grid search with different values 
+of these parameters and returns the values which minimize the SSE after a fixed number of iterations (<code>testing_iters</code>, default=10).
+</p>
+
+
+<h3>Evaluate the quality of Archetypal Analysis</h3>
+
+<p>By using function <code><a href="#topic+check_Bmatrix">check_Bmatrix</a></code> we can evaluate the overall quality of 
+applied method and algorithm. Quality can be considered high:
+</p>
+
+<ol>
+<li><p> if every archetype is being created by a small number of data points
+</p>
+</li>
+<li><p> if relevant weights are not numerically insignificant
+</p>
+</li></ol>
+
+<p>Of course we must take into account the SSE and VarianceExplained, but if we have to compare two solutions
+with similar termination status, then we must choose that of the simplest B matrix form.
+</p>
+
+
+<h3>Resampling</h3>
+
+<p>The package includes a function for resampling (<code><a href="#topic+grouped_resample">grouped_resample</a></code>) which may be used for standard bootstrapping or for subsampling. 
+This function allows samples to be drawn with or without replacement, by groups and with or without Dirichlet weights. 
+This provides a variety of options for researchers who wish to correct sample biases, estimate empirical confidence intervals, 
+and/or subsample large data sets. 
+</p>
+
+
+<h3>Post-run tools</h3>
+
+<p>Except from <code><a href="#topic+check_Bmatrix">check_Bmatrix</a></code> there exist next functions for checking the convergence process itself and
+for examining the local neighborhoud of archetypes:
+</p>
+
+<ol>
+<li><p> The function  <code><a href="#topic+study_AAconvergence">study_AAconvergence</a></code> analyzes the history of iterations done and produces
+a multi-panel plot showing the steps and quality of the convergence to the final archetypes.
+</p>
+</li>
+<li><p> By setting the desired number <code>npoints</code> as argument in function <code><a href="#topic+find_closer_points">find_closer_points</a></code> 
+we can then find the data points that are in the local neighborhood of each archetype. 
+This allows us to study the properties of the solution or manually choose an initial approximation to search for a better fit.
+</p>
+</li></ol>
+
+
+
+<h3>Note</h3>
+
+<p>Bug reports and feature requests can be sent to
+<a href="mailto:dchristop@econ.uoa.gr">dchristop@econ.uoa.gr</a> or <br /> <a href="mailto:dem.christop@gmail.com">dem.christop@gmail.com</a>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Demetris Christopoulos <a href="mailto:dchristop@econ.uoa.gr">dchristop@econ.uoa.gr</a>
+</p>
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> David Midgley <a href="mailto:david.midgley@insead.edu">david.midgley@insead.edu</a> [contributor]
+</p>
+</li>
+<li><p> Sunil Venaik <a href="mailto:s.venaik@business.uq.edu.au">s.venaik@business.uq.edu.au</a> [contributor]
+</p>
+</li>
+<li><p> INSEAD Fontainebleau France [funder, copyright holder]
+</p>
+</li></ul>
+
+
+
+<h3>References</h3>
+
+
+<p>[1] M Morup and LK Hansen, &quot;Archetypal analysis for machine learning and data mining&quot;, Neurocomputing (Elsevier, 2012).
+https://doi.org/10.1016/j.neucom.2011.06.033.
+</p>
+<p>[2] Source: https://www.mortenmorup.dk/MMhomepageUpdated_files/Page327.htm , last accessed 2021-09-23
+</p>
+<p>[3] Christopoulos, Demetris T., Introducing Unit Invariant Knee (UIK) As an Objective Choice for
+Elbow Point in Multivariate Data Analysis Techniques (March 1, 2016). 
+Available at SSRN: https://ssrn.com/abstract=3043076 or http://dx.doi.org/10.2139/ssrn.3043076
+</p>
+
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+archetypal">archetypal</a></code>
+</p>
+
 <hr>
 <h2 id='AbsoluteTemperature'>
 Global Absolute Temperature data set for Northern Hemisphere 1969-2013
@@ -669,198 +861,6 @@ names(aa$run_results)
 
 }
 </code></pre>
-
-<hr>
-<h2 id='archetypal-package'>Finds the Archetypal Analysis of a Data Frame</h2><span id='topic+archetypal-package'></span>
-
-<h3>Description</h3>
-
-<p>Performs archetypal analysis by using Principal Convex Hull Analysis (PCHA) 
-under a full control of all algorithmic parameters. 
-It contains a set of functions for determining the initial solution, the optimal 
-algorithmic parameters and the optimal number of archetypes.
-Post run tools are also available for the assessment of the derived solution. 
-</p>
-
-
-<h3>Compute Archetypal Analysis (AA)</h3>
-
-<p>The main function is <code><a href="#topic+archetypal">archetypal</a></code> which is a variant of PCHA algorithm, see [1], [2],
-suitable for R language. It provides control to the entire set of involved parameters  and has two main options:   
-</p>
-
-<ol>
-<li><p> initialrows = NULL, then a method from &quot;projected_convexhull&quot;, &quot;convexhull&quot;,<br />
-&quot;partitioned_convexhul&quot;, &quot;furthestsum&quot;, &quot;outmost&quot;, &quot;random&quot; is used
-</p>
-</li>
-<li><p> initialrows = (a vector of kappas rows), then given rows form the initial solution for AA
-</p>
-</li></ol>
- 
-<p>This is the main function of the package, but extensive trials has shown that:
-</p>
-
-<ul>
-<li><p> AA may be very difficult to run if a random initial solution has been chosen
-</p>
-</li>
-<li><p> for the same data set the final Sum of Squared Errors (SSE) may be much smaller
-if initial solution is close to the final one
-</p>
-</li>
-<li><p> even the quality of AA done is affected from the starting point
-</p>
-</li></ul>
-
-<p>This is the reason why we have developed a whole set of methods for choosing initial solution for the PCHA algorithm.
-</p>
-
-
-<h3>Find a time efficient initial approximation for AA</h3>
-
- 
-<p>There are three functions that work with the Convex Hull (CH) of data set.
-</p>
-
-<ol>
-<li>  <p><code><a href="#topic+find_outmost_convexhull_points">find_outmost_convexhull_points</a></code> computes the CH of all points    
-</p>
-</li>
-<li> <p><code><a href="#topic+find_outmost_projected_convexhull_points">find_outmost_projected_convexhull_points</a></code> computes the CH for
-all possible combinations of variables taken by <code>npr</code> (default=2)
-</p>
-</li>
-<li> <p><code><a href="#topic+find_outmost_partitioned_convexhull_points">find_outmost_partitioned_convexhull_points</a></code> makes <code>np</code> partitions
-of data frame (defualt=10), then computes CH for each partition and finally gives the CH of overall union  
-</p>
-</li></ol>
-
-<p>The most simple method for estimating an initial solution is <code><a href="#topic+find_outmost_points">find_outmost_points</a></code>
-where we just compute the outermost points, i.e. those that are the most frequent outermost for all
-available points.
-</p>
-<p>The default method &quot;FurthestSum&quot; (FS) of PCHA (see [1], [2]) is used by <code><a href="#topic+find_furthestsum_points">find_furthestsum_points</a></code> which applies
-FS for <code>nfurthest</code> times (default=10) and then finds the most frequent points. 
-</p>
-<p>Of course &quot;random&quot; method is available for comparison reasons and that gives a random
-set of kappas points as initial solution. 
-</p>
-<p>All methods give the number of rows for the input data frame as integers. Attention needed if your data frame
-has row names which are integers but not identical to <code>1:dim(df)[1]</code>.
-</p>
-
-
-<h3>Find the optimal number of archetypes</h3>
-
-<p>For that task <code><a href="#topic+find_optimal_kappas">find_optimal_kappas</a></code> is available which 
-runs for each kappas from 1 to maxkappas (default=15) ntrials (default=10) times AA, 
-stores SSE, VarianceExplained from each run and then computes knee or elbow point by using UIK method, see [3].
-</p>
-
-
-<h3>Determining the optimal updating parameters</h3>
-
-<p>Extensive trials have shown us that choosing the proper values for algorithmic updating parameters 
-(<code>muAup, muAdown, muBup, muBdown</code>) can speed up remarkably the process. That is the task of
-<code><a href="#topic+find_pcha_optimal_parameters">find_pcha_optimal_parameters</a></code> which  conducts a grid search with different values 
-of these parameters and returns the values which minimize the SSE after a fixed number of iterations (<code>testing_iters</code>, default=10).
-</p>
-
-
-<h3>Evaluate the quality of Archetypal Analysis</h3>
-
-<p>By using function <code><a href="#topic+check_Bmatrix">check_Bmatrix</a></code> we can evaluate the overall quality of 
-applied method and algorithm. Quality can be considered high:
-</p>
-
-<ol>
-<li><p> if every archetype is being created by a small number of data points
-</p>
-</li>
-<li><p> if relevant weights are not numerically insignificant
-</p>
-</li></ol>
-
-<p>Of course we must take into account the SSE and VarianceExplained, but if we have to compare two solutions
-with similar termination status, then we must choose that of the simplest B matrix form.
-</p>
-
-
-<h3>Resampling</h3>
-
-<p>The package includes a function for resampling (<code><a href="#topic+grouped_resample">grouped_resample</a></code>) which may be used for standard bootstrapping or for subsampling. 
-This function allows samples to be drawn with or without replacement, by groups and with or without Dirichlet weights. 
-This provides a variety of options for researchers who wish to correct sample biases, estimate empirical confidence intervals, 
-and/or subsample large data sets. 
-</p>
-
-
-<h3>Post-run tools</h3>
-
-<p>Except from <code><a href="#topic+check_Bmatrix">check_Bmatrix</a></code> there exist next functions for checking the convergence process itself and
-for examining the local neighborhoud of archetypes:
-</p>
-
-<ol>
-<li><p> The function  <code><a href="#topic+study_AAconvergence">study_AAconvergence</a></code> analyzes the history of iterations done and produces
-a multi-panel plot showing the steps and quality of the convergence to the final archetypes.
-</p>
-</li>
-<li><p> By setting the desired number <code>npoints</code> as argument in function <code><a href="#topic+find_closer_points">find_closer_points</a></code> 
-we can then find the data points that are in the local neighborhood of each archetype. 
-This allows us to study the properties of the solution or manually choose an initial approximation to search for a better fit.
-</p>
-</li></ol>
-
-
-
-<h3>Note</h3>
-
-<p>Bug reports and feature requests can be sent to
-<a href="mailto:dchristop@econ.uoa.gr">dchristop@econ.uoa.gr</a> or <br /> <a href="mailto:dem.christop@gmail.com">dem.christop@gmail.com</a>.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Demetris Christopoulos <a href="mailto:dchristop@econ.uoa.gr">dchristop@econ.uoa.gr</a>
-</p>
-<p>Other contributors:
-</p>
-
-<ul>
-<li><p> David Midgley <a href="mailto:david.midgley@insead.edu">david.midgley@insead.edu</a> [contributor]
-</p>
-</li>
-<li><p> Sunil Venaik <a href="mailto:s.venaik@business.uq.edu.au">s.venaik@business.uq.edu.au</a> [contributor]
-</p>
-</li>
-<li><p> INSEAD Fontainebleau France [funder, copyright holder]
-</p>
-</li></ul>
-
-
-
-<h3>References</h3>
-
-
-<p>[1] M Morup and LK Hansen, &quot;Archetypal analysis for machine learning and data mining&quot;, Neurocomputing (Elsevier, 2012).
-https://doi.org/10.1016/j.neucom.2011.06.033.
-</p>
-<p>[2] Source: https://www.mortenmorup.dk/MMhomepageUpdated_files/Page327.htm , last accessed 2021-09-23
-</p>
-<p>[3] Christopoulos, Demetris T., Introducing Unit Invariant Knee (UIK) As an Objective Choice for
-Elbow Point in Multivariate Data Analysis Techniques (March 1, 2016). 
-Available at SSRN: https://ssrn.com/abstract=3043076 or http://dx.doi.org/10.2139/ssrn.3043076
-</p>
-
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+archetypal">archetypal</a></code>
-</p>
 
 <hr>
 <h2 id='check_Bmatrix'>Function which checks B matrix of Archetypal Analysis  Y ~ A B Y
@@ -2415,7 +2415,6 @@ Finally the pecentage of used points that lie on the exact Convex Hull is given.
 <td>
 <p>The percentage of used points that lie on the exact Convex Hull</p>
 </td></tr>
-
 </table>
 
 

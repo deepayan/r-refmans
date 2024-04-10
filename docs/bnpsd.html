@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {bnpsd}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#bnpsd'><p>A package for modeling and simulating an admixed population</p></a></li>
 <li><a href='#admix_prop_1d_circular'><p>Construct admixture proportion matrix for circular 1D geography</p></a></li>
 <li><a href='#admix_prop_1d_linear'><p>Construct admixture proportion matrix for 1D geography</p></a></li>
 <li><a href='#admix_prop_indep_subpops'><p>Construct admixture proportion matrix for independent subpopulations</p></a></li>
-<li><a href='#bnpsd'><p>A package for modeling and simulating an admixed population</p></a></li>
 <li><a href='#coanc_admix'><p>Construct the coancestry matrix of an admixture model</p></a></li>
 <li><a href='#coanc_to_kinship'><p>Transform coancestry matrix to kinship matrix</p></a></li>
 <li><a href='#coanc_tree'><p>Calculate coancestry matrix corresponding to a tree</p></a></li>
@@ -117,6 +117,125 @@ function processMathHTML() {
 <td>2021-08-25 12:50:26 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='bnpsd'>A package for modeling and simulating an admixed population</h2><span id='topic+bnpsd'></span><span id='topic+bnpsd-package'></span>
+
+<h3>Description</h3>
+
+<p>The underlying model is called the BN-PSD admixture model, which combines the Balding-Nichols (BN) allele frequency model for the intermediate subpopulations with the Pritchard-Stephens-Donnelly (PSD) model of individual-specific admixture proportions.
+The BN-PSD model enables the simulation of complex population structures, ideal for illustrating challenges in kinship coefficient and FST estimation.
+Simulated loci are drawn independently (in linkage equilibrium).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Alejandro Ochoa <a href="mailto:alejandro.ochoa@duke.edu">alejandro.ochoa@duke.edu</a> (<a href="https://orcid.org/0000-0003-4928-3403">ORCID</a>)
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> John D. Storey <a href="mailto:jstorey@princeton.edu">jstorey@princeton.edu</a> (<a href="https://orcid.org/0000-0001-5992-402X">ORCID</a>)
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/StoreyLab/bnpsd/">https://github.com/StoreyLab/bnpsd/</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/StoreyLab/bnpsd/issues">https://github.com/StoreyLab/bnpsd/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># dimensions of data/model
+# number of loci
+m_loci &lt;- 10
+# number of individuals
+n_ind &lt;- 5
+# number of intermediate subpops
+k_subpops &lt;- 2
+
+# define population structure
+# FST values for k = 2 subpopulations
+inbr_subpops &lt;- c( 0.1, 0.3 )
+# admixture proportions from 1D geography
+admix_proportions &lt;- admix_prop_1d_linear( n_ind, k_subpops, sigma = 1 )
+# also available:
+# - admix_prop_1d_circular
+# - admix_prop_indep_subpops
+
+# get pop structure parameters of the admixed individuals
+# the coancestry matrix
+coancestry &lt;- coanc_admix( admix_proportions, inbr_subpops )
+# FST of admixed individuals
+Fst &lt;- fst_admix( admix_proportions, inbr_subpops )
+
+# draw all random allele freqs and genotypes
+out &lt;- draw_all_admix( admix_proportions, inbr_subpops, m_loci )
+# genotypes
+X &lt;- out$X
+# ancestral allele frequencies (AFs)
+p_anc &lt;- out$p_anc
+
+# OR... draw each vector or matrix separately
+# provided for additional flexibility
+# ancestral AFs
+p_anc &lt;- draw_p_anc( m_loci )
+# independent subpops (intermediate) AFs
+p_subpops &lt;- draw_p_subpops( p_anc, inbr_subpops )
+# individual-specific AFs
+p_ind &lt;- make_p_ind_admix( p_subpops, admix_proportions )
+# genotypes
+X &lt;- draw_genotypes_admix( p_ind )
+
+### Examples with a tree for intermediate subpopulations
+
+# tree allows for correlated subpopulations
+# (prev examples had independent subpopulations)
+
+# best to start by specifying tree in Newick string format
+tree_str &lt;- '(S1:0.1,(S2:0.1,S3:0.1)N1:0.1)T;'
+# and turn it into `phylo` object using the `ape` package
+library(ape)
+tree_subpops &lt;- read.tree( text = tree_str )
+# true coancestry matrix corresponding to this tree
+coanc_subpops &lt;- coanc_tree( tree_subpops )
+
+# admixture proportions from 1D geography
+# (constructed again but for k=3 tree)
+k_subpops &lt;- nrow( coanc_subpops )
+admix_proportions &lt;- admix_prop_1d_linear( n_ind, k_subpops, sigma = 0.5 )
+
+# get pop structure parameters of the admixed individuals
+# the coancestry matrix
+coancestry &lt;- coanc_admix( admix_proportions, coanc_subpops )
+# FST of admixed individuals
+Fst &lt;- fst_admix( admix_proportions, coanc_subpops )
+
+# draw all random allele freqs and genotypes, tree version
+out &lt;- draw_all_admix( admix_proportions, tree_subpops = tree_subpops, m_loci = m_loci )
+# genotypes
+X &lt;- out$X
+# ancestral allele frequencies (AFs)
+p_anc &lt;- out$p_anc
+
+# OR... draw tree subpops (intermediate) AFs separately
+p_subpops_tree &lt;- draw_p_subpops_tree( p_anc, tree_subpops )
+
+</code></pre>
+
 <hr>
 <h2 id='admix_prop_1d_circular'>Construct admixture proportion matrix for circular 1D geography</h2><span id='topic+admix_prop_1d_circular'></span>
 
@@ -446,125 +565,6 @@ admix_proportions &lt;- admix_prop_indep_subpops(labs, subpops)
 subpops &lt;- 1:5
 # note columns 4 and 5 will be false for all individuals
 admix_proportions &lt;- admix_prop_indep_subpops(labs, subpops)
-
-</code></pre>
-
-<hr>
-<h2 id='bnpsd'>A package for modeling and simulating an admixed population</h2><span id='topic+bnpsd'></span><span id='topic+bnpsd-package'></span>
-
-<h3>Description</h3>
-
-<p>The underlying model is called the BN-PSD admixture model, which combines the Balding-Nichols (BN) allele frequency model for the intermediate subpopulations with the Pritchard-Stephens-Donnelly (PSD) model of individual-specific admixture proportions.
-The BN-PSD model enables the simulation of complex population structures, ideal for illustrating challenges in kinship coefficient and FST estimation.
-Simulated loci are drawn independently (in linkage equilibrium).
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Alejandro Ochoa <a href="mailto:alejandro.ochoa@duke.edu">alejandro.ochoa@duke.edu</a> (<a href="https://orcid.org/0000-0003-4928-3403">ORCID</a>)
-</p>
-<p>Authors:
-</p>
-
-<ul>
-<li><p> John D. Storey <a href="mailto:jstorey@princeton.edu">jstorey@princeton.edu</a> (<a href="https://orcid.org/0000-0001-5992-402X">ORCID</a>)
-</p>
-</li></ul>
-
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://github.com/StoreyLab/bnpsd/">https://github.com/StoreyLab/bnpsd/</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/StoreyLab/bnpsd/issues">https://github.com/StoreyLab/bnpsd/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># dimensions of data/model
-# number of loci
-m_loci &lt;- 10
-# number of individuals
-n_ind &lt;- 5
-# number of intermediate subpops
-k_subpops &lt;- 2
-
-# define population structure
-# FST values for k = 2 subpopulations
-inbr_subpops &lt;- c( 0.1, 0.3 )
-# admixture proportions from 1D geography
-admix_proportions &lt;- admix_prop_1d_linear( n_ind, k_subpops, sigma = 1 )
-# also available:
-# - admix_prop_1d_circular
-# - admix_prop_indep_subpops
-
-# get pop structure parameters of the admixed individuals
-# the coancestry matrix
-coancestry &lt;- coanc_admix( admix_proportions, inbr_subpops )
-# FST of admixed individuals
-Fst &lt;- fst_admix( admix_proportions, inbr_subpops )
-
-# draw all random allele freqs and genotypes
-out &lt;- draw_all_admix( admix_proportions, inbr_subpops, m_loci )
-# genotypes
-X &lt;- out$X
-# ancestral allele frequencies (AFs)
-p_anc &lt;- out$p_anc
-
-# OR... draw each vector or matrix separately
-# provided for additional flexibility
-# ancestral AFs
-p_anc &lt;- draw_p_anc( m_loci )
-# independent subpops (intermediate) AFs
-p_subpops &lt;- draw_p_subpops( p_anc, inbr_subpops )
-# individual-specific AFs
-p_ind &lt;- make_p_ind_admix( p_subpops, admix_proportions )
-# genotypes
-X &lt;- draw_genotypes_admix( p_ind )
-
-### Examples with a tree for intermediate subpopulations
-
-# tree allows for correlated subpopulations
-# (prev examples had independent subpopulations)
-
-# best to start by specifying tree in Newick string format
-tree_str &lt;- '(S1:0.1,(S2:0.1,S3:0.1)N1:0.1)T;'
-# and turn it into `phylo` object using the `ape` package
-library(ape)
-tree_subpops &lt;- read.tree( text = tree_str )
-# true coancestry matrix corresponding to this tree
-coanc_subpops &lt;- coanc_tree( tree_subpops )
-
-# admixture proportions from 1D geography
-# (constructed again but for k=3 tree)
-k_subpops &lt;- nrow( coanc_subpops )
-admix_proportions &lt;- admix_prop_1d_linear( n_ind, k_subpops, sigma = 0.5 )
-
-# get pop structure parameters of the admixed individuals
-# the coancestry matrix
-coancestry &lt;- coanc_admix( admix_proportions, coanc_subpops )
-# FST of admixed individuals
-Fst &lt;- fst_admix( admix_proportions, coanc_subpops )
-
-# draw all random allele freqs and genotypes, tree version
-out &lt;- draw_all_admix( admix_proportions, tree_subpops = tree_subpops, m_loci = m_loci )
-# genotypes
-X &lt;- out$X
-# ancestral allele frequencies (AFs)
-p_anc &lt;- out$p_anc
-
-# OR... draw tree subpops (intermediate) AFs separately
-p_subpops_tree &lt;- draw_p_subpops_tree( p_anc, tree_subpops )
 
 </code></pre>
 

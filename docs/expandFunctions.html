@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {expandFunctions}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#expandFunctions'><p>expandFunctions: a feature matrix builder</p></a></li>
 <li><a href='#coefPlot'><p>Plots coefficients in an impulse response format</p></a></li>
 <li><a href='#distMat'><p>Make a matrix with coefficients distributed as dist</p></a></li>
 <li><a href='#easyLASSO'><p>Select and fit sparse linear model with LASSO</p></a></li>
@@ -29,7 +30,6 @@ function processMathHTML() {
 <li><a href='#eQuad'><p>Multivariate second order polynomial expansion.</p></a></li>
 <li><a href='#eReplace'><p>Replace values in an R object coerible to a matrix</p></a></li>
 <li><a href='#eTrim'><p>Remove padded rows from matrix X</p></a></li>
-<li><a href='#expandFunctions'><p>expandFunctions: a feature matrix builder</p></a></li>
 <li><a href='#freemanTukey'><p>Freeman-Tukey transform</p></a></li>
 <li><a href='#lagshift'><p>Helper function for eLag.</p></a></li>
 <li><a href='#polywrapper'><p>Generate special functions using orthonormal functions</p></a></li>
@@ -132,6 +132,178 @@ function processMathHTML() {
 <td>2016-10-01 15:05:50</td>
 </tr>
 </table>
+<hr>
+<h2 id='expandFunctions'>expandFunctions: a feature matrix builder</h2><span id='topic+expandFunctions'></span><span id='topic+expandFunctions-package'></span>
+
+<h3>Description</h3>
+
+<p>A variety of  functions for conversion of
+vectors and matrices to other matrices to use as
+features.  This allows one to quickly build feature structures
+and apply various machine learning methods to those features
+for exploration and pedantic purposes.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The <strong>expandFunctions</strong> package contains functions
+that can be used to expand feature vectors and matrices into
+larger feature matrices.  These functions include lag
+embedding, special function univariate exansion, quadratic
+expansion, and random vector projection.
+</p>
+<p>The general steps for feature generation for time domain data
+(which subsumes multivariate data via lags) are:
+</p>
+
+<ul>
+<li><p>Preprocess data - remove mean, transform, etc., to a
+useful vector or matrix.
+</p>
+</li>
+<li><p>If not a matrix, functionally expand vector into a matrix.
+This is
+typically done by lag embedding, but may also include STFT, wavelet
+transforms, etc.
+</p>
+</li>
+<li><p>Functionally expand matrices generated.
+</p>
+</li>
+<li><p>Combine resulting matrices into a single feature matrix.
+</p>
+</li>
+<li><p>Dimensional reduction, feature selection, and/or
+feature extraction to reduce the number of features.
+</p>
+</li>
+<li><p>Use machine learning method(s) on the resulting feature
+matrix.
+</p>
+</li></ul>
+
+<p>Most of the steps above are well supported in <span class="rlang"><b>R</b></span> on CRAN, but the
+expansion steps tend to be scattered in a variety of packages,
+poorly represented, or custom built by the user.  The
+<strong>expandFunction</strong> package is intended
+to collect many of these functions together in one place.
+</p>
+<p>Preprocessing almost always should include centering and scaling the
+data.  However, it may also include a variety of transformations,
+such as Freeman-Tukey, in order to make the vector fit
+more closely to a given model (say, a linear model with Gaussian
+noise).
+</p>
+<p>If the input isn't a time domain vector, but is instead already
+in tabular form (for instance, Boston Housing Data),
+the embedding step can be skipped.
+</p>
+<p>Dimension reduction is outside the scope of this package, but
+is normally performed to reduce the variables that need handling,
+reducing the memory used and speeding up the analysis.
+</p>
+<p>The package functions are &quot;magrittr-friendly&quot;, that is,
+built so that they can be directly pipelined since X, the data,
+is the first argument.
+</p>
+<p>Most functions are prefixed with &quot;e&quot; to help distinguish them
+from being confused with similarly named functions.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Scott Miller &lt;sam3CRAN@gmail.com&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# Sunspot counts can be somewhat Gaussianized by the
+# Freeman-Tukey transform.
+x &lt;- freemanTukey(sunspot.month)
+par(mfrow=c(1,1)) # just in case multiplots were left over.
+plot(x,type="l")
+
+# Embed x using eLag
+# Since the base period of sunspots is 11*12 months,
+# pick the lags to be fractions of this.
+myLags &lt;- seq(from=0,to=200,by=1)
+X &lt;- eTrim(eLag(x,myLags))
+Y &lt;- X[,+1,drop=FALSE]
+X &lt;- X[,-1,drop=FALSE]
+# matplot(X,type="l",lty=1)
+
+# OLS fitting on the lag feature set
+lmObj &lt;- lm(y ~ .,data = data.frame(x=X,y=Y))
+coefPlot(lmObj,type="b")
+summary(lmObj)
+Yhat &lt;- predict(lmObj, newdata = data.frame(x=X))
+Ydiagnostics(Y,Yhat)
+
+# LASSO fitting on the lag feature set
+lassoObj &lt;- easyLASSO(X,Y,criterion="lambda.min")
+coefPlot(lassoObj,type="b")
+Yhat &lt;- predict(lassoObj,newx = X)
+Ydiagnostics(Y,Yhat)
+
+# Reduce the lag feature set using non-zero
+# LASSO coefficients
+useCoef &lt;- coef(lassoObj)[-1]!=0
+myLags &lt;- seq(from=0,to=200,by=1)[c(TRUE,useCoef)]
+X &lt;- eTrim(eLag(x,myLags))
+Y &lt;- X[,+1,drop=FALSE]
+X &lt;- X[,-1,drop=FALSE]
+
+# OLS fitting on the reduced lag feature set
+lmObj &lt;- lm(y ~ .,data = data.frame(x=X,y=Y))
+summary(lmObj)
+coefPlot(lmObj)
+Yhat &lt;- predict(lmObj, newdata = data.frame(x=X))
+Ydiagnostics(Y,Yhat)
+
+# 1st nonlinear feature set
+# Apply a few Chebyshev functions to the columns of the
+# lag matrix. Note these exclude the constant values,
+# but include the linear.
+chebyFUN &lt;- polywrapper(basePoly=orthopolynom::chebyshev.t.polynomials,
+                        kMax=5)
+Z &lt;- eMatrixOuter(X,1:5,chebyFUN)
+
+# OLS fitting on the 1st nonlinear feature set
+lmObj &lt;- lm(y ~ .,data = data.frame(z=Z,y=Y))
+summary(lmObj)
+Yhat &lt;- predict(lmObj, newdata = data.frame(z=Z))
+Ydiagnostics(Y,Yhat)
+
+# LASSO fitting on the 1st nonlinear feature set
+lassoObj &lt;- easyLASSO(Z,Y)
+coefPlot(lassoObj)
+Yhat &lt;- predict(lassoObj,newx = Z)
+Ydiagnostics(Y,Yhat)
+
+# 2nd nonlinear feature set
+# Use eQuad as an alternative expansion of the lags
+Z &lt;- eQuad(X)
+
+# OLS fitting on the 2nd nonlinear feature set
+lmObj &lt;- lm(y ~ .,data = data.frame(z=Z,y=Y))
+summary(lmObj)
+Yhat &lt;- predict(lmObj, newdata = data.frame(z=Z))
+Ydiagnostics(Y,Yhat)
+
+# LASSO fitting on the 2nd nonlinear feature set
+lassoObj &lt;- easyLASSO(Z,Y)
+coefPlot(lassoObj)
+Yhat &lt;- predict(lassoObj,newx = Z)
+Ydiagnostics(Y,Yhat)
+
+## End(Not run)
+
+</code></pre>
+
 <hr>
 <h2 id='coefPlot'>Plots coefficients in an impulse response format</h2><span id='topic+coefPlot'></span>
 
@@ -868,178 +1040,6 @@ X &lt;- eTrim(X)
 T &lt;- eTrim(T)
 matplot(x=T[,1],y=X,type="l",lty=1,
   xlab="Time")
-</code></pre>
-
-<hr>
-<h2 id='expandFunctions'>expandFunctions: a feature matrix builder</h2><span id='topic+expandFunctions'></span><span id='topic+expandFunctions-package'></span>
-
-<h3>Description</h3>
-
-<p>A variety of  functions for conversion of
-vectors and matrices to other matrices to use as
-features.  This allows one to quickly build feature structures
-and apply various machine learning methods to those features
-for exploration and pedantic purposes.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The <strong>expandFunctions</strong> package contains functions
-that can be used to expand feature vectors and matrices into
-larger feature matrices.  These functions include lag
-embedding, special function univariate exansion, quadratic
-expansion, and random vector projection.
-</p>
-<p>The general steps for feature generation for time domain data
-(which subsumes multivariate data via lags) are:
-</p>
-
-<ul>
-<li><p>Preprocess data - remove mean, transform, etc., to a
-useful vector or matrix.
-</p>
-</li>
-<li><p>If not a matrix, functionally expand vector into a matrix.
-This is
-typically done by lag embedding, but may also include STFT, wavelet
-transforms, etc.
-</p>
-</li>
-<li><p>Functionally expand matrices generated.
-</p>
-</li>
-<li><p>Combine resulting matrices into a single feature matrix.
-</p>
-</li>
-<li><p>Dimensional reduction, feature selection, and/or
-feature extraction to reduce the number of features.
-</p>
-</li>
-<li><p>Use machine learning method(s) on the resulting feature
-matrix.
-</p>
-</li></ul>
-
-<p>Most of the steps above are well supported in <span class="rlang"><b>R</b></span> on CRAN, but the
-expansion steps tend to be scattered in a variety of packages,
-poorly represented, or custom built by the user.  The
-<strong>expandFunction</strong> package is intended
-to collect many of these functions together in one place.
-</p>
-<p>Preprocessing almost always should include centering and scaling the
-data.  However, it may also include a variety of transformations,
-such as Freeman-Tukey, in order to make the vector fit
-more closely to a given model (say, a linear model with Gaussian
-noise).
-</p>
-<p>If the input isn't a time domain vector, but is instead already
-in tabular form (for instance, Boston Housing Data),
-the embedding step can be skipped.
-</p>
-<p>Dimension reduction is outside the scope of this package, but
-is normally performed to reduce the variables that need handling,
-reducing the memory used and speeding up the analysis.
-</p>
-<p>The package functions are &quot;magrittr-friendly&quot;, that is,
-built so that they can be directly pipelined since X, the data,
-is the first argument.
-</p>
-<p>Most functions are prefixed with &quot;e&quot; to help distinguish them
-from being confused with similarly named functions.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Scott Miller &lt;sam3CRAN@gmail.com&gt;
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-# Sunspot counts can be somewhat Gaussianized by the
-# Freeman-Tukey transform.
-x &lt;- freemanTukey(sunspot.month)
-par(mfrow=c(1,1)) # just in case multiplots were left over.
-plot(x,type="l")
-
-# Embed x using eLag
-# Since the base period of sunspots is 11*12 months,
-# pick the lags to be fractions of this.
-myLags &lt;- seq(from=0,to=200,by=1)
-X &lt;- eTrim(eLag(x,myLags))
-Y &lt;- X[,+1,drop=FALSE]
-X &lt;- X[,-1,drop=FALSE]
-# matplot(X,type="l",lty=1)
-
-# OLS fitting on the lag feature set
-lmObj &lt;- lm(y ~ .,data = data.frame(x=X,y=Y))
-coefPlot(lmObj,type="b")
-summary(lmObj)
-Yhat &lt;- predict(lmObj, newdata = data.frame(x=X))
-Ydiagnostics(Y,Yhat)
-
-# LASSO fitting on the lag feature set
-lassoObj &lt;- easyLASSO(X,Y,criterion="lambda.min")
-coefPlot(lassoObj,type="b")
-Yhat &lt;- predict(lassoObj,newx = X)
-Ydiagnostics(Y,Yhat)
-
-# Reduce the lag feature set using non-zero
-# LASSO coefficients
-useCoef &lt;- coef(lassoObj)[-1]!=0
-myLags &lt;- seq(from=0,to=200,by=1)[c(TRUE,useCoef)]
-X &lt;- eTrim(eLag(x,myLags))
-Y &lt;- X[,+1,drop=FALSE]
-X &lt;- X[,-1,drop=FALSE]
-
-# OLS fitting on the reduced lag feature set
-lmObj &lt;- lm(y ~ .,data = data.frame(x=X,y=Y))
-summary(lmObj)
-coefPlot(lmObj)
-Yhat &lt;- predict(lmObj, newdata = data.frame(x=X))
-Ydiagnostics(Y,Yhat)
-
-# 1st nonlinear feature set
-# Apply a few Chebyshev functions to the columns of the
-# lag matrix. Note these exclude the constant values,
-# but include the linear.
-chebyFUN &lt;- polywrapper(basePoly=orthopolynom::chebyshev.t.polynomials,
-                        kMax=5)
-Z &lt;- eMatrixOuter(X,1:5,chebyFUN)
-
-# OLS fitting on the 1st nonlinear feature set
-lmObj &lt;- lm(y ~ .,data = data.frame(z=Z,y=Y))
-summary(lmObj)
-Yhat &lt;- predict(lmObj, newdata = data.frame(z=Z))
-Ydiagnostics(Y,Yhat)
-
-# LASSO fitting on the 1st nonlinear feature set
-lassoObj &lt;- easyLASSO(Z,Y)
-coefPlot(lassoObj)
-Yhat &lt;- predict(lassoObj,newx = Z)
-Ydiagnostics(Y,Yhat)
-
-# 2nd nonlinear feature set
-# Use eQuad as an alternative expansion of the lags
-Z &lt;- eQuad(X)
-
-# OLS fitting on the 2nd nonlinear feature set
-lmObj &lt;- lm(y ~ .,data = data.frame(z=Z,y=Y))
-summary(lmObj)
-Yhat &lt;- predict(lmObj, newdata = data.frame(z=Z))
-Ydiagnostics(Y,Yhat)
-
-# LASSO fitting on the 2nd nonlinear feature set
-lassoObj &lt;- easyLASSO(Z,Y)
-coefPlot(lassoObj)
-Yhat &lt;- predict(lassoObj,newx = Z)
-Ydiagnostics(Y,Yhat)
-
-## End(Not run)
-
 </code></pre>
 
 <hr>

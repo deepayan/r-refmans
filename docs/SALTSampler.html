@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {SALTSampler}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#SALTSampler-package'><p>Efficient Sampling on the Simplex</p></a></li>
 <li><a href='#Diagnostics'><p>Plots and Summaries of RunMh Output</p></a></li>
 <li><a href='#GenData'><p>Synthetic Data From a Multinomial Distribution</p></a></li>
 <li><a href='#Logit'><p>Logit of a Probability Vector</p></a></li>
@@ -26,7 +27,6 @@ function processMathHTML() {
 <li><a href='#LogPq'><p>Computes <code class="reqn">log(p)</code> and <code class="reqn">log(1-p)</code></p></a></li>
 <li><a href='#PropStep'><p>Draw a Proposal on a Simplex</p></a></li>
 <li><a href='#RunMh'><p>Metropolis Hasting Algorithm Constrained on a Simplex</p></a></li>
-<li><a href='#SALTSampler-package'><p>Efficient Sampling on the Simplex</p></a></li>
 <li><a href='#TriPlot'><p>Plots MCMC Samples on a 3-Simplex</p></a></li>
 </ul>
 </div>
@@ -106,6 +106,100 @@ function processMathHTML() {
 <td>2017-08-10 19:35:03 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='SALTSampler-package'>Efficient Sampling on the Simplex</h2><span id='topic+SALTSampler-package'></span><span id='topic+SALTSampler'></span>
+
+<h3>Description</h3>
+
+<p>The SALTSampler package facilitates Monte Carlo Markov Chain (MCMC) sampling of random variables on a simplex. A Self-Adjusting Logit Transform (SALT) proposal is used so that sampling is still efficient even in difficult cases, such as those in high dimensions or with parameters that differ by orders of magnitude. Special care is also taken to maintain accuracy even when some coordinates approach 0 or 1 numerically. Diagnostic and graphic functions are included in the package, enabling easy assessment of the convergence and mixing of the chain within the constrained space. </p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> SALTSampler</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 0.1</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2015-08-15</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> BSD_3_clause + file LICENSE
+</td>
+</tr>
+
+</table>
+
+<p>The main function for this package is <code>runMh</code>. Using user-defined information, <code>runMh</code> conducts MCMC on a simplex and outputs an object of class <code>mhRun</code>. The function can be used with any target distribution on the simplex defined by the user.  Alternatively, two common posteriors types are built into the function and can be specifed by the user. For type <code>'dirichlet'</code>, <code>mhRun</code> produces MCMC samples from a specified dirichlet distribution and for type <code>'multinomial'</code>, <code>mhRun</code> uses data to sample the distributional parameters of a multinomial distribution. Additionally, the functions <code>Diagnostics</code> and <code>TriPlot</code> can be used to analyze the output of <code>mhRun</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Hannah Director, Scott Vander Wiel, Jim Gattiker</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>###Dirichlet sampling in 3-simplex 
+dir &lt;- RunMh(center = c(0.7, 0.2, 0.1), B = 2e3, concentration = 10,
+                        h = c(2, 2, 2), type = 'dirichlet', dat = NULL)
+Diagnostics(mhOut = dir)
+TriPlot(mhOut = dir)
+
+####Multinomial sampling                  
+## Not run: 
+sampData &lt;- GenData(center = c(0.2, 0.3, 0.5), n = 100, size = 10)
+multinom &lt;- RunMh(center = c(0.2, 0.3, 0.5), B = 1e4, h = c(2,2,2), 
+                  type = 'multinom', dat = sampData)
+Diagnostics(mhOut = multinom)
+TriPlot(mhOut = multinom)
+
+## End(Not run)
+
+####User-defined target distribution for a calibration problem 
+## Not run: 
+#Known function which we want to calibrate
+CalibFn &lt;- function(y, logit = FALSE) {
+  if (logit == TRUE) {
+    y &lt;- exp(LogPq(y)$logp)
+  }
+  out &lt;- 1e3*y[1]^3*y[2]^3/sqrt(20 + y[3])
+  return(out)
+}
+
+#Generated data 
+z &lt;- rnorm(n = 1000, mean = CalibFn(c(1/3, 1/3, 1/3), 2))
+
+#User defined target distribution
+Target &lt;- function(ycand, ycurrent, a, dat, pars = NULL) {
+  out &lt;- sum(dnorm(z, CalibFn(ycand, logit = TRUE), 2, log = TRUE)) - 
+    sum(dnorm(z, CalibFn(ycurrent, logit = TRUE), 2, log = TRUE)) + 
+    sum((a - 1)*(LogPq(ycand)$logp - LogPq(ycurrent)$logp))
+  return(out)
+} 
+
+#Run sampler
+inputDist &lt;- RunMh(center = c(1/3, 1/3, 1/3), B = 3e4, concentration = 3, 
+                   h = c(0.2, 0.2, 0.2), type = 'user', dat = z)
+Diagnostics(mhOut = inputDist)
+TriPlot(mhOut = inputDist)
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='Diagnostics'>Plots and Summaries of RunMh Output</h2><span id='topic+Diagnostics'></span>
 
@@ -530,100 +624,6 @@ Target &lt;- function(ycand, ycurrent, a, dat, pars = NULL) {
 #Run sampler
 inputDist &lt;- RunMh(center = c(1/3, 1/3, 1/3), B = 3e4, concentration = 3, 
                    h = c(0.2, 0.2, 0.2), type = 'user', dat = z)
-
-## End(Not run)
-</code></pre>
-
-<hr>
-<h2 id='SALTSampler-package'>Efficient Sampling on the Simplex</h2><span id='topic+SALTSampler-package'></span><span id='topic+SALTSampler'></span>
-
-<h3>Description</h3>
-
-<p>The SALTSampler package facilitates Monte Carlo Markov Chain (MCMC) sampling of random variables on a simplex. A Self-Adjusting Logit Transform (SALT) proposal is used so that sampling is still efficient even in difficult cases, such as those in high dimensions or with parameters that differ by orders of magnitude. Special care is also taken to maintain accuracy even when some coordinates approach 0 or 1 numerically. Diagnostic and graphic functions are included in the package, enabling easy assessment of the convergence and mixing of the chain within the constrained space. </p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> SALTSampler</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 0.1</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2015-08-15</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> BSD_3_clause + file LICENSE
-</td>
-</tr>
-
-</table>
-
-<p>The main function for this package is <code>runMh</code>. Using user-defined information, <code>runMh</code> conducts MCMC on a simplex and outputs an object of class <code>mhRun</code>. The function can be used with any target distribution on the simplex defined by the user.  Alternatively, two common posteriors types are built into the function and can be specifed by the user. For type <code>'dirichlet'</code>, <code>mhRun</code> produces MCMC samples from a specified dirichlet distribution and for type <code>'multinomial'</code>, <code>mhRun</code> uses data to sample the distributional parameters of a multinomial distribution. Additionally, the functions <code>Diagnostics</code> and <code>TriPlot</code> can be used to analyze the output of <code>mhRun</code>.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Hannah Director, Scott Vander Wiel, Jim Gattiker</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>###Dirichlet sampling in 3-simplex 
-dir &lt;- RunMh(center = c(0.7, 0.2, 0.1), B = 2e3, concentration = 10,
-                        h = c(2, 2, 2), type = 'dirichlet', dat = NULL)
-Diagnostics(mhOut = dir)
-TriPlot(mhOut = dir)
-
-####Multinomial sampling                  
-## Not run: 
-sampData &lt;- GenData(center = c(0.2, 0.3, 0.5), n = 100, size = 10)
-multinom &lt;- RunMh(center = c(0.2, 0.3, 0.5), B = 1e4, h = c(2,2,2), 
-                  type = 'multinom', dat = sampData)
-Diagnostics(mhOut = multinom)
-TriPlot(mhOut = multinom)
-
-## End(Not run)
-
-####User-defined target distribution for a calibration problem 
-## Not run: 
-#Known function which we want to calibrate
-CalibFn &lt;- function(y, logit = FALSE) {
-  if (logit == TRUE) {
-    y &lt;- exp(LogPq(y)$logp)
-  }
-  out &lt;- 1e3*y[1]^3*y[2]^3/sqrt(20 + y[3])
-  return(out)
-}
-
-#Generated data 
-z &lt;- rnorm(n = 1000, mean = CalibFn(c(1/3, 1/3, 1/3), 2))
-
-#User defined target distribution
-Target &lt;- function(ycand, ycurrent, a, dat, pars = NULL) {
-  out &lt;- sum(dnorm(z, CalibFn(ycand, logit = TRUE), 2, log = TRUE)) - 
-    sum(dnorm(z, CalibFn(ycurrent, logit = TRUE), 2, log = TRUE)) + 
-    sum((a - 1)*(LogPq(ycand)$logp - LogPq(ycurrent)$logp))
-  return(out)
-} 
-
-#Run sampler
-inputDist &lt;- RunMh(center = c(1/3, 1/3, 1/3), B = 3e4, concentration = 3, 
-                   h = c(0.2, 0.2, 0.2), type = 'user', dat = z)
-Diagnostics(mhOut = inputDist)
-TriPlot(mhOut = inputDist)
 
 ## End(Not run)
 </code></pre>

@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {Rook}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#Rook-package'>
+<p>Rook: A web server interface and package for R</p></a></li>
 <li><a href='#App-class'><p>Class <code>App</code></p></a></li>
 <li><a href='#Brewery-class'><p>Class <code>Brewery</code></p></a></li>
 <li><a href='#Builder-class'><p>Class <code>Builder</code></p></a></li>
@@ -34,8 +36,6 @@ function processMathHTML() {
 <li><a href='#RhttpdApp-class'><p>Class <code>RhttpdApp</code></p></a></li>
 <li><a href='#RhttpdErrorStream-class'><p>Class <code>RhttpdErrorStream</code></p></a></li>
 <li><a href='#RhttpdInputStream-class'><p>Class <code>RhttpdInputStream</code></p></a></li>
-<li><a href='#Rook-package'>
-<p>Rook: A web server interface and package for R</p></a></li>
 <li><a href='#Server'><p>Rook Server Object</p></a></li>
 <li><a href='#Static-class'><p>Class <code>Static</code></p></a></li>
 <li><a href='#suspend_console'>
@@ -117,6 +117,188 @@ function processMathHTML() {
 <td>2022-11-07 08:50:19 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='Rook-package'>
+Rook: A web server interface and package for R
+</h2><span id='topic+Rook-package'></span><span id='topic+Rook'></span>
+
+<h3>Description</h3>
+
+<p>This help page defines the Rook specification. It borrows heavily
+from Ruby's Rack project: <a href="https://github.com/rack/rack">https://github.com/rack/rack</a>.
+</p>
+<p>After reading this document, read the <code><a href="#topic+Rhttpd">Rhttpd</a></code> help file
+as it will get you familiar with installing and running <code>Rook</code>
+applications. Then explore the example applications located in:
+</p>
+<p><code>system.file('exampleApps',package='Rook')</code>.
+</p>
+
+
+<h3>Rook applications</h3>
+
+<p>A Rook application is an R reference class object that implements a 'call'
+method or an R closure that takes exactly one argument, an environment,
+and returns a list with three named elements: <code>'status'</code>, <code>'headers'</code>,
+and <code>'body'</code>.
+</p>
+
+
+<h3>Hello World</h3>
+
+<p>Here is a basic Rook application as a closure that implements 'hello world':
+</p>
+<pre>
+function(env){
+    body = paste('&lt;h1&gt;Hello World! This is Rook',env$rook.version,'.&lt;/h1&gt;')
+    list(
+        status = 200L,
+        headers = list(
+            'Content-Type' = 'text/html'
+        ),
+        body = body
+    )
+}
+</pre>
+<p>And the equivalent reference class example:
+</p>
+<pre>
+setRefClass(
+  'HelloWorld',
+  methods = list(
+    call = function(env){
+      list(
+        status = 200L,
+        headers = list(
+         'Content-Type' = 'text/html'
+        ),
+        body = paste('&lt;h1&gt;Hello World! This is Rook',env$rook.version,'.&lt;/h1&gt;')
+      )
+    }
+  )
+)
+</pre>
+
+
+<h3>The Environment</h3>
+
+<p>The environment argument is a true R environment object which the
+application is free to modify. It is required to contain the following
+variables:
+</p>
+
+<dl>
+<dt>REQUEST_METHOD</dt><dd><p> The HTTP request method, such as &quot;GET&quot; or &quot;POST&quot;. This
+cannot ever be an empty string, and so is always required. </p>
+</dd>
+<dt>SCRIPT_NAME</dt><dd><p> The initial portion of the request URL's &quot;path&quot; that
+corresponds to the application object, so that the application knows
+its virtual &quot;location&quot;. This may be an empty string, if the application
+corresponds to the &quot;root&quot; of the server.</p>
+</dd>
+<dt>PATH_INFO</dt><dd><p> The remainder of the request URL's &quot;path&quot;, designating the
+virtual &quot;location&quot; of the request's target within the application. This
+may be an empty string, if the request URL targets the application root
+and does not have a trailing slash. This value may be percent-encoded
+when I originating from a URL.</p>
+</dd>
+<dt>QUERY_STRING</dt><dd><p> The portion of the request URL that follows the ?,
+if any. May be empty, but is always required!</p>
+</dd>
+<dt>SERVER_NAME, SERVER_PORT</dt><dd><p> When combined with SCRIPT_NAME and PATH_INFO,
+these variables can be used to complete the URL. Note however that
+HTTP_HOST, if present, should be used in preference to SERVER_NAME for
+reconstructing the request URL. SERVER_NAME and SERVER_PORT can never
+be empty strings, and so are always required.</p>
+</dd>
+<dt>HTTP_ Variables</dt><dd><p> Variables corresponding to the client-supplied
+HTTP request headers (i.e., variables whose names begin with HTTP_). The
+presence or absence of these variables should correspond with the presence
+or absence of the appropriate HTTP header in the request.</p>
+</dd>
+</dl>
+
+<p>In addition, the environment must include the following Rook-specific variables:
+</p>
+
+<dl>
+<dt>rook.version</dt><dd><p> This version of Rook.</p>
+</dd>
+<dt>rook.url_scheme</dt><dd><p>'http' or 'https', depending on the request URL.</p>
+</dd>
+<dt>rook.input</dt><dd><p>See &ldquo;The Input Stream&rdquo; section.</p>
+</dd>
+<dt>rook.errors</dt><dd><p>See &ldquo;The Error Stream&rdquo; section.</p>
+</dd>
+</dl>
+
+
+
+<h3>The Input Stream</h3>
+
+<p>The rook.input variable must contain an object created from a reference
+class that implements <code>read_lines()</code>, <code>read()</code>, and <code>rewind()</code>:
+</p>
+
+<dl>
+<dt><code>read_lines(l=-1L)</code>:</dt><dd><p>takes one argument, the number of lines to read. Includes partial ending line.</p>
+</dd>
+<dt><code>read(l=-1L)</code>:</dt><dd><p>takes one argument, the number of bytes to read. Returns a raw vector.</p>
+</dd>
+<dt><code>rewind()</code>:</dt><dd><p>Rewinds the input stream back to the beginning.</p>
+</dd>
+</dl>
+
+
+
+<h3>The Error Stream</h3>
+
+<p>The rook.error variable must contain an object created from a reference
+class that implements <code>flush()</code> and <code>cat()</code>:
+</p>
+
+<dl>
+<dt><code>flush()</code>:</dt><dd><p>called with no arguments and makes the error stream immediately appear.</p>
+</dd>
+<dt><code>cat(...,sep=" ",fill=FALSE,labels=NULL)</code>:</dt><dd><p>called with the same arguments as R's <code>"<a href="base.html#topic+cat">cat</a>"</code> without the <code>file</code> and append <code>argument</code>.</p>
+</dd>
+</dl>
+
+
+
+<h3>The Response</h3>
+
+<p>Rook applications return a list with three named elements: <code>'status'</code>, <code>'headers'</code>,
+and <code>'body'</code>.
+</p>
+
+
+<h4><code>'status'</code></h4>
+
+<p>An HTTP status value as integer and must be greater than or equal to 100. 
+</p>
+
+
+
+<h4><code>'headers'</code></h4>
+
+<p>A named list that contains only character values corresponding to valid HTTP headers.
+</p>
+
+
+
+<h4><code>'body'</code></h4>
+
+<p>Either a character or raw vector. If the character vector is named
+with value <code>'file'</code> then value of the vector is interpreted as the
+location of a file.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p> Jeffrey Horner &lt;jeffrey.horner@gmail.com&gt; </p>
+
 <hr>
 <h2 id='App-class'>Class <code>App</code></h2><span id='topic+App-class'></span><span id='topic+App'></span>
 
@@ -963,188 +1145,6 @@ rm(s)
 
 <pre><code class='language-R'>showClass("RhttpdInputStream")
 </code></pre>
-
-<hr>
-<h2 id='Rook-package'>
-Rook: A web server interface and package for R
-</h2><span id='topic+Rook-package'></span><span id='topic+Rook'></span>
-
-<h3>Description</h3>
-
-<p>This help page defines the Rook specification. It borrows heavily
-from Ruby's Rack project: <a href="https://github.com/rack/rack">https://github.com/rack/rack</a>.
-</p>
-<p>After reading this document, read the <code><a href="#topic+Rhttpd">Rhttpd</a></code> help file
-as it will get you familiar with installing and running <code>Rook</code>
-applications. Then explore the example applications located in:
-</p>
-<p><code>system.file('exampleApps',package='Rook')</code>.
-</p>
-
-
-<h3>Rook applications</h3>
-
-<p>A Rook application is an R reference class object that implements a 'call'
-method or an R closure that takes exactly one argument, an environment,
-and returns a list with three named elements: <code>'status'</code>, <code>'headers'</code>,
-and <code>'body'</code>.
-</p>
-
-
-<h3>Hello World</h3>
-
-<p>Here is a basic Rook application as a closure that implements 'hello world':
-</p>
-<pre>
-function(env){
-    body = paste('&lt;h1&gt;Hello World! This is Rook',env$rook.version,'.&lt;/h1&gt;')
-    list(
-        status = 200L,
-        headers = list(
-            'Content-Type' = 'text/html'
-        ),
-        body = body
-    )
-}
-</pre>
-<p>And the equivalent reference class example:
-</p>
-<pre>
-setRefClass(
-  'HelloWorld',
-  methods = list(
-    call = function(env){
-      list(
-        status = 200L,
-        headers = list(
-         'Content-Type' = 'text/html'
-        ),
-        body = paste('&lt;h1&gt;Hello World! This is Rook',env$rook.version,'.&lt;/h1&gt;')
-      )
-    }
-  )
-)
-</pre>
-
-
-<h3>The Environment</h3>
-
-<p>The environment argument is a true R environment object which the
-application is free to modify. It is required to contain the following
-variables:
-</p>
-
-<dl>
-<dt>REQUEST_METHOD</dt><dd><p> The HTTP request method, such as &quot;GET&quot; or &quot;POST&quot;. This
-cannot ever be an empty string, and so is always required. </p>
-</dd>
-<dt>SCRIPT_NAME</dt><dd><p> The initial portion of the request URL's &quot;path&quot; that
-corresponds to the application object, so that the application knows
-its virtual &quot;location&quot;. This may be an empty string, if the application
-corresponds to the &quot;root&quot; of the server.</p>
-</dd>
-<dt>PATH_INFO</dt><dd><p> The remainder of the request URL's &quot;path&quot;, designating the
-virtual &quot;location&quot; of the request's target within the application. This
-may be an empty string, if the request URL targets the application root
-and does not have a trailing slash. This value may be percent-encoded
-when I originating from a URL.</p>
-</dd>
-<dt>QUERY_STRING</dt><dd><p> The portion of the request URL that follows the ?,
-if any. May be empty, but is always required!</p>
-</dd>
-<dt>SERVER_NAME, SERVER_PORT</dt><dd><p> When combined with SCRIPT_NAME and PATH_INFO,
-these variables can be used to complete the URL. Note however that
-HTTP_HOST, if present, should be used in preference to SERVER_NAME for
-reconstructing the request URL. SERVER_NAME and SERVER_PORT can never
-be empty strings, and so are always required.</p>
-</dd>
-<dt>HTTP_ Variables</dt><dd><p> Variables corresponding to the client-supplied
-HTTP request headers (i.e., variables whose names begin with HTTP_). The
-presence or absence of these variables should correspond with the presence
-or absence of the appropriate HTTP header in the request.</p>
-</dd>
-</dl>
-
-<p>In addition, the environment must include the following Rook-specific variables:
-</p>
-
-<dl>
-<dt>rook.version</dt><dd><p> This version of Rook.</p>
-</dd>
-<dt>rook.url_scheme</dt><dd><p>'http' or 'https', depending on the request URL.</p>
-</dd>
-<dt>rook.input</dt><dd><p>See &ldquo;The Input Stream&rdquo; section.</p>
-</dd>
-<dt>rook.errors</dt><dd><p>See &ldquo;The Error Stream&rdquo; section.</p>
-</dd>
-</dl>
-
-
-
-<h3>The Input Stream</h3>
-
-<p>The rook.input variable must contain an object created from a reference
-class that implements <code>read_lines()</code>, <code>read()</code>, and <code>rewind()</code>:
-</p>
-
-<dl>
-<dt><code>read_lines(l=-1L)</code>:</dt><dd><p>takes one argument, the number of lines to read. Includes partial ending line.</p>
-</dd>
-<dt><code>read(l=-1L)</code>:</dt><dd><p>takes one argument, the number of bytes to read. Returns a raw vector.</p>
-</dd>
-<dt><code>rewind()</code>:</dt><dd><p>Rewinds the input stream back to the beginning.</p>
-</dd>
-</dl>
-
-
-
-<h3>The Error Stream</h3>
-
-<p>The rook.error variable must contain an object created from a reference
-class that implements <code>flush()</code> and <code>cat()</code>:
-</p>
-
-<dl>
-<dt><code>flush()</code>:</dt><dd><p>called with no arguments and makes the error stream immediately appear.</p>
-</dd>
-<dt><code>cat(...,sep=" ",fill=FALSE,labels=NULL)</code>:</dt><dd><p>called with the same arguments as R's <code>"<a href="base.html#topic+cat">cat</a>"</code> without the <code>file</code> and append <code>argument</code>.</p>
-</dd>
-</dl>
-
-
-
-<h3>The Response</h3>
-
-<p>Rook applications return a list with three named elements: <code>'status'</code>, <code>'headers'</code>,
-and <code>'body'</code>.
-</p>
-
-
-<h4><code>'status'</code></h4>
-
-<p>An HTTP status value as integer and must be greater than or equal to 100. 
-</p>
-
-
-
-<h4><code>'headers'</code></h4>
-
-<p>A named list that contains only character values corresponding to valid HTTP headers.
-</p>
-
-
-
-<h4><code>'body'</code></h4>
-
-<p>Either a character or raw vector. If the character vector is named
-with value <code>'file'</code> then value of the vector is interpreted as the
-location of a file.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p> Jeffrey Horner &lt;jeffrey.horner@gmail.com&gt; </p>
 
 <hr>
 <h2 id='Server'>Rook Server Object</h2><span id='topic+Server'></span>

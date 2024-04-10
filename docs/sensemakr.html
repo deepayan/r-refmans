@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {sensemakr}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#sensemakr-package'><p>Sensemakr: extending omitted variable bias</p></a></li>
 <li><a href='#add_bound_to_contour'><p>Add bounds to contour plot of omitted variable bias</p></a></li>
 <li><a href='#adjusted_estimate'><p>Bias-adjusted estimates, standard-errors and t-values</p></a></li>
 <li><a href='#colombia'><p>Data from the 2016 referendum for peace with the FARC in Colombia.</p></a></li>
@@ -33,7 +34,6 @@ function processMathHTML() {
 <li><a href='#resid_maker'><p>Creates orthogonal residuals</p></a></li>
 <li><a href='#robustness_value'><p>Computes the robustness value</p></a></li>
 <li><a href='#sensemakr'><p>Sensitivity analysis to unobserved confounders</p></a></li>
-<li><a href='#sensemakr-package'><p>Sensemakr: extending omitted variable bias</p></a></li>
 <li><a href='#sensitivity_stats'><p>Sensitivity statistics for regression coefficients</p></a></li>
 </ul>
 </div>
@@ -127,6 +127,119 @@ function processMathHTML() {
 <td>2021-10-08 05:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='sensemakr-package'>Sensemakr: extending omitted variable bias</h2><span id='topic+sensemakr-package'></span>
+
+<h3>Description</h3>
+
+<p>The sensemakr package implements a suite of sensitivity analysis tools that makes it easier to
+understand the impact of omitted variables in linear regression models, as discussed in Cinelli and Hazlett (2020).
+</p>
+
+
+<h3>Details</h3>
+
+<p>The main function of the package is  <code><a href="#topic+sensemakr">sensemakr</a></code>, which computes the most common sensitivity analysis results.
+After running <code>sensemakr</code> you may directly use the plot and print methods in the returned object.
+</p>
+<p>You may also use the other sensitivity functions of the package directly, such as the functions for sensitivity plots
+(<code><a href="#topic+ovb_contour_plot">ovb_contour_plot</a></code>, <code><a href="#topic+ovb_extreme_plot">ovb_extreme_plot</a></code>) the functions for computing bias-adjusted estimates and t-values (<code><a href="#topic+adjusted_estimate">adjusted_estimate</a></code>, <code><a href="#topic+adjusted_t">adjusted_t</a></code>),
+the functions for computing the robustness value and partial R2 (<code><a href="#topic+robustness_value">robustness_value</a></code>, <code><a href="#topic+partial_r2">partial_r2</a></code>),  or the functions for bounding the strength
+of unobserved confounders (<code><a href="#topic+ovb_bounds">ovb_bounds</a></code>), among others.
+</p>
+<p>More information can be found on the help documentation, vignettes and related papers.
+</p>
+
+
+<h3>References</h3>
+
+<p>Cinelli, C. and Hazlett, C. (2020), &quot;Making Sense of Sensitivity: Extending Omitted Variable Bias.&quot; Journal of the Royal Statistical Society, Series B (Statistical Methodology).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# loads dataset
+data("darfur")
+
+# runs regression model
+model &lt;- lm(peacefactor ~ directlyharmed + age + farmer_dar + herder_dar +
+              pastvoted + hhsize_darfur + female + village, data = darfur)
+
+# runs sensemakr for sensitivity analysis
+sensitivity &lt;- sensemakr(model, treatment = "directlyharmed",
+                         benchmark_covariates = "female",
+                         kd = 1:3)
+# short description of results
+sensitivity
+
+# long description of results
+summary(sensitivity)
+
+# plot bias contour of point estimate
+plot(sensitivity)
+
+# plot bias contour of t-value
+plot(sensitivity, sensitivity.of = "t-value")
+
+# plot extreme scenario
+plot(sensitivity, type = "extreme")
+
+# latex code for sensitivity table
+ovb_minimal_reporting(sensitivity)
+
+# data.frame with sensitivity statistics
+sensitivity$sensitivity_stats
+
+#  data.frame with bounds on the strengh of confounders
+sensitivity$bounds
+
+### Using sensitivity functions directly ###
+
+# robustness value of directly harmed q = 1 (reduce estimate to zero)
+robustness_value(model, covariates = "directlyharmed")
+
+# robustness value of directly harmed q = 1/2 (reduce estimate in half)
+robustness_value(model, covariates = "directlyharmed", q = 1/2)
+
+# robustness value of directly harmed q = 1/2, alpha = 0.05
+robustness_value(model, covariates = "directlyharmed", q = 1/2, alpha = 0.05)
+
+# partial R2 of directly harmed with peacefactor
+partial_r2(model, covariates = "directlyharmed")
+
+# partial R2 of female with peacefactor
+partial_r2(model, covariates = "female")
+
+# data.frame with sensitivity statistics
+sensitivity_stats(model, treatment = "directlyharmed")
+
+# bounds on the strength of confounders using female and age
+ovb_bounds(model,
+           treatment = "directlyharmed",
+           benchmark_covariates = c("female", "age"),
+           kd = 1:3)
+
+# adjusted estimate given hypothetical strength of confounder
+adjusted_estimate(model, treatment = "directlyharmed", r2dz.x = 0.1, r2yz.dx = 0.1)
+
+# adjusted t-value given hypothetical strength of confounder
+adjusted_t(model, treatment = "directlyharmed", r2dz.x = 0.1, r2yz.dx = 0.1)
+
+# bias contour plot directly from lm model
+ovb_contour_plot(model,
+                 treatment = "directlyharmed",
+                 benchmark_covariates = "female",
+                 kd = 1:3)
+
+# extreme scenario plot directly from lm model
+ovb_extreme_plot(model,
+                 treatment = "directlyharmed",
+                 benchmark_covariates = "female",
+                 kd = 1:3, lim = 0.05)
+</code></pre>
+
 <hr>
 <h2 id='add_bound_to_contour'>Add bounds to contour plot of omitted variable bias</h2><span id='topic+add_bound_to_contour'></span><span id='topic+add_bound_to_contour.lm'></span><span id='topic+add_bound_to_contour.numeric'></span>
 
@@ -2123,119 +2236,6 @@ plot(sensitivity, type = "extreme")
 # latex code for sensitivity table
 ovb_minimal_reporting(sensitivity)
 
-</code></pre>
-
-<hr>
-<h2 id='sensemakr-package'>Sensemakr: extending omitted variable bias</h2><span id='topic+sensemakr-package'></span>
-
-<h3>Description</h3>
-
-<p>The sensemakr package implements a suite of sensitivity analysis tools that makes it easier to
-understand the impact of omitted variables in linear regression models, as discussed in Cinelli and Hazlett (2020).
-</p>
-
-
-<h3>Details</h3>
-
-<p>The main function of the package is  <code><a href="#topic+sensemakr">sensemakr</a></code>, which computes the most common sensitivity analysis results.
-After running <code>sensemakr</code> you may directly use the plot and print methods in the returned object.
-</p>
-<p>You may also use the other sensitivity functions of the package directly, such as the functions for sensitivity plots
-(<code><a href="#topic+ovb_contour_plot">ovb_contour_plot</a></code>, <code><a href="#topic+ovb_extreme_plot">ovb_extreme_plot</a></code>) the functions for computing bias-adjusted estimates and t-values (<code><a href="#topic+adjusted_estimate">adjusted_estimate</a></code>, <code><a href="#topic+adjusted_t">adjusted_t</a></code>),
-the functions for computing the robustness value and partial R2 (<code><a href="#topic+robustness_value">robustness_value</a></code>, <code><a href="#topic+partial_r2">partial_r2</a></code>),  or the functions for bounding the strength
-of unobserved confounders (<code><a href="#topic+ovb_bounds">ovb_bounds</a></code>), among others.
-</p>
-<p>More information can be found on the help documentation, vignettes and related papers.
-</p>
-
-
-<h3>References</h3>
-
-<p>Cinelli, C. and Hazlett, C. (2020), &quot;Making Sense of Sensitivity: Extending Omitted Variable Bias.&quot; Journal of the Royal Statistical Society, Series B (Statistical Methodology).
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# loads dataset
-data("darfur")
-
-# runs regression model
-model &lt;- lm(peacefactor ~ directlyharmed + age + farmer_dar + herder_dar +
-              pastvoted + hhsize_darfur + female + village, data = darfur)
-
-# runs sensemakr for sensitivity analysis
-sensitivity &lt;- sensemakr(model, treatment = "directlyharmed",
-                         benchmark_covariates = "female",
-                         kd = 1:3)
-# short description of results
-sensitivity
-
-# long description of results
-summary(sensitivity)
-
-# plot bias contour of point estimate
-plot(sensitivity)
-
-# plot bias contour of t-value
-plot(sensitivity, sensitivity.of = "t-value")
-
-# plot extreme scenario
-plot(sensitivity, type = "extreme")
-
-# latex code for sensitivity table
-ovb_minimal_reporting(sensitivity)
-
-# data.frame with sensitivity statistics
-sensitivity$sensitivity_stats
-
-#  data.frame with bounds on the strengh of confounders
-sensitivity$bounds
-
-### Using sensitivity functions directly ###
-
-# robustness value of directly harmed q = 1 (reduce estimate to zero)
-robustness_value(model, covariates = "directlyharmed")
-
-# robustness value of directly harmed q = 1/2 (reduce estimate in half)
-robustness_value(model, covariates = "directlyharmed", q = 1/2)
-
-# robustness value of directly harmed q = 1/2, alpha = 0.05
-robustness_value(model, covariates = "directlyharmed", q = 1/2, alpha = 0.05)
-
-# partial R2 of directly harmed with peacefactor
-partial_r2(model, covariates = "directlyharmed")
-
-# partial R2 of female with peacefactor
-partial_r2(model, covariates = "female")
-
-# data.frame with sensitivity statistics
-sensitivity_stats(model, treatment = "directlyharmed")
-
-# bounds on the strength of confounders using female and age
-ovb_bounds(model,
-           treatment = "directlyharmed",
-           benchmark_covariates = c("female", "age"),
-           kd = 1:3)
-
-# adjusted estimate given hypothetical strength of confounder
-adjusted_estimate(model, treatment = "directlyharmed", r2dz.x = 0.1, r2yz.dx = 0.1)
-
-# adjusted t-value given hypothetical strength of confounder
-adjusted_t(model, treatment = "directlyharmed", r2dz.x = 0.1, r2yz.dx = 0.1)
-
-# bias contour plot directly from lm model
-ovb_contour_plot(model,
-                 treatment = "directlyharmed",
-                 benchmark_covariates = "female",
-                 kd = 1:3)
-
-# extreme scenario plot directly from lm model
-ovb_extreme_plot(model,
-                 treatment = "directlyharmed",
-                 benchmark_covariates = "female",
-                 kd = 1:3, lim = 0.05)
 </code></pre>
 
 <hr>

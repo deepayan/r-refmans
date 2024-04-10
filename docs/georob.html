@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {georob}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#georob-package'><p>The georob Package</p></a></li>
 <li><a href='#compress'><p>Compact Storage of Symmetric and Triangular Matrices</p></a></li>
 <li><a href='#control.georob'><p>Control Parameters for georob</p></a></li>
 <li><a href='#cv'><p>Generic Cross-validation</p></a></li>
@@ -27,7 +28,6 @@ function processMathHTML() {
 <li><a href='#fit.variogram.model'><p>Fitting Model Functions to Sample Variograms</p></a></li>
 <li><a href='#gencorr'><p>Variogram Models</p></a></li>
 <li><a href='#georob'><p>Robust Fitting of Spatial Linear Models</p></a></li>
-<li><a href='#georob-package'><p>The georob Package</p></a></li>
 <li><a href='#georobModelBuilding'><p>S3 Methods for Stepwise Building Fixed-Effects Models for Class <code>georob</code></p></a></li>
 <li><a href='#georobObject'><p>Fitted georob Object</p></a></li>
 <li><a href='#georobS3methods'><p>Common S3 Methods for Class <code>georob</code></p></a></li>
@@ -112,6 +112,537 @@ methods, nlme, nleqslv, parallel, quantreg, robustbase(&ge;
 <td>2024-03-10 09:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='georob-package'>The georob Package</h2><span id='topic+georob-package'></span><span id='topic+georobPackage'></span><span id='topic+georobIntro'></span>
+
+<h3>Description</h3>
+
+<p>This is a summary of the features and functionality of
+<span class="pkg">georob</span>, a package in <span class="rlang"><b>R</b></span> for customary and robust geostatistical
+analyses.</p>
+
+
+<h3>Details</h3>
+
+<p><span class="pkg">georob</span> is a package for customary and robust analyses of
+geostatistical data.
+Such data, say <code class="reqn">y_i=y(\boldsymbol{s}_i)</code>, are
+recorded at a set of locations,
+<code class="reqn">\boldsymbol{s}_i</code>, <code class="reqn">i=1,2, \ldots, n</code>, in a
+domain <code class="reqn">G \in \mathrm{I}\!\mathrm{R}^d</code>, <code class="reqn">d \in (1,2,3)</code>, along
+with covariate information
+<code class="reqn">x_j(\boldsymbol{s}_i)</code>, <code class="reqn">j=1,2,
+  \ldots, p</code>.
+</p>
+
+
+
+<h4>Model</h4>
+
+<p>We use the following model for the data
+<code class="reqn">y_i=y(\boldsymbol{s}_{i})</code>:
+</p>
+<p style="text-align: center;"><code class="reqn">Y(\boldsymbol{s}_i) =
+      Z(\boldsymbol{s}_i) + \varepsilon =
+      \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
+         \boldsymbol{\beta} +
+      B(\boldsymbol{s}_i) +
+      \varepsilon_i,</code>
+</p>
+
+<p>where
+<code class="reqn">Z(\boldsymbol{s}_i)=\boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
+         \boldsymbol{\beta} +
+      B(\boldsymbol{s}_i)</code> is the so-called signal,
+<code class="reqn">\boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
+      \boldsymbol{\beta}</code>
+is the external drift,
+<code class="reqn">\{B(\boldsymbol{s})\}</code> is an unobserved stationary or
+intrinsic spatial Gaussian random field with zero mean, and
+<code class="reqn">\varepsilon_i</code> is an
+<em>i.i.d</em> error from a possibly long-tailed distribution with scale parameter
+<code class="reqn">\tau</code> (<code class="reqn">\tau^2</code> is usually called nugget effect).
+In vector form the model is written as
+</p>
+<p style="text-align: center;"><code class="reqn">\boldsymbol{Y} = \boldsymbol{X} \boldsymbol{\beta} + \boldsymbol{B} + \boldsymbol{\varepsilon},</code>
+</p>
+
+<p>where <code class="reqn">\boldsymbol{X}</code> is the model matrix with the
+rows
+<code class="reqn">\boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}</code>.
+</p>
+<p>The (generalized) covariance matrix of the vector of
+spatial Gaussian random effects
+<code class="reqn">\boldsymbol{B}</code>
+is denoted by
+</p>
+<p style="text-align: center;"><code class="reqn">\mathrm{E}[
+      \boldsymbol{B}\,
+      \boldsymbol{B}^\mathrm{T}] =
+      \boldsymbol{\Gamma}_\theta =
+      \sigma_{\mathrm{n}}^2\boldsymbol{I} +
+      \sigma^2\boldsymbol{V}_\alpha =
+      \sigma_B^2 \, \boldsymbol{V}_{\alpha,\xi} =
+      \sigma_B^2 \, ((1-\xi) \, \boldsymbol{I} +
+      \xi\, \boldsymbol{V}_\alpha )
+      ,</code>
+</p>
+
+<p>where
+<code class="reqn">\sigma_{\mathrm{n}}^2</code>
+is the variance of seemingly uncorrelated micro-scale variation in
+<code class="reqn">B(\boldsymbol{s})</code>
+that cannot be resolved with the chosen sampling design,
+<code class="reqn">\boldsymbol{I}</code> is the identity matrix,
+<code class="reqn">\sigma^2</code> is the variance of the captured auto-correlated variation in
+<code class="reqn">B(\boldsymbol{s})</code>,
+<code class="reqn">\sigma_B^2=\sigma_{\mathrm{n}}^2+\sigma^2</code>
+is the signal variance, and
+<code class="reqn">\xi=\sigma^2/\sigma_B^2</code>.
+To estimate both
+<code class="reqn">\sigma_{\mathrm{n}}^2</code> and <code class="reqn">\tau^2</code> (and not only their sum), one needs
+replicated measurements for some of the
+<code class="reqn">\boldsymbol{s}_i</code>.
+</p>
+<p>We define
+<code class="reqn">\boldsymbol{V}_{\alpha}</code>
+to be the (generalized) correlation matrix with elements
+</p>
+<p style="text-align: center;"><code class="reqn">(\boldsymbol{V}_{\alpha})_{ij} =
+      \gamma_0 - \gamma(|\boldsymbol{A}\;(
+      \boldsymbol{s}_i-\boldsymbol{s}_j)|),</code>
+</p>
+
+<p>where the constant <code class="reqn">\gamma_0</code> is chosen large enough so that
+<code class="reqn">\boldsymbol{V}_{\alpha}</code>
+is positive definite,
+<code class="reqn">\gamma(\cdot)</code> is a valid stationary or intrinsic variogram, and
+<code class="reqn">\boldsymbol{A} =
+      \boldsymbol{A}(\alpha, f_1, f_2; \omega, \phi, \zeta)</code>
+is a matrix that is used to model geometrically anisotropic auto-correlation.
+In more detail,
+<code class="reqn">\boldsymbol{A}</code>
+maps an arbitrary point on an ellipsoidal surface with constant semi-variance in
+<code class="reqn"> \mathrm{I}\!\mathrm{R}^3</code>,
+centred on the origin, and having lengths of semi-principal axes,
+<code class="reqn">\boldsymbol{p}_1</code>,
+<code class="reqn">\boldsymbol{p}_2</code>,
+<code class="reqn">\boldsymbol{p}_3</code>,
+equal to
+<code class="reqn">|\boldsymbol{p}_1|=\alpha</code>,
+<code class="reqn">|\boldsymbol{p}_2|=f_1\,\alpha</code> and
+<code class="reqn">|\boldsymbol{p}_3|=f_2\,\alpha</code>,
+<code class="reqn">0 &lt; f_2 \leq f_1 \leq 1</code>,
+respectively, onto the surface of the unit ball centred on the origin.
+</p>
+<p>The orientation of the ellipsoid is defined by the three angles
+<code class="reqn">\omega</code>, <code class="reqn">\phi</code> and <code class="reqn">\zeta</code>:
+</p>
+
+<dl>
+<dt><code class="reqn">\omega</code></dt><dd><p>is the azimuth of <code class="reqn">\boldsymbol{p}_1</code>
+(= angle between north and the projection
+of
+<code class="reqn">\boldsymbol{p}_1</code>
+onto the <code class="reqn">x</code>-<code class="reqn">y</code>-plane,
+measured from north to south positive clockwise in degrees),
+</p>
+</dd>
+<dt><code class="reqn">\phi</code></dt><dd><p>is 90 degrees minus the latitude of
+<code class="reqn">\boldsymbol{p}_1</code>
+(= angle between the zenith and
+<code class="reqn">\boldsymbol{p}_1</code>,
+measured from zenith to nadir positive clockwise in degrees), and
+</p>
+</dd>
+<dt><code class="reqn">\zeta</code></dt><dd><p>is the angle between
+<code class="reqn">\boldsymbol{p}_2</code>
+and the direction of the line, say <code class="reqn">y^\prime</code>,
+defined by the intersection between the
+<code class="reqn">x</code>-<code class="reqn">y</code>-plane and the plane orthogonal to
+<code class="reqn">\boldsymbol{p}_1</code> running through the origin
+(<code class="reqn">\zeta</code> is measured from <code class="reqn">y^\prime</code> positive counter-clockwise in degrees).
+</p>
+</dd>
+</dl>
+
+<p>The transformation matrix is given by
+</p>
+<p style="text-align: center;"><code class="reqn">\boldsymbol{A}=
+      \left(\begin{array}{ccc}
+        1/\alpha &amp; 0 &amp; 0\\
+        0 &amp; 1/(f_1\,\alpha) &amp; 0\\
+        0 &amp; 0 &amp; 1/(f_2\,\alpha) \\
+      \end{array}\right)
+      (
+        \boldsymbol{C}_1,
+        \boldsymbol{C}_2,
+        \boldsymbol{C}_3,
+      )
+    </code>
+</p>
+
+<p>where
+</p>
+<p style="text-align: center;"><code class="reqn">\boldsymbol{C}_1^\mathrm{T} = ( \sin\omega \sin\phi, -\cos\omega \cos\zeta - \sin\omega \cos\phi \sin\zeta, \cos\omega \sin\zeta - \sin\omega \cos\phi \cos\zeta )
+    </code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\boldsymbol{C}_2^\mathrm{T} = ( \cos\omega \sin\phi, \sin\omega \cos\zeta - \cos\omega \cos\phi \sin\zeta, -\sin\omega \sin\zeta - \cos\omega \cos\phi\cos\zeta )
+    </code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">\boldsymbol{C}_3^\mathrm{T} = (\cos\phi, \sin\phi \sin\zeta, \sin\phi \cos\zeta )
+    </code>
+</p>
+
+<p>To model geometrically anisotropic variograms in
+<code class="reqn"> \mathrm{I}\!\mathrm{R}^2</code>
+one has to set <code class="reqn">\phi=90</code> and <code class="reqn">f_2 = 1</code>,
+and for <code class="reqn">f_1 = f_2 = 1</code>
+one obtains the model for isotropic auto-correlation
+with range parameter <code class="reqn">\alpha</code>.
+Note that for isotropic auto-correlation the software processes data for
+which <code class="reqn">d</code> may exceed 3.
+</p>
+<p>Two remarks are in order:
+</p>
+
+<ol>
+<li><p> Clearly, the (generalized) covariance matrix of the observations
+<code class="reqn">\boldsymbol{Y}</code> is given by
+</p>
+<p style="text-align: center;"><code class="reqn">\mathrm{Cov}[\boldsymbol{Y},\boldsymbol{Y}^\mathrm{T}]
+        = \tau^2 \boldsymbol{I} + \boldsymbol{\Gamma}_\theta.
+      </code>
+</p>
+
+</li>
+<li><p> Depending on the context, the term &ldquo;variogram
+parameters&rdquo; denotes sometimes all parameters of a geometrically
+anisotropic variogram model, but in places only the parameters of an
+isotropic variogram model, i.e. <code class="reqn">\sigma^2, \ldots, \alpha,
+      \ldots</code> and <code class="reqn">f_1, \ldots, \zeta</code> are denoted by the term
+&ldquo;anisotropy parameters&rdquo;.  In the sequel
+<code class="reqn">\boldsymbol{\theta}</code> is used to denote all
+variogram and anisotropy parameters except the nugget effect
+<code class="reqn">\tau^2</code>.
+</p>
+</li></ol>
+
+
+
+
+<h4>Estimation</h4>
+
+<p>The unobserved spatial random effects
+<code class="reqn">\boldsymbol{B}</code> at the data locations
+<code class="reqn">\boldsymbol{s}_i</code>
+and the model parameters
+<code class="reqn">\boldsymbol{\beta}</code>, <code class="reqn">\tau^2</code> and
+<code class="reqn">\boldsymbol{\theta}^\mathrm{T} =
+      (\sigma^2, \sigma_{\mathrm{n}}^2, \alpha, \ldots,  f_{1}, f_{2},
+        \omega, \phi, \zeta)
+    </code>
+are unknown and are estimated in <span class="pkg">georob</span> either by Gaussian
+(<cite>Harville, 1977</cite>) or robust (<cite>Künsch et al., 2011</cite>)
+restricted maximum likelihood (REML) or
+Gaussian maximum likelihood (ML). Here <var>...</var>
+denote further parameters of the variogram such as the smoothness parameter
+of the Whittle-Matérn model.
+</p>
+<p>In brief, the robust REML method is based on the insight that for
+given <code class="reqn">\boldsymbol{\theta}</code> and <code class="reqn">\tau^2</code> the
+Kriging predictions (= BLUP) of
+<code class="reqn">\boldsymbol{B}</code> and the generalized least
+squares (GLS = ML) estimates of
+<code class="reqn">\boldsymbol{\beta}</code> can be obtained
+simultaneously by maximizing
+</p>
+<p style="text-align: center;"><code class="reqn">
+      - \sum_i
+        \left(
+          \frac{
+            y_i -
+            \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
+            \boldsymbol{\beta} -
+            B(\boldsymbol{s}_i)
+          }{\tau}
+        \right)^2 -
+        \boldsymbol{B}^{\mathrm{T}}
+        \boldsymbol{\Gamma}^{-1}_\theta
+        \boldsymbol{B}
+    </code>
+</p>
+
+<p>with respect to
+<code class="reqn">\boldsymbol{B}</code> and
+<code class="reqn">\boldsymbol{\beta}</code>, e.g.
+<cite>Harville (1977)</cite>.
+
+Hence, the BLUP of <code class="reqn">\boldsymbol{B}</code>,
+ML estimates of <code class="reqn">\boldsymbol{\beta}</code>,
+<code class="reqn">\boldsymbol{\theta}</code> and <code class="reqn">\tau^2</code>
+are obtained by maximizing
+</p>
+<p style="text-align: center;"><code class="reqn">
+      - \log(\det(
+        \tau^2 \boldsymbol{I} +
+        \boldsymbol{\Gamma}_\theta
+      )) -
+      \sum_i
+        \left(
+          \frac{
+            y_i -
+            \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
+            \boldsymbol{\beta} -
+            B(\boldsymbol{s}_i)
+          }{\tau}
+        \right)^2 -
+        \boldsymbol{B}^{\mathrm{T}}
+        \boldsymbol{\Gamma}^{-1}_\theta
+        \boldsymbol{B}
+    </code>
+</p>
+
+<p>jointly with respect to
+<code class="reqn">\boldsymbol{B}</code>,
+<code class="reqn">\boldsymbol{\beta}</code>,
+<code class="reqn">\boldsymbol{\theta}</code> and  <code class="reqn">\tau^2</code>
+or by solving the respective estimating equations.
+</p>
+<p>The estimating equations can then by robustified by
+</p>
+
+<ul>
+<li><p> replacing the standardized errors, say
+<code class="reqn">\varepsilon_i/\tau = (
+          y_i - \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
+          \boldsymbol{\beta} -
+          B(\boldsymbol{s}_i)
+        ) / \tau</code>,
+by a bounded or re-descending <code class="reqn">\psi</code>-function,
+<code class="reqn">\psi_c(\varepsilon_i/\tau)</code>,
+of them (e.g. <cite>Maronna et al, 2006, chap. 2</cite>) and by
+</p>
+</li>
+<li><p> introducing suitable bias correction terms for Fisher consistency at
+the Gaussian model,
+</p>
+</li></ul>
+
+<p>see <cite>Künsch et al. (2011)</cite> for details.
+The robustified estimating equations
+are solved numerically by a combination of iterated re-weighted least squares
+(IRWLS) to estimate <code class="reqn">\boldsymbol{B}</code> and
+<code class="reqn">\boldsymbol{\beta}</code> for given
+<code class="reqn">\boldsymbol{\theta}</code> and <code class="reqn">\tau^2</code>
+and nonlinear root finding by the function
+<code><a href="nleqslv.html#topic+nleqslv">nleqslv</a></code> of the <span class="rlang"><b>R</b></span> package <span class="pkg">nleqslv</span>
+to get <code class="reqn">\boldsymbol{\theta}</code> and  <code class="reqn">\tau^2</code>.
+The robustness of the procedure is controlled by the tuning parameter <code class="reqn">c</code>
+of the <code class="reqn">\psi_c</code>-function. For <code class="reqn">c \ge 1000</code> the algorithm computes
+Gaussian (RE)ML estimates and customary plug-in Kriging predictions.
+Instead of solving the Gaussian (RE)ML estimating equations, our software then
+maximizes the Gaussian (restricted) log-likelihood using  <code><a href="stats.html#topic+nlminb">nlminb</a></code> or
+<code><a href="stats.html#topic+optim">optim</a></code>.
+</p>
+<p><span class="pkg">georob</span> uses variogram models that were provided formerly by the
+now archived <span class="rlang"><b>R</b></span> package <span class="pkg">RandomFields</span> and are now implemented in
+the function <code><a href="#topic+gencorr">gencorr</a></code> of <span class="pkg">georob</span>.
+Currently, estimation of the parameters of the following models is
+implemented:
+</p>
+<p><code>"RMaskey"</code>, <code>"RMbessel"</code>, <code>"RMcauchy"</code>,
+<code>"RMcircular"</code>, <code>"RMcubic"</code>, <code>"RMdagum"</code>, <br />
+<code>"RMdampedcos"</code>, <code>"RMdewijsian"</code>, <code>"RMexp"</code> (default),
+<code>"RMfbm"</code>, <code>"RMgauss"</code>, <br /> <code>"RMgencauchy"</code>,
+<code>"RMgenfbm"</code>, <code>"RMgengneiting"</code>, <code>"RMgneiting"</code>,
+<code>"RMlgd"</code>, <br /> <code>"RMmatern"</code>, <code>"RMpenta"</code>, <code>"RMqexp"</code>,
+<code>"RMspheric"</code>, <code>"RMstable"</code>, <code>"RMwave"</code>, <br />
+<code>"RMwhittle"</code>.
+</p>
+<p>For most variogram parameters, closed-form expressions of <code class="reqn">\partial
+    \gamma/ \partial \theta_i</code> and <code class="reqn">\partial \gamma/
+    \partial \tau^2</code> are used in the computations.
+However, for the parameter <code class="reqn">\nu</code> of the models <code>"RMbessel"</code>,
+<code>"RMmatern"</code> and <code>"RMwhittle"</code> <code class="reqn">\partial \gamma/ \partial
+    \nu</code> is evaluated numerically by the function
+<code><a href="stats.html#topic+numericDeriv">numericDeriv</a></code>, and this results in an increase in
+computing time when <code class="reqn">\nu</code> is estimated.  </p>
+
+
+
+
+<h4>Prediction</h4>
+
+<p>Customary and robust plug-in external drift point Kriging predictions
+can be computed for an non-sampled location
+<code class="reqn">\boldsymbol{s}_0</code>
+from the covariates
+<code class="reqn">\boldsymbol{x}(\boldsymbol{s}_0)</code>,
+the estimated parameters
+<code class="reqn">\widehat{\boldsymbol{\beta}}</code>,
+<code class="reqn">\widehat{\boldsymbol{\theta}}</code>
+and the predicted random effects
+<code class="reqn">\widehat{\boldsymbol{B}}</code>
+by
+</p>
+<p style="text-align: center;"><code class="reqn">
+      \widehat{Y}(\boldsymbol{s}_0) = \widehat{Z}(\boldsymbol{s}_0) =
+      \boldsymbol{x}(\boldsymbol{s}_0)^\mathrm{T}
+      \widehat{\boldsymbol{\beta}} +
+      \boldsymbol{\gamma}^\mathrm{T}_{\widehat{\theta}}(\boldsymbol{s}_0)
+      \boldsymbol{\Gamma}^{-1}_{\widehat{\theta}}
+      \widehat{\boldsymbol{B}},
+    </code>
+</p>
+
+<p>where
+<code class="reqn">\boldsymbol{\Gamma}_{\widehat{\theta}}</code>
+is the estimated (generalized) covariance matrix of
+<code class="reqn">\boldsymbol{B}</code> and
+<code class="reqn">\boldsymbol{\gamma}_{\widehat{\theta}}(\boldsymbol{s}_0)</code>
+is the vector with the estimated (generalized) covariances between
+<code class="reqn">\boldsymbol{B}</code> and
+<code class="reqn">B(\boldsymbol{s}_0)</code>.
+Kriging variances can be computed as well, based on approximated covariances of
+<code class="reqn">\widehat{\boldsymbol{B}}</code> and
+<code class="reqn">\widehat{\boldsymbol{\beta}}</code>
+(see <cite>Künsch et al., 2011</cite>, and appendices of
+<cite>Nussbaum et al., 2014</cite>, for details).
+</p>
+<p>The package <span class="pkg">georob</span> provides in addition software for computing
+customary and robust external drift <em>block</em> Kriging predictions.
+The required integrals of the generalized covariance function are
+computed by functions of the <span class="rlang"><b>R</b></span> package <span class="pkg">constrainedKriging</span>.  </p>
+
+
+
+
+<h4>Functionality</h4>
+
+<p>For the time being, the functionality of <span class="pkg">georob</span> is limited
+to geostatistical analyses of <em>single</em> response variables.
+No software is currently available for customary and robust
+multivariate geostatistical analyses.
+<span class="pkg">georob</span> offers functions for:
+</p>
+
+<ol>
+<li><p> Robustly fitting a spatial linear model to data that are
+possibly contaminated by independent errors from a long-tailed
+distribution by robust REML (see functions <code><a href="#topic+georob">georob</a></code> &mdash;
+which also fits such models efficiently by Gaussian (RE)ML &mdash;
+<code><a href="#topic+profilelogLik">profilelogLik</a></code> and <code><a href="#topic+control.georob">control.georob</a></code>).
+</p>
+</li>
+<li><p> Extracting estimated model components (see
+<code><a href="#topic+residuals.georob">residuals.georob</a></code>, <code><a href="#topic+rstandard.georob">rstandard.georob</a></code>,
+
+<code><a href="#topic+ranef.georob">ranef.georob</a></code>).
+</p>
+</li>
+<li><p> Robustly estimating sample variograms and for fitting variogram
+model functions to them (see <code><a href="#topic+sample.variogram">sample.variogram</a></code> and
+<code><a href="#topic+fit.variogram.model">fit.variogram.model</a></code>).
+</p>
+</li>
+<li><p> Model building by forward and backward selection of covariates
+for the external drift (see <code><a href="#topic+waldtest.georob">waldtest.georob</a></code>,
+<code><a href="#topic+step.georob">step.georob</a></code>, <code><a href="#topic+add1.georob">add1.georob</a></code>,
+<code><a href="#topic+drop1.georob">drop1.georob</a></code>, <code><a href="#topic+extractAIC.georob">extractAIC.georob</a></code>, <br />
+<code><a href="#topic+logLik.georob">logLik.georob</a></code>, <code><a href="#topic+deviance.georob">deviance.georob</a></code>).  For a
+robust fit, the log-likelihood is not defined.  The function then
+computes the (restricted) log-likelihood of an equivalent Gaussian
+model with heteroscedastic nugget (see <code><a href="#topic+deviance.georob">deviance.georob</a></code>
+for details).
+</p>
+</li>
+<li><p> Assessing the goodness-of-fit and predictive power of the model
+by <var>K</var>-fold cross-validation (see <code><a href="#topic+cv.georob">cv.georob</a></code> and
+<code><a href="#topic+validate.predictions">validate.predictions</a></code>).
+</p>
+</li>
+<li><p> Computing customary and robust external drift point and block
+Kriging predictions (see <code><a href="#topic+predict.georob">predict.georob</a></code>,
+<code><a href="#topic+control.predict.georob">control.predict.georob</a></code>).
+</p>
+</li>
+<li><p> Unbiased back-transformation of both point and block Kriging
+predictions of log-transformed data to the original scale of the
+measurements (see <code><a href="#topic+lgnpp">lgnpp</a></code>).
+</p>
+</li>
+<li><p> Computing unconditional and conditional Gaussian simulations
+from a fitted spatial linear model (see <code><a href="#topic+condsim">condsim</a></code>).
+</p>
+</li></ol>
+
+
+
+
+<h3>Author(s)</h3>
+
+<p>Andreas Papritz <a href="mailto:papritz@retired.ethz.ch">papritz@retired.ethz.ch</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Harville, D. A. (1977) Maximum likelihood approaches to variance
+component estimation and to related problems, <em>Journal of the
+American Statistical Association</em>, <b>72</b>, 320&ndash;340,
+<a href="https://doi.org/10.1080/01621459.1977.10480998">doi:10.1080/01621459.1977.10480998</a>.
+</p>
+<p>Künsch, H. R., Papritz, A., Schwierz, C. and Stahel, W. A.
+(in preparation) Robust Geostatistics.
+</p>
+<p>Künsch, H. R., Papritz, A., Schwierz, C. and Stahel, W. A.
+(2011) Robust estimation of the external drift and the variogram of
+spatial data.  Proceedings of the ISI 58th World Statistics Congress of
+the International Statistical Institute.  <a href="https://doi.org/10.3929/ethz-a-009900710">doi:10.3929/ethz-a-009900710</a>
+</p>
+<p>Maronna, R. A., Martin, R. D. and Yohai, V. J. (2006) <em>Robust
+Statistics Theory and Methods</em>, Wiley, Hoboken, <a href="https://doi.org/10.1002/0470010940">doi:10.1002/0470010940</a>.
+</p>
+<p>Nussbaum, M., Papritz, A., Baltensweiler, A. and Walthert, L. (2014)
+Estimating soil organic carbon stocks of Swiss forest soils by robust
+external-drift kriging.  <em>Geoscientific Model Development</em>,
+<b>7</b>, 1197&ndash;1210.  <a href="https://doi.org/10.5194/gmd-7-1197-2014">doi:10.5194/gmd-7-1197-2014</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+georob">georob</a></code> for (robust) fitting of spatial linear models;
+</p>
+<p><code><a href="#topic+georobObject">georobObject</a></code> for a description of the class <code>georob</code>;
+</p>
+<p><code><a href="#topic+profilelogLik">profilelogLik</a></code> for computing profiles of Gaussian likelihoods;
+</p>
+<p><code><a href="#topic+plot.georob">plot.georob</a></code> for display of RE(ML) variogram estimates;
+</p>
+<p><code><a href="#topic+control.georob">control.georob</a></code> for controlling the behaviour of <code>georob</code>;
+</p>
+<p><code><a href="#topic+georobModelBuilding">georobModelBuilding</a></code> for stepwise building models of class <code>georob</code>;
+</p>
+<p><code><a href="#topic+cv.georob">cv.georob</a></code> for assessing the goodness of a fit by <code>georob</code>;
+</p>
+<p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
+</p>
+<p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
+</p>
+<p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
+of log-transformed data;
+</p>
+<p><code><a href="#topic+georobSimulation">georobSimulation</a></code> for simulating realizations of a Gaussian process
+from model fitted by <code>georob</code>; and finally
+</p>
+<p><code><a href="#topic+sample.variogram">sample.variogram</a></code> and <code><a href="#topic+fit.variogram.model">fit.variogram.model</a></code>
+for robust estimation and modelling of sample variograms.
+</p>
+
 <hr>
 <h2 id='compress'>Compact Storage of Symmetric and Triangular Matrices</h2><span id='topic+compress'></span><span id='topic+expand'></span>
 
@@ -722,7 +1253,6 @@ transformations, see section <em>Parameter transformations</em> above.
 <p><code><a href="#topic+profilelogLik">profilelogLik</a></code> for computing profiles of Gaussian likelihoods;
 </p>
 <p><code><a href="#topic+plot.georob">plot.georob</a></code> for display of RE(ML) variogram estimates;
-
 </p>
 <p><code><a href="#topic+georobModelBuilding">georobModelBuilding</a></code> for stepwise building models of class <code>georob</code>;
 </p>
@@ -731,7 +1261,6 @@ transformations, see section <em>Parameter transformations</em> above.
 <p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
-
 </p>
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
@@ -1160,7 +1689,6 @@ New York, <a href="https://doi.org/10.1007/978-0-387-84858-7">doi:10.1007/978-0-
 <p><code><a href="#topic+control.georob">control.georob</a></code> for controlling the behaviour of <code>georob</code>;
 </p>
 <p><code><a href="#topic+georobModelBuilding">georobModelBuilding</a></code> for stepwise building models of class <code>georob</code>;
-
 </p>
 <p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
 </p>
@@ -1936,16 +2464,12 @@ York, <a href="https://doi.org/10.1002/9781119115151">doi:10.1002/9781119115151<
 <p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
-
 </p>
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
 </p>
 <p><code><a href="#topic+georobSimulation">georobSimulation</a></code> for simulating realizations of a Gaussian process
 from model fitted by <code>georob</code>.
-
-
-
 </p>
 
 
@@ -2509,7 +3033,6 @@ Kriging</em>, Springer, New York, <a href="https://doi.org/10.1007/978-1-4612-14
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
 </p>
-
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
 </p>
@@ -3074,7 +3597,6 @@ the International Statistical Institute.  <a href="https://doi.org/10.3929/ethz-
 
 <p><code><a href="#topic+georobPackage">georobPackage</a></code> for a description of the model and a brief summary of the algorithms;
 </p>
-
 <p><code><a href="#topic+georobObject">georobObject</a></code> for a description of the class <code>georob</code>;
 </p>
 <p><code><a href="#topic+profilelogLik">profilelogLik</a></code> for computing profiles of Gaussian likelihoods;
@@ -3090,7 +3612,6 @@ the International Statistical Institute.  <a href="https://doi.org/10.3929/ethz-
 <p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
-
 </p>
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
@@ -3162,541 +3683,6 @@ if(interactive()){
   pchisq(2*(r.irf0.aniso[["loglik"]] - r.irf0.iso[["loglik"]]), 2, lower = FALSE)
 }
 </code></pre>
-
-<hr>
-<h2 id='georob-package'>The georob Package</h2><span id='topic+georob-package'></span><span id='topic+georobPackage'></span><span id='topic+georobIntro'></span>
-
-<h3>Description</h3>
-
-<p>This is a summary of the features and functionality of
-<span class="pkg">georob</span>, a package in <span class="rlang"><b>R</b></span> for customary and robust geostatistical
-analyses.</p>
-
-
-<h3>Details</h3>
-
-
-<p><span class="pkg">georob</span> is a package for customary and robust analyses of
-geostatistical data.
-Such data, say <code class="reqn">y_i=y(\boldsymbol{s}_i)</code>, are
-recorded at a set of locations,
-<code class="reqn">\boldsymbol{s}_i</code>, <code class="reqn">i=1,2, \ldots, n</code>, in a
-domain <code class="reqn">G \in \mathrm{I}\!\mathrm{R}^d</code>, <code class="reqn">d \in (1,2,3)</code>, along
-with covariate information
-<code class="reqn">x_j(\boldsymbol{s}_i)</code>, <code class="reqn">j=1,2,
-  \ldots, p</code>.
-</p>
-
-
-
-<h4>Model</h4>
-
-<p>We use the following model for the data
-<code class="reqn">y_i=y(\boldsymbol{s}_{i})</code>:
-</p>
-<p style="text-align: center;"><code class="reqn">Y(\boldsymbol{s}_i) =
-      Z(\boldsymbol{s}_i) + \varepsilon =
-      \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
-         \boldsymbol{\beta} +
-      B(\boldsymbol{s}_i) +
-      \varepsilon_i,</code>
-</p>
-
-<p>where
-<code class="reqn">Z(\boldsymbol{s}_i)=\boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
-         \boldsymbol{\beta} +
-      B(\boldsymbol{s}_i)</code> is the so-called signal,
-<code class="reqn">\boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
-      \boldsymbol{\beta}</code>
-is the external drift,
-<code class="reqn">\{B(\boldsymbol{s})\}</code> is an unobserved stationary or
-intrinsic spatial Gaussian random field with zero mean, and
-<code class="reqn">\varepsilon_i</code> is an
-<em>i.i.d</em> error from a possibly long-tailed distribution with scale parameter
-<code class="reqn">\tau</code> (<code class="reqn">\tau^2</code> is usually called nugget effect).
-In vector form the model is written as
-</p>
-<p style="text-align: center;"><code class="reqn">\boldsymbol{Y} = \boldsymbol{X} \boldsymbol{\beta} + \boldsymbol{B} + \boldsymbol{\varepsilon},</code>
-</p>
-
-<p>where <code class="reqn">\boldsymbol{X}</code> is the model matrix with the
-rows
-<code class="reqn">\boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}</code>.
-</p>
-<p>The (generalized) covariance matrix of the vector of
-spatial Gaussian random effects
-<code class="reqn">\boldsymbol{B}</code>
-is denoted by
-</p>
-<p style="text-align: center;"><code class="reqn">\mathrm{E}[
-      \boldsymbol{B}\,
-      \boldsymbol{B}^\mathrm{T}] =
-      \boldsymbol{\Gamma}_\theta =
-      \sigma_{\mathrm{n}}^2\boldsymbol{I} +
-      \sigma^2\boldsymbol{V}_\alpha =
-      \sigma_B^2 \, \boldsymbol{V}_{\alpha,\xi} =
-      \sigma_B^2 \, ((1-\xi) \, \boldsymbol{I} +
-      \xi\, \boldsymbol{V}_\alpha )
-      ,</code>
-</p>
-
-<p>where
-<code class="reqn">\sigma_{\mathrm{n}}^2</code>
-is the variance of seemingly uncorrelated micro-scale variation in
-<code class="reqn">B(\boldsymbol{s})</code>
-that cannot be resolved with the chosen sampling design,
-<code class="reqn">\boldsymbol{I}</code> is the identity matrix,
-<code class="reqn">\sigma^2</code> is the variance of the captured auto-correlated variation in
-<code class="reqn">B(\boldsymbol{s})</code>,
-<code class="reqn">\sigma_B^2=\sigma_{\mathrm{n}}^2+\sigma^2</code>
-is the signal variance, and
-<code class="reqn">\xi=\sigma^2/\sigma_B^2</code>.
-To estimate both
-<code class="reqn">\sigma_{\mathrm{n}}^2</code> and <code class="reqn">\tau^2</code> (and not only their sum), one needs
-replicated measurements for some of the
-<code class="reqn">\boldsymbol{s}_i</code>.
-</p>
-<p>We define
-<code class="reqn">\boldsymbol{V}_{\alpha}</code>
-to be the (generalized) correlation matrix with elements
-</p>
-<p style="text-align: center;"><code class="reqn">(\boldsymbol{V}_{\alpha})_{ij} =
-      \gamma_0 - \gamma(|\boldsymbol{A}\;(
-      \boldsymbol{s}_i-\boldsymbol{s}_j)|),</code>
-</p>
-
-<p>where the constant <code class="reqn">\gamma_0</code> is chosen large enough so that
-<code class="reqn">\boldsymbol{V}_{\alpha}</code>
-is positive definite,
-<code class="reqn">\gamma(\cdot)</code> is a valid stationary or intrinsic variogram, and
-<code class="reqn">\boldsymbol{A} =
-      \boldsymbol{A}(\alpha, f_1, f_2; \omega, \phi, \zeta)</code>
-is a matrix that is used to model geometrically anisotropic auto-correlation.
-In more detail,
-<code class="reqn">\boldsymbol{A}</code>
-maps an arbitrary point on an ellipsoidal surface with constant semi-variance in
-<code class="reqn"> \mathrm{I}\!\mathrm{R}^3</code>,
-centred on the origin, and having lengths of semi-principal axes,
-<code class="reqn">\boldsymbol{p}_1</code>,
-<code class="reqn">\boldsymbol{p}_2</code>,
-<code class="reqn">\boldsymbol{p}_3</code>,
-equal to
-<code class="reqn">|\boldsymbol{p}_1|=\alpha</code>,
-<code class="reqn">|\boldsymbol{p}_2|=f_1\,\alpha</code> and
-<code class="reqn">|\boldsymbol{p}_3|=f_2\,\alpha</code>,
-<code class="reqn">0 &lt; f_2 \leq f_1 \leq 1</code>,
-respectively, onto the surface of the unit ball centred on the origin.
-</p>
-<p>The orientation of the ellipsoid is defined by the three angles
-<code class="reqn">\omega</code>, <code class="reqn">\phi</code> and <code class="reqn">\zeta</code>:
-</p>
-
-<dl>
-<dt><code class="reqn">\omega</code></dt><dd><p>is the azimuth of <code class="reqn">\boldsymbol{p}_1</code>
-(= angle between north and the projection
-of
-<code class="reqn">\boldsymbol{p}_1</code>
-onto the <code class="reqn">x</code>-<code class="reqn">y</code>-plane,
-measured from north to south positive clockwise in degrees),
-</p>
-</dd>
-<dt><code class="reqn">\phi</code></dt><dd><p>is 90 degrees minus the latitude of
-<code class="reqn">\boldsymbol{p}_1</code>
-(= angle between the zenith and
-<code class="reqn">\boldsymbol{p}_1</code>,
-measured from zenith to nadir positive clockwise in degrees), and
-</p>
-</dd>
-<dt><code class="reqn">\zeta</code></dt><dd><p>is the angle between
-<code class="reqn">\boldsymbol{p}_2</code>
-and the direction of the line, say <code class="reqn">y^\prime</code>,
-defined by the intersection between the
-<code class="reqn">x</code>-<code class="reqn">y</code>-plane and the plane orthogonal to
-<code class="reqn">\boldsymbol{p}_1</code> running through the origin
-(<code class="reqn">\zeta</code> is measured from <code class="reqn">y^\prime</code> positive counter-clockwise in degrees).
-</p>
-</dd>
-</dl>
-
-<p>The transformation matrix is given by
-</p>
-<p style="text-align: center;"><code class="reqn">\boldsymbol{A}=
-      \left(\begin{array}{ccc}
-        1/\alpha &amp; 0 &amp; 0\\
-        0 &amp; 1/(f_1\,\alpha) &amp; 0\\
-        0 &amp; 0 &amp; 1/(f_2\,\alpha) \\
-      \end{array}\right)
-      (
-        \boldsymbol{C}_1,
-        \boldsymbol{C}_2,
-        \boldsymbol{C}_3,
-      )
-    </code>
-</p>
-
-<p>where
-</p>
-<p style="text-align: center;"><code class="reqn">\boldsymbol{C}_1^\mathrm{T} = ( \sin\omega \sin\phi, -\cos\omega \cos\zeta - \sin\omega \cos\phi \sin\zeta, \cos\omega \sin\zeta - \sin\omega \cos\phi \cos\zeta )
-    </code>
-</p>
-
-<p style="text-align: center;"><code class="reqn">\boldsymbol{C}_2^\mathrm{T} = ( \cos\omega \sin\phi, \sin\omega \cos\zeta - \cos\omega \cos\phi \sin\zeta, -\sin\omega \sin\zeta - \cos\omega \cos\phi\cos\zeta )
-    </code>
-</p>
-
-<p style="text-align: center;"><code class="reqn">\boldsymbol{C}_3^\mathrm{T} = (\cos\phi, \sin\phi \sin\zeta, \sin\phi \cos\zeta )
-    </code>
-</p>
-
-<p>To model geometrically anisotropic variograms in
-<code class="reqn"> \mathrm{I}\!\mathrm{R}^2</code>
-one has to set <code class="reqn">\phi=90</code> and <code class="reqn">f_2 = 1</code>,
-and for <code class="reqn">f_1 = f_2 = 1</code>
-one obtains the model for isotropic auto-correlation
-with range parameter <code class="reqn">\alpha</code>.
-Note that for isotropic auto-correlation the software processes data for
-which <code class="reqn">d</code> may exceed 3.
-</p>
-<p>Two remarks are in order:
-</p>
-
-<ol>
-<li><p> Clearly, the (generalized) covariance matrix of the observations
-<code class="reqn">\boldsymbol{Y}</code> is given by
-</p>
-<p style="text-align: center;"><code class="reqn">\mathrm{Cov}[\boldsymbol{Y},\boldsymbol{Y}^\mathrm{T}]
-        = \tau^2 \boldsymbol{I} + \boldsymbol{\Gamma}_\theta.
-      </code>
-</p>
-
-</li>
-<li><p> Depending on the context, the term &ldquo;variogram
-parameters&rdquo; denotes sometimes all parameters of a geometrically
-anisotropic variogram model, but in places only the parameters of an
-isotropic variogram model, i.e. <code class="reqn">\sigma^2, \ldots, \alpha,
-      \ldots</code> and <code class="reqn">f_1, \ldots, \zeta</code> are denoted by the term
-&ldquo;anisotropy parameters&rdquo;.  In the sequel
-<code class="reqn">\boldsymbol{\theta}</code> is used to denote all
-variogram and anisotropy parameters except the nugget effect
-<code class="reqn">\tau^2</code>.
-</p>
-</li></ol>
-
-
-
-
-
-<h4>Estimation</h4>
-
-<p>The unobserved spatial random effects
-<code class="reqn">\boldsymbol{B}</code> at the data locations
-<code class="reqn">\boldsymbol{s}_i</code>
-and the model parameters
-<code class="reqn">\boldsymbol{\beta}</code>, <code class="reqn">\tau^2</code> and
-<code class="reqn">\boldsymbol{\theta}^\mathrm{T} =
-      (\sigma^2, \sigma_{\mathrm{n}}^2, \alpha, \ldots,  f_{1}, f_{2},
-        \omega, \phi, \zeta)
-    </code>
-are unknown and are estimated in <span class="pkg">georob</span> either by Gaussian
-(<cite>Harville, 1977</cite>) or robust (<cite>Künsch et al., 2011</cite>)
-restricted maximum likelihood (REML) or
-Gaussian maximum likelihood (ML). Here <var>...</var>
-denote further parameters of the variogram such as the smoothness parameter
-of the Whittle-Matérn model.
-</p>
-<p>In brief, the robust REML method is based on the insight that for
-given <code class="reqn">\boldsymbol{\theta}</code> and <code class="reqn">\tau^2</code> the
-Kriging predictions (= BLUP) of
-<code class="reqn">\boldsymbol{B}</code> and the generalized least
-squares (GLS = ML) estimates of
-<code class="reqn">\boldsymbol{\beta}</code> can be obtained
-simultaneously by maximizing
-</p>
-<p style="text-align: center;"><code class="reqn">
-      - \sum_i
-        \left(
-          \frac{
-            y_i -
-            \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
-            \boldsymbol{\beta} -
-            B(\boldsymbol{s}_i)
-          }{\tau}
-        \right)^2 -
-        \boldsymbol{B}^{\mathrm{T}}
-        \boldsymbol{\Gamma}^{-1}_\theta
-        \boldsymbol{B}
-    </code>
-</p>
-
-<p>with respect to
-<code class="reqn">\boldsymbol{B}</code> and
-<code class="reqn">\boldsymbol{\beta}</code>, e.g.
-<cite>Harville (1977)</cite>.
-
-Hence, the BLUP of <code class="reqn">\boldsymbol{B}</code>,
-ML estimates of <code class="reqn">\boldsymbol{\beta}</code>,
-<code class="reqn">\boldsymbol{\theta}</code> and <code class="reqn">\tau^2</code>
-are obtained by maximizing
-</p>
-<p style="text-align: center;"><code class="reqn">
-      - \log(\det(
-        \tau^2 \boldsymbol{I} +
-        \boldsymbol{\Gamma}_\theta
-      )) -
-      \sum_i
-        \left(
-          \frac{
-            y_i -
-            \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
-            \boldsymbol{\beta} -
-            B(\boldsymbol{s}_i)
-          }{\tau}
-        \right)^2 -
-        \boldsymbol{B}^{\mathrm{T}}
-        \boldsymbol{\Gamma}^{-1}_\theta
-        \boldsymbol{B}
-    </code>
-</p>
-
-<p>jointly with respect to
-<code class="reqn">\boldsymbol{B}</code>,
-<code class="reqn">\boldsymbol{\beta}</code>,
-<code class="reqn">\boldsymbol{\theta}</code> and  <code class="reqn">\tau^2</code>
-or by solving the respective estimating equations.
-</p>
-<p>The estimating equations can then by robustified by
-</p>
-
-<ul>
-<li><p> replacing the standardized errors, say
-<code class="reqn">\varepsilon_i/\tau = (
-          y_i - \boldsymbol{x}(\boldsymbol{s}_i)^\mathrm{T}
-          \boldsymbol{\beta} -
-          B(\boldsymbol{s}_i)
-        ) / \tau</code>,
-by a bounded or re-descending <code class="reqn">\psi</code>-function,
-<code class="reqn">\psi_c(\varepsilon_i/\tau)</code>,
-of them (e.g. <cite>Maronna et al, 2006, chap. 2</cite>) and by
-</p>
-</li>
-<li><p> introducing suitable bias correction terms for Fisher consistency at
-the Gaussian model,
-</p>
-</li></ul>
-
-<p>see <cite>Künsch et al. (2011)</cite> for details.
-The robustified estimating equations
-are solved numerically by a combination of iterated re-weighted least squares
-(IRWLS) to estimate <code class="reqn">\boldsymbol{B}</code> and
-<code class="reqn">\boldsymbol{\beta}</code> for given
-<code class="reqn">\boldsymbol{\theta}</code> and <code class="reqn">\tau^2</code>
-and nonlinear root finding by the function
-<code><a href="nleqslv.html#topic+nleqslv">nleqslv</a></code> of the <span class="rlang"><b>R</b></span> package <span class="pkg">nleqslv</span>
-to get <code class="reqn">\boldsymbol{\theta}</code> and  <code class="reqn">\tau^2</code>.
-The robustness of the procedure is controlled by the tuning parameter <code class="reqn">c</code>
-of the <code class="reqn">\psi_c</code>-function. For <code class="reqn">c \ge 1000</code> the algorithm computes
-Gaussian (RE)ML estimates and customary plug-in Kriging predictions.
-Instead of solving the Gaussian (RE)ML estimating equations, our software then
-maximizes the Gaussian (restricted) log-likelihood using  <code><a href="stats.html#topic+nlminb">nlminb</a></code> or
-<code><a href="stats.html#topic+optim">optim</a></code>.
-</p>
-<p><span class="pkg">georob</span> uses variogram models that were provided formerly by the
-now archived <span class="rlang"><b>R</b></span> package <span class="pkg">RandomFields</span> and are now implemented in
-the function <code><a href="#topic+gencorr">gencorr</a></code> of <span class="pkg">georob</span>.
-Currently, estimation of the parameters of the following models is
-implemented:
-</p>
-<p><code>"RMaskey"</code>, <code>"RMbessel"</code>, <code>"RMcauchy"</code>,
-<code>"RMcircular"</code>, <code>"RMcubic"</code>, <code>"RMdagum"</code>, <br />
-<code>"RMdampedcos"</code>, <code>"RMdewijsian"</code>, <code>"RMexp"</code> (default),
-<code>"RMfbm"</code>, <code>"RMgauss"</code>, <br /> <code>"RMgencauchy"</code>,
-<code>"RMgenfbm"</code>, <code>"RMgengneiting"</code>, <code>"RMgneiting"</code>,
-<code>"RMlgd"</code>, <br /> <code>"RMmatern"</code>, <code>"RMpenta"</code>, <code>"RMqexp"</code>,
-<code>"RMspheric"</code>, <code>"RMstable"</code>, <code>"RMwave"</code>, <br />
-<code>"RMwhittle"</code>.
-</p>
-<p>For most variogram parameters, closed-form expressions of <code class="reqn">\partial
-    \gamma/ \partial \theta_i</code> and <code class="reqn">\partial \gamma/
-    \partial \tau^2</code> are used in the computations.
-However, for the parameter <code class="reqn">\nu</code> of the models <code>"RMbessel"</code>,
-<code>"RMmatern"</code> and <code>"RMwhittle"</code> <code class="reqn">\partial \gamma/ \partial
-    \nu</code> is evaluated numerically by the function
-<code><a href="stats.html#topic+numericDeriv">numericDeriv</a></code>, and this results in an increase in
-computing time when <code class="reqn">\nu</code> is estimated.  </p>
-
-
-
-
-<h4>Prediction</h4>
-
-<p>Customary and robust plug-in external drift point Kriging predictions
-can be computed for an non-sampled location
-<code class="reqn">\boldsymbol{s}_0</code>
-from the covariates
-<code class="reqn">\boldsymbol{x}(\boldsymbol{s}_0)</code>,
-the estimated parameters
-<code class="reqn">\widehat{\boldsymbol{\beta}}</code>,
-<code class="reqn">\widehat{\boldsymbol{\theta}}</code>
-and the predicted random effects
-<code class="reqn">\widehat{\boldsymbol{B}}</code>
-by
-</p>
-<p style="text-align: center;"><code class="reqn">
-      \widehat{Y}(\boldsymbol{s}_0) = \widehat{Z}(\boldsymbol{s}_0) =
-      \boldsymbol{x}(\boldsymbol{s}_0)^\mathrm{T}
-      \widehat{\boldsymbol{\beta}} +
-      \boldsymbol{\gamma}^\mathrm{T}_{\widehat{\theta}}(\boldsymbol{s}_0)
-      \boldsymbol{\Gamma}^{-1}_{\widehat{\theta}}
-      \widehat{\boldsymbol{B}},
-    </code>
-</p>
-
-<p>where
-<code class="reqn">\boldsymbol{\Gamma}_{\widehat{\theta}}</code>
-is the estimated (generalized) covariance matrix of
-<code class="reqn">\boldsymbol{B}</code> and
-<code class="reqn">\boldsymbol{\gamma}_{\widehat{\theta}}(\boldsymbol{s}_0)</code>
-is the vector with the estimated (generalized) covariances between
-<code class="reqn">\boldsymbol{B}</code> and
-<code class="reqn">B(\boldsymbol{s}_0)</code>.
-Kriging variances can be computed as well, based on approximated covariances of
-<code class="reqn">\widehat{\boldsymbol{B}}</code> and
-<code class="reqn">\widehat{\boldsymbol{\beta}}</code>
-(see <cite>Künsch et al., 2011</cite>, and appendices of
-<cite>Nussbaum et al., 2014</cite>, for details).
-</p>
-<p>The package <span class="pkg">georob</span> provides in addition software for computing
-customary and robust external drift <em>block</em> Kriging predictions.
-The required integrals of the generalized covariance function are
-computed by functions of the <span class="rlang"><b>R</b></span> package <span class="pkg">constrainedKriging</span>.  </p>
-
-
-
-
-<h4>Functionality</h4>
-
-<p>For the time being, the functionality of <span class="pkg">georob</span> is limited
-to geostatistical analyses of <em>single</em> response variables.
-No software is currently available for customary and robust
-multivariate geostatistical analyses.
-<span class="pkg">georob</span> offers functions for:
-</p>
-
-<ol>
-<li><p> Robustly fitting a spatial linear model to data that are
-possibly contaminated by independent errors from a long-tailed
-distribution by robust REML (see functions <code><a href="#topic+georob">georob</a></code> &mdash;
-which also fits such models efficiently by Gaussian (RE)ML &mdash;
-<code><a href="#topic+profilelogLik">profilelogLik</a></code> and <code><a href="#topic+control.georob">control.georob</a></code>).
-</p>
-</li>
-<li><p> Extracting estimated model components (see
-<code><a href="#topic+residuals.georob">residuals.georob</a></code>, <code><a href="#topic+rstandard.georob">rstandard.georob</a></code>,
-
-<code><a href="#topic+ranef.georob">ranef.georob</a></code>).
-</p>
-</li>
-<li><p> Robustly estimating sample variograms and for fitting variogram
-model functions to them (see <code><a href="#topic+sample.variogram">sample.variogram</a></code> and
-<code><a href="#topic+fit.variogram.model">fit.variogram.model</a></code>).
-</p>
-</li>
-<li><p> Model building by forward and backward selection of covariates
-for the external drift (see <code><a href="#topic+waldtest.georob">waldtest.georob</a></code>,
-<code><a href="#topic+step.georob">step.georob</a></code>, <code><a href="#topic+add1.georob">add1.georob</a></code>,
-<code><a href="#topic+drop1.georob">drop1.georob</a></code>, <code><a href="#topic+extractAIC.georob">extractAIC.georob</a></code>, <br />
-<code><a href="#topic+logLik.georob">logLik.georob</a></code>, <code><a href="#topic+deviance.georob">deviance.georob</a></code>).  For a
-robust fit, the log-likelihood is not defined.  The function then
-computes the (restricted) log-likelihood of an equivalent Gaussian
-model with heteroscedastic nugget (see <code><a href="#topic+deviance.georob">deviance.georob</a></code>
-for details).
-</p>
-</li>
-<li><p> Assessing the goodness-of-fit and predictive power of the model
-by <var>K</var>-fold cross-validation (see <code><a href="#topic+cv.georob">cv.georob</a></code> and
-<code><a href="#topic+validate.predictions">validate.predictions</a></code>).
-</p>
-</li>
-<li><p> Computing customary and robust external drift point and block
-Kriging predictions (see <code><a href="#topic+predict.georob">predict.georob</a></code>,
-<code><a href="#topic+control.predict.georob">control.predict.georob</a></code>).
-</p>
-</li>
-<li><p> Unbiased back-transformation of both point and block Kriging
-predictions of log-transformed data to the original scale of the
-measurements (see <code><a href="#topic+lgnpp">lgnpp</a></code>).
-</p>
-</li>
-<li><p> Computing unconditional and conditional Gaussian simulations
-from a fitted spatial linear model (see <code><a href="#topic+condsim">condsim</a></code>).
-</p>
-</li></ol>
-
-
-
-
-<h3>Author(s)</h3>
-
-<p>Andreas Papritz <a href="mailto:papritz@retired.ethz.ch">papritz@retired.ethz.ch</a>.
-</p>
-
-
-<h3>References</h3>
-
-<p>Harville, D. A. (1977) Maximum likelihood approaches to variance
-component estimation and to related problems, <em>Journal of the
-American Statistical Association</em>, <b>72</b>, 320&ndash;340,
-<a href="https://doi.org/10.1080/01621459.1977.10480998">doi:10.1080/01621459.1977.10480998</a>.
-</p>
-<p>Künsch, H. R., Papritz, A., Schwierz, C. and Stahel, W. A.
-(in preparation) Robust Geostatistics.
-</p>
-<p>Künsch, H. R., Papritz, A., Schwierz, C. and Stahel, W. A.
-(2011) Robust estimation of the external drift and the variogram of
-spatial data.  Proceedings of the ISI 58th World Statistics Congress of
-the International Statistical Institute.  <a href="https://doi.org/10.3929/ethz-a-009900710">doi:10.3929/ethz-a-009900710</a>
-</p>
-<p>Maronna, R. A., Martin, R. D. and Yohai, V. J. (2006) <em>Robust
-Statistics Theory and Methods</em>, Wiley, Hoboken, <a href="https://doi.org/10.1002/0470010940">doi:10.1002/0470010940</a>.
-</p>
-<p>Nussbaum, M., Papritz, A., Baltensweiler, A. and Walthert, L. (2014)
-Estimating soil organic carbon stocks of Swiss forest soils by robust
-external-drift kriging.  <em>Geoscientific Model Development</em>,
-<b>7</b>, 1197&ndash;1210.  <a href="https://doi.org/10.5194/gmd-7-1197-2014">doi:10.5194/gmd-7-1197-2014</a>.
-</p>
-
-
-<h3>See Also</h3>
-
-
-<p><code><a href="#topic+georob">georob</a></code> for (robust) fitting of spatial linear models;
-</p>
-<p><code><a href="#topic+georobObject">georobObject</a></code> for a description of the class <code>georob</code>;
-</p>
-<p><code><a href="#topic+profilelogLik">profilelogLik</a></code> for computing profiles of Gaussian likelihoods;
-</p>
-<p><code><a href="#topic+plot.georob">plot.georob</a></code> for display of RE(ML) variogram estimates;
-</p>
-<p><code><a href="#topic+control.georob">control.georob</a></code> for controlling the behaviour of <code>georob</code>;
-</p>
-<p><code><a href="#topic+georobModelBuilding">georobModelBuilding</a></code> for stepwise building models of class <code>georob</code>;
-</p>
-<p><code><a href="#topic+cv.georob">cv.georob</a></code> for assessing the goodness of a fit by <code>georob</code>;
-</p>
-<p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
-</p>
-<p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
-
-</p>
-<p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
-of log-transformed data;
-</p>
-<p><code><a href="#topic+georobSimulation">georobSimulation</a></code> for simulating realizations of a Gaussian process
-from model fitted by <code>georob</code>; and finally
-</p>
-<p><code><a href="#topic+sample.variogram">sample.variogram</a></code> and <code><a href="#topic+fit.variogram.model">fit.variogram.model</a></code>
-for robust estimation and modelling of sample variograms.
-</p>
 
 <hr>
 <h2 id='georobModelBuilding'>S3 Methods for Stepwise Building Fixed-Effects Models for Class <code>georob</code></h2><span id='topic+georobModelBuilding'></span><span id='topic+add1.georob'></span><span id='topic+deviance.georob'></span><span id='topic+drop1.georob'></span><span id='topic+extractAIC.georob'></span><span id='topic+logLik.georob'></span><span id='topic+step'></span><span id='topic+step.default'></span><span id='topic+step.georob'></span><span id='topic+waldtest'></span><span id='topic+waldtest.georob'></span>
@@ -3982,13 +3968,11 @@ of freedom, Wald statistic (either &quot;Chisq&quot; or &quot;F&quot;) and corre
 </p>
 <p><code><a href="#topic+control.georob">control.georob</a></code> for controlling the behaviour of <code>georob</code>;
 </p>
-
 <p><code><a href="#topic+cv.georob">cv.georob</a></code> for assessing the goodness of a fit by <code>georob</code>;
 </p>
 <p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
-
 </p>
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
@@ -4399,7 +4383,6 @@ components of the fit as described for an object of class
 </p>
 <p><code><a href="#topic+georob">georob</a></code> for (robust) fitting of spatial linear models;
 </p>
-
 <p><code><a href="#topic+profilelogLik">profilelogLik</a></code> for computing profiles of Gaussian likelihoods;
 </p>
 <p><code><a href="#topic+plot.georob">plot.georob</a></code> for display of RE(ML) variogram estimates;
@@ -4413,7 +4396,6 @@ components of the fit as described for an object of class
 <p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
-
 </p>
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
@@ -4700,10 +4682,8 @@ invisibly returns the object unchanged.
 <p><code><a href="#topic+georobModelBuilding">georobModelBuilding</a></code> for stepwise building models of class <code>georob</code>;
 </p>
 <p><code><a href="#topic+cv.georob">cv.georob</a></code> for assessing the goodness of a fit by <code>georob</code>;
-
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
-
 </p>
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
@@ -5179,12 +5159,9 @@ Statistics</em>, <b>3</b>, 409&ndash;432, <a href="https://doi.org/10.2307/13909
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
 </p>
-
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
 </p>
-
-
 <p><code><a href="#topic+sample.variogram">sample.variogram</a></code> and <code><a href="#topic+fit.variogram.model">fit.variogram.model</a></code>
 for robust estimation and modelling of sample variograms.
 </p>
@@ -5392,7 +5369,6 @@ with contributions by Cornelia Schwierz.
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
 </p>
-
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data; and finally
 </p>
@@ -6137,7 +6113,6 @@ the value <code>NULL</code> invisibly.
 </p>
 <p><code><a href="#topic+profilelogLik">profilelogLik</a></code> for computing profiles of Gaussian likelihoods;
 </p>
-
 <p><code><a href="#topic+control.georob">control.georob</a></code> for controlling the behaviour of <code>georob</code>;
 </p>
 <p><code><a href="#topic+georobModelBuilding">georobModelBuilding</a></code> for stepwise building models of class <code>georob</code>;
@@ -6148,7 +6123,6 @@ the value <code>NULL</code> invisibly.
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
 </p>
-
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
 </p>
@@ -6701,8 +6675,6 @@ Statistical Institute.
 </p>
 <p><code><a href="#topic+georobMethods">georobMethods</a></code> for further methods for the class <code>georob</code>;
 </p>
-
-
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
 </p>
@@ -6868,7 +6840,6 @@ convergence has occurred when fitting the respective model.  </p>
 </p>
 <p><code><a href="#topic+georobObject">georobObject</a></code> for a description of the class <code>georob</code>;
 </p>
-
 <p><code><a href="#topic+plot.georob">plot.georob</a></code> for display of RE(ML) variogram estimates;
 </p>
 <p><code><a href="#topic+control.georob">control.georob</a></code> for controlling the behaviour of <code>georob</code>;
@@ -6881,7 +6852,6 @@ convergence has occurred when fitting the respective model.  </p>
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
 </p>
-
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
 </p>
@@ -7520,16 +7490,12 @@ Geology</em>, <b>30</b>, 213&ndash;220, <a href="https://doi.org/10.1023/A%3A102
 </p>
 <p><code><a href="#topic+predict.georob">predict.georob</a></code> for computing robust Kriging predictions;
 </p>
-
 <p><code><a href="#topic+lgnpp">lgnpp</a></code> for unbiased back-transformation of Kriging prediction
 of log-transformed data;
 </p>
 <p><code><a href="#topic+georobSimulation">georobSimulation</a></code> for simulating realizations of a Gaussian process
 from model fitted by <code>georob</code>.
 </p>
-
-
-
 
 
 <h3>Examples</h3>
@@ -7839,10 +7805,6 @@ these statistics are returned as well.
 </p>
 <p>The <code>print</code> method for class <code>cv.georob</code> returns the mean
 and dispersion statistics of the (standardized) prediction errors.
-
-
-
-
 </p>
 
 
@@ -7959,10 +7921,6 @@ which invisibly returns the object unchanged.
 <p>The method <code>plot.georob</code> is called for its side effects and
 invisibly returns <code>NULL</code>.
 </p>
-
-
-
-
 
 
 <h3>Author(s)</h3>

@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {table.express}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#table.express-package'><p>Building 'data.table' expressions with data manipulation verbs</p></a></li>
 <li><a href='#arrange-table.express'><p>Arrange rows</p></a></li>
 <li><a href='#chain'><p>Chain</p></a></li>
 <li><a href='#distinct-table.express'><p>Rows with distinct combinations of columns</p></a></li>
@@ -40,7 +41,6 @@ function processMathHTML() {
 <li><a href='#select-table.express'><p>Select clause</p></a></li>
 <li><a href='#start_expr'><p>Start expression</p></a></li>
 <li><a href='#summarize-table.express'><p>Summarize columns</p></a></li>
-<li><a href='#table.express-package'><p>Building 'data.table' expressions with data manipulation verbs</p></a></li>
 <li><a href='#transmute_sd'><p>Transmute subset of data</p></a></li>
 <li><a href='#transmute-table.express'><p>Compute new columns</p></a></li>
 <li><a href='#where-table.express'><p>Where clause</p></a></li>
@@ -154,6 +154,160 @@ R6, rlang (&ge; 0.3.1), tidyselect</td>
 <td>2023-04-02 22:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='table.express-package'>Building 'data.table' expressions with data manipulation verbs</h2><span id='topic+table.express'></span><span id='topic+table.express-package'></span>
+
+<h3>Description</h3>
+
+<p>A specialization of <code><a href="dplyr.html#topic+dplyr-package">dplyr</a></code> verbs, as well as a set of custom ones, that
+build expressions that can be used within a <code><a href="data.table.html#topic+data.table">data.table</a></code>'s
+frame.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Note that since version 0.3.0, it is not possible to load <span class="pkg">table.express</span> and <span class="pkg">dtplyr</span> at
+the same time, since they define the same <code>data.table</code> methods for many <span class="pkg">dplyr</span> generics.
+</p>
+<p>Bearing in mind that <code>data.table</code>s are also <code>data.frame</code>s, we have to consider that other
+packages may uses <code>dplyr</code> internally without importing <code>data.table</code>. Since <code>dplyr</code>'s methods are
+generic, calls to these methods in such packages would fail. The functions in this package try to
+detect when this happens and delegate to the <code>data.frame</code> methods with a warning, which can be
+safely ignored if you know that the error originates from a package that is not meant to work
+with <code>data.table</code>. To avoid the warning, use <code>options(table.express.warn.cedta = FALSE)</code>.
+</p>
+<p>This software package was developed independently of any organization or institution that is or
+has been associated with the author.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Alexis Sarda-Espinosa
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://asardaes.github.io/table.express/">https://asardaes.github.io/table.express/</a>
+</p>
+</li>
+<li> <p><a href="https://github.com/asardaes/table.express">https://github.com/asardaes/table.express</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/asardaes/table.express/issues">https://github.com/asardaes/table.express/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>require("data.table")
+
+data("mtcars")
+
+DT &lt;- as.data.table(mtcars)
+
+# ====================================================================================
+# Simple dplyr-like transformations
+
+DT %&gt;%
+    group_by(cyl) %&gt;%
+    filter(vs == 0, am == 1) %&gt;%
+    transmute(mean_mpg = mean(mpg)) %&gt;%
+    arrange(-cyl)
+
+# Equivalent to previous
+DT %&gt;%
+    start_expr %&gt;%
+    transmute(mean_mpg = mean(mpg)) %&gt;%
+    where(vs == 0, am == 1) %&gt;%
+    group_by(cyl) %&gt;%
+    order_by(-cyl) %&gt;%
+    end_expr
+
+# Modification by reference
+DT %&gt;%
+    where(gear %% 2 != 0, carb %% 2 == 0) %&gt;%
+    mutate(wt_squared = wt ^ 2)
+
+print(DT)
+
+# Deletion by reference
+DT %&gt;%
+    mutate(wt_squared = NULL) %&gt;%
+    print
+
+# Support for tidyslect helpers
+
+DT %&gt;%
+    select(ends_with("t"))
+
+# ====================================================================================
+# Helpers to transform a subset of data
+
+# Like DT[, (whole) := lapply(.SD, as.integer), .SDcols = whole]
+whole &lt;- names(DT)[sapply(DT, function(x) { all(x %% 1 == 0) })]
+DT %&gt;%
+    mutate_sd(as.integer, .SDcols = whole)
+
+sapply(DT, class)
+
+# Like DT[, lapply(.SD, fun), .SDcols = ...]
+DT %&gt;%
+    transmute_sd((.COL - mean(.COL)) / sd(.COL),
+                 .SDcols = setdiff(names(DT), whole))
+
+# Filter several with the same condition
+DT %&gt;%
+    filter_sd(.COL == 1, .SDcols = c("vs", "am"))
+
+# Using secondary indices, i.e. DT[.(4, 5), on = .(cyl, gear)]
+DT %&gt;%
+    filter_on(cyl = 4, gear = 5) # note we don't use ==
+
+scale_undim &lt;- function(...) {
+    as.numeric(scale(...)) # remove dimensions
+}
+
+# Chaining
+DT %&gt;%
+    start_expr %&gt;%
+    mutate_sd(as.integer, .SDcols = whole) %&gt;%
+    chain %&gt;%
+    filter_sd(.COL == 1, .SDcols = c("vs", "am"), .collapse = `|`) %&gt;%
+    transmute_sd(scale_undim, .SDcols = !is.integer(.COL)) %&gt;%
+    end_expr
+
+# The previous is quivalent to
+DT[, (whole) := lapply(.SD, as.integer), .SDcols = whole
+   ][vs == 1 | am == 1,
+     lapply(.SD, scale_undim),
+     .SDcols = names(DT)[sapply(DT, Negate(is.integer))]]
+
+# Alternative to keep all columns (*copying* non-scaled ones)
+scale_non_integers &lt;- function(x) {
+    if (is.integer(x)) x else scale_undim(x)
+}
+
+DT %&gt;%
+    filter_sd(.COL == 1, .SDcols = c("vs", "am"), .collapse = `|`) %&gt;%
+    transmute_sd(everything(), scale_non_integers)
+
+# Without copying non-scaled
+DT %&gt;%
+    where(vs == 1 | am == 1) %&gt;%
+    mutate_sd(scale, .SDcols = names(DT)[sapply(DT, Negate(is.integer))])
+
+print(DT)
+</code></pre>
+
 <hr>
 <h2 id='arrange-table.express'>Arrange rows</h2><span id='topic+arrange-table.express'></span><span id='topic+arrange.ExprBuilder'></span><span id='topic+arrange.data.table'></span>
 
@@ -2373,160 +2527,6 @@ results have length 1.
 <a href="https://asardaes.github.io/table.express/articles/table.express.html">vignette</a>, or the
 <a href="#topic+table.express-package">table.express-package</a> entry.
 </p>
-
-<hr>
-<h2 id='table.express-package'>Building 'data.table' expressions with data manipulation verbs</h2><span id='topic+table.express'></span><span id='topic+table.express-package'></span>
-
-<h3>Description</h3>
-
-<p>A specialization of <code><a href="dplyr.html#topic+dplyr-package">dplyr</a></code> verbs, as well as a set of custom ones, that
-build expressions that can be used within a <code><a href="data.table.html#topic+data.table">data.table</a></code>'s
-frame.
-</p>
-
-
-<h3>Note</h3>
-
-<p>Note that since version 0.3.0, it is not possible to load <span class="pkg">table.express</span> and <span class="pkg">dtplyr</span> at
-the same time, since they define the same <code>data.table</code> methods for many <span class="pkg">dplyr</span> generics.
-</p>
-<p>Bearing in mind that <code>data.table</code>s are also <code>data.frame</code>s, we have to consider that other
-packages may uses <code>dplyr</code> internally without importing <code>data.table</code>. Since <code>dplyr</code>'s methods are
-generic, calls to these methods in such packages would fail. The functions in this package try to
-detect when this happens and delegate to the <code>data.frame</code> methods with a warning, which can be
-safely ignored if you know that the error originates from a package that is not meant to work
-with <code>data.table</code>. To avoid the warning, use <code>options(table.express.warn.cedta = FALSE)</code>.
-</p>
-<p>This software package was developed independently of any organization or institution that is or
-has been associated with the author.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Alexis Sarda-Espinosa
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://asardaes.github.io/table.express/">https://asardaes.github.io/table.express/</a>
-</p>
-</li>
-<li> <p><a href="https://github.com/asardaes/table.express">https://github.com/asardaes/table.express</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/asardaes/table.express/issues">https://github.com/asardaes/table.express/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>require("data.table")
-
-data("mtcars")
-
-DT &lt;- as.data.table(mtcars)
-
-# ====================================================================================
-# Simple dplyr-like transformations
-
-DT %&gt;%
-    group_by(cyl) %&gt;%
-    filter(vs == 0, am == 1) %&gt;%
-    transmute(mean_mpg = mean(mpg)) %&gt;%
-    arrange(-cyl)
-
-# Equivalent to previous
-DT %&gt;%
-    start_expr %&gt;%
-    transmute(mean_mpg = mean(mpg)) %&gt;%
-    where(vs == 0, am == 1) %&gt;%
-    group_by(cyl) %&gt;%
-    order_by(-cyl) %&gt;%
-    end_expr
-
-# Modification by reference
-DT %&gt;%
-    where(gear %% 2 != 0, carb %% 2 == 0) %&gt;%
-    mutate(wt_squared = wt ^ 2)
-
-print(DT)
-
-# Deletion by reference
-DT %&gt;%
-    mutate(wt_squared = NULL) %&gt;%
-    print
-
-# Support for tidyslect helpers
-
-DT %&gt;%
-    select(ends_with("t"))
-
-# ====================================================================================
-# Helpers to transform a subset of data
-
-# Like DT[, (whole) := lapply(.SD, as.integer), .SDcols = whole]
-whole &lt;- names(DT)[sapply(DT, function(x) { all(x %% 1 == 0) })]
-DT %&gt;%
-    mutate_sd(as.integer, .SDcols = whole)
-
-sapply(DT, class)
-
-# Like DT[, lapply(.SD, fun), .SDcols = ...]
-DT %&gt;%
-    transmute_sd((.COL - mean(.COL)) / sd(.COL),
-                 .SDcols = setdiff(names(DT), whole))
-
-# Filter several with the same condition
-DT %&gt;%
-    filter_sd(.COL == 1, .SDcols = c("vs", "am"))
-
-# Using secondary indices, i.e. DT[.(4, 5), on = .(cyl, gear)]
-DT %&gt;%
-    filter_on(cyl = 4, gear = 5) # note we don't use ==
-
-scale_undim &lt;- function(...) {
-    as.numeric(scale(...)) # remove dimensions
-}
-
-# Chaining
-DT %&gt;%
-    start_expr %&gt;%
-    mutate_sd(as.integer, .SDcols = whole) %&gt;%
-    chain %&gt;%
-    filter_sd(.COL == 1, .SDcols = c("vs", "am"), .collapse = `|`) %&gt;%
-    transmute_sd(scale_undim, .SDcols = !is.integer(.COL)) %&gt;%
-    end_expr
-
-# The previous is quivalent to
-DT[, (whole) := lapply(.SD, as.integer), .SDcols = whole
-   ][vs == 1 | am == 1,
-     lapply(.SD, scale_undim),
-     .SDcols = names(DT)[sapply(DT, Negate(is.integer))]]
-
-# Alternative to keep all columns (*copying* non-scaled ones)
-scale_non_integers &lt;- function(x) {
-    if (is.integer(x)) x else scale_undim(x)
-}
-
-DT %&gt;%
-    filter_sd(.COL == 1, .SDcols = c("vs", "am"), .collapse = `|`) %&gt;%
-    transmute_sd(everything(), scale_non_integers)
-
-# Without copying non-scaled
-DT %&gt;%
-    where(vs == 1 | am == 1) %&gt;%
-    mutate_sd(scale, .SDcols = names(DT)[sapply(DT, Negate(is.integer))])
-
-print(DT)
-</code></pre>
 
 <hr>
 <h2 id='transmute_sd'>Transmute subset of data</h2><span id='topic+transmute_sd'></span><span id='topic+transmute_sd.ExprBuilder'></span><span id='topic+transmute_sd.EagerExprBuilder'></span><span id='topic+transmute_sd.data.table'></span>

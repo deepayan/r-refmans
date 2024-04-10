@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {multiwave}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#multiwave-package'>
+<p>Estimation of multivariate long-memory models parameters: memory parameters and long-run covariance matrix (also called fractal connectivity).</p></a></li>
 <li><a href='#brainHCP'><p>Time series obtained by an fMRI experiment on the brain</p></a></li>
 <li><a href='#compute_nj'>
 <p>Wavelets coefficients utilities</p></a></li>
@@ -33,8 +35,6 @@ function processMathHTML() {
 <p>multivariate Fourier Whittle estimators</p></a></li>
 <li><a href='#mfw_eval'>
 <p>evaluation of multivariate Fourier Whittle estimator</p></a></li>
-<li><a href='#multiwave-package'>
-<p>Estimation of multivariate long-memory models parameters: memory parameters and long-run covariance matrix (also called fractal connectivity).</p></a></li>
 <li><a href='#mww'>
 <p>multivariate wavelet Whittle estimation</p></a></li>
 <li><a href='#mww_cov_eval'>
@@ -119,6 +119,161 @@ function processMathHTML() {
 <td>2019-05-06 07:20:09 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='multiwave-package'>
+Estimation of multivariate long-memory models parameters: memory parameters and long-run covariance matrix (also called fractal connectivity).
+</h2><span id='topic+multiwave-package'></span><span id='topic+multiwave'></span>
+
+<h3>Description</h3>
+
+<p>This package computes an estimation of the long-memory parameters and the long-run covariance matrix using a multivariate model (Lobato, 1999; Shimotsu 2007). Two semi-parametric methods are implemented: a Fourier based approach (Shimotsu 2007) and a wavelet based approach (Achard and Gannaz 2014).
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> multiwave</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.0</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2015-09-17</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL (&gt;= 2)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Sophie Achard and Irene Gannaz
+</p>
+<p>Maintainer: Sophie Achard &lt;sophie.achard@gipsa-lab.fr&gt;, Irene Gannaz &lt;irene.gannaz@insa-lyon.fr&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>S. Achard, I. Gannaz (2016)
+Multivariate wavelet Whittle estimation in long-range dependence. <em>Journal of Time Series Analysis</em>, Vol 37, N. 4, pages 476-512.  <code>http://arxiv.org/abs/1412.0391</code>.
+</p>
+<p>S. Achard, I Gannaz (2019)
+Wavelet-Based and Fourier-Based Multivariate Whittle Estimation: multiwave. <em>Journal of Statistical Software</em>, Vol 89, N. 6, pages 1-31. 
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+rho&lt;-0.4
+cov &lt;- matrix(c(1,rho,rho,1),2,2)
+d&lt;-c(0.4,0.2)
+J &lt;- 9
+N &lt;- 2^J
+
+resp &lt;- fivarma(N, d, cov_matrix=cov)
+
+x &lt;- resp$x
+long_run_cov &lt;- resp$long_run_cov
+
+#### Compute wavelets this is also included in the functions without _wav
+res_filter &lt;- scaling_filter('Daubechies',8);
+filter &lt;- res_filter$h
+M &lt;- res_filter$M
+alpha &lt;- res_filter$alpha
+
+LU &lt;- c(1,11)
+
+if(is.matrix(x)){
+    N &lt;- dim(x)[1]
+    k &lt;- dim(x)[2]
+}else{
+    N &lt;- length(x)
+    k &lt;- 1
+}
+mat_x &lt;- as.matrix(x,dim=c(N,k))
+
+## Wavelet decomposition
+xwav &lt;- matrix(0,N,k)
+    for(j in 1:k){
+        xx &lt;- mat_x[,j]   
+        resw &lt;- DWTexact(xx,filter)
+        xwav_temp &lt;- resw$dwt
+        index &lt;- resw$indmaxband
+        Jmax &lt;- resw$Jmax
+        xwav[1:index[Jmax],j] &lt;- xwav_temp;
+    }
+## we free some memory
+new_xwav &lt;- matrix(0,min(index[Jmax],N),k)
+    if(index[Jmax]&lt;N){
+        new_xwav[(1:(index[Jmax])),] &lt;- xwav[(1:(index[Jmax])),]
+    }
+    xwav &lt;- new_xwav
+    index &lt;- c(0,index)
+
+
+##### Compute the wavelet functions 
+res_psi &lt;- psi_hat_exact(filter,J)
+psih&lt;-res_psi$psih
+grid&lt;-res_psi$grid
+
+
+##### Estimate using Fourier #############
+
+m &lt;- floor(N^{0.65}) ## default value of Shimotsu
+res_mfw &lt;- mfw(x,m)
+res_d_mfw&lt;-res_mfw$d
+res_rho_mfw&lt;-res_mfw$cov[1,2]
+
+### Eval MFW
+
+res_mfw_eval &lt;- mfw_eval(d,x,m)
+res_mfw_cov_eval &lt;- mfw_cov_eval(d,x,m)
+
+###### Estimate using Wavelets #############
+
+## Using xwav 
+
+if(dim(xwav)[2]==1) xwav&lt;-as.vector(xwav)
+res_mww_wav &lt;- mww_wav(xwav,index,psih,grid,LU)
+
+### Eval MWW_wav
+
+res_mww_wav_eval &lt;- mww_wav_eval(d,xwav,index,LU)
+res_mww_wav_cov_eval &lt;- mww_wav_cov_eval(d,xwav,index,psih,grid,LU)
+
+## Using directly the time series
+
+res_mww &lt;- mww(x,filter,LU)
+res_d_mww&lt;-res_mww$d
+res_rho_mww&lt;-res_mww$cov[1,2]
+
+### Eval MWW_wav
+
+res_mww_eval &lt;- mww_eval(d,x,filter,LU)
+res_mww_cov_eval &lt;- mww_cov_eval(d,x,filter,LU)
+
+</code></pre>
+
 <hr>
 <h2 id='brainHCP'>Time series obtained by an fMRI experiment on the brain</h2><span id='topic+brainHCP'></span>
 
@@ -854,161 +1009,6 @@ d &lt;- res_mfw$d
 G &lt;- mfw_eval(d,x,m)
 k &lt;- length(d)
 res_d &lt;- optim(rep(0,k),mfw_eval,x=x,m=m,method='Nelder-Mead',lower=-Inf,upper=Inf)$par
-
-</code></pre>
-
-<hr>
-<h2 id='multiwave-package'>
-Estimation of multivariate long-memory models parameters: memory parameters and long-run covariance matrix (also called fractal connectivity).
-</h2><span id='topic+multiwave-package'></span><span id='topic+multiwave'></span>
-
-<h3>Description</h3>
-
-<p>This package computes an estimation of the long-memory parameters and the long-run covariance matrix using a multivariate model (Lobato, 1999; Shimotsu 2007). Two semi-parametric methods are implemented: a Fourier based approach (Shimotsu 2007) and a wavelet based approach (Achard and Gannaz 2014).
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> multiwave</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 1.0</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2015-09-17</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL (&gt;= 2)</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Sophie Achard and Irene Gannaz
-</p>
-<p>Maintainer: Sophie Achard &lt;sophie.achard@gipsa-lab.fr&gt;, Irene Gannaz &lt;irene.gannaz@insa-lyon.fr&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>S. Achard, I. Gannaz (2016)
-Multivariate wavelet Whittle estimation in long-range dependence. <em>Journal of Time Series Analysis</em>, Vol 37, N. 4, pages 476-512.  <code>http://arxiv.org/abs/1412.0391</code>.
-</p>
-<p>S. Achard, I Gannaz (2019)
-Wavelet-Based and Fourier-Based Multivariate Whittle Estimation: multiwave. <em>Journal of Statistical Software</em>, Vol 89, N. 6, pages 1-31. 
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-rho&lt;-0.4
-cov &lt;- matrix(c(1,rho,rho,1),2,2)
-d&lt;-c(0.4,0.2)
-J &lt;- 9
-N &lt;- 2^J
-
-resp &lt;- fivarma(N, d, cov_matrix=cov)
-
-x &lt;- resp$x
-long_run_cov &lt;- resp$long_run_cov
-
-#### Compute wavelets this is also included in the functions without _wav
-res_filter &lt;- scaling_filter('Daubechies',8);
-filter &lt;- res_filter$h
-M &lt;- res_filter$M
-alpha &lt;- res_filter$alpha
-
-LU &lt;- c(1,11)
-
-if(is.matrix(x)){
-    N &lt;- dim(x)[1]
-    k &lt;- dim(x)[2]
-}else{
-    N &lt;- length(x)
-    k &lt;- 1
-}
-mat_x &lt;- as.matrix(x,dim=c(N,k))
-
-## Wavelet decomposition
-xwav &lt;- matrix(0,N,k)
-    for(j in 1:k){
-        xx &lt;- mat_x[,j]   
-        resw &lt;- DWTexact(xx,filter)
-        xwav_temp &lt;- resw$dwt
-        index &lt;- resw$indmaxband
-        Jmax &lt;- resw$Jmax
-        xwav[1:index[Jmax],j] &lt;- xwav_temp;
-    }
-## we free some memory
-new_xwav &lt;- matrix(0,min(index[Jmax],N),k)
-    if(index[Jmax]&lt;N){
-        new_xwav[(1:(index[Jmax])),] &lt;- xwav[(1:(index[Jmax])),]
-    }
-    xwav &lt;- new_xwav
-    index &lt;- c(0,index)
-
-
-##### Compute the wavelet functions 
-res_psi &lt;- psi_hat_exact(filter,J)
-psih&lt;-res_psi$psih
-grid&lt;-res_psi$grid
-
-
-##### Estimate using Fourier #############
-
-m &lt;- floor(N^{0.65}) ## default value of Shimotsu
-res_mfw &lt;- mfw(x,m)
-res_d_mfw&lt;-res_mfw$d
-res_rho_mfw&lt;-res_mfw$cov[1,2]
-
-### Eval MFW
-
-res_mfw_eval &lt;- mfw_eval(d,x,m)
-res_mfw_cov_eval &lt;- mfw_cov_eval(d,x,m)
-
-###### Estimate using Wavelets #############
-
-## Using xwav 
-
-if(dim(xwav)[2]==1) xwav&lt;-as.vector(xwav)
-res_mww_wav &lt;- mww_wav(xwav,index,psih,grid,LU)
-
-### Eval MWW_wav
-
-res_mww_wav_eval &lt;- mww_wav_eval(d,xwav,index,LU)
-res_mww_wav_cov_eval &lt;- mww_wav_cov_eval(d,xwav,index,psih,grid,LU)
-
-## Using directly the time series
-
-res_mww &lt;- mww(x,filter,LU)
-res_d_mww&lt;-res_mww$d
-res_rho_mww&lt;-res_mww$cov[1,2]
-
-### Eval MWW_wav
-
-res_mww_eval &lt;- mww_eval(d,x,filter,LU)
-res_mww_cov_eval &lt;- mww_cov_eval(d,x,filter,LU)
 
 </code></pre>
 

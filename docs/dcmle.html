@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {dcmle}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#dcmle-package'>
+<p>Hierarchical Models Made Easy with Data Cloning</p></a></li>
 <li><a href='#chanames'>
 <p>coda package related generic functions</p></a></li>
 <li><a href='#codaMCMC-class'><p>Class <code>"codaMCMC"</code></p></a></li>
@@ -36,8 +38,6 @@ function processMathHTML() {
 <li><a href='#dcmle'>
 <p>Asymptotic maximum likelihood estimation with data cloning</p></a></li>
 <li><a href='#dcmle-class'><p>Class <code>"dcmle"</code></p></a></li>
-<li><a href='#dcmle-package'>
-<p>Hierarchical Models Made Easy with Data Cloning</p></a></li>
 <li><a href='#dcModel-class'><p>Class <code>"dcModel"</code></p></a></li>
 <li><a href='#dcParams-class'><p>Class <code>"dcParams"</code></p></a></li>
 <li><a href='#dctable-class'><p>Class <code>"dctable"</code></p></a></li>
@@ -141,6 +141,126 @@ function processMathHTML() {
 <td>2023-07-04 21:13:01 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='dcmle-package'>
+Hierarchical Models Made Easy with Data Cloning
+</h2><span id='topic+dcmle-package'></span>
+
+<h3>Description</h3>
+
+<p>S4 classes around infrastructure
+provided by the dclone package to make package 
+development with data cloning for hierarchical 
+models easy as a breeze.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The package defines S4 object classes for plain BUGS models 
+(<code>"<a href="#topic+gsFit-class">gsFit</a>"</code>, after BU*GS*/JA*GS*),
+and BUGS models made ready for data cloning 
+(<code>"<a href="#topic+dcFit-class">dcFit</a>"</code>).
+It also defines virtual classes for S3 object classes defined in
+the <span class="pkg">dclone</span> and <span class="pkg">coda</span> packages. 
+</p>
+<p>The S4 class <code>"<a href="#topic+dcmle-class">dcmle</a>"</code> is a fitted 
+model object containing MCMC results as returned by the
+<code><a href="#topic+dcmle">dcmle</a></code> function. 
+These object classes are easily
+extensible to allow inclusion into functions fitting
+specific models to the data (see Examples).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Peter Solymos
+</p>
+<p>Maintainer: Peter Solymos &lt;psolymos@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Forum: <a href="https://groups.google.com/forum/#!forum/dclone-users">https://groups.google.com/forum/#!forum/dclone-users</a>
+</p>
+<p>Issues: <a href="https://github.com/datacloning/dcmle/issues">https://github.com/datacloning/dcmle/issues</a>
+</p>
+<p>Data cloning website: <a href="https://datacloning.org">https://datacloning.org</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Fitting wrapper function: <code><a href="#topic+dcmle">dcmle</a></code>
+</p>
+<p>Object classes: <code>"<a href="#topic+dcmle-class">dcmle</a>"</code>,
+<code>"<a href="#topic+codaMCMC-class">codaMCMC</a>"</code>, <code>"<a href="#topic+dcCodaMCMC-class">dcCodaMCMC</a>"</code>
+</p>
+<p>Creator functions <code><a href="#topic+makeGsFit">makeGsFit</a></code> and 
+<code><a href="#topic+makeDcFit">makeDcFit</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Data and model taken from Ponciano et al. 2009
+## Ecology 90, 356-362.
+
+## Function to create template object for the Beverton-Holt model
+## R CMD check will not choke on character representation of model
+## the convenient makeDcFit creator function is used here
+bevholtFit &lt;- 
+function(y) {
+makeDcFit(
+  data = list(ncl=1, n=length(y), Y=dcdim(data.matrix(y))),
+  model = structure(
+    c("model {",
+      "  for (k in 1:ncl) {",
+      "    for(i in 2:(n+1)) {",
+      "      Y[(i-1), k] ~ dpois(exp(X[i, k]))",
+      "      X[i, k] ~ dnorm(mu[i, k], 1 / sigma^2)",
+      "      mu[i,k] &lt;- X[(i-1),k]+log(lambda)-log(1+beta*exp(X[(i-1),k]))",
+      "    }",
+      "    X[1, k] ~ dnorm(mu0, 1 / sigma^2)",
+      "  }",
+      "  beta ~ dlnorm(-1, 1)",
+      "  sigma ~ dlnorm(0, 1)",
+      "  tmp ~ dlnorm(0, 1)",
+      "  lambda &lt;- tmp + 1",
+      "  mu0 &lt;- log(2)  + log(lambda) - log(1 + beta * 2)",
+      "}"),
+      class = "custommodel"),
+  multiply = "ncl",
+  unchanged = "n",
+  params &lt;- c("lambda","beta","sigma"))
+}
+## S4 class 'bevholtMle' extends the 'dcmle' class
+## it can have additional slots
+setClass("bevholtMle", 
+    representation(y="numeric", title="character"), 
+    contains = "dcmle")
+## Function to fit the Beverton-Holt model to data
+bevholt &lt;- function(y, n.clones, ...) {
+    new("bevholtMle",
+        dcmle(bevholtFit(y), n.clones=n.clones, ...),
+        y = y,
+        title = "Beverton-Holt Model")
+}
+## Show method with appropriate heading
+setMethod("show", "bevholtMle", function(object)
+    show(summary(as(object, "dcmle"), object@title)))
+paurelia &lt;- c(17,29,39,63,185,258,267,392,510,
+    570,650,560,575,650,550,480,520,500)
+## Not run: 
+(m &lt;- bevholt(paurelia, n.clones=2, n.iter=1000))
+vcov(m)
+m@y
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='chanames'>
 coda package related generic functions
@@ -1083,7 +1203,6 @@ stopCluster(cl)
 <h3>Objects from the Class</h3>
 
 <p>Objects can be created by calls of the form <code>new("dcmle", ...)</code>.
-
 </p>
 
 
@@ -1251,126 +1370,6 @@ number of observations, optional.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>showClass("dcmle")
-</code></pre>
-
-<hr>
-<h2 id='dcmle-package'>
-Hierarchical Models Made Easy with Data Cloning
-</h2><span id='topic+dcmle-package'></span>
-
-<h3>Description</h3>
-
-<p>S4 classes around infrastructure
-provided by the dclone package to make package 
-development with data cloning for hierarchical 
-models easy as a breeze.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The package defines S4 object classes for plain BUGS models 
-(<code>"<a href="#topic+gsFit-class">gsFit</a>"</code>, after BU*GS*/JA*GS*),
-and BUGS models made ready for data cloning 
-(<code>"<a href="#topic+dcFit-class">dcFit</a>"</code>).
-It also defines virtual classes for S3 object classes defined in
-the <span class="pkg">dclone</span> and <span class="pkg">coda</span> packages. 
-</p>
-<p>The S4 class <code>"<a href="#topic+dcmle-class">dcmle</a>"</code> is a fitted 
-model object containing MCMC results as returned by the
-<code><a href="#topic+dcmle">dcmle</a></code> function. 
-These object classes are easily
-extensible to allow inclusion into functions fitting
-specific models to the data (see Examples).
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Peter Solymos
-</p>
-<p>Maintainer: Peter Solymos &lt;psolymos@gmail.com&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Forum: <a href="https://groups.google.com/forum/#!forum/dclone-users">https://groups.google.com/forum/#!forum/dclone-users</a>
-</p>
-<p>Issues: <a href="https://github.com/datacloning/dcmle/issues">https://github.com/datacloning/dcmle/issues</a>
-</p>
-<p>Data cloning website: <a href="https://datacloning.org">https://datacloning.org</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Fitting wrapper function: <code><a href="#topic+dcmle">dcmle</a></code>
-</p>
-<p>Object classes: <code>"<a href="#topic+dcmle-class">dcmle</a>"</code>,
-<code>"<a href="#topic+codaMCMC-class">codaMCMC</a>"</code>, <code>"<a href="#topic+dcCodaMCMC-class">dcCodaMCMC</a>"</code>
-</p>
-<p>Creator functions <code><a href="#topic+makeGsFit">makeGsFit</a></code> and 
-<code><a href="#topic+makeDcFit">makeDcFit</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Data and model taken from Ponciano et al. 2009
-## Ecology 90, 356-362.
-
-## Function to create template object for the Beverton-Holt model
-## R CMD check will not choke on character representation of model
-## the convenient makeDcFit creator function is used here
-bevholtFit &lt;- 
-function(y) {
-makeDcFit(
-  data = list(ncl=1, n=length(y), Y=dcdim(data.matrix(y))),
-  model = structure(
-    c("model {",
-      "  for (k in 1:ncl) {",
-      "    for(i in 2:(n+1)) {",
-      "      Y[(i-1), k] ~ dpois(exp(X[i, k]))",
-      "      X[i, k] ~ dnorm(mu[i, k], 1 / sigma^2)",
-      "      mu[i,k] &lt;- X[(i-1),k]+log(lambda)-log(1+beta*exp(X[(i-1),k]))",
-      "    }",
-      "    X[1, k] ~ dnorm(mu0, 1 / sigma^2)",
-      "  }",
-      "  beta ~ dlnorm(-1, 1)",
-      "  sigma ~ dlnorm(0, 1)",
-      "  tmp ~ dlnorm(0, 1)",
-      "  lambda &lt;- tmp + 1",
-      "  mu0 &lt;- log(2)  + log(lambda) - log(1 + beta * 2)",
-      "}"),
-      class = "custommodel"),
-  multiply = "ncl",
-  unchanged = "n",
-  params &lt;- c("lambda","beta","sigma"))
-}
-## S4 class 'bevholtMle' extends the 'dcmle' class
-## it can have additional slots
-setClass("bevholtMle", 
-    representation(y="numeric", title="character"), 
-    contains = "dcmle")
-## Function to fit the Beverton-Holt model to data
-bevholt &lt;- function(y, n.clones, ...) {
-    new("bevholtMle",
-        dcmle(bevholtFit(y), n.clones=n.clones, ...),
-        y = y,
-        title = "Beverton-Holt Model")
-}
-## Show method with appropriate heading
-setMethod("show", "bevholtMle", function(object)
-    show(summary(as(object, "dcmle"), object@title)))
-paurelia &lt;- c(17,29,39,63,185,258,267,392,510,
-    570,650,560,575,650,550,480,520,500)
-## Not run: 
-(m &lt;- bevholt(paurelia, n.clones=2, n.iter=1000))
-vcov(m)
-m@y
-
-## End(Not run)
 </code></pre>
 
 <hr>

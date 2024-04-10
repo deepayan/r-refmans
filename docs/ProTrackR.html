@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {ProTrackR}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#ProTrackR-package'><p>Manipulate and play ProTracker Modules. A description of the package,</p>
+ProTracker effect commands and test cases.</a></li>
 <li><a href='#appendPattern'><p>Append a PTPattern to a PTModule</p></a></li>
 <li><a href='#as.character'><p>Character representation of ProTrackR objects</p></a></li>
 <li><a href='#as.raw'><p>Extract and replace raw data</p></a></li>
@@ -59,8 +61,6 @@ function processMathHTML() {
 <li><a href='#plot'><p>Plot a PTModule object</p></a></li>
 <li><a href='#print'><p>Print ProTrackR objects</p></a></li>
 <li><a href='#proTrackerVibrato'><p>Get the vibrato table used by ProTracker</p></a></li>
-<li><a href='#ProTrackR-package'><p>Manipulate and play ProTracker Modules. A description of the package,</p>
-ProTracker effect commands and test cases.</a></li>
 <li><a href='#PTBlock'><p>Select and copy a range of PTCells into a PTBlock</p></a></li>
 <li><a href='#PTCell-class'><p>The PTCell class</p></a></li>
 <li><a href='#PTCell-method'><p>Coerce to or replace PTCell</p></a></li>
@@ -186,6 +186,357 @@ ProTracker effect commands and test cases.</a></li>
 <td>2024-02-15 12:00:05 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='ProTrackR-package'>Manipulate and play ProTracker Modules. A description of the package,
+ProTracker effect commands and test cases.</h2><span id='topic+ProTrackR-package'></span><span id='topic+_PACKAGE'></span><span id='topic+EffectCommands'></span>
+
+<h3>Description</h3>
+
+<p>The ProTrackR package can import and export module files from the music tracker
+ProTracker from the Commodore Amiga machine. This package can also render
+and play module files. Furthermore, the package provides the means to manipulate and analyse
+the modules.
+</p>
+
+
+<h3>Details</h3>
+
+<p>ProTracker is a popular music tracker to sequence music on a Commodore
+Amiga machine. This package offers the opportunity to import, export, manipulate
+an play ProTracker module files. Even though the file format could be considered
+archaic, it still remains popular to this date. This package intends to contribute
+to this popularity and therewith keeping the legacy of ProTracker and the
+Commodore Amiga alive.
+</p>
+<p>Some experience with ProTracker (or any other
+music tracker) will promote the ease of use of this package. However,
+the provided documentation and exernal links should help you,
+when you're starting from scratch. A good place to start reading
+this manual would be the documentation of the <code><a href="#topic+PTModule-class">PTModule</a></code>,
+which describes the structure of a ProTracker module and how it is
+implemented in this package. You should also have a look at the documentation
+of the <code><a href="#topic+PTPattern">PTPattern</a></code>, <code><a href="#topic+PTTrack">PTTrack</a></code>, <code><a href="#topic+PTCell">PTCell</a></code> and
+<code><a href="#topic+PTSample">PTSample</a></code> classes, which are all elements of the
+<code><a href="#topic+PTModule">PTModule</a></code>.
+</p>
+
+
+<h3>Current issues and future developments</h3>
+
+<p>For the development state of this package, please check the
+<a href="https://pepijn-devries.github.io/ProTrackR/">README section on GitHub</a>.
+</p>
+<p>Currently, not all effect commands are implemented, although most common
+ones are. I will work on implementing the remaining effect commands (see
+also section below). ProTracker also has specific interpretations that
+are currently not all implemented correctly.
+</p>
+<p>Sample switching (that is when a module switches from one sample number
+to another, without specifying a new note) is also something that is implemented
+differently by varying module players. This package currently does not implement
+such switches conform ProTracker specs.
+</p>
+<p>Period values, which dictate at which fequency samples should be played, are
+censored both by Amiga hardware and software coded limits in the original
+ProTracker. Documentation on these limits are ambiguous. I've made a first
+attempt to implement these bounds in the current version of the
+package after consulting with Olav
+S&oslash;rensen (who created
+a ProTracker clone for modern machines: <a href="https://16-bits.org/pt.php">https://16-bits.org/pt.php</a>).
+I'm really grateful for his input and doing some checks on an actual
+Amiga.
+</p>
+<p>I also realise that the documentation of this package may be a bit cryptic
+at some points. I would like to improve it where I can, but for that I need a
+fresh perspective from the users. So please feel free to provide constructive
+feedback such that I can improve the quality of this package.
+</p>
+
+
+<h3>ProTracker Effect Commands</h3>
+
+<p>As explained before, effect commands are composed of a three hexadecimal digits.
+The first digit indicates the type of effect, trigger or jump that should be applied,
+the latter two digits indicate the magnitude of the effect. An exception are
+commands starting with the digit 'E', for which the first two digits specify
+the type of effect and only the last digit represents the magnitude. Below
+all available effect commands (or codes if you will) are listed with the
+magnitudes labelled 'x' or 'xy'. The overview shows which commands are used
+for which kind of effect and whether it is implemented (between brackets) in
+the playing routines of this package.
+</p>
+<p>But first a few words on speed and tempo in ProTracker. Both are two sides of
+the same coin, both affect the overall speed with which patterns are played.
+Speed is defined as the number of 'ticks' per pattern row and tempo sets
+the duration of each tick.
+So by increasing the speed value, or decreasing the tempo, the overall playing
+speed of the pattern table is reduced. At the default tempo of 125, the duration
+of a tick equals the vertical blank period of the monitor (1/50 seconds for PAL
+and 1/60 seconds NTSC video systems). They can be set with the Fxy command.
+</p>
+<p>On the Commodore Amiga the chip responsible for audio output (Paula),
+the audio playback of samples can be controlled by the user in two ways:
+the playback rate of the sample can be changed by specifying 'period'
+values (see e.g. <code><a href="#topic+periodToSampleRate">periodToSampleRate</a></code>) and specifying a
+volume which is linearly scaled between 0 (silent) and 64 (maximum).
+Period and volumes can only be changed at the start of each tick. This is
+why the effects will be affected by the speed setting, but not the tempo.
+</p>
+<p>And now, without further ado, the overview of effect commands:</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+   Code </td><td style="text-align: left;"> Effect </td><td style="text-align: left;"> Description </td><td style="text-align: left;"> Status </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   0xy </td><td style="text-align: left;"> Arpeggio </td><td style="text-align: left;"> This effect alternates the pitch each tick to simulate a chord. xy needs to be greater then 00. First the specified note is played, then the pitch is increased with x semitones, then with y semitones. </td><td style="text-align: left;"> Partly implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   1xy </td><td style="text-align: left;"> Porta up </td><td style="text-align: left;"> Decrease the period value with xy every tick but the first. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   2xy </td><td style="text-align: left;"> Porta down </td><td style="text-align: left;"> Increase the period value with xy every tick but the first. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   3xy </td><td style="text-align: left;"> Porta to note </td><td style="text-align: left;"> Change the period value with xy every tick but the first, untill the specified target note is reached. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   4xy </td><td style="text-align: left;"> Vibrato </td><td style="text-align: left;"> Oscillate the pitch with magnitude x. Where y relates to the oscillation frequency. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   5xy </td><td style="text-align: left;"> Porta to note + Volume slide </td><td style="text-align: left;"> A combination of effects 3xy and Axy. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   6xy </td><td style="text-align: left;"> Vibrato + Volume slide </td><td style="text-align: left;"> A combination of effects 4xy and Axy. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   7xy </td><td style="text-align: left;"> Tremolo </td><td style="text-align: left;"> Oscillate the volume with magnitude x. Where y relates to the oscillation frequency. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   8xy </td><td style="text-align: left;"> Not implemented </td><td style="text-align: left;"> This effect command is not implemented in ProTracker, nor will it be in this package. </td><td style="text-align: left;"> Not implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   9xy </td><td style="text-align: left;"> Set sample offset </td><td style="text-align: left;"> This effect causes the note to start playing at an offset (of 256 times xy samples) into the sample, instead of just from the start. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   Axy </td><td style="text-align: left;"> Volume slide </td><td style="text-align: left;"> Change the volume every but the first tick: increase with x, decrease with y. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   Bxy </td><td style="text-align: left;"> Position jump </td><td style="text-align: left;"> Jump to position xy of the <code><a href="#topic+patternOrder">patternOrder</a></code> table. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   Cxy </td><td style="text-align: left;"> Set volume </td><td style="text-align: left;"> Set the volume with xy. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   Dxy </td><td style="text-align: left;"> Pattern break </td><td style="text-align: left;"> Break to row xy in the next pattern. Note: xy is (even though it is a hexadecimal) interpreted as a decimal. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E0x </td><td style="text-align: left;"> Turn filter on/off </td><td style="text-align: left;"> If x is even, the (emulated) hardware filter is turned on (for all tracks). It is turned off if x is odd. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E1x </td><td style="text-align: left;"> Porta up (fine) </td><td style="text-align: left;"> The period value is decreased with x, at the first tick. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E2x </td><td style="text-align: left;"> Porta down (fine) </td><td style="text-align: left;"> The period value is increased with x, at the first tick. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E3x </td><td style="text-align: left;"> Glissando Control </td><td style="text-align: left;"> This effect causes a change in the effect 3xy (porta to note).  It toggles whether to do a smooth slide or whether to slide in jumps of semitones. When x is 0 it uses a smooth slide, non-zero values will result in jumps. </td><td style="text-align: left;"> Not yet implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E4x </td><td style="text-align: left;"> Vibrato Waveform </td><td style="text-align: left;"> This effect sets the waveform for the vibrato command to follow. With x modulo 4 equals 0, a sine wave is used, with 1 ramp down, with 2 or 3 a square wave. Values greater than 4 causes the ossicating waveform not to retrigger it when a new note is played. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E5x </td><td style="text-align: left;"> Set finetune </td><td style="text-align: left;"> Set the finetune with x, where x is interpreted as a signed nybble. </td><td style="text-align: left;"> Partly implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E6x </td><td style="text-align: left;"> Pattern loop </td><td style="text-align: left;"> Set pattern loop start with E60, and loop x times when x is non-zero. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E7x </td><td style="text-align: left;"> Tremolo waveform </td><td style="text-align: left;"> Same as E4x, but this controls the wave form for the tremolo effect (7xy) rather then the vibrato effect. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E8x </td><td style="text-align: left;"> Not implemented </td><td style="text-align: left;"> According to official documentation this command is not implemented in ProTracker, but it is. Applies a filter on a looped sample, therewith destroying the original sample data. </td><td style="text-align: left;"> Not implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   E9x </td><td style="text-align: left;"> Retrigger note </td><td style="text-align: left;"> Retrigger the note every x-th tick. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   EAx </td><td style="text-align: left;"> Volume slide up (fine) </td><td style="text-align: left;"> Increase the volume with x at the first tick. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   EBx </td><td style="text-align: left;"> Volume slide down (fine) </td><td style="text-align: left;"> Decrease the volume with x at the first tick. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   ECx </td><td style="text-align: left;"> Cut note </td><td style="text-align: left;"> Cut the volume of the note to zero after x ticks. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   EDx </td><td style="text-align: left;"> Delay note </td><td style="text-align: left;"> The note is triggered with a delay of x ticks. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   EEx </td><td style="text-align: left;"> Pattern delay </td><td style="text-align: left;"> The duration of the row in ticks is multiplied by (x + 1). </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   EFx </td><td style="text-align: left;"> Not implemented </td><td style="text-align: left;"> According to official documentation this command is not implemented in ProTracker, but it is. It flips sample data in a looped sample, therewith destroying the original sample data. </td><td style="text-align: left;"> Not implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   Fxy </td><td style="text-align: left;"> Set speed or tempo </td><td style="text-align: left;"> When xy is smaller then 32, it sets the speed in ticks per row. When xy is greater then 31, it will set the tempo, wich is inversely related to the duration of each tick. Speed and tempo can be defined in combination. </td><td style="text-align: left;"> Implemented </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Test cases</h3>
+
+<p>The interpretation of the effect commands can be tedious. They often vary
+between module players. Even ProTracker can have a quirky (and unexpected) ways
+of handling the effect commands. This package aims at staying as close to
+ProTracker 'standards' as possible.
+</p>
+<p>The current version already implements most effect commands and common quirks
+when it comes to their interpretation. My subjective estimate is that it will
+correctly play roughly 95% of the ProTracker modules on <a href="https://modarchive.org">ModArchive</a>. Some
+Less common unexpected behaviour is documented by the team behind <a href="https://wiki.openmpt.org/Main_Page">OpenMPT</a>, for which they developed
+several test cases. The table below shows which test cases this package passes
+and which it does not.</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+   Test module </td><td style="text-align: left;"> Status </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#AmigaLimitsFinetune.mod">AmigaLimitsFinetune.mod</a> </td><td style="text-align: left;"> Fail </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#ArpWraparound.mod">ArpWraparound.mod</a> </td><td style="text-align: left;"> Fail </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#DelayBreak.mod">DelayBreak.mod</a> </td><td style="text-align: left;"> Pass </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#finetune.mod">finetune.mod</a> </td><td style="text-align: left;"> Fail </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PatLoop-Break.mod">PatLoop-Break.mod</a> </td><td style="text-align: left;"> Pass </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PatternJump.mod">PatternJump.mod</a> </td><td style="text-align: left;"> Pass </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PortaSmpChange.mod">PortaSmpChange.mod</a> </td><td style="text-align: left;"> Fail </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PortaTarget.mod">PortaTarget.mod</a> </td><td style="text-align: left;"> Pass </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PTInstrSwap.mod">PTInstrSwap.mod</a> </td><td style="text-align: left;"> Fail </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#ptoffset.mod">ptoffset.mod</a> </td><td style="text-align: left;"> Pass </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PTSwapEmpty.mod">PTSwapEmpty.mod</a> </td><td style="text-align: left;"> Fail </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#VibratoReset.mod">VibratoReset.mod</a> </td><td style="text-align: left;"> Pass </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Pepijn de Vries <a href="mailto:pepijn.devries@outlook.com">pepijn.devries@outlook.com</a> (<a href="https://orcid.org/0000-0002-7961-6646">ORCID</a>) [data contributor]
+</p>
+
+
+<h3>References</h3>
+
+<p>Some basic information on ProTracker:
+<a href="https://en.wikipedia.org/wiki/Protracker">https://en.wikipedia.org/wiki/Protracker</a>
+</p>
+<p>Some basic information on music trackers in general:
+<a href="https://en.wikipedia.org/wiki/Music_tracker">https://en.wikipedia.org/wiki/Music_tracker</a>
+</p>
+<p>A tutorial on ProTracker on YouTube:
+<a href="https://www.youtube.com/playlist?list=PLVoRT-Mqwas9gvmCRtOusCQSKNQNf6lTc">https://www.youtube.com/playlist?list=PLVoRT-Mqwas9gvmCRtOusCQSKNQNf6lTc</a>
+</p>
+<p>Some informal but extensive technical documentation on ProTracker:
+<a href="ftp://ftp.modland.com/pub/documents/format_documentation/Protracker%20effects%20(FireLight)%20(.mod).txt">ftp://ftp.modland.com/pub/documents/format_documentation/Protracker%20effects%20(FireLight)%20(.mod).txt</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://pepijn-devries.github.io/ProTrackR/">https://pepijn-devries.github.io/ProTrackR/</a>
+</p>
+</li>
+<li> <p><a href="https://github.com/pepijn-devries/ProTrackR/">https://github.com/pepijn-devries/ProTrackR/</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/pepijn-devries/ProTrackR/issues">https://github.com/pepijn-devries/ProTrackR/issues</a>
+</p>
+</li></ul>
+
+
 <hr>
 <h2 id='appendPattern'>Append a PTPattern to a PTModule</h2><span id='topic+appendPattern'></span><span id='topic+appendPattern+2CPTModule+2CPTPattern-method'></span>
 
@@ -4720,357 +5071,6 @@ a sine value ranging from -255 up to 255.
 <pre><code class='language-R'>## this will return the table as used in ProTracker
 proTrackerVibrato(0:31)
 </code></pre>
-
-<hr>
-<h2 id='ProTrackR-package'>Manipulate and play ProTracker Modules. A description of the package,
-ProTracker effect commands and test cases.</h2><span id='topic+ProTrackR-package'></span><span id='topic+_PACKAGE'></span><span id='topic+EffectCommands'></span>
-
-<h3>Description</h3>
-
-<p>The ProTrackR package can import and export module files from the music tracker
-ProTracker from the Commodore Amiga machine. This package can also render
-and play module files. Furthermore, the package provides the means to manipulate and analyse
-the modules.
-</p>
-
-
-<h3>Details</h3>
-
-<p>ProTracker is a popular music tracker to sequence music on a Commodore
-Amiga machine. This package offers the opportunity to import, export, manipulate
-an play ProTracker module files. Even though the file format could be considered
-archaic, it still remains popular to this date. This package intends to contribute
-to this popularity and therewith keeping the legacy of ProTracker and the
-Commodore Amiga alive.
-</p>
-<p>Some experience with ProTracker (or any other
-music tracker) will promote the ease of use of this package. However,
-the provided documentation and exernal links should help you,
-when you're starting from scratch. A good place to start reading
-this manual would be the documentation of the <code><a href="#topic+PTModule-class">PTModule</a></code>,
-which describes the structure of a ProTracker module and how it is
-implemented in this package. You should also have a look at the documentation
-of the <code><a href="#topic+PTPattern">PTPattern</a></code>, <code><a href="#topic+PTTrack">PTTrack</a></code>, <code><a href="#topic+PTCell">PTCell</a></code> and
-<code><a href="#topic+PTSample">PTSample</a></code> classes, which are all elements of the
-<code><a href="#topic+PTModule">PTModule</a></code>.
-</p>
-
-
-<h3>Current issues and future developments</h3>
-
-<p>For the development state of this package, please check the
-<a href="https://pepijn-devries.github.io/ProTrackR/">README section on GitHub</a>.
-</p>
-<p>Currently, not all effect commands are implemented, although most common
-ones are. I will work on implementing the remaining effect commands (see
-also section below). ProTracker also has specific interpretations that
-are currently not all implemented correctly.
-</p>
-<p>Sample switching (that is when a module switches from one sample number
-to another, without specifying a new note) is also something that is implemented
-differently by varying module players. This package currently does not implement
-such switches conform ProTracker specs.
-</p>
-<p>Period values, which dictate at which fequency samples should be played, are
-censored both by Amiga hardware and software coded limits in the original
-ProTracker. Documentation on these limits are ambiguous. I've made a first
-attempt to implement these bounds in the current version of the
-package after consulting with Olav
-S&oslash;rensen (who created
-a ProTracker clone for modern machines: <a href="https://16-bits.org/pt.php">https://16-bits.org/pt.php</a>).
-I'm really grateful for his input and doing some checks on an actual
-Amiga.
-</p>
-<p>I also realise that the documentation of this package may be a bit cryptic
-at some points. I would like to improve it where I can, but for that I need a
-fresh perspective from the users. So please feel free to provide constructive
-feedback such that I can improve the quality of this package.
-</p>
-
-
-<h3>ProTracker Effect Commands</h3>
-
-<p>As explained before, effect commands are composed of a three hexadecimal digits.
-The first digit indicates the type of effect, trigger or jump that should be applied,
-the latter two digits indicate the magnitude of the effect. An exception are
-commands starting with the digit 'E', for which the first two digits specify
-the type of effect and only the last digit represents the magnitude. Below
-all available effect commands (or codes if you will) are listed with the
-magnitudes labelled 'x' or 'xy'. The overview shows which commands are used
-for which kind of effect and whether it is implemented (between brackets) in
-the playing routines of this package.
-</p>
-<p>But first a few words on speed and tempo in ProTracker. Both are two sides of
-the same coin, both affect the overall speed with which patterns are played.
-Speed is defined as the number of 'ticks' per pattern row and tempo sets
-the duration of each tick.
-So by increasing the speed value, or decreasing the tempo, the overall playing
-speed of the pattern table is reduced. At the default tempo of 125, the duration
-of a tick equals the vertical blank period of the monitor (1/50 seconds for PAL
-and 1/60 seconds NTSC video systems). They can be set with the Fxy command.
-</p>
-<p>On the Commodore Amiga the chip responsible for audio output (Paula),
-the audio playback of samples can be controlled by the user in two ways:
-the playback rate of the sample can be changed by specifying 'period'
-values (see e.g. <code><a href="#topic+periodToSampleRate">periodToSampleRate</a></code>) and specifying a
-volume which is linearly scaled between 0 (silent) and 64 (maximum).
-Period and volumes can only be changed at the start of each tick. This is
-why the effects will be affected by the speed setting, but not the tempo.
-</p>
-<p>And now, without further ado, the overview of effect commands:</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-   Code </td><td style="text-align: left;"> Effect </td><td style="text-align: left;"> Description </td><td style="text-align: left;"> Status </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   0xy </td><td style="text-align: left;"> Arpeggio </td><td style="text-align: left;"> This effect alternates the pitch each tick to simulate a chord. xy needs to be greater then 00. First the specified note is played, then the pitch is increased with x semitones, then with y semitones. </td><td style="text-align: left;"> Partly implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   1xy </td><td style="text-align: left;"> Porta up </td><td style="text-align: left;"> Decrease the period value with xy every tick but the first. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   2xy </td><td style="text-align: left;"> Porta down </td><td style="text-align: left;"> Increase the period value with xy every tick but the first. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   3xy </td><td style="text-align: left;"> Porta to note </td><td style="text-align: left;"> Change the period value with xy every tick but the first, untill the specified target note is reached. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   4xy </td><td style="text-align: left;"> Vibrato </td><td style="text-align: left;"> Oscillate the pitch with magnitude x. Where y relates to the oscillation frequency. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   5xy </td><td style="text-align: left;"> Porta to note + Volume slide </td><td style="text-align: left;"> A combination of effects 3xy and Axy. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   6xy </td><td style="text-align: left;"> Vibrato + Volume slide </td><td style="text-align: left;"> A combination of effects 4xy and Axy. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   7xy </td><td style="text-align: left;"> Tremolo </td><td style="text-align: left;"> Oscillate the volume with magnitude x. Where y relates to the oscillation frequency. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   8xy </td><td style="text-align: left;"> Not implemented </td><td style="text-align: left;"> This effect command is not implemented in ProTracker, nor will it be in this package. </td><td style="text-align: left;"> Not implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   9xy </td><td style="text-align: left;"> Set sample offset </td><td style="text-align: left;"> This effect causes the note to start playing at an offset (of 256 times xy samples) into the sample, instead of just from the start. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   Axy </td><td style="text-align: left;"> Volume slide </td><td style="text-align: left;"> Change the volume every but the first tick: increase with x, decrease with y. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   Bxy </td><td style="text-align: left;"> Position jump </td><td style="text-align: left;"> Jump to position xy of the <code><a href="#topic+patternOrder">patternOrder</a></code> table. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   Cxy </td><td style="text-align: left;"> Set volume </td><td style="text-align: left;"> Set the volume with xy. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   Dxy </td><td style="text-align: left;"> Pattern break </td><td style="text-align: left;"> Break to row xy in the next pattern. Note: xy is (even though it is a hexadecimal) interpreted as a decimal. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E0x </td><td style="text-align: left;"> Turn filter on/off </td><td style="text-align: left;"> If x is even, the (emulated) hardware filter is turned on (for all tracks). It is turned off if x is odd. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E1x </td><td style="text-align: left;"> Porta up (fine) </td><td style="text-align: left;"> The period value is decreased with x, at the first tick. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E2x </td><td style="text-align: left;"> Porta down (fine) </td><td style="text-align: left;"> The period value is increased with x, at the first tick. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E3x </td><td style="text-align: left;"> Glissando Control </td><td style="text-align: left;"> This effect causes a change in the effect 3xy (porta to note).  It toggles whether to do a smooth slide or whether to slide in jumps of semitones. When x is 0 it uses a smooth slide, non-zero values will result in jumps. </td><td style="text-align: left;"> Not yet implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E4x </td><td style="text-align: left;"> Vibrato Waveform </td><td style="text-align: left;"> This effect sets the waveform for the vibrato command to follow. With x modulo 4 equals 0, a sine wave is used, with 1 ramp down, with 2 or 3 a square wave. Values greater than 4 causes the ossicating waveform not to retrigger it when a new note is played. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E5x </td><td style="text-align: left;"> Set finetune </td><td style="text-align: left;"> Set the finetune with x, where x is interpreted as a signed nybble. </td><td style="text-align: left;"> Partly implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E6x </td><td style="text-align: left;"> Pattern loop </td><td style="text-align: left;"> Set pattern loop start with E60, and loop x times when x is non-zero. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E7x </td><td style="text-align: left;"> Tremolo waveform </td><td style="text-align: left;"> Same as E4x, but this controls the wave form for the tremolo effect (7xy) rather then the vibrato effect. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E8x </td><td style="text-align: left;"> Not implemented </td><td style="text-align: left;"> According to official documentation this command is not implemented in ProTracker, but it is. Applies a filter on a looped sample, therewith destroying the original sample data. </td><td style="text-align: left;"> Not implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   E9x </td><td style="text-align: left;"> Retrigger note </td><td style="text-align: left;"> Retrigger the note every x-th tick. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   EAx </td><td style="text-align: left;"> Volume slide up (fine) </td><td style="text-align: left;"> Increase the volume with x at the first tick. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   EBx </td><td style="text-align: left;"> Volume slide down (fine) </td><td style="text-align: left;"> Decrease the volume with x at the first tick. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   ECx </td><td style="text-align: left;"> Cut note </td><td style="text-align: left;"> Cut the volume of the note to zero after x ticks. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   EDx </td><td style="text-align: left;"> Delay note </td><td style="text-align: left;"> The note is triggered with a delay of x ticks. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   EEx </td><td style="text-align: left;"> Pattern delay </td><td style="text-align: left;"> The duration of the row in ticks is multiplied by (x + 1). </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   EFx </td><td style="text-align: left;"> Not implemented </td><td style="text-align: left;"> According to official documentation this command is not implemented in ProTracker, but it is. It flips sample data in a looped sample, therewith destroying the original sample data. </td><td style="text-align: left;"> Not implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   Fxy </td><td style="text-align: left;"> Set speed or tempo </td><td style="text-align: left;"> When xy is smaller then 32, it sets the speed in ticks per row. When xy is greater then 31, it will set the tempo, wich is inversely related to the duration of each tick. Speed and tempo can be defined in combination. </td><td style="text-align: left;"> Implemented </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Test cases</h3>
-
-<p>The interpretation of the effect commands can be tedious. They often vary
-between module players. Even ProTracker can have a quirky (and unexpected) ways
-of handling the effect commands. This package aims at staying as close to
-ProTracker 'standards' as possible.
-</p>
-<p>The current version already implements most effect commands and common quirks
-when it comes to their interpretation. My subjective estimate is that it will
-correctly play roughly 95% of the ProTracker modules on <a href="https://modarchive.org">ModArchive</a>. Some
-Less common unexpected behaviour is documented by the team behind <a href="https://wiki.openmpt.org/Main_Page">OpenMPT</a>, for which they developed
-several test cases. The table below shows which test cases this package passes
-and which it does not.</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-   Test module </td><td style="text-align: left;"> Status </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#AmigaLimitsFinetune.mod">AmigaLimitsFinetune.mod</a> </td><td style="text-align: left;"> Fail </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#ArpWraparound.mod">ArpWraparound.mod</a> </td><td style="text-align: left;"> Fail </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#DelayBreak.mod">DelayBreak.mod</a> </td><td style="text-align: left;"> Pass </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#finetune.mod">finetune.mod</a> </td><td style="text-align: left;"> Fail </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PatLoop-Break.mod">PatLoop-Break.mod</a> </td><td style="text-align: left;"> Pass </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PatternJump.mod">PatternJump.mod</a> </td><td style="text-align: left;"> Pass </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PortaSmpChange.mod">PortaSmpChange.mod</a> </td><td style="text-align: left;"> Fail </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PortaTarget.mod">PortaTarget.mod</a> </td><td style="text-align: left;"> Pass </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PTInstrSwap.mod">PTInstrSwap.mod</a> </td><td style="text-align: left;"> Fail </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#ptoffset.mod">ptoffset.mod</a> </td><td style="text-align: left;"> Pass </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#PTSwapEmpty.mod">PTSwapEmpty.mod</a> </td><td style="text-align: left;"> Fail </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-   <a href="https://wiki.openmpt.org/Development:_Test_Cases/MOD#VibratoReset.mod">VibratoReset.mod</a> </td><td style="text-align: left;"> Pass </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Pepijn de Vries <a href="mailto:pepijn.devries@outlook.com">pepijn.devries@outlook.com</a> (<a href="https://orcid.org/0000-0002-7961-6646">ORCID</a>) [data contributor]
-</p>
-
-
-<h3>References</h3>
-
-<p>Some basic information on ProTracker:
-<a href="https://en.wikipedia.org/wiki/Protracker">https://en.wikipedia.org/wiki/Protracker</a>
-</p>
-<p>Some basic information on music trackers in general:
-<a href="https://en.wikipedia.org/wiki/Music_tracker">https://en.wikipedia.org/wiki/Music_tracker</a>
-</p>
-<p>A tutorial on ProTracker on YouTube:
-<a href="https://www.youtube.com/playlist?list=PLVoRT-Mqwas9gvmCRtOusCQSKNQNf6lTc">https://www.youtube.com/playlist?list=PLVoRT-Mqwas9gvmCRtOusCQSKNQNf6lTc</a>
-</p>
-<p>Some informal but extensive technical documentation on ProTracker:
-<a href="ftp://ftp.modland.com/pub/documents/format_documentation/Protracker%20effects%20(FireLight)%20(.mod).txt">ftp://ftp.modland.com/pub/documents/format_documentation/Protracker%20effects%20(FireLight)%20(.mod).txt</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://pepijn-devries.github.io/ProTrackR/">https://pepijn-devries.github.io/ProTrackR/</a>
-</p>
-</li>
-<li> <p><a href="https://github.com/pepijn-devries/ProTrackR/">https://github.com/pepijn-devries/ProTrackR/</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/pepijn-devries/ProTrackR/issues">https://github.com/pepijn-devries/ProTrackR/issues</a>
-</p>
-</li></ul>
-
 
 <hr>
 <h2 id='PTBlock'>Select and copy a range of PTCells into a PTBlock</h2><span id='topic+PTBlock'></span><span id='topic+PTBlock+2CPTPattern+2Cnumeric+2Cnumeric-method'></span>

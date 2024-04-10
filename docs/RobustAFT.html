@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {RobustAFT}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#RobustAFT-package'>
+<p>Robust Accelerated Failure Time Model Fitting</p></a></li>
 <li><a href='#D243'><p> Sample of 100 hospital stays for medical back problems</p></a></li>
 <li><a href='#dfcomn2'><p> Assigns values to the ROBETH parameters included in common blocks</p></a></li>
 <li><a href='#fits.compare'><p>Numerical comparison of several fits</p></a></li>
@@ -26,8 +28,6 @@ function processMathHTML() {
 <li><a href='#plot.TML'><p>Plot Method for &quot;TML&quot; objects</p></a></li>
 <li><a href='#predict.TML'><p>Predict method for &quot;TML&quot; objects</p></a></li>
 <li><a href='#RobustAFT-internal'><p>Internal</p></a></li>
-<li><a href='#RobustAFT-package'>
-<p>Robust Accelerated Failure Time Model Fitting</p></a></li>
 <li><a href='#summary.TML'><p>Summarizing Truncated Maximum Likelihood regression</p></a></li>
 <li><a href='#TML.censored'><p>Truncated Maximum Likelihood Regression With Censored Observations</p></a></li>
 <li><a href='#TML.censored.control.ref'><p>Control parameters for the refinement IRLS algorithm of the TML.censored initial S-estimates</p></a></li>
@@ -108,6 +108,292 @@ Time Regression for Gaussian and Log-Weibull Case</td>
 <td>2023-08-21 16:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='RobustAFT-package'>
+Robust Accelerated Failure Time Model Fitting
+</h2><span id='topic+RobustAFT-package'></span><span id='topic+RobustAFT'></span>
+
+<h3>Description</h3>
+
+<p>This package computes the truncated maximum likelihood regression estimates
+described in Marazzi and Yohai (2004) and Locatelli et al. (2010). 
+The error distribution is assumed to follow approximately a Gaussian or a log-Weibull distribution. 
+The cut-off values for outlier rejection are fixed or adaptive.
+The main functions of this package are <code><a href="#topic+TML.noncensored">TML.noncensored</a></code> and <code><a href="#topic+TML.censored">TML.censored</a></code>.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> RobustAFT</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+#Version: </td><td style="text-align: left;"> 1.4-6</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+#Date: </td><td style="text-align: left;"> 2023-06-19</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL-2 or later</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+LazyLoad: </td><td style="text-align: left;"> yes</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Alfio Marazzi &lt;Alfio.Marazzi@chuv.ch&gt;, Jean-Luc Muralti
+</p>
+<p>Maintainer: A. Randriamiharisoa &lt;Alex.Randriamiharisoa@chuv.ch&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Marazzi A., Yohai V. (2004). Adaptively truncated maximum likelihood regression with asymmetric 
+errors. <em>Journal of Statistical Planning and Inference</em>, 122, 271-291.
+</p>
+<p>Locatelli I., Marazzi A., Yohai V. (2010). Robust accelerated failure time regression.
+<em>Computational Statistics and Data Analysis</em>, 55, 874-887.
+</p>
+<p>Marazzi A. (1993) <em>Algorithm, Routines, and S functions for Robust Statistics</em>.  
+Wadsworth &amp; Brooks/cole, Pacific Grove, California.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Example 1. This is the example described in Marazzi and Yohai (2004).
+# ---------
+# The two following auxiliary functions, not included in the library, 
+#must be loaded.
+# ------------- Auxiliary functions -------------------------------------
+
+SDmux.lw &lt;- function(x,theta,sigma,COV){
+# Standard deviation of the conditional mean estimate: log-Weibull case
+np &lt;- length(theta); nc &lt;- ncol(COV); nr &lt;- nrow(COV)
+if (np!=length(x)) cat("length(x) must be the same as length(theta)")
+if (nc!=nr)        cat("COV is not a square matrix")
+if (nc!=(np+1))    cat("ncol(COV) must be the same as length(theta)+1")
+log.mu.x &lt;- t(x)%*%theta+lgamma(1+sigma) # log of conditional mean estimate
+mu.x     &lt;- exp(log.mu.x)                # conditional mean estimate
+dg       &lt;- digamma(1+sigma)
+COV.TT   &lt;- COV[1:np,1:np]
+Var.S    &lt;- COV[(np+1),(np+1)]
+COV.TS   &lt;- COV[1:np,(np+1)]
+V.mu.x   &lt;- t(x)%*%COV.TT%*%x + dg^2*Var.S + 2*dg*(t(x)%*%COV.TS)
+SD.mu.x  &lt;- as.numeric((sqrt(V.mu.x))*mu.x)
+SD.mu.x}
+
+plt &lt;- function(LOS,Cost,Adm,theta.fr,sigma.fr,sd0.fr,sd1.fr,theta.ml,
+                sigma.ml,sd0.ml,sd1.ml){
+# Plot of the conditional mean and confidence intervals: log-Weibull case
+par(mfrow=c(1,2),oma=c(0,0,2,0))
+plot(LOS,Cost,type="n")
+points(LOS[Adm==0],Cost[Adm==0],pch=1)
+points(LOS[Adm==1],Cost[Adm==1],pch=16,col=2)
+x0t   &lt;- x0%*%theta.fr; x1t &lt;- x1t &lt;- x1%*%theta.fr
+lines(l0,exp(x0t)*gamma(1+sigma.fr))
+lines(l0,exp(x1t)*gamma(1+sigma.fr),col=2)
+z0min &lt;- exp(x0t)*gamma(1+sigma.fr)-2.576*sd0.fr
+z0max &lt;- exp(x0t)*gamma(1+sigma.fr)+2.576*sd0.fr
+z1min &lt;- exp(x1t)*gamma(1+sigma.fr)-2.576*sd1.fr
+z1max &lt;- exp(x1t)*gamma(1+sigma.fr)+2.576*sd1.fr
+lines(l0,z0min,lty=2,col=1)
+lines(l0,z0max,lty=2,col=1)
+lines(l0,z1min,lty=2,col=1)
+lines(l0,z1max,lty=2,col=1)
+polygon(c(l0,rev(l0)), c(z0min,rev(z0max)), border=FALSE, density=10, angle=90)
+polygon(c(l0,rev(l0)), c(z1min,rev(z1max)), border=FALSE, density=12, angle=90,col=2)
+plot(LOS,Cost,type="n")
+points(LOS[Adm==0],Cost[Adm==0],pch=1)
+points(LOS[Adm==1],Cost[Adm==1],pch=16,col=2)
+x0t   &lt;- x0%*%theta.ml; x1t &lt;- x1t &lt;- x1%*%theta.ml
+lines(l0,exp(x0t)*gamma(1+sigma.ml))
+lines(l0,exp(x1t)*gamma(1+sigma.ml),col=2)
+z0min &lt;- exp(x0t)*gamma(1+sigma.ml)-2.576*sd0.ml
+z0max &lt;- exp(x0t)*gamma(1+sigma.ml)+2.576*sd0.ml
+z1min &lt;- exp(x1t)*gamma(1+sigma.ml)-2.576*sd1.ml
+z1max &lt;- exp(x1t)*gamma(1+sigma.ml)+2.576*sd1.ml
+lines(l0,z0min,lty=2,col=1)
+lines(l0,z0max,lty=2,col=1)
+lines(l0,z1min,lty=2,col=1)
+lines(l0,z1max,lty=2,col=1)
+polygon(c(l0,rev(l0)), c(z0min,rev(z0max)), border=FALSE, density=10, angle=90)
+polygon(c(l0,rev(l0)), c(z1min,rev(z1max)), border=FALSE, density=12, angle=90,col=2)}
+
+#------ End of auxiliary functions --------------------------------------------------
+
+library(RobustAFT)
+
+data(D243)
+Cost &lt;- D243$Cost                            # Cost (Swiss francs)
+LOS &lt;- D243$LOS                              # Length of stay (days)
+Adm &lt;- D243$Typadm; Adm &lt;- (Adm==" Urg")*1   # Type of admission 
+                                             # (0=on notification, 1=Emergency)
+Ass &lt;- D243$Typass; Ass &lt;- (Ass=="P"   )*1   # Type of insurance (0=usual, 1=private)
+Age &lt;- D243$age                              # Age (years)
+Dst &lt;- D243$dest;   Dst &lt;- (Dst=="DOMI")*1   # Destination (1=Home, 0=another hospital)
+Sex &lt;- D243$Sexe;   Sex &lt;- (Sex=="M"   )*1   # Sex (1=Male, 0=Female)
+
+## Not run: 
+# Plot data
+par(mfrow=c(1,2))
+plot(LOS,Cost); plot(log(LOS),log(Cost))
+
+# log-Weibull fits
+# ----------------
+# Full robust model
+zwff     &lt;- TML.noncensored(log(Cost)~log(LOS)+Adm+Ass+Age+Sex+Dst,
+            errors="logWeibull")
+summary(zwff)
+
+# Reduced model
+zwfr     &lt;- update(zwff,log(Cost)~log(LOS)+Adm)
+summary(zwfr)
+
+# Residual plots
+par(mfrow=c(1,2))
+plot(zwfr,which=c(1,3))
+
+# Plot robust predictions on log-log scale
+par(mfrow=c(1,1))
+l0       &lt;- seq(from=2,to=60,by=0.5)
+x0       &lt;- as.matrix(cbind(1,log(l0),0))
+x1       &lt;- as.matrix(cbind(1,log(l0),1))
+plot(log(LOS),log(Cost),type="n")
+points(log(LOS[Adm==1]),log(Cost[Adm==1]),pch=16,col=2)
+points(log(LOS[Adm==0]),log(Cost[Adm==0]),pch=1)
+lines(log(l0),predict(zwfr,x0))
+lines(log(l0),predict(zwfr,x1),col=2)
+
+# Maximum likelihood : full model
+zmlf     &lt;- TML.noncensored(log(Cost)~log(LOS)+Adm+Ass+Age+Sex+Dst,
+            errors="logWeibull",cu=100)
+summary(zmlf)
+
+# Maximum likelihood : reduced model
+zmlr     &lt;- update(zmlf,log(Cost)~log(LOS)+Adm)
+summary(zmlr)
+
+# Plot conditional means and confidence intervals
+l0       &lt;- seq(from=2,to=62,by=0.5)
+x0       &lt;- as.matrix(cbind(1,log(l0),0))
+x1       &lt;- as.matrix(cbind(1,log(l0),1))
+theta.fr &lt;- coef(zwfr)
+sigma.fr &lt;- zwfr$v1
+COV.fr   &lt;- vcov(zwfr)
+sd0.fr   &lt;- apply(x0,1,SDmux.lw,theta.fr,sigma.fr,COV.fr)
+sd1.fr   &lt;- apply(x1,1,SDmux.lw,theta.fr,sigma.fr,COV.fr)
+theta.ml &lt;- coef(zmlr)
+sigma.ml &lt;- zmlr$v1
+COV.ml   &lt;- zmlr$COV
+sd0.ml   &lt;- apply(x0,1,SDmux.lw,theta.ml,sigma.ml,COV.ml)
+sd1.ml   &lt;- apply(x1,1,SDmux.lw,theta.ml,sigma.ml,COV.ml)
+plt(LOS,Cost,Adm,theta.fr,sigma.fr,sd0.fr,sd1.fr,theta.ml,sigma.ml,sd0.ml,sd1.ml)
+
+# Gaussian fits (for comparison)
+# ------------------------------
+# Reduced model
+zgfr &lt;- TML.noncensored(log(Cost)~log(LOS)+Adm,errors="Gaussian")
+summary(zgfr)
+
+# Residual plots
+par(mfrow=c(1,2))
+plot(zgfr,which=c(1,3))
+
+# Classical Gaussian fit
+lr &lt;- lm(log(Cost)~log(LOS)+Adm)
+summary(lr)
+
+# Compare several fits
+# --------------------
+comp &lt;- fits.compare(TML.logWeibull=zwfr,ML.logWeibull=zmlr,least.squares=lr)
+comp
+plot(comp,leg.position=c("topleft","topleft","bottomleft")) # click on graphics
+
+## End(Not run)
+#
+#------------------------------------------------------------------------------
+#
+# Example 2. This is the example described in Locatelli Marazzi and Yohai (2010).
+# ---------
+# This is the example described in Locatelli et al. (2010). 
+# The estimates are slighty different due to changes in the algorithm for the 
+# final estimate.
+## Not run: 
+# Remove data of Example 1
+rm(Cost,LOS,Adm,Ass,Age,Dst,Sex)
+
+data(MCI)
+attach(MCI)
+     
+# Exploratory Analysis
+
+par(mfrow=c(1,1)) 
+
+plot(Age,log(LOS),type= "n",cex=0.7)
+
+# (1) filled square   : regular,   complete   
+# (2) empty  square   : regular,   censored
+# (3) filled triangle : emergency, complete
+# (4) empty  triangle : emergency, censored
+
+points(Age[Dest==1 &amp; TypAdm==0], log(LOS)[Dest==1 &amp; TypAdm==0], pch=15,cex=0.7)  # (1)
+points(Age[Dest==0 &amp; TypAdm==0], log(LOS)[Dest==0 &amp; TypAdm==0], pch=0, cex=0.7)  # (2)
+points(Age[Dest==1 &amp; TypAdm==1], log(LOS)[Dest==1 &amp; TypAdm==1], pch=17,cex=0.7)  # (3)
+points(Age[Dest==0 &amp; TypAdm==1], log(LOS)[Dest==0 &amp; TypAdm==1], pch=2, cex=0.7)  # (4)
+
+# Maximum Likelihood
+ML   &lt;- survreg(Surv(log(LOS), Dest) ~ TypAdm*Age, dist="gaussian")
+summary(ML)
+B.ML &lt;- ML$coef; S.ML &lt;- ML$scale
+abline(c(B.ML[1]        ,B.ML[3]        ),lwd=1,col="grey",lty=1)
+abline(c(B.ML[1]+B.ML[2],B.ML[3]+B.ML[4]),lwd=1,col="grey",lty=1)
+     
+# Robust Accelerated Failure Time Regression with Gaussian errors
+ctrol.S   &lt;- list(N=150, q=5, sigma0=1, MAXIT=100, TOL=0.001,seed=123)
+
+ctrol.ref &lt;- list(maxit.sigma=2,tol.sigma=0.0001,maxit.Beta=2,tol.Beta=0.0001,
+          Maxit.S=50, tol.S.sigma=0.001, tol.S.Beta=0.001,alg.sigma=1,nitmon=FALSE)
+
+ctrol.tml &lt;- list(maxit.sigma=50,tol.sigma=0.0001,maxit.Beta=50,tol.Beta=0.0001,
+    Maxit.TML=50, tol.TML.sigma=0.001, tol.TML.Beta=0.001, alg.sigma=1,nitmon=FALSE)
+
+WML       &lt;- TML.censored(log(LOS)~TypAdm*Age,data=MCI,delta=Dest,otp="adaptive",
+             control.S=ctrol.S,control.ref=ctrol.ref,control.tml=ctrol.tml)
+
+summary(WML)
+
+B.WML     &lt;-coef(WML)
+abline(c(B.WML[1]         ,B.WML[3]         ),lty=1, col="red")
+abline(c(B.WML[1]+B.WML[2],B.WML[3]+B.WML[4]),lty=1, col="red")
+#
+detach(MCI)
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='D243'> Sample of 100 hospital stays for medical back problems</h2><span id='topic+D243'></span>
 
@@ -661,292 +947,6 @@ If <code>object</code> is a model with an intercept, <code>newdata</code> must h
 <h3>Description</h3>
 
 <p>Internal functions not intended for public use.</p>
-
-<hr>
-<h2 id='RobustAFT-package'>
-Robust Accelerated Failure Time Model Fitting
-</h2><span id='topic+RobustAFT-package'></span><span id='topic+RobustAFT'></span>
-
-<h3>Description</h3>
-
-<p>This package computes the truncated maximum likelihood regression estimates
-described in Marazzi and Yohai (2004) and Locatelli et al. (2010). 
-The error distribution is assumed to follow approximately a Gaussian or a log-Weibull distribution. 
-The cut-off values for outlier rejection are fixed or adaptive.
-The main functions of this package are <code><a href="#topic+TML.noncensored">TML.noncensored</a></code> and <code><a href="#topic+TML.censored">TML.censored</a></code>.
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> RobustAFT</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-#Version: </td><td style="text-align: left;"> 1.4-6</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-#Date: </td><td style="text-align: left;"> 2023-06-19</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL-2 or later</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-LazyLoad: </td><td style="text-align: left;"> yes</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Alfio Marazzi &lt;Alfio.Marazzi@chuv.ch&gt;, Jean-Luc Muralti
-</p>
-<p>Maintainer: A. Randriamiharisoa &lt;Alex.Randriamiharisoa@chuv.ch&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Marazzi A., Yohai V. (2004). Adaptively truncated maximum likelihood regression with asymmetric 
-errors. <em>Journal of Statistical Planning and Inference</em>, 122, 271-291.
-</p>
-<p>Locatelli I., Marazzi A., Yohai V. (2010). Robust accelerated failure time regression.
-<em>Computational Statistics and Data Analysis</em>, 55, 874-887.
-</p>
-<p>Marazzi A. (1993) <em>Algorithm, Routines, and S functions for Robust Statistics</em>.  
-Wadsworth &amp; Brooks/cole, Pacific Grove, California.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># Example 1. This is the example described in Marazzi and Yohai (2004).
-# ---------
-# The two following auxiliary functions, not included in the library, 
-#must be loaded.
-# ------------- Auxiliary functions -------------------------------------
-
-SDmux.lw &lt;- function(x,theta,sigma,COV){
-# Standard deviation of the conditional mean estimate: log-Weibull case
-np &lt;- length(theta); nc &lt;- ncol(COV); nr &lt;- nrow(COV)
-if (np!=length(x)) cat("length(x) must be the same as length(theta)")
-if (nc!=nr)        cat("COV is not a square matrix")
-if (nc!=(np+1))    cat("ncol(COV) must be the same as length(theta)+1")
-log.mu.x &lt;- t(x)%*%theta+lgamma(1+sigma) # log of conditional mean estimate
-mu.x     &lt;- exp(log.mu.x)                # conditional mean estimate
-dg       &lt;- digamma(1+sigma)
-COV.TT   &lt;- COV[1:np,1:np]
-Var.S    &lt;- COV[(np+1),(np+1)]
-COV.TS   &lt;- COV[1:np,(np+1)]
-V.mu.x   &lt;- t(x)%*%COV.TT%*%x + dg^2*Var.S + 2*dg*(t(x)%*%COV.TS)
-SD.mu.x  &lt;- as.numeric((sqrt(V.mu.x))*mu.x)
-SD.mu.x}
-
-plt &lt;- function(LOS,Cost,Adm,theta.fr,sigma.fr,sd0.fr,sd1.fr,theta.ml,
-                sigma.ml,sd0.ml,sd1.ml){
-# Plot of the conditional mean and confidence intervals: log-Weibull case
-par(mfrow=c(1,2),oma=c(0,0,2,0))
-plot(LOS,Cost,type="n")
-points(LOS[Adm==0],Cost[Adm==0],pch=1)
-points(LOS[Adm==1],Cost[Adm==1],pch=16,col=2)
-x0t   &lt;- x0%*%theta.fr; x1t &lt;- x1t &lt;- x1%*%theta.fr
-lines(l0,exp(x0t)*gamma(1+sigma.fr))
-lines(l0,exp(x1t)*gamma(1+sigma.fr),col=2)
-z0min &lt;- exp(x0t)*gamma(1+sigma.fr)-2.576*sd0.fr
-z0max &lt;- exp(x0t)*gamma(1+sigma.fr)+2.576*sd0.fr
-z1min &lt;- exp(x1t)*gamma(1+sigma.fr)-2.576*sd1.fr
-z1max &lt;- exp(x1t)*gamma(1+sigma.fr)+2.576*sd1.fr
-lines(l0,z0min,lty=2,col=1)
-lines(l0,z0max,lty=2,col=1)
-lines(l0,z1min,lty=2,col=1)
-lines(l0,z1max,lty=2,col=1)
-polygon(c(l0,rev(l0)), c(z0min,rev(z0max)), border=FALSE, density=10, angle=90)
-polygon(c(l0,rev(l0)), c(z1min,rev(z1max)), border=FALSE, density=12, angle=90,col=2)
-plot(LOS,Cost,type="n")
-points(LOS[Adm==0],Cost[Adm==0],pch=1)
-points(LOS[Adm==1],Cost[Adm==1],pch=16,col=2)
-x0t   &lt;- x0%*%theta.ml; x1t &lt;- x1t &lt;- x1%*%theta.ml
-lines(l0,exp(x0t)*gamma(1+sigma.ml))
-lines(l0,exp(x1t)*gamma(1+sigma.ml),col=2)
-z0min &lt;- exp(x0t)*gamma(1+sigma.ml)-2.576*sd0.ml
-z0max &lt;- exp(x0t)*gamma(1+sigma.ml)+2.576*sd0.ml
-z1min &lt;- exp(x1t)*gamma(1+sigma.ml)-2.576*sd1.ml
-z1max &lt;- exp(x1t)*gamma(1+sigma.ml)+2.576*sd1.ml
-lines(l0,z0min,lty=2,col=1)
-lines(l0,z0max,lty=2,col=1)
-lines(l0,z1min,lty=2,col=1)
-lines(l0,z1max,lty=2,col=1)
-polygon(c(l0,rev(l0)), c(z0min,rev(z0max)), border=FALSE, density=10, angle=90)
-polygon(c(l0,rev(l0)), c(z1min,rev(z1max)), border=FALSE, density=12, angle=90,col=2)}
-
-#------ End of auxiliary functions --------------------------------------------------
-
-library(RobustAFT)
-
-data(D243)
-Cost &lt;- D243$Cost                            # Cost (Swiss francs)
-LOS &lt;- D243$LOS                              # Length of stay (days)
-Adm &lt;- D243$Typadm; Adm &lt;- (Adm==" Urg")*1   # Type of admission 
-                                             # (0=on notification, 1=Emergency)
-Ass &lt;- D243$Typass; Ass &lt;- (Ass=="P"   )*1   # Type of insurance (0=usual, 1=private)
-Age &lt;- D243$age                              # Age (years)
-Dst &lt;- D243$dest;   Dst &lt;- (Dst=="DOMI")*1   # Destination (1=Home, 0=another hospital)
-Sex &lt;- D243$Sexe;   Sex &lt;- (Sex=="M"   )*1   # Sex (1=Male, 0=Female)
-
-## Not run: 
-# Plot data
-par(mfrow=c(1,2))
-plot(LOS,Cost); plot(log(LOS),log(Cost))
-
-# log-Weibull fits
-# ----------------
-# Full robust model
-zwff     &lt;- TML.noncensored(log(Cost)~log(LOS)+Adm+Ass+Age+Sex+Dst,
-            errors="logWeibull")
-summary(zwff)
-
-# Reduced model
-zwfr     &lt;- update(zwff,log(Cost)~log(LOS)+Adm)
-summary(zwfr)
-
-# Residual plots
-par(mfrow=c(1,2))
-plot(zwfr,which=c(1,3))
-
-# Plot robust predictions on log-log scale
-par(mfrow=c(1,1))
-l0       &lt;- seq(from=2,to=60,by=0.5)
-x0       &lt;- as.matrix(cbind(1,log(l0),0))
-x1       &lt;- as.matrix(cbind(1,log(l0),1))
-plot(log(LOS),log(Cost),type="n")
-points(log(LOS[Adm==1]),log(Cost[Adm==1]),pch=16,col=2)
-points(log(LOS[Adm==0]),log(Cost[Adm==0]),pch=1)
-lines(log(l0),predict(zwfr,x0))
-lines(log(l0),predict(zwfr,x1),col=2)
-
-# Maximum likelihood : full model
-zmlf     &lt;- TML.noncensored(log(Cost)~log(LOS)+Adm+Ass+Age+Sex+Dst,
-            errors="logWeibull",cu=100)
-summary(zmlf)
-
-# Maximum likelihood : reduced model
-zmlr     &lt;- update(zmlf,log(Cost)~log(LOS)+Adm)
-summary(zmlr)
-
-# Plot conditional means and confidence intervals
-l0       &lt;- seq(from=2,to=62,by=0.5)
-x0       &lt;- as.matrix(cbind(1,log(l0),0))
-x1       &lt;- as.matrix(cbind(1,log(l0),1))
-theta.fr &lt;- coef(zwfr)
-sigma.fr &lt;- zwfr$v1
-COV.fr   &lt;- vcov(zwfr)
-sd0.fr   &lt;- apply(x0,1,SDmux.lw,theta.fr,sigma.fr,COV.fr)
-sd1.fr   &lt;- apply(x1,1,SDmux.lw,theta.fr,sigma.fr,COV.fr)
-theta.ml &lt;- coef(zmlr)
-sigma.ml &lt;- zmlr$v1
-COV.ml   &lt;- zmlr$COV
-sd0.ml   &lt;- apply(x0,1,SDmux.lw,theta.ml,sigma.ml,COV.ml)
-sd1.ml   &lt;- apply(x1,1,SDmux.lw,theta.ml,sigma.ml,COV.ml)
-plt(LOS,Cost,Adm,theta.fr,sigma.fr,sd0.fr,sd1.fr,theta.ml,sigma.ml,sd0.ml,sd1.ml)
-
-# Gaussian fits (for comparison)
-# ------------------------------
-# Reduced model
-zgfr &lt;- TML.noncensored(log(Cost)~log(LOS)+Adm,errors="Gaussian")
-summary(zgfr)
-
-# Residual plots
-par(mfrow=c(1,2))
-plot(zgfr,which=c(1,3))
-
-# Classical Gaussian fit
-lr &lt;- lm(log(Cost)~log(LOS)+Adm)
-summary(lr)
-
-# Compare several fits
-# --------------------
-comp &lt;- fits.compare(TML.logWeibull=zwfr,ML.logWeibull=zmlr,least.squares=lr)
-comp
-plot(comp,leg.position=c("topleft","topleft","bottomleft")) # click on graphics
-
-## End(Not run)
-#
-#------------------------------------------------------------------------------
-#
-# Example 2. This is the example described in Locatelli Marazzi and Yohai (2010).
-# ---------
-# This is the example described in Locatelli et al. (2010). 
-# The estimates are slighty different due to changes in the algorithm for the 
-# final estimate.
-## Not run: 
-# Remove data of Example 1
-rm(Cost,LOS,Adm,Ass,Age,Dst,Sex)
-
-data(MCI)
-attach(MCI)
-     
-# Exploratory Analysis
-
-par(mfrow=c(1,1)) 
-
-plot(Age,log(LOS),type= "n",cex=0.7)
-
-# (1) filled square   : regular,   complete   
-# (2) empty  square   : regular,   censored
-# (3) filled triangle : emergency, complete
-# (4) empty  triangle : emergency, censored
-
-points(Age[Dest==1 &amp; TypAdm==0], log(LOS)[Dest==1 &amp; TypAdm==0], pch=15,cex=0.7)  # (1)
-points(Age[Dest==0 &amp; TypAdm==0], log(LOS)[Dest==0 &amp; TypAdm==0], pch=0, cex=0.7)  # (2)
-points(Age[Dest==1 &amp; TypAdm==1], log(LOS)[Dest==1 &amp; TypAdm==1], pch=17,cex=0.7)  # (3)
-points(Age[Dest==0 &amp; TypAdm==1], log(LOS)[Dest==0 &amp; TypAdm==1], pch=2, cex=0.7)  # (4)
-
-# Maximum Likelihood
-ML   &lt;- survreg(Surv(log(LOS), Dest) ~ TypAdm*Age, dist="gaussian")
-summary(ML)
-B.ML &lt;- ML$coef; S.ML &lt;- ML$scale
-abline(c(B.ML[1]        ,B.ML[3]        ),lwd=1,col="grey",lty=1)
-abline(c(B.ML[1]+B.ML[2],B.ML[3]+B.ML[4]),lwd=1,col="grey",lty=1)
-     
-# Robust Accelerated Failure Time Regression with Gaussian errors
-ctrol.S   &lt;- list(N=150, q=5, sigma0=1, MAXIT=100, TOL=0.001,seed=123)
-
-ctrol.ref &lt;- list(maxit.sigma=2,tol.sigma=0.0001,maxit.Beta=2,tol.Beta=0.0001,
-          Maxit.S=50, tol.S.sigma=0.001, tol.S.Beta=0.001,alg.sigma=1,nitmon=FALSE)
-
-ctrol.tml &lt;- list(maxit.sigma=50,tol.sigma=0.0001,maxit.Beta=50,tol.Beta=0.0001,
-    Maxit.TML=50, tol.TML.sigma=0.001, tol.TML.Beta=0.001, alg.sigma=1,nitmon=FALSE)
-
-WML       &lt;- TML.censored(log(LOS)~TypAdm*Age,data=MCI,delta=Dest,otp="adaptive",
-             control.S=ctrol.S,control.ref=ctrol.ref,control.tml=ctrol.tml)
-
-summary(WML)
-
-B.WML     &lt;-coef(WML)
-abline(c(B.WML[1]         ,B.WML[3]         ),lty=1, col="red")
-abline(c(B.WML[1]+B.WML[2],B.WML[3]+B.WML[4]),lty=1, col="red")
-#
-detach(MCI)
-
-## End(Not run)
-</code></pre>
 
 <hr>
 <h2 id='summary.TML'>Summarizing Truncated Maximum Likelihood regression </h2><span id='topic+summary.TML'></span><span id='topic+print.TML'></span><span id='topic+print.summary.TML'></span><span id='topic+coef.TML'></span><span id='topic+vcov.TML'></span>

@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {snowFT}</h1>
 <h2>Contents</h2>
 <ul class="menu">
-<li><a href='#snowFT-cluster'><p>Cluster-Level Functions</p></a></li>
-<li><a href='#snowFT-internal'><p>Internal snowFT Objects</p></a></li>
 <li><a href='#snowFT-package'>
 <p>Fault Tolerant Simple Network of Workstations</p></a></li>
+<li><a href='#snowFT-cluster'><p>Cluster-Level Functions</p></a></li>
+<li><a href='#snowFT-internal'><p>Internal snowFT Objects</p></a></li>
 <li><a href='#snowFT-rand'><p>Random Number Generation</p></a></li>
 <li><a href='#snowFT-startstop'><p>Starting snowFT Cluster</p></a></li>
 </ul>
@@ -91,6 +91,111 @@ function processMathHTML() {
 <td>2023-09-21 06:50:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='snowFT-package'>
+Fault Tolerant Simple Network of Workstations
+</h2><span id='topic+snowFT-package'></span><span id='topic+snowFT'></span>
+
+<h3>Description</h3>
+
+<p>Extension of the snow package supporting fault tolerant
+and reproducible applications, dynamic cluster resizing, as well as supporting easy-to-use parallel programming - only one function is needed. 
+It supports the MPI and the socket communication layers.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> snowFT</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.6-0</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>The main function of this package, <code><a href="#topic+performParallel">performParallel</a></code>, handles all tasks that are necessary for evaluating a user-defined function in parallel. These include creating a cluster, initializing nodes, handling a random number generator, processing the given function on the cluster and cleaning up. In the very basic settings (i.e. when using with the socket layer), no additional software is necessary. The package can be used on a single multi-processor/core machine, homogeneous cluster, or a heterogeneous group of computers.
+</p>
+<p>The package supports creating and handling a <span class="pkg">snow</span> cluster that is:
+</p>
+
+<ol>
+<li><p> Fault tolerant: The master checks repeatedly for failures in its waiting time and initiates a failure recovery if needed. (This feature has been implemented for the PVM layer. Unfortunately, the PVM layer had to be switched off due to the <span class="pkg">rpvm</span> package not being currently maintained.)
+</p>
+</li>
+<li><p> Load balanced AND produces reproducible results: one stream of random numbers associated with one replicate (instead of one stream per node as handled by <span class="pkg">snow</span> and <span class="pkg">parallel</span>).
+</p>
+</li>
+<li><p> Computationally transparent: Currently processed replicates and failed replicates stored into files. Allows defining a function that is called after each given number of replicates.
+</p>
+</li>
+<li><p> Dynamically resizeable: The cluster size is stored in a file which is read by the master repeatedly. In case of a modification the cluster is updated. (Not available for MPI.)
+</p>
+</li>
+<li><p> Administration overhead minimized: All administration is managed by the master in its waiting time. (Note that there is a time-overhead for creating and destroying the cluster, as well as the RNG initialization. Thus, simple operations, such as the example below, will not gain from running in parallel.)
+</p>
+</li>
+<li><p> Allows running processes sequentially with the same random numbers as it would in parallel. Thus, results can be compared between the two modes.
+</p>
+</li>
+<li><p> Easy to use: All features, including creating the cluster, RNG initialization and clean-up, are available via one single function - <code><a href="#topic+performParallel">performParallel</a></code>.
+</p>
+</li></ol>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Hana Sevcikova, A. J. Rossini
+</p>
+<p>Maintainer: Hana Sevcikova &lt;hanas@uw.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>http://www.stat.washington.edu/hana/parallel/snowFT-doc.pdf
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+performParallel">performParallel</a></code>, <code><a href="snow.html#topic+clusterCall">clusterCall</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# generates 500 times 1000 normally distributed random numbers on 5 nodes
+# (all localhost)
+res &lt;- performParallel(5, rep(1000, 500), fun = rnorm, cltype = "SOCK")
+print(mean(unlist(res)))
+
+# View cluster usage
+# number of physical nodes
+P &lt;- parallel::detectCores(logical = FALSE)
+t &lt;- snow::snow.time(performParallel(P, rep(1e6, 50), 
+        fun = function(x) median(rnorm(x)), cltype = "SOCK"))
+plot(t)
+
+## End(Not run)
+
+</code></pre>
+
 <hr>
 <h2 id='snowFT-cluster'>Cluster-Level Functions</h2><span id='topic+performParallel'></span><span id='topic+clusterApplyFT'></span><span id='topic+clusterCallpart'></span><span id='topic+clusterEvalQpart'></span><span id='topic+printClusterInfo'></span>
 
@@ -359,27 +464,20 @@ getNodeID(node)
 ## S3 method for class 'SOCKnode'
 processStatus(node)
 
-
 ## S3 method for class 'SOCKcluster'
 addtoCluster(cl, spec, ..., options = defaultClusterOptions)
 ## S3 method for class 'MPIcluster'
 addtoCluster(cl, spec, ..., options = defaultClusterOptions)
-
 ## S3 method for class 'MPInode'
 getNodeID(node)
-
-
 
 initStream(type="RNGstream", name, ...)
 freeStream(type="RNGstream", oldrng)
 resetRNG(cl, nodes, repl, gentype="RNGstream",seed=rep(123456,6))
-
-
 initRNGstreamNodeRepli(seed, n)
 
 ## S3 method for class 'MPIcluster'
 recvOneDataFT(cl, type='b', time=0)
-
 ## S3 method for class 'SOCKcluster'
 recvOneDataFT(cl, type='b', time=0)
 
@@ -395,111 +493,6 @@ writetomngtfile(cl, file)
 
 <p>These are not to be called by the user.
 </p>
-
-<hr>
-<h2 id='snowFT-package'>
-Fault Tolerant Simple Network of Workstations
-</h2><span id='topic+snowFT-package'></span><span id='topic+snowFT'></span>
-
-<h3>Description</h3>
-
-<p>Extension of the snow package supporting fault tolerant
-and reproducible applications, dynamic cluster resizing, as well as supporting easy-to-use parallel programming - only one function is needed. 
-It supports the MPI and the socket communication layers.
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> snowFT</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 1.6-0</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>The main function of this package, <code><a href="#topic+performParallel">performParallel</a></code>, handles all tasks that are necessary for evaluating a user-defined function in parallel. These include creating a cluster, initializing nodes, handling a random number generator, processing the given function on the cluster and cleaning up. In the very basic settings (i.e. when using with the socket layer), no additional software is necessary. The package can be used on a single multi-processor/core machine, homogeneous cluster, or a heterogeneous group of computers.
-</p>
-<p>The package supports creating and handling a <span class="pkg">snow</span> cluster that is:
-</p>
-
-<ol>
-<li><p> Fault tolerant: The master checks repeatedly for failures in its waiting time and initiates a failure recovery if needed. (This feature has been implemented for the PVM layer. Unfortunately, the PVM layer had to be switched off due to the <span class="pkg">rpvm</span> package not being currently maintained.)
-</p>
-</li>
-<li><p> Load balanced AND produces reproducible results: one stream of random numbers associated with one replicate (instead of one stream per node as handled by <span class="pkg">snow</span> and <span class="pkg">parallel</span>).
-</p>
-</li>
-<li><p> Computationally transparent: Currently processed replicates and failed replicates stored into files. Allows defining a function that is called after each given number of replicates.
-</p>
-</li>
-<li><p> Dynamically resizeable: The cluster size is stored in a file which is read by the master repeatedly. In case of a modification the cluster is updated. (Not available for MPI.)
-</p>
-</li>
-<li><p> Administration overhead minimized: All administration is managed by the master in its waiting time. (Note that there is a time-overhead for creating and destroying the cluster, as well as the RNG initialization. Thus, simple operations, such as the example below, will not gain from running in parallel.)
-</p>
-</li>
-<li><p> Allows running processes sequentially with the same random numbers as it would in parallel. Thus, results can be compared between the two modes.
-</p>
-</li>
-<li><p> Easy to use: All features, including creating the cluster, RNG initialization and clean-up, are available via one single function - <code><a href="#topic+performParallel">performParallel</a></code>.
-</p>
-</li></ol>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Hana Sevcikova, A. J. Rossini
-</p>
-<p>Maintainer: Hana Sevcikova &lt;hanas@uw.edu&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>http://www.stat.washington.edu/hana/parallel/snowFT-doc.pdf
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+performParallel">performParallel</a></code>, <code><a href="snow.html#topic+clusterCall">clusterCall</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-# generates 500 times 1000 normally distributed random numbers on 5 nodes
-# (all localhost)
-res &lt;- performParallel(5, rep(1000, 500), fun = rnorm, cltype = "SOCK")
-print(mean(unlist(res)))
-
-# View cluster usage
-# number of physical nodes
-P &lt;- parallel::detectCores(logical = FALSE)
-t &lt;- snow::snow.time(performParallel(P, rep(1e6, 50), 
-        fun = function(x) median(rnorm(x)), cltype = "SOCK"))
-plot(t)
-
-## End(Not run)
-
-</code></pre>
 
 <hr>
 <h2 id='snowFT-rand'>Random Number Generation</h2><span id='topic+clusterSetupRNG.FT'></span><span id='topic+clusterSetupRNGstreamRepli'></span>

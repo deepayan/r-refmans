@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {RespirAnalyzer}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#RespirAnalyzer-package'>
+<p>Analysis Functions of Respiratory Data</p></a></li>
 <li><a href='#Data'><p>An example of respiratory data</p></a></li>
 <li><a href='#find.peaks'><p>Function to find the peak-to-peak intervals of a respiratory signal.</p></a></li>
 <li><a href='#fit.model'><p>Function to fit the MFDFA result with the extended binomial multifractal model.</p></a></li>
@@ -30,8 +32,6 @@ function processMathHTML() {
 <li><a href='#MFDFAplot.fn'><p>Function to plot the results of MFDFA analysis</p></a></li>
 <li><a href='#MovingAverage'><p>Function to calculate Moving Average of a series</p></a></li>
 <li><a href='#MSE'><p>Function to compute the multiscale entropy(MSE)</p></a></li>
-<li><a href='#RespirAnalyzer-package'>
-<p>Analysis Functions of Respiratory Data</p></a></li>
 <li><a href='#Seriesplot.fn'><p>Function to plot series data</p></a></li>
 </ul>
 </div>
@@ -114,6 +114,134 @@ function processMathHTML() {
 <td>2023-07-08 12:20:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='RespirAnalyzer-package'>
+Analysis Functions of Respiratory Data
+</h2><span id='topic+RespirAnalyzer-package'></span><span id='topic+RespirAnalyzer'></span>
+
+<h3>Description</h3>
+
+<p>Provides functions for the complete analysis of respiratory data. Consists of a set of functions that allow to preprocessing respiratory data,  calculate both regular statistics and nonlinear statistics, conduct group comparison and visualize the results. Especially, Power Spectral Density ('PSD') (A. Eke (2000) &lt;doi:10.1007/s004249900135&gt;), 'MultiScale Entropy(MSE)' ('Madalena Costa(2002)' &lt;doi:10.1103/PhysRevLett.89.068102&gt;) and 'MultiFractal Detrended Fluctuation Analysis(MFDFA)' ('Jan W.Kantelhardt' (2002) &lt;doi:10.1016/S0378-4371(02)01383-3&gt;) were applied for the analysis of respiratory data. 
+</p>
+
+
+<h3>Details</h3>
+
+<p>The R package RespirAnalyzer contains functions for analyzing respiratory data.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Xiaohua Douglas Zhang [aut, cph], Teng Zhang [aut], Xinzheng Dong [aut, cre]
+</p>
+<p>Maintainer: Xinzheng Dong &lt;dong.xinzheng@foxmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Zhang T, Dong X, Chen C, Wang D, Zhang XD. RespirAnalyzer: an R package for continuous monitoring of respiratory signals.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># load Data from TestData dataset
+data("TestData")
+Seriesplot.fn(Data[1:2000,1],Data[1:2000,2],points=FALSE,
+              xlab="Time(s)",ylab="Respiratory")
+Fs=50 ## sampling frequency is 50Hz
+Peaks &lt;- find.peaks(Data[,2],Fs,lowpass=TRUE,freq=1,MovingAv=FALSE,
+                    W=FALSE,filter=TRUE,threshold=0.05)
+points(Data[Peaks[2:13,1],1],Data[Peaks[2:13,1],2],col=2)
+PP_interval &lt;- diff(Peaks[,1])/Fs
+Seriesplot.fn(1:length(PP_interval),PP_interval,points=FALSE,xlab="Count",
+          ylab="Inter-breath Interval(s)")
+#### Moving Average
+W &lt;- FS &lt;- 50
+Data[,3] &lt;- MovingAverage(Data[,2],W)
+Seriesplot.fn(Data[1:2000,1],Data[1:2000,2],points=FALSE,
+              xlab="Time(s)",ylab="Respiratory")
+lines(Data[1:2000,1],Data[1:2000,3],col=2)
+#### Low pass filter
+bf &lt;- signal::butter(2, 2/Fs, type="low")
+Data[,4] &lt;- signal::filtfilt(bf,Data[,2])
+Seriesplot.fn(Data[1:2000,1],Data[1:2000,2],points=FALSE,
+              xlab="Time(s)",ylab="Respiratory")
+lines(Data[1:2000,1],Data[1:2000,4],col=2)
+#### entropy of  rawdata
+scale_raw &lt;- seq(1,90,2)
+MSE &lt;-  MSE(Data$V2[seq(1,100000,2)], tau=scale_raw, m=2, r=0.15, I=40000)
+Seriesplot.fn(MSE$tau ,MSE$SampEn,points=TRUE,
+              xlab="Scale",ylab="Sample entropy")
+#### entropy of IBI
+scale_PP &lt;- 1:10
+MSE &lt;-  MSE(PP_interval, tau=scale_PP, m=2, r=0.15, I=40000)
+Seriesplot.fn(MSE$tau ,MSE$SampEn,points=TRUE,
+              xlab="Scale",ylab="Sample entropy")
+
+#### PSD analysis
+LowPSD(PP_interval, plot=TRUE,min=1/64, max=1/2)
+#### MFDFA
+exponents=seq(3, 9, by=1/4)
+scale=2^exponents
+q=-10:10
+m=2
+Result &lt;- MFDFA(PP_interval, scale, m, q)
+MFDFAplot.fn(Result,scale,q,model = TRUE)
+#### fit.model
+Coeff &lt;- fit.model(Result$Hq,q)
+Coeff
+Para&lt;- -log(Coeff)/log(2);Para[3]=Para[1]-Para[2]
+names(Para)&lt;-c("Hmax","Hmin","i÷H")
+Para
+
+#### Individualplot
+data("HqData")
+PP_Hq &lt;- HqData
+filenames &lt;- row.names(PP_Hq)
+q=-10:10
+ClassNames &lt;- c(substr(filenames[1:19], start = 1, stop = 3),
+                substr(filenames[20:38], start = 1, stop = 5))
+Class &lt;- unique(ClassNames)
+col_vec &lt;- rep(NA, nrow(PP_Hq) )
+pch_vec &lt;- rep(16, nrow(PP_Hq) )
+for( i in 1:length(Class) ) { col_vec[ ClassNames == Class[i] ] &lt;- i }
+Individualplot.fn(q,PP_Hq,Name=Class,col=col_vec,pch=pch_vec, xlab="q",ylab="Hurst exponent")
+legend("topright", legend=paste0(Class, "(N=", table( ClassNames ), ")"),
+      col=1:4, cex=1, lty=1, pch=16)
+
+#### Groupplot
+data("HqData")
+PP_Hq &lt;- HqData
+filenames &lt;- row.names(PP_Hq)
+q &lt;- -10:10
+ClassNames &lt;- c(substr(filenames[1:19], start = 1, stop = 3),
+                substr(filenames[20:38], start = 1, stop = 5))
+Class &lt;- unique(ClassNames)
+for (i in 1:length(q)){
+  Data &lt;- GroupComparison.fn(PP_Hq[,i],ClassNames)
+  Result_mean_vec &lt;- Data[,"Mean"]
+  Result_sd_vec &lt;- Data[,"SE"]
+  if( i == 1 ) {
+    Result_mean_mat &lt;- Result_mean_vec
+    Result_sd_mat &lt;- Result_sd_vec
+  } else {
+    Result_mean_mat &lt;- rbind(Result_mean_mat, Result_mean_vec)
+    Result_sd_mat &lt;- rbind(Result_sd_mat, Result_sd_vec)
+ }
+}
+Groupplot.fn (q[1:10],Result_mean_mat[1:10,],Class,errorbar = Result_sd_mat[1:10,],
+              xRange = NA, yRange = NA, col = NA, pch = rep(16,4), Position = "topright",
+              cex.legend = 1, xlab="q",ylab="Hurst exponent",main = "")
+Groupplot.fn (q[11:21],Result_mean_mat[11:21,],Class,errorbar = Result_sd_mat[11:21,],
+              xRange = NA, yRange = NA, col = NA, pch = rep(16,4), Position = "topright",
+              cex.legend = 1, xlab="q",ylab="Hurst exponent",main = "")
+
+
+</code></pre>
+
 <hr>
 <h2 id='Data'>An example of respiratory data</h2><span id='topic+Data'></span>
 
@@ -999,134 +1127,6 @@ MSER &lt;-  MSE(Data[1:10000,2], tau=scale_raw, m=2,
             r=0.15, I=40000)
 print(MSER)
 options(oldoptions)
-
-</code></pre>
-
-<hr>
-<h2 id='RespirAnalyzer-package'>
-Analysis Functions of Respiratory Data
-</h2><span id='topic+RespirAnalyzer-package'></span><span id='topic+RespirAnalyzer'></span>
-
-<h3>Description</h3>
-
-<p>Provides functions for the complete analysis of respiratory data. Consists of a set of functions that allow to preprocessing respiratory data,  calculate both regular statistics and nonlinear statistics, conduct group comparison and visualize the results. Especially, Power Spectral Density ('PSD') (A. Eke (2000) &lt;doi:10.1007/s004249900135&gt;), 'MultiScale Entropy(MSE)' ('Madalena Costa(2002)' &lt;doi:10.1103/PhysRevLett.89.068102&gt;) and 'MultiFractal Detrended Fluctuation Analysis(MFDFA)' ('Jan W.Kantelhardt' (2002) &lt;doi:10.1016/S0378-4371(02)01383-3&gt;) were applied for the analysis of respiratory data. 
-</p>
-
-
-<h3>Details</h3>
-
-<p>The R package RespirAnalyzer contains functions for analyzing respiratory data.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Xiaohua Douglas Zhang [aut, cph], Teng Zhang [aut], Xinzheng Dong [aut, cre]
-</p>
-<p>Maintainer: Xinzheng Dong &lt;dong.xinzheng@foxmail.com&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Zhang T, Dong X, Chen C, Wang D, Zhang XD. RespirAnalyzer: an R package for continuous monitoring of respiratory signals.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># load Data from TestData dataset
-data("TestData")
-Seriesplot.fn(Data[1:2000,1],Data[1:2000,2],points=FALSE,
-              xlab="Time(s)",ylab="Respiratory")
-Fs=50 ## sampling frequency is 50Hz
-Peaks &lt;- find.peaks(Data[,2],Fs,lowpass=TRUE,freq=1,MovingAv=FALSE,
-                    W=FALSE,filter=TRUE,threshold=0.05)
-points(Data[Peaks[2:13,1],1],Data[Peaks[2:13,1],2],col=2)
-PP_interval &lt;- diff(Peaks[,1])/Fs
-Seriesplot.fn(1:length(PP_interval),PP_interval,points=FALSE,xlab="Count",
-          ylab="Inter-breath Interval(s)")
-#### Moving Average
-W &lt;- FS &lt;- 50
-Data[,3] &lt;- MovingAverage(Data[,2],W)
-Seriesplot.fn(Data[1:2000,1],Data[1:2000,2],points=FALSE,
-              xlab="Time(s)",ylab="Respiratory")
-lines(Data[1:2000,1],Data[1:2000,3],col=2)
-#### Low pass filter
-bf &lt;- signal::butter(2, 2/Fs, type="low")
-Data[,4] &lt;- signal::filtfilt(bf,Data[,2])
-Seriesplot.fn(Data[1:2000,1],Data[1:2000,2],points=FALSE,
-              xlab="Time(s)",ylab="Respiratory")
-lines(Data[1:2000,1],Data[1:2000,4],col=2)
-#### entropy of  rawdata
-scale_raw &lt;- seq(1,90,2)
-MSE &lt;-  MSE(Data$V2[seq(1,100000,2)], tau=scale_raw, m=2, r=0.15, I=40000)
-Seriesplot.fn(MSE$tau ,MSE$SampEn,points=TRUE,
-              xlab="Scale",ylab="Sample entropy")
-#### entropy of IBI
-scale_PP &lt;- 1:10
-MSE &lt;-  MSE(PP_interval, tau=scale_PP, m=2, r=0.15, I=40000)
-Seriesplot.fn(MSE$tau ,MSE$SampEn,points=TRUE,
-              xlab="Scale",ylab="Sample entropy")
-
-#### PSD analysis
-LowPSD(PP_interval, plot=TRUE,min=1/64, max=1/2)
-#### MFDFA
-exponents=seq(3, 9, by=1/4)
-scale=2^exponents
-q=-10:10
-m=2
-Result &lt;- MFDFA(PP_interval, scale, m, q)
-MFDFAplot.fn(Result,scale,q,model = TRUE)
-#### fit.model
-Coeff &lt;- fit.model(Result$Hq,q)
-Coeff
-Para&lt;- -log(Coeff)/log(2);Para[3]=Para[1]-Para[2]
-names(Para)&lt;-c("Hmax","Hmin","i÷H")
-Para
-
-#### Individualplot
-data("HqData")
-PP_Hq &lt;- HqData
-filenames &lt;- row.names(PP_Hq)
-q=-10:10
-ClassNames &lt;- c(substr(filenames[1:19], start = 1, stop = 3),
-                substr(filenames[20:38], start = 1, stop = 5))
-Class &lt;- unique(ClassNames)
-col_vec &lt;- rep(NA, nrow(PP_Hq) )
-pch_vec &lt;- rep(16, nrow(PP_Hq) )
-for( i in 1:length(Class) ) { col_vec[ ClassNames == Class[i] ] &lt;- i }
-Individualplot.fn(q,PP_Hq,Name=Class,col=col_vec,pch=pch_vec, xlab="q",ylab="Hurst exponent")
-legend("topright", legend=paste0(Class, "(N=", table( ClassNames ), ")"),
-      col=1:4, cex=1, lty=1, pch=16)
-
-#### Groupplot
-data("HqData")
-PP_Hq &lt;- HqData
-filenames &lt;- row.names(PP_Hq)
-q &lt;- -10:10
-ClassNames &lt;- c(substr(filenames[1:19], start = 1, stop = 3),
-                substr(filenames[20:38], start = 1, stop = 5))
-Class &lt;- unique(ClassNames)
-for (i in 1:length(q)){
-  Data &lt;- GroupComparison.fn(PP_Hq[,i],ClassNames)
-  Result_mean_vec &lt;- Data[,"Mean"]
-  Result_sd_vec &lt;- Data[,"SE"]
-  if( i == 1 ) {
-    Result_mean_mat &lt;- Result_mean_vec
-    Result_sd_mat &lt;- Result_sd_vec
-  } else {
-    Result_mean_mat &lt;- rbind(Result_mean_mat, Result_mean_vec)
-    Result_sd_mat &lt;- rbind(Result_sd_mat, Result_sd_vec)
- }
-}
-Groupplot.fn (q[1:10],Result_mean_mat[1:10,],Class,errorbar = Result_sd_mat[1:10,],
-              xRange = NA, yRange = NA, col = NA, pch = rep(16,4), Position = "topright",
-              cex.legend = 1, xlab="q",ylab="Hurst exponent",main = "")
-Groupplot.fn (q[11:21],Result_mean_mat[11:21,],Class,errorbar = Result_sd_mat[11:21,],
-              xRange = NA, yRange = NA, col = NA, pch = rep(16,4), Position = "topright",
-              cex.legend = 1, xlab="q",ylab="Hurst exponent",main = "")
-
 
 </code></pre>
 

@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {GCPM}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#GCPM-package'>
+<p>Generalized Credit Portfolio Model</p></a></li>
 <li><a href='#alpha.max-methods'><p>Maximum CDF Level</p></a></li>
 <li><a href='#analyze-methods'><p>Analyze a Credit Portfolio</p></a></li>
 <li><a href='#business-methods'><p>Counterparty Business Line</p></a></li>
@@ -33,8 +35,6 @@ function processMathHTML() {
 <li><a href='#ES.cont-methods'><p>Risk Contributions to Expected Shortfall</p></a></li>
 <li><a href='#export-methods'><p>Export Main Results</p></a></li>
 <li><a href='#GCPM-class'><p>Class <code>"GCPM"</code></p></a></li>
-<li><a href='#GCPM-package'>
-<p>Generalized Credit Portfolio Model</p></a></li>
 <li><a href='#idiosyncr-methods'><p>Idiosyncratic Risk Weights</p></a></li>
 <li><a href='#init'>
 <p>Initialize an Object of Class <code>GCPM</code></p></a></li>
@@ -149,6 +149,132 @@ function processMathHTML() {
 <td>2016-12-30 00:34:04</td>
 </tr>
 </table>
+<hr>
+<h2 id='GCPM-package'>
+Generalized Credit Portfolio Model
+</h2><span id='topic+GCPM-package'></span><span id='topic+GCPM'></span>
+
+<h3>Description</h3>
+
+<p>The package helps to analyze the default risk of credit portfolios. Commonly known models, 
+like CreditRisk+ or the CreditMetrics model are implemented in their very basic settings.
+The portfolio loss distribution can be achieved either by simulation or analytically 
+in case of the classic CreditRisk+ model. Models are only implemented to respect losses
+caused by defaults, i.e. migration risk is not included. The package structure is kept
+flexible especially with respect to distributional assumptions in order to quantify the
+sensitivity of risk figures with respect to several assumptions. Therefore the package
+can be used to determine the credit risk of a given portfolio as well as to quantify
+model sensitivities.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> GCPM</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.2.2</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2016-12-29</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL-2</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Kevin Jakob
+</p>
+<p>Maintainer: Kevin Jakob &lt;Kevin.Jakob.Research@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Jakob, K. &amp; Fischer, M. &quot;GCPM: A flexible package to explore credit portfolio risk&quot; Austrian Journal of Statistics 45.1 (2016): 25:44<br />
+Morgan, J. P. &quot;CreditMetrics-technical document.&quot; JP Morgan, New York, 1997<br /> 
+First Boston Financial Products, &quot;CreditRisk+&quot;, 1997 <br />
+Gundlach &amp; Lehrbass, &quot;CreditRisk+ in the Banking Industry&quot;, Springer, 2003<br />
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+GCPM-class">GCPM-class</a></code>, <code><a href="#topic+init">init</a></code>, <code><a href="#topic+analyze">analyze</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#create a random portfolio with NC counterparties
+NC=100
+#assign business lines and countries randomly
+business.lines=c("A","B","C")
+CP.business=business.lines[ceiling(runif(NC,0,length(business.lines)))] 
+countries=c("A","B","C","D","E")
+CP.country=countries[ceiling(runif(NC,0,length(countries)))]
+
+#create matrix with sector weights (CreditRisk+ setting)
+#according to business lines
+NS=length(business.lines)
+W=matrix(0,nrow = NC,ncol = length(business.lines),
+dimnames = list(1:NC,business.lines)) 
+for(i in 1:NC){W[i,CP.business[i]]=1}
+
+#create portfolio data frame
+portfolio=data.frame(Number=1:NC,Name=paste("Name ",1:NC),Business=CP.business,
+                     Country=CP.country,EAD=runif(NC,1e3,1e6),LGD=runif(NC),
+                     PD=runif(NC,0,0.3),Default=rep("Bernoulli",NC),W)
+
+#draw sector variances randomly
+sec.var=runif(NS,0.5,1.5)
+names(sec.var)=business.lines
+
+#draw N sector realizations (independent gamma distributed sectors)
+N=5e4
+random.numbers=matrix(NA,ncol=NS,nrow=N,dimnames=list(1:N,business.lines))
+for(i in 1:NS){
+random.numbers[,i]=rgamma(N,shape = 1/sec.var[i],scale=sec.var[i])}
+
+#create a portfolio model and analyze the portfolio
+TestModel=init(model.type = "simulative",link.function = "CRP",N = N,
+loss.unit = 1e3, random.numbers = random.numbers,LHR=rep(1,N),loss.thr=5e6,
+max.entries=2e4)
+TestModel=analyze(TestModel,portfolio)
+
+#plot of pdf of portfolio loss (in million) with indicators for EL, VaR and ES
+alpha=c(0.995,0.999)
+plot(TestModel,1e6,alpha=alpha)
+
+#calculate portfolio VaR and ES
+VaR=VaR(TestModel,alpha)
+ES=ES(TestModel,alpha)
+
+#Calculate risk contributions to VaR and ES 
+risk.cont=cbind(VaR.cont(TestModel,alpha = alpha),
+ES.cont(TestModel,alpha = alpha))
+</code></pre>
+
 <hr>
 <h2 id='alpha.max-methods'>Maximum CDF Level</h2><span id='topic+alpha.max-methods'></span><span id='topic+alpha.max+2CGCPM'></span><span id='topic+alpha.max'></span>
 
@@ -974,132 +1100,6 @@ Gundlach &amp; Lehrbass, &quot;CreditRisk+ in the Banking Industry&quot;, Spring
 
 <p><code><a href="#topic+GCPM-package">GCPM-package</a></code>, <code><a href="#topic+init">init</a></code>, <code><a href="#topic+analyze">analyze</a></code>
 </p>
-
-<hr>
-<h2 id='GCPM-package'>
-Generalized Credit Portfolio Model
-</h2><span id='topic+GCPM-package'></span><span id='topic+GCPM'></span>
-
-<h3>Description</h3>
-
-<p>The package helps to analyze the default risk of credit portfolios. Commonly known models, 
-like CreditRisk+ or the CreditMetrics model are implemented in their very basic settings.
-The portfolio loss distribution can be achieved either by simulation or analytically 
-in case of the classic CreditRisk+ model. Models are only implemented to respect losses
-caused by defaults, i.e. migration risk is not included. The package structure is kept
-flexible especially with respect to distributional assumptions in order to quantify the
-sensitivity of risk figures with respect to several assumptions. Therefore the package
-can be used to determine the credit risk of a given portfolio as well as to quantify
-model sensitivities.
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> GCPM</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 1.2.2</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2016-12-29</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL-2</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Kevin Jakob
-</p>
-<p>Maintainer: Kevin Jakob &lt;Kevin.Jakob.Research@gmail.com&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Jakob, K. &amp; Fischer, M. &quot;GCPM: A flexible package to explore credit portfolio risk&quot; Austrian Journal of Statistics 45.1 (2016): 25:44<br />
-Morgan, J. P. &quot;CreditMetrics-technical document.&quot; JP Morgan, New York, 1997<br /> 
-First Boston Financial Products, &quot;CreditRisk+&quot;, 1997 <br />
-Gundlach &amp; Lehrbass, &quot;CreditRisk+ in the Banking Industry&quot;, Springer, 2003<br />
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+GCPM-class">GCPM-class</a></code>, <code><a href="#topic+init">init</a></code>, <code><a href="#topic+analyze">analyze</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>#create a random portfolio with NC counterparties
-NC=100
-#assign business lines and countries randomly
-business.lines=c("A","B","C")
-CP.business=business.lines[ceiling(runif(NC,0,length(business.lines)))] 
-countries=c("A","B","C","D","E")
-CP.country=countries[ceiling(runif(NC,0,length(countries)))]
-
-#create matrix with sector weights (CreditRisk+ setting)
-#according to business lines
-NS=length(business.lines)
-W=matrix(0,nrow = NC,ncol = length(business.lines),
-dimnames = list(1:NC,business.lines)) 
-for(i in 1:NC){W[i,CP.business[i]]=1}
-
-#create portfolio data frame
-portfolio=data.frame(Number=1:NC,Name=paste("Name ",1:NC),Business=CP.business,
-                     Country=CP.country,EAD=runif(NC,1e3,1e6),LGD=runif(NC),
-                     PD=runif(NC,0,0.3),Default=rep("Bernoulli",NC),W)
-
-#draw sector variances randomly
-sec.var=runif(NS,0.5,1.5)
-names(sec.var)=business.lines
-
-#draw N sector realizations (independent gamma distributed sectors)
-N=5e4
-random.numbers=matrix(NA,ncol=NS,nrow=N,dimnames=list(1:N,business.lines))
-for(i in 1:NS){
-random.numbers[,i]=rgamma(N,shape = 1/sec.var[i],scale=sec.var[i])}
-
-#create a portfolio model and analyze the portfolio
-TestModel=init(model.type = "simulative",link.function = "CRP",N = N,
-loss.unit = 1e3, random.numbers = random.numbers,LHR=rep(1,N),loss.thr=5e6,
-max.entries=2e4)
-TestModel=analyze(TestModel,portfolio)
-
-#plot of pdf of portfolio loss (in million) with indicators for EL, VaR and ES
-alpha=c(0.995,0.999)
-plot(TestModel,1e6,alpha=alpha)
-
-#calculate portfolio VaR and ES
-VaR=VaR(TestModel,alpha)
-ES=ES(TestModel,alpha)
-
-#Calculate risk contributions to VaR and ES 
-risk.cont=cbind(VaR.cont(TestModel,alpha = alpha),
-ES.cont(TestModel,alpha = alpha))
-</code></pre>
 
 <hr>
 <h2 id='idiosyncr-methods'>Idiosyncratic Risk Weights</h2><span id='topic+idiosyncr-methods'></span><span id='topic+idiosyncr'></span><span id='topic+idiosyncr+2CGCPM-method'></span>

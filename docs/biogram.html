@@ -13,16 +13,16 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {biogram}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#biogram-package'><p>biogram - analysis of biological sequences using n-grams</p></a></li>
 <li><a href='#aaprop'><p>Normalized amino acids properties</p></a></li>
 <li><a href='#add_1grams'><p>Add 1-grams</p></a></li>
 <li><a href='#as.data.frame.feature_test'><p>Coerce feature_test object to a data frame</p></a></li>
 <li><a href='#binarize'><p>Binarize</p></a></li>
-<li><a href='#biogram-package'><p>biogram - analysis of biological sequences using n-grams</p></a></li>
 <li><a href='#calc_criterion'><p>Calculate value of criterion</p></a></li>
 <li><a href='#calc_cs'><p>Calculate Chi-squared-based measure</p></a></li>
 <li><a href='#calc_ed'><p>Calculate encoding distance</p></a></li>
@@ -177,6 +177,110 @@ function processMathHTML() {
 <td>2020-03-31 14:30:06 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='biogram-package'>biogram - analysis of biological sequences using n-grams</h2><span id='topic+biogram-package'></span><span id='topic+biogram'></span>
+
+<h3>Description</h3>
+
+<p><code>biogram</code> package is a toolbox for the analysis of
+nucleic acid and protein sequences using n-grams. Possible applications include
+motif discovery, feature selection, clustering, and classification.
+</p>
+
+
+<h3>n-grams</h3>
+
+<p>n-grams (k-tuples) are sets of <code>n</code> characters derived from the input sequence(s).
+They may form continuous sub-sequences or be discontinuous. For example, from the 
+sequence of nucleotides <code>AATA</code> one can extract the following continuous 
+2-grams (bigrams): <code>AA</code>, <code>AT</code> and <code>TA</code>. Moreover, there are two
+possible bigrams separated by a single space: <code>A_T</code> and <code>A_A</code>, and one
+bigram separated by two spaces: <code>A__A</code>.
+</p>
+<p>Another important n-gram parameter is its position. Instead of just counting n-grams,
+one may want to count how many n-grams occur at a given position in multiple (e.g. related)
+sequences. For example, in the sequences <code>AATA</code> and <code>AACA</code> there is only one
+bigram at position 1: <code>AA</code>, but there are two bigrams at position two: <code>AT</code> and
+<code>AC</code>. The following notation is used for position-specific n-grams: <code>1_AA</code>,
+<code>2_AT</code>, <code>2_AC</code>.
+</p>
+<p>In the <code>biogram</code> package, the <code><a href="#topic+count_ngrams">count_ngrams</a></code> function is used for
+counting and extracting n-grams. Using the <code>d</code> argument the user can specify the
+distance between elements of the n-grams. The <code>pos</code> argument can be used to enable
+position specificity.
+</p>
+
+
+<h3>n-gram data dimensionality</h3>
+
+<p>We note that n-grams suffer from the curse of dimensionality. For example, for a peptide
+of length 6 <code class="reqn">20^{n}</code> n-grams and <code class="reqn">6 \times 20^{n}</code> positioned n-grams are possible.
+Data sets of such an enormous size are hard to manage and analyze in R.
+</p>
+<p>The <code>biogram</code> package deals with both of the abovementioned problems. It uses 
+innate properties of the n-gram data which usually can be represented by sparse
+matrices. Data storage is done using functionalities from the <code>slam</code> package. To ease 
+the selection of significant features, <code>biogram</code> provides the user with QuiPT, 
+a very fast permutation test for binary data (see <code><a href="#topic+test_features">test_features</a></code>).
+</p>
+<p>Another way of reducing dimensionality is the aggregation of sequence residues into more 
+general groups. For example, all positively-charged amino acids may be aggregated into
+one group. This action can be performed using the <code><a href="#topic+degenerate">degenerate</a></code> function.
+</p>
+<p>Encoding of amino acids can easu sequence analysis, but multidimensional 
+objects as the aggregations of amino acids are not easily comparable. We introduced the 
+encoding distance, a measure defining the distance between encodings. It can be computed 
+using the <code><a href="#topic+calc_ed">calc_ed</a></code> function.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Michal Burdukiewicz, Piotr Sobczyk, Chris Lauber
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># use data set from package
+data(human_cleave)
+# first nine columns represent subsequent nine amino acids from cleavage sites
+# degenerate the sequence to reduce the dimensionality of the problem
+# (use five groups instead of 20 amino acids)
+deg_seqs &lt;- degenerate(human_cleave[, 1L:9], 
+                      list(`a` = c(1, 6, 8, 10, 11, 18), 
+                           `b` = c(2, 13, 14, 16, 17), 
+                           `c` = c(5, 19, 20), 
+                           `d` = c(7, 9, 12, 15), 
+                           'e' = c(3, 4)))
+# EXAMPLE 1 - extract significant trigrams
+# extract trigrams
+trigrams &lt;- count_ngrams(deg_seqs, 3, letters[1L:5], pos = TRUE)
+# select features that differ between the two target groups using QuiPT
+test1 &lt;- test_features(human_cleave[, "tar"], trigrams)
+# see a summary of the results
+summary(test1)
+# aggregate features in groups based on their p-value
+gr &lt;- cut(test1)
+# get position map of the most significant n-grams
+position_ngrams(gr[[1]])
+# transform the most significant n-grams to more readable form
+decode_ngrams(gr[[1]])
+
+# EXAMPLE 2 - search for specific n-grams
+# the n-grams of the interest are a_a (a-gap-a) and e_e (e-gap-e) on the
+# 3rd and 4th position
+# firstly code n-grams in biogram notation and add position information
+coded &lt;- code_ngrams(c("a_a", "c_c"))
+# add position information
+coded &lt;- c(paste0("3_", coded), paste0("4_", coded))
+# count only the features of the interest
+bigrams &lt;- count_specified(deg_seqs, coded)
+# test which of the features of the interest is significant
+test2 &lt;- test_features(human_cleave[, "tar"], bigrams)
+cut(test2)
+</code></pre>
+
 <hr>
 <h2 id='aaprop'>Normalized amino acids properties</h2><span id='topic+aaprop'></span>
 
@@ -1808,110 +1912,6 @@ occurrences in positive and negative sequences.
 <p>a <code>matrix</code> or <code><a href="slam.html#topic+simple_triplet_matrix">simple_triplet_matrix</a></code> 
 (depending on the input).
 </p>
-
-<hr>
-<h2 id='biogram-package'>biogram - analysis of biological sequences using n-grams</h2><span id='topic+biogram-package'></span><span id='topic+biogram'></span>
-
-<h3>Description</h3>
-
-<p><code>biogram</code> package is a toolbox for the analysis of
-nucleic acid and protein sequences using n-grams. Possible applications include
-motif discovery, feature selection, clustering, and classification.
-</p>
-
-
-<h3>n-grams</h3>
-
-<p>n-grams (k-tuples) are sets of <code>n</code> characters derived from the input sequence(s).
-They may form continuous sub-sequences or be discontinuous. For example, from the 
-sequence of nucleotides <code>AATA</code> one can extract the following continuous 
-2-grams (bigrams): <code>AA</code>, <code>AT</code> and <code>TA</code>. Moreover, there are two
-possible bigrams separated by a single space: <code>A_T</code> and <code>A_A</code>, and one
-bigram separated by two spaces: <code>A__A</code>.
-</p>
-<p>Another important n-gram parameter is its position. Instead of just counting n-grams,
-one may want to count how many n-grams occur at a given position in multiple (e.g. related)
-sequences. For example, in the sequences <code>AATA</code> and <code>AACA</code> there is only one
-bigram at position 1: <code>AA</code>, but there are two bigrams at position two: <code>AT</code> and
-<code>AC</code>. The following notation is used for position-specific n-grams: <code>1_AA</code>,
-<code>2_AT</code>, <code>2_AC</code>.
-</p>
-<p>In the <code>biogram</code> package, the <code><a href="#topic+count_ngrams">count_ngrams</a></code> function is used for
-counting and extracting n-grams. Using the <code>d</code> argument the user can specify the
-distance between elements of the n-grams. The <code>pos</code> argument can be used to enable
-position specificity.
-</p>
-
-
-<h3>n-gram data dimensionality</h3>
-
-<p>We note that n-grams suffer from the curse of dimensionality. For example, for a peptide
-of length 6 <code class="reqn">20^{n}</code> n-grams and <code class="reqn">6 \times 20^{n}</code> positioned n-grams are possible.
-Data sets of such an enormous size are hard to manage and analyze in R.
-</p>
-<p>The <code>biogram</code> package deals with both of the abovementioned problems. It uses 
-innate properties of the n-gram data which usually can be represented by sparse
-matrices. Data storage is done using functionalities from the <code>slam</code> package. To ease 
-the selection of significant features, <code>biogram</code> provides the user with QuiPT, 
-a very fast permutation test for binary data (see <code><a href="#topic+test_features">test_features</a></code>).
-</p>
-<p>Another way of reducing dimensionality is the aggregation of sequence residues into more 
-general groups. For example, all positively-charged amino acids may be aggregated into
-one group. This action can be performed using the <code><a href="#topic+degenerate">degenerate</a></code> function.
-</p>
-<p>Encoding of amino acids can easu sequence analysis, but multidimensional 
-objects as the aggregations of amino acids are not easily comparable. We introduced the 
-encoding distance, a measure defining the distance between encodings. It can be computed 
-using the <code><a href="#topic+calc_ed">calc_ed</a></code> function.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Michal Burdukiewicz, Piotr Sobczyk, Chris Lauber
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># use data set from package
-data(human_cleave)
-# first nine columns represent subsequent nine amino acids from cleavage sites
-# degenerate the sequence to reduce the dimensionality of the problem
-# (use five groups instead of 20 amino acids)
-deg_seqs &lt;- degenerate(human_cleave[, 1L:9], 
-                      list(`a` = c(1, 6, 8, 10, 11, 18), 
-                           `b` = c(2, 13, 14, 16, 17), 
-                           `c` = c(5, 19, 20), 
-                           `d` = c(7, 9, 12, 15), 
-                           'e' = c(3, 4)))
-# EXAMPLE 1 - extract significant trigrams
-# extract trigrams
-trigrams &lt;- count_ngrams(deg_seqs, 3, letters[1L:5], pos = TRUE)
-# select features that differ between the two target groups using QuiPT
-test1 &lt;- test_features(human_cleave[, "tar"], trigrams)
-# see a summary of the results
-summary(test1)
-# aggregate features in groups based on their p-value
-gr &lt;- cut(test1)
-# get position map of the most significant n-grams
-position_ngrams(gr[[1]])
-# transform the most significant n-grams to more readable form
-decode_ngrams(gr[[1]])
-
-# EXAMPLE 2 - search for specific n-grams
-# the n-grams of the interest are a_a (a-gap-a) and e_e (e-gap-e) on the
-# 3rd and 4th position
-# firstly code n-grams in biogram notation and add position information
-coded &lt;- code_ngrams(c("a_a", "c_c"))
-# add position information
-coded &lt;- c(paste0("3_", coded), paste0("4_", coded))
-# count only the features of the interest
-bigrams &lt;- count_specified(deg_seqs, coded)
-# test which of the features of the interest is significant
-test2 &lt;- test_features(human_cleave[, "tar"], bigrams)
-cut(test2)
-</code></pre>
 
 <hr>
 <h2 id='calc_criterion'>Calculate value of criterion</h2><span id='topic+calc_criterion'></span>

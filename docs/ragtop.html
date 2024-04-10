@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {ragtop}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#ragtop'><p>Pricing schemes for derivatives using equity-linked default intensity</p></a></li>
 <li><a href='#accelerated_coupon_value'><p>Present value of coupons according to an acceleration schedule</p></a></li>
 <li><a href='#adjust_for_dividends'><p>Find the sum of time-adjusted dividend values and adjust grid prices according</p>
 to their size in the given interval</a></li>
@@ -59,7 +60,6 @@ to their size in the given interval</a></li>
 <li><a href='#PUT'><p>Constant PUT for defining option contracts</p></a></li>
 <li><a href='#Quandl_df_fcn_UST'><p>Get a US Treasury curve discount factor function</p></a></li>
 <li><a href='#Quandl_df_fcn_UST_raw'><p>Get a US Treasury curve discount factor function</p></a></li>
-<li><a href='#ragtop'><p>Pricing schemes for derivatives using equity-linked default intensity</p></a></li>
 <li><a href='#shift_for_dividends'><p>Shift a set of grid values for dividends paid, using spline interpolation</p></a></li>
 <li><a href='#spot_to_df_fcn'><p>Create a discount factor function from a yield curve</p></a></li>
 <li><a href='#take_implicit_timestep'><p>Backwardate grid values one timestep</p></a></li>
@@ -165,6 +165,144 @@ ggplot2, MASS, RColorBrewer, BondValuation, R.cache, Quandl</td>
 <td>2020-03-03 09:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='ragtop'>Pricing schemes for derivatives using equity-linked default intensity</h2><span id='topic+ragtop'></span><span id='topic+ragtop-package'></span>
+
+<h3>Description</h3>
+
+<p>Using numerical integration, we price convertible bonds, straight
+bonds, equity options and various other derivatives consistently using a
+jump-diffusion model in which default intensity can vary with equity price
+in a user-specified deterministic manner.
+</p>
+
+
+<h3>Details</h3>
+
+<p>We apply the stochastic model
+</p>
+<p style="text-align: center;"><code class="reqn">dS/S=(r+h-q) dt + \sigma dZ - dJ</code>
+</p>
+
+<p>where <code class="reqn">r</code> and <code class="reqn">q</code> play their usual roles, <code class="reqn">h</code> is a
+deterministic function of stock price and time, and <code class="reqn">J</code>
+is a Poisson jump process adapted to the <em>default intensity</em>
+or <em>hazard rate</em> <code class="reqn">h</code>.  This model is a <em>jump-diffusion</em>
+extension of Black-Scholes, with the jump process <em>J</em> representing
+default, compensated by extra drift in the equity at rate <code class="reqn">h</code>.
+</p>
+<p>Volatilities, default intensities and risk-free rates may all be represented
+with arbitrary term structures.  Default intensity term structures may also
+take the underlying equity price into account.
+</p>
+<p>Pricing in the standard Black-Scholes model is a special case with default
+intensity set to zero.  Therefore this package <em>also</em> serves to price securities
+in the standard Black-Scholes model, while still allowing risk-free rates and volatilites
+have nontrivial term structures.
+</p>
+
+
+<h3>Important Features</h3>
+
+
+<ul>
+<li><p><em>Black-Scholes</em>: The standard model is automatically supported as a special case, but also has optimized routines
+</p>
+</li>
+<li><p><em>Term Structures</em>: The package allows for any kind of instrument to be priced with time-varying rates, volatility and default intensity
+</p>
+</li>
+<li><p><em>Dividends</em>: Allows for discrete dividends in an arbitrary combination of fixed and proportional amounts.  The difference between fixed and proprtional can be up to 10 percent in implied volatility terms.
+</p>
+</li>
+<li><p><em>Calibration</em>: Model calibration routines are included
+</p>
+</li>
+<li><p><em>Bankruptcy Realism</em>: A parsimonious deterministic model of default intensity gives rich behavior and conforms reasonably well to observed market data
+</p>
+</li>
+<li><p><em>Algorithm Parameters</em>: Default parameters for the algorithm work well for a very wide variety of pricing and implied volatility scenarios
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Vanilla European exercise
+blackscholes(callput=-1, S0=100, K=90, r=0.03, time=1, vola=0.5)
+blackscholes(PUT, S0=100, K=90, r=0.03, time=1, vola=0.5,
+             default_intensity=0.07, borrow_cost=0.005)
+## With a term structure of volatility
+## Not run: 
+black_scholes_on_term_structures(callput=-1, S0=100, K=90, time=1,
+                                 const_short_rate=0.025,
+                                 variance_cumulation_fcn = function(T, t) {
+                                   0.45 ^ 2 * (T - t) + 0.15^2 * max(0, T-0.25)
+                                 })
+
+## End(Not run)
+
+## Vanilla American exercise
+## Not run: 
+american(PUT, S0=100, K=110, time=0.77, const_short_rate = 0.06,
+         const_volatility=0.20, num_time_steps=200)
+
+## End(Not run)
+## With a term structure of volatility
+## Not run: 
+american(callput=-1, S0=100, K=90, time=1, const_short_rate=0.025,
+         variance_cumulation_fcn = function(T, t) {
+             0.45 ^ 2 * (T - t) + 0.15^2 * max(0, T-0.25)
+         })
+
+## End(Not run)
+## With discrete dividends, combined fixed and proportional
+divs = data.frame(time=seq(from=0.11, to=2, by=0.25),
+                  fixed=seq(1.5, 1, length.out=8),
+                  proportional = seq(1, 1.5, length.out=8))
+## Not run: 
+american(callput=-1, S0=100, K=90, time=1, const_short_rate=0.025,
+         const_volatility=0.20, dividends=divs)
+
+## End(Not run)
+
+## American Exercise Implied Volatility
+american_implied_volatility(25,CALL,S0=100,K=100,time=2.2, const_short_rate=0.03)
+df250 =  function(t) ( exp(-0.02*t)*exp(-0.03*max(0,t-1.0))) # Simple term structure
+df25 = function(T,t){df250(T)/df250(t)} # Relative discount factors
+## Not run: 
+american_implied_volatility(25,-1,100,100,2.2,discount_factor_fcn=df25)
+
+## End(Not run)
+
+## Convertible Bond
+## Not Run
+pct4 = function(T,t=0) { exp(-0.04*(T-t)) }
+cb = ConvertibleBond(conversion_ratio=3.5, maturity=1.5, notional=100,
+                     discount_factor_fcn=pct4, name='Convertible')
+S0 = 10; p = 6.0; h = 0.10
+h_fcn = function(t, S, ...){0.9 * h + 0.1 * h * (S0/S)^p }  # Intensity linked to equity price
+## Not run: 
+find_present_value(S0=S0, instruments=list(Convertible=cb), num_time_steps=250,
+                   default_intensity_fcn=h_fcn,
+                   const_volatility = 0.4, discount_factor_fcn=pct4,
+                   std_devs_width=5)
+
+## End(Not run)
+
+## Fitting Term Structure of Volatility
+## Not Run
+opts = list(m1=AmericanOption(callput=-1, strike=9.9, maturity=1/12, name="m1"),
+            m2=AmericanOption(callput=-1, strike=9.8, maturity=1/6, name="m2"))
+## Not run: 
+vfit = fit_variance_cumulation(S0, opts, c(0.6, 0.8), default_intensity_fcn=h_fcn)
+print(vfit$volatilities)
+
+## End(Not run)
+
+</code></pre>
+
 <hr>
 <h2 id='accelerated_coupon_value'>Present value of coupons according to an acceleration schedule</h2><span id='topic+accelerated_coupon_value'></span>
 
@@ -3644,144 +3782,6 @@ calling <code><a href="#topic+fit_variance_cumulation">fit_variance_cumulation</
 
 <p>A function taking two time arguments, which returns the discount factor from the second to the first
 </p>
-
-<hr>
-<h2 id='ragtop'>Pricing schemes for derivatives using equity-linked default intensity</h2><span id='topic+ragtop'></span><span id='topic+ragtop-package'></span>
-
-<h3>Description</h3>
-
-<p>Using numerical integration, we price convertible bonds, straight
-bonds, equity options and various other derivatives consistently using a
-jump-diffusion model in which default intensity can vary with equity price
-in a user-specified deterministic manner.
-</p>
-
-
-<h3>Details</h3>
-
-<p>We apply the stochastic model
-</p>
-<p style="text-align: center;"><code class="reqn">dS/S=(r+h-q) dt + \sigma dZ - dJ</code>
-</p>
-
-<p>where <code class="reqn">r</code> and <code class="reqn">q</code> play their usual roles, <code class="reqn">h</code> is a
-deterministic function of stock price and time, and <code class="reqn">J</code>
-is a Poisson jump process adapted to the <em>default intensity</em>
-or <em>hazard rate</em> <code class="reqn">h</code>.  This model is a <em>jump-diffusion</em>
-extension of Black-Scholes, with the jump process <em>J</em> representing
-default, compensated by extra drift in the equity at rate <code class="reqn">h</code>.
-</p>
-<p>Volatilities, default intensities and risk-free rates may all be represented
-with arbitrary term structures.  Default intensity term structures may also
-take the underlying equity price into account.
-</p>
-<p>Pricing in the standard Black-Scholes model is a special case with default
-intensity set to zero.  Therefore this package <em>also</em> serves to price securities
-in the standard Black-Scholes model, while still allowing risk-free rates and volatilites
-have nontrivial term structures.
-</p>
-
-
-<h3>Important Features</h3>
-
-
-<ul>
-<li><p><em>Black-Scholes</em>: The standard model is automatically supported as a special case, but also has optimized routines
-</p>
-</li>
-<li><p><em>Term Structures</em>: The package allows for any kind of instrument to be priced with time-varying rates, volatility and default intensity
-</p>
-</li>
-<li><p><em>Dividends</em>: Allows for discrete dividends in an arbitrary combination of fixed and proportional amounts.  The difference between fixed and proprtional can be up to 10 percent in implied volatility terms.
-</p>
-</li>
-<li><p><em>Calibration</em>: Model calibration routines are included
-</p>
-</li>
-<li><p><em>Bankruptcy Realism</em>: A parsimonious deterministic model of default intensity gives rich behavior and conforms reasonably well to observed market data
-</p>
-</li>
-<li><p><em>Algorithm Parameters</em>: Default parameters for the algorithm work well for a very wide variety of pricing and implied volatility scenarios
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Vanilla European exercise
-blackscholes(callput=-1, S0=100, K=90, r=0.03, time=1, vola=0.5)
-blackscholes(PUT, S0=100, K=90, r=0.03, time=1, vola=0.5,
-             default_intensity=0.07, borrow_cost=0.005)
-## With a term structure of volatility
-## Not run: 
-black_scholes_on_term_structures(callput=-1, S0=100, K=90, time=1,
-                                 const_short_rate=0.025,
-                                 variance_cumulation_fcn = function(T, t) {
-                                   0.45 ^ 2 * (T - t) + 0.15^2 * max(0, T-0.25)
-                                 })
-
-## End(Not run)
-
-## Vanilla American exercise
-## Not run: 
-american(PUT, S0=100, K=110, time=0.77, const_short_rate = 0.06,
-         const_volatility=0.20, num_time_steps=200)
-
-## End(Not run)
-## With a term structure of volatility
-## Not run: 
-american(callput=-1, S0=100, K=90, time=1, const_short_rate=0.025,
-         variance_cumulation_fcn = function(T, t) {
-             0.45 ^ 2 * (T - t) + 0.15^2 * max(0, T-0.25)
-         })
-
-## End(Not run)
-## With discrete dividends, combined fixed and proportional
-divs = data.frame(time=seq(from=0.11, to=2, by=0.25),
-                  fixed=seq(1.5, 1, length.out=8),
-                  proportional = seq(1, 1.5, length.out=8))
-## Not run: 
-american(callput=-1, S0=100, K=90, time=1, const_short_rate=0.025,
-         const_volatility=0.20, dividends=divs)
-
-## End(Not run)
-
-## American Exercise Implied Volatility
-american_implied_volatility(25,CALL,S0=100,K=100,time=2.2, const_short_rate=0.03)
-df250 =  function(t) ( exp(-0.02*t)*exp(-0.03*max(0,t-1.0))) # Simple term structure
-df25 = function(T,t){df250(T)/df250(t)} # Relative discount factors
-## Not run: 
-american_implied_volatility(25,-1,100,100,2.2,discount_factor_fcn=df25)
-
-## End(Not run)
-
-## Convertible Bond
-## Not Run
-pct4 = function(T,t=0) { exp(-0.04*(T-t)) }
-cb = ConvertibleBond(conversion_ratio=3.5, maturity=1.5, notional=100,
-                     discount_factor_fcn=pct4, name='Convertible')
-S0 = 10; p = 6.0; h = 0.10
-h_fcn = function(t, S, ...){0.9 * h + 0.1 * h * (S0/S)^p }  # Intensity linked to equity price
-## Not run: 
-find_present_value(S0=S0, instruments=list(Convertible=cb), num_time_steps=250,
-                   default_intensity_fcn=h_fcn,
-                   const_volatility = 0.4, discount_factor_fcn=pct4,
-                   std_devs_width=5)
-
-## End(Not run)
-
-## Fitting Term Structure of Volatility
-## Not Run
-opts = list(m1=AmericanOption(callput=-1, strike=9.9, maturity=1/12, name="m1"),
-            m2=AmericanOption(callput=-1, strike=9.8, maturity=1/6, name="m2"))
-## Not run: 
-vfit = fit_variance_cumulation(S0, opts, c(0.6, 0.8), default_intensity_fcn=h_fcn)
-print(vfit$volatilities)
-
-## End(Not run)
-
-</code></pre>
 
 <hr>
 <h2 id='shift_for_dividends'>Shift a set of grid values for dividends paid, using spline interpolation</h2><span id='topic+shift_for_dividends'></span>

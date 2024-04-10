@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {shinyaframe}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#shinyaframe'><p>WebVR Data Visualizations</p></a></li>
 <li><a href='#aDataScene'><p>A-Frame Scene with R data</p></a></li>
 <li><a href='#aDataScene-shiny'><p>Shiny bindings for aDataScene</p></a></li>
 <li><a href='#aframetags'><p>A-Frame Custom Elements</p></a></li>
-<li><a href='#shinyaframe'><p>WebVR Data Visualizations</p></a></li>
 </ul>
 </div>
 <hr>
@@ -101,6 +101,140 @@ A-Frame'</td>
 <td>2017-11-26 15:29:43 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='shinyaframe'>WebVR Data Visualizations</h2><span id='topic+shinyaframe'></span><span id='topic+shinyaframe-package'></span>
+
+<h3>Description</h3>
+
+<p>Make R data available in Web-based virtual reality experiences
+for immersive, cross-platform data visualizations. Includes the 'gg-aframe'
+JavaScript package for a Grammar of Graphics declarative HTML syntax to
+create 3-dimensional visualizations.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Example Shiny app from package vignette
+if (interactive()) {
+  library(shiny)
+  library(dplyr)
+  library(scales)
+  library(shinyaframe)
+
+  shinyApp(
+    ui = fluidPage(
+      aDataSceneOutput(
+        # attributes and child elements provided as arguments
+        # server output variable name
+        outputId = "mydatascene",
+        # add backdrop
+        environment = "",
+        # gg-aframe plot syntax
+        atags$entity(
+          # an empty string sets attributes with no additional properties
+          plot = "",
+          # sizable scale option uses polyhedra scaled for equivalent volumes
+          `scale-shape` = "sizable",
+          position = "0 1.6 -1.38",
+          atags$entity(
+            `layer-point` = "",
+            `data-binding__sepal.length`="target: layer-point.x",
+            `data-binding__sepal.width`="target: layer-point.y",
+            `data-binding__petal.length`="target: layer-point.z",
+            `data-binding__species`="target: layer-point.shape",
+            `data-binding__petal.width.size`="target: layer-point.size",
+            `data-binding__species.color`="target: layer-point.color"
+          ),
+          atags$entity(
+            `guide-axis` = "axis: x",
+            `data-binding__xbreaks` = "target: guide-axis.breaks",
+            `data-binding__xlabels` = "target: guide-axis.labels",
+            `data-binding__xtitle` = "target: guide-axis.title"
+          ),
+          atags$entity(
+            `guide-axis` = "axis: y",
+            `data-binding__ybreaks` = "target: guide-axis.breaks",
+            `data-binding__ylabels` = "target: guide-axis.labels",
+            `data-binding__ytitle` = "target: guide-axis.title"
+          ),
+          atags$entity(
+            `guide-axis` = "axis: z",
+            `data-binding__zbreaks` = "target: guide-axis.breaks",
+            `data-binding__zlabels` = "target: guide-axis.labels",
+            `data-binding__ztitle` = "target: guide-axis.title"
+          ),
+          atags$entity(
+            `guide-legend` = "aesthetic: shape",
+            `data-binding__shapetitle` = "target: guide-legend.title"
+          ),
+          atags$entity(
+            `guide-legend` = "aesthetic: size",
+            `data-binding__sizebreaks` = "target: guide-legend.breaks",
+            `data-binding__sizelabels` = "target: guide-legend.labels",
+            `data-binding__sizetitle` = "target: guide-legend.title"
+          ),
+          atags$entity(
+            `guide-legend` = "aesthetic: color",
+            `data-binding__colorbreaks` = "target: guide-legend.breaks",
+            `data-binding__colorlabels` = "target: guide-legend.labels",
+            `data-binding__colortitle` = "target: guide-legend.title"
+          ),
+          # animate the plot rotation
+          atags$other('animation', attribute = "rotation",
+                      from = "0 45 0", to = "0 405 0",
+                      dur = "10000", `repeat` = "indefinite")
+        )
+      )
+    ),
+    server = function(input, output, session) {
+      output$mydatascene &lt;- renderADataScene({
+        names(iris) &lt;- tolower(names(iris))
+        # Margin in (0,1) scale keeps polyhedra from sticking out of plot area
+        positional_to &lt;- c(0.01, 0.99)
+        # convert to #RRGGBB color
+        color_scale = setNames(rainbow(3, 0.75, 0.5, alpha = NULL),
+                               unique(iris$species))
+        iris %&gt;%
+          # scale positional data
+          mutate_if(is.numeric, rescale, to = positional_to) %&gt;%
+          # scale size data to relative percentage, using cube root to correct
+          # for radius-&gt;volume perception bias
+          mutate(petal.width.size = rescale(petal.width^(1/3), to = c(0.5, 2)),
+                 species.color = color_scale[species]) -&gt;
+          iris_scaled
+
+        # provide guide info
+        make_guide &lt;- function (var, aes, breaks = c(0.01, 0.5, 0.99)) {
+          guide = list()
+          domain = range(iris[[var]])
+          guide[[paste0(aes, "breaks")]] &lt;- breaks
+          guide[[paste0(aes, "labels")]] &lt;- c(domain[1],
+                                              round(mean(domain), 2),
+                                              domain[2])
+          guide[[paste0(aes, "title")]] &lt;- var
+          guide
+        }
+        Map(make_guide,
+            var = c("sepal.length", "sepal.width", "petal.length"),
+            aes = c("x", "y", "z")) %&gt;%
+          # repeat radius adjustment in the guide
+          c(list(make_guide("petal.width", "size", c(0.5, 1.25, 2)^(1/3)))) %&gt;%
+          Reduce(f = c) -&gt;
+          guides
+        guides$shapetitle = "species"
+        guides$colortitle = "species"
+        guides$colorbreaks = color_scale
+        guides$colorlabels = names(color_scale)
+
+        # convert data frame to list and combine with guides list
+        aDataScene(c(iris_scaled, guides))
+      })
+    }
+  )
+}
+</code></pre>
+
 <hr>
 <h2 id='aDataScene'>A-Frame Scene with R data</h2><span id='topic+aDataScene'></span>
 
@@ -387,140 +521,6 @@ atags$scene(
   atags$other("sky", color = "#89b6ff")
 )
 
-</code></pre>
-
-<hr>
-<h2 id='shinyaframe'>WebVR Data Visualizations</h2><span id='topic+shinyaframe'></span><span id='topic+shinyaframe-package'></span>
-
-<h3>Description</h3>
-
-<p>Make R data available in Web-based virtual reality experiences
-for immersive, cross-platform data visualizations. Includes the 'gg-aframe'
-JavaScript package for a Grammar of Graphics declarative HTML syntax to
-create 3-dimensional visualizations.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># Example Shiny app from package vignette
-if (interactive()) {
-  library(shiny)
-  library(dplyr)
-  library(scales)
-  library(shinyaframe)
-
-  shinyApp(
-    ui = fluidPage(
-      aDataSceneOutput(
-        # attributes and child elements provided as arguments
-        # server output variable name
-        outputId = "mydatascene",
-        # add backdrop
-        environment = "",
-        # gg-aframe plot syntax
-        atags$entity(
-          # an empty string sets attributes with no additional properties
-          plot = "",
-          # sizable scale option uses polyhedra scaled for equivalent volumes
-          `scale-shape` = "sizable",
-          position = "0 1.6 -1.38",
-          atags$entity(
-            `layer-point` = "",
-            `data-binding__sepal.length`="target: layer-point.x",
-            `data-binding__sepal.width`="target: layer-point.y",
-            `data-binding__petal.length`="target: layer-point.z",
-            `data-binding__species`="target: layer-point.shape",
-            `data-binding__petal.width.size`="target: layer-point.size",
-            `data-binding__species.color`="target: layer-point.color"
-          ),
-          atags$entity(
-            `guide-axis` = "axis: x",
-            `data-binding__xbreaks` = "target: guide-axis.breaks",
-            `data-binding__xlabels` = "target: guide-axis.labels",
-            `data-binding__xtitle` = "target: guide-axis.title"
-          ),
-          atags$entity(
-            `guide-axis` = "axis: y",
-            `data-binding__ybreaks` = "target: guide-axis.breaks",
-            `data-binding__ylabels` = "target: guide-axis.labels",
-            `data-binding__ytitle` = "target: guide-axis.title"
-          ),
-          atags$entity(
-            `guide-axis` = "axis: z",
-            `data-binding__zbreaks` = "target: guide-axis.breaks",
-            `data-binding__zlabels` = "target: guide-axis.labels",
-            `data-binding__ztitle` = "target: guide-axis.title"
-          ),
-          atags$entity(
-            `guide-legend` = "aesthetic: shape",
-            `data-binding__shapetitle` = "target: guide-legend.title"
-          ),
-          atags$entity(
-            `guide-legend` = "aesthetic: size",
-            `data-binding__sizebreaks` = "target: guide-legend.breaks",
-            `data-binding__sizelabels` = "target: guide-legend.labels",
-            `data-binding__sizetitle` = "target: guide-legend.title"
-          ),
-          atags$entity(
-            `guide-legend` = "aesthetic: color",
-            `data-binding__colorbreaks` = "target: guide-legend.breaks",
-            `data-binding__colorlabels` = "target: guide-legend.labels",
-            `data-binding__colortitle` = "target: guide-legend.title"
-          ),
-          # animate the plot rotation
-          atags$other('animation', attribute = "rotation",
-                      from = "0 45 0", to = "0 405 0",
-                      dur = "10000", `repeat` = "indefinite")
-        )
-      )
-    ),
-    server = function(input, output, session) {
-      output$mydatascene &lt;- renderADataScene({
-        names(iris) &lt;- tolower(names(iris))
-        # Margin in (0,1) scale keeps polyhedra from sticking out of plot area
-        positional_to &lt;- c(0.01, 0.99)
-        # convert to #RRGGBB color
-        color_scale = setNames(rainbow(3, 0.75, 0.5, alpha = NULL),
-                               unique(iris$species))
-        iris %&gt;%
-          # scale positional data
-          mutate_if(is.numeric, rescale, to = positional_to) %&gt;%
-          # scale size data to relative percentage, using cube root to correct
-          # for radius-&gt;volume perception bias
-          mutate(petal.width.size = rescale(petal.width^(1/3), to = c(0.5, 2)),
-                 species.color = color_scale[species]) -&gt;
-          iris_scaled
-
-        # provide guide info
-        make_guide &lt;- function (var, aes, breaks = c(0.01, 0.5, 0.99)) {
-          guide = list()
-          domain = range(iris[[var]])
-          guide[[paste0(aes, "breaks")]] &lt;- breaks
-          guide[[paste0(aes, "labels")]] &lt;- c(domain[1],
-                                              round(mean(domain), 2),
-                                              domain[2])
-          guide[[paste0(aes, "title")]] &lt;- var
-          guide
-        }
-        Map(make_guide,
-            var = c("sepal.length", "sepal.width", "petal.length"),
-            aes = c("x", "y", "z")) %&gt;%
-          # repeat radius adjustment in the guide
-          c(list(make_guide("petal.width", "size", c(0.5, 1.25, 2)^(1/3)))) %&gt;%
-          Reduce(f = c) -&gt;
-          guides
-        guides$shapetitle = "species"
-        guides$colortitle = "species"
-        guides$colorbreaks = color_scale
-        guides$colorlabels = names(color_scale)
-
-        # convert data frame to list and combine with guides list
-        aDataScene(c(iris_scaled, guides))
-      })
-    }
-  )
-}
 </code></pre>
 
 </main>

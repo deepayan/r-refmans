@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {R2MLwiN}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#R2MLwiN-package'><p>Running MLwiN from within R</p></a></li>
 <li><a href='#[,mlwinfitIGLS,ANY,ANY,ANY-method'><p>Extract or Replace parts of &quot;mlwinfitIGLS&quot; objects</p></a></li>
 <li><a href='#[,mlwinfitMCMC,ANY,ANY,ANY-method'><p>Extract or Replace parts of &quot;mlwinfitMCMC&quot; objects</p></a></li>
 <li><a href='#alevchem'><p>Chemistry A-level results from one exam board</p></a></li>
@@ -93,7 +94,6 @@ fitted model.</a></li>
 <li><a href='#print.mlwinfitIGLS'><p>Summarize &quot;mlwinfitIGLS&quot; objects</p></a></li>
 <li><a href='#print.mlwinfitMCMC'><p>Summarize &quot;mlwinfitMCMC&quot; objects</p></a></li>
 <li><a href='#prior2macro'><p>Translates informative prior information into a concise MLwiN macro.</p></a></li>
-<li><a href='#R2MLwiN-package'><p>Running MLwiN from within R</p></a></li>
 <li><a href='#rats'><p>Weights of 30 rats, measured weekly over 5 weeks.</p></a></li>
 <li><a href='#reading1'><p>Students' reading attainment in inner London infant schools.</p></a></li>
 <li><a href='#residuals.mlwinfitIGLS'><p>Returns the residual data from &quot;mlwinfitIGLS&quot; objects.</p></a></li>
@@ -219,6 +219,201 @@ doParallel, coda (&ge; 0.16-1), lattice, memisc, broom, tibble</td>
 <td>2024-01-30 03:20:16 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='R2MLwiN-package'>Running MLwiN from within R</h2><span id='topic+R2MLwiN'></span><span id='topic+R2MLwiN-package'></span>
+
+<h3>Description</h3>
+
+<p><span class="pkg">R2MLwiN</span> is an R command interface to the MLwiN multilevel modelling
+software package, allowing users to fit multilevel models using
+MLwiN (and also WinBUGS / OpenBUGS) from within the R environment.
+</p>
+
+
+<h3>New features in version 0.8-3</h3>
+
+<p>Support for model comparison tables via <code><a href="texreg.html#topic+texreg-package">texreg-package</a></code> and <code>memisc-package</code> have been
+added to <span class="pkg">R2MLwiN</span> version 0.8-3. For an example of using <code><a href="texreg.html#topic+texreg-package">texreg-package</a></code> see e.g. <code>demo(MCMCGuide04)</code>.
+</p>
+
+
+<h3>Important differences between version 0.8-0 and earlier versions</h3>
+
+<p>A number of wide-ranging changes, including a new model-fitting syntax more
+in keeping with that conventionally used in R, were introduced in
+<span class="pkg">R2MLwiN</span> version 0.8-0.
+</p>
+<p>The demos, which replicate both the User's Guide to MLwiN (Rasbash et al, 2012) and
+MCMC Estimation in MLwiN (Browne, 2012) manuals, provide practical demonstrations of many
+of these changes. See <code>demo(package = "R2MLwiN")</code> for a list of demo titles; to run one
+type e.g. <code>demo(UserGuide03)</code> or view a demo's script via
+<code>file.show(system.file("demo", "UserGuide03", package = "R2MLwiN"))</code>.
+</p>
+
+<ul>
+<li><p>The Formula is now specified via a <code><a href="stats.html#topic+formula">formula</a></code> object (with some differences
+in specification: see <code><a href="#topic+runMLwiN">runMLwiN</a></code>). So, for example,
+previously a 2-level model random intercept model would be specified by e.g.
+<code>normexam ~ (0|cons + standlrt) + (2|cons) + (1|cons), levID = c('school', 'student')</code>,
+with <code>normexam</code> the response variable, <code>cons</code> a constant of ones forming the intercept,
+which is allowed to vary at level 1 (<code>student</code>) and level 2 (<code>school</code>), and
+<code>standlrt</code> included as a predictor in the fixed part of the model. Whilst back-compatibility
+is preserved (i.e. this specification will currently still work) the same model can now be more
+parsimoniously specified via <code>normexam ~ 1 + standlrt + (1 | school) + (1 | student)</code>.
+As well examples in the demos, see <code><a href="#topic+runMLwiN">runMLwiN</a></code> and <code><a href="#topic+Formula.translate">Formula.translate</a></code> for further info.
+</p>
+</li>
+<li><p>As a means of specifying cross-classified, multiple membership or CAR models, <code>xclass</code> is now deprecated.
+Instead, cross-classified models are specified via <code>xc = TRUE</code>, multiple
+membership models are specified via <code>mm</code>, and CAR models are specified via <code>car</code>,
+in the list of <code>estoptions</code>. <code>mm</code> and <code>car</code> can be a list of
+variable names, a list of vectors, or a matrix. See <code><a href="#topic+runMLwiN">runMLwiN</a></code> for further details.
+</p>
+</li>
+<li><p>Multiple membership/CAR information can now be specified using matrices.
+<code><a href="#topic+df2matrix">df2matrix</a></code> and <code><a href="#topic+matrix2df">matrix2df</a></code> functions have also been added to convert such
+information between <code><a href="base.html#topic+data.frame">data.frame</a></code> and <code><a href="base.html#topic+matrix">matrix</a></code> formats.
+</p>
+</li>
+<li><p>As a means of specifying common (i.e. the same for each category) or separate (i.e. one for each
+category) coefficients in ordered multinomial
+and multivariate response models, <code>c</code> (for common) and <code>s</code> (for separate) have been
+replaced by the employment of square brackets after the relevant variable to indicate a common
+coefficient is to be fitted (a separate coefficient will be fitted otherwise). Within these square
+brackets needs to be placed a numeric identifier indicating the responses for which a common coefficient
+is to be added (see <code><a href="#topic+runMLwiN">runMLwiN</a></code> for further details). E.g. what would have been previously
+specified, within the <code>Formula</code> object, as <code>... (0s|cons + ravens) + (0c|fluent{1, 0}) ...</code> would now be specified by
+<code>... 1 + ravens + fluent[1] ...</code>.
+</p>
+</li>
+<li><p>When added as a predictor, a variable encoded as a <code><a href="base.html#topic+factor">factor</a></code> is automatically
+handled as categorical, replacing the previous use of square brackets after the variable name.
+</p>
+</li>
+<li><p>A number of generic s4 methods have been added to improve compatibility with statistical functions
+which use them (e.g. see <code><a href="stats4.html#topic+stats4-package">stats4-package</a></code>). So, for example, the addition of 
+a <code><a href="stats.html#topic+logLik">logLik</a></code> means a likelihood ratio test can now be conducted
+on two <code><a href="#topic+mlwinfitIGLS-class">mlwinfitIGLS-class</a></code> objects using the <code>lrtest</code> function,
+e.g. <code>lrtest(mymodel1, mymodel2)</code>. See <code>help(package = "R2MLwiN")</code> for
+the index listing these various methods.
+</p>
+</li></ul>
+
+
+
+<h3>References</h3>
+
+
+
+<h4>R2MLwiN</h4>
+
+<p>Zhang, Z., Parker, R.M.A., Charlton, C.M.J., Leckie, G. and Browne, W.J.
+(2016) R2MLwiN: A Package to Run MLwiN from within R.
+Journal of Statistical Software, 72(10), 1-43.
+doi:10.18637/jss.v072.i10
+</p>
+
+
+
+<h4>MLwiN software and manuals</h4>
+
+<p>Browne, W.J. (2012) MCMC Estimation in MLwiN, v2.26.
+Centre for Multilevel Modelling, University of Bristol.
+</p>
+<p>Rasbash, J., Charlton, C., Browne, W.J., Healy, M. and Cameron, B. (2009)
+MLwiN Version 2.1. Centre for Multilevel Modelling, University of Bristol.
+</p>
+<p>Rasbash, J., Charlton, C. and Pillinger, R. (2012) Manual Supplement to
+MLwiN v2.26. Centre for Multilevel Modelling, University of Bristol.
+</p>
+<p>Rasbash, J., Steele, F., Browne, W.J. and Goldstein, H. (2012)
+A User's Guide to MLwiN Version 2.26. Centre for Multilevel Modelling,
+University of Bristol.
+</p>
+
+
+
+<h4>OpenBUGS</h4>
+
+<p>Thomas, A., O'Hara, B., Ligges, U. and Sturtz, S. (2006) Making BUGS Open.
+R News, 6, 12:17.
+</p>
+
+
+
+<h4>WinBUGS</h4>
+
+<p>Spiegelhalter, D.J., Thomas, A. and Best, N.G. (1999) WinBUGS Version 1.2
+User Manual. MRC Biostatistics Unit.
+</p>
+
+
+
+<h3>Maintainer</h3>
+
+<p>Zhengzheng Zhang <a href="mailto:zhengzheng236@gmail.com">zhengzheng236@gmail.com</a>
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Zhang, Z., Charlton, C.M.J., Parker, R.M.A., Leckie, G., and Browne,
+W.J. (2016) Centre for Multilevel Modelling, University of Bristol.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="http://www.bristol.ac.uk/cmm/software/r2mlwin/">http://www.bristol.ac.uk/cmm/software/r2mlwin/</a>
+</p>
+</li>
+<li> <p><a href="https://r-forge.r-project.org/projects/r2mlwin/">https://r-forge.r-project.org/projects/r2mlwin/</a>
+</p>
+</li>
+<li> <p><a href="http://www.bristol.ac.uk/cmm/software/mlwin/">http://www.bristol.ac.uk/cmm/software/mlwin/</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+library(R2MLwiN)
+# NOTE: if MLwiN not saved in location R2MLwiN defaults to, specify path via:
+# options(MLwiN_path = 'path/to/MLwiN vX.XX/')
+# If using R2MLwiN via WINE, the path may look like this:
+# options(MLwiN_path = '/home/USERNAME/.wine/drive_c/Program Files (x86)/MLwiN vX.XX/')
+
+data(tutorial, package = "R2MLwiN")
+
+(mymodel &lt;- runMLwiN(normexam ~ 1 + standlrt + (1 + standlrt | school) + (1 | student),
+                     estoptions = list(EstM = 1), data = tutorial))
+
+## The R2MLwiN package includes scripts to replicate all the analyses in
+## Rasbash et al (2012) A User's Guide to MLwiN Version 2.26 and
+## Browne, W.J. (2012) MCMC estimation in MLwiN Version 2.26.
+## The MLwiN manuals are available online, see:
+## http://www.bristol.ac.uk/cmm/software/mlwin/download/manuals.html
+
+## For a list of demo titles
+demo(package = 'R2MLwiN')
+
+## Take MCMCGuide03 as an example
+## To view file
+file.show(system.file('demo', 'MCMCGuide03.R', package='R2MLwiN'))
+
+## To run the demo
+demo(MCMCGuide03)
+
+## End(Not run)
+
+</code></pre>
+
 <hr>
 <h2 id='+5B+2CmlwinfitIGLS+2CANY+2CANY+2CANY-method'>Extract or Replace parts of &quot;mlwinfitIGLS&quot; objects</h2><span id='topic++5B+2CmlwinfitIGLS+2CANY+2CANY+2CANY-method'></span><span id='topic++5B+3C-+2CmlwinfitIGLS+2CANY+2CANY+2CANY-method'></span><span id='topic++5B+5B+2CmlwinfitIGLS-method'></span><span id='topic++5B+5B+3C-+2CmlwinfitIGLS-method'></span>
 
@@ -4474,201 +4669,6 @@ W.J. (2016) Centre for Multilevel Modelling, University of Bristol.
 
 <p><code><a href="#topic+runMLwiN">runMLwiN</a></code>
 </p>
-
-<hr>
-<h2 id='R2MLwiN-package'>Running MLwiN from within R</h2><span id='topic+R2MLwiN'></span><span id='topic+R2MLwiN-package'></span>
-
-<h3>Description</h3>
-
-<p><span class="pkg">R2MLwiN</span> is an R command interface to the MLwiN multilevel modelling
-software package, allowing users to fit multilevel models using
-MLwiN (and also WinBUGS / OpenBUGS) from within the R environment.
-</p>
-
-
-<h3>New features in version 0.8-3</h3>
-
-<p>Support for model comparison tables via <code><a href="texreg.html#topic+texreg-package">texreg-package</a></code> and <code>memisc-package</code> have been
-added to <span class="pkg">R2MLwiN</span> version 0.8-3. For an example of using <code><a href="texreg.html#topic+texreg-package">texreg-package</a></code> see e.g. <code>demo(MCMCGuide04)</code>.
-</p>
-
-
-<h3>Important differences between version 0.8-0 and earlier versions</h3>
-
-<p>A number of wide-ranging changes, including a new model-fitting syntax more
-in keeping with that conventionally used in R, were introduced in
-<span class="pkg">R2MLwiN</span> version 0.8-0.
-</p>
-<p>The demos, which replicate both the User's Guide to MLwiN (Rasbash et al, 2012) and
-MCMC Estimation in MLwiN (Browne, 2012) manuals, provide practical demonstrations of many
-of these changes. See <code>demo(package = "R2MLwiN")</code> for a list of demo titles; to run one
-type e.g. <code>demo(UserGuide03)</code> or view a demo's script via
-<code>file.show(system.file("demo", "UserGuide03", package = "R2MLwiN"))</code>.
-</p>
-
-<ul>
-<li><p>The Formula is now specified via a <code><a href="stats.html#topic+formula">formula</a></code> object (with some differences
-in specification: see <code><a href="#topic+runMLwiN">runMLwiN</a></code>). So, for example,
-previously a 2-level model random intercept model would be specified by e.g.
-<code>normexam ~ (0|cons + standlrt) + (2|cons) + (1|cons), levID = c('school', 'student')</code>,
-with <code>normexam</code> the response variable, <code>cons</code> a constant of ones forming the intercept,
-which is allowed to vary at level 1 (<code>student</code>) and level 2 (<code>school</code>), and
-<code>standlrt</code> included as a predictor in the fixed part of the model. Whilst back-compatibility
-is preserved (i.e. this specification will currently still work) the same model can now be more
-parsimoniously specified via <code>normexam ~ 1 + standlrt + (1 | school) + (1 | student)</code>.
-As well examples in the demos, see <code><a href="#topic+runMLwiN">runMLwiN</a></code> and <code><a href="#topic+Formula.translate">Formula.translate</a></code> for further info.
-</p>
-</li>
-<li><p>As a means of specifying cross-classified, multiple membership or CAR models, <code>xclass</code> is now deprecated.
-Instead, cross-classified models are specified via <code>xc = TRUE</code>, multiple
-membership models are specified via <code>mm</code>, and CAR models are specified via <code>car</code>,
-in the list of <code>estoptions</code>. <code>mm</code> and <code>car</code> can be a list of
-variable names, a list of vectors, or a matrix. See <code><a href="#topic+runMLwiN">runMLwiN</a></code> for further details.
-</p>
-</li>
-<li><p>Multiple membership/CAR information can now be specified using matrices.
-<code><a href="#topic+df2matrix">df2matrix</a></code> and <code><a href="#topic+matrix2df">matrix2df</a></code> functions have also been added to convert such
-information between <code><a href="base.html#topic+data.frame">data.frame</a></code> and <code><a href="base.html#topic+matrix">matrix</a></code> formats.
-</p>
-</li>
-<li><p>As a means of specifying common (i.e. the same for each category) or separate (i.e. one for each
-category) coefficients in ordered multinomial
-and multivariate response models, <code>c</code> (for common) and <code>s</code> (for separate) have been
-replaced by the employment of square brackets after the relevant variable to indicate a common
-coefficient is to be fitted (a separate coefficient will be fitted otherwise). Within these square
-brackets needs to be placed a numeric identifier indicating the responses for which a common coefficient
-is to be added (see <code><a href="#topic+runMLwiN">runMLwiN</a></code> for further details). E.g. what would have been previously
-specified, within the <code>Formula</code> object, as <code>... (0s|cons + ravens) + (0c|fluent{1, 0}) ...</code> would now be specified by
-<code>... 1 + ravens + fluent[1] ...</code>.
-</p>
-</li>
-<li><p>When added as a predictor, a variable encoded as a <code><a href="base.html#topic+factor">factor</a></code> is automatically
-handled as categorical, replacing the previous use of square brackets after the variable name.
-</p>
-</li>
-<li><p>A number of generic s4 methods have been added to improve compatibility with statistical functions
-which use them (e.g. see <code><a href="stats4.html#topic+stats4-package">stats4-package</a></code>). So, for example, the addition of 
-a <code><a href="stats.html#topic+logLik">logLik</a></code> means a likelihood ratio test can now be conducted
-on two <code><a href="#topic+mlwinfitIGLS-class">mlwinfitIGLS-class</a></code> objects using the <code>lrtest</code> function,
-e.g. <code>lrtest(mymodel1, mymodel2)</code>. See <code>help(package = "R2MLwiN")</code> for
-the index listing these various methods.
-</p>
-</li></ul>
-
-
-
-<h3>References</h3>
-
-
-
-<h4>R2MLwiN</h4>
-
-<p>Zhang, Z., Parker, R.M.A., Charlton, C.M.J., Leckie, G. and Browne, W.J.
-(2016) R2MLwiN: A Package to Run MLwiN from within R.
-Journal of Statistical Software, 72(10), 1-43.
-doi:10.18637/jss.v072.i10
-</p>
-
-
-
-<h4>MLwiN software and manuals</h4>
-
-<p>Browne, W.J. (2012) MCMC Estimation in MLwiN, v2.26.
-Centre for Multilevel Modelling, University of Bristol.
-</p>
-<p>Rasbash, J., Charlton, C., Browne, W.J., Healy, M. and Cameron, B. (2009)
-MLwiN Version 2.1. Centre for Multilevel Modelling, University of Bristol.
-</p>
-<p>Rasbash, J., Charlton, C. and Pillinger, R. (2012) Manual Supplement to
-MLwiN v2.26. Centre for Multilevel Modelling, University of Bristol.
-</p>
-<p>Rasbash, J., Steele, F., Browne, W.J. and Goldstein, H. (2012)
-A User's Guide to MLwiN Version 2.26. Centre for Multilevel Modelling,
-University of Bristol.
-</p>
-
-
-
-<h4>OpenBUGS</h4>
-
-<p>Thomas, A., O'Hara, B., Ligges, U. and Sturtz, S. (2006) Making BUGS Open.
-R News, 6, 12:17.
-</p>
-
-
-
-<h4>WinBUGS</h4>
-
-<p>Spiegelhalter, D.J., Thomas, A. and Best, N.G. (1999) WinBUGS Version 1.2
-User Manual. MRC Biostatistics Unit.
-</p>
-
-
-
-<h3>Maintainer</h3>
-
-<p>Zhengzheng Zhang <a href="mailto:zhengzheng236@gmail.com">zhengzheng236@gmail.com</a>
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Zhang, Z., Charlton, C.M.J., Parker, R.M.A., Leckie, G., and Browne,
-W.J. (2016) Centre for Multilevel Modelling, University of Bristol.
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="http://www.bristol.ac.uk/cmm/software/r2mlwin/">http://www.bristol.ac.uk/cmm/software/r2mlwin/</a>
-</p>
-</li>
-<li> <p><a href="https://r-forge.r-project.org/projects/r2mlwin/">https://r-forge.r-project.org/projects/r2mlwin/</a>
-</p>
-</li>
-<li> <p><a href="http://www.bristol.ac.uk/cmm/software/mlwin/">http://www.bristol.ac.uk/cmm/software/mlwin/</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-library(R2MLwiN)
-# NOTE: if MLwiN not saved in location R2MLwiN defaults to, specify path via:
-# options(MLwiN_path = 'path/to/MLwiN vX.XX/')
-# If using R2MLwiN via WINE, the path may look like this:
-# options(MLwiN_path = '/home/USERNAME/.wine/drive_c/Program Files (x86)/MLwiN vX.XX/')
-
-data(tutorial, package = "R2MLwiN")
-
-(mymodel &lt;- runMLwiN(normexam ~ 1 + standlrt + (1 + standlrt | school) + (1 | student),
-                     estoptions = list(EstM = 1), data = tutorial))
-
-## The R2MLwiN package includes scripts to replicate all the analyses in
-## Rasbash et al (2012) A User's Guide to MLwiN Version 2.26 and
-## Browne, W.J. (2012) MCMC estimation in MLwiN Version 2.26.
-## The MLwiN manuals are available online, see:
-## http://www.bristol.ac.uk/cmm/software/mlwin/download/manuals.html
-
-## For a list of demo titles
-demo(package = 'R2MLwiN')
-
-## Take MCMCGuide03 as an example
-## To view file
-file.show(system.file('demo', 'MCMCGuide03.R', package='R2MLwiN'))
-
-## To run the demo
-demo(MCMCGuide03)
-
-## End(Not run)
-
-</code></pre>
 
 <hr>
 <h2 id='rats'>Weights of 30 rats, measured weekly over 5 weeks.</h2><span id='topic+rats'></span>

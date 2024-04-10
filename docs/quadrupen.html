@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {quadrupen}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#quadrupen-package'><p>Sparsity by Worst-Case Quadratic Penalties</p></a></li>
 <li><a href='#bounded.reg'><p>Fit a linear model with infinity-norm plus ridge-like regularization</p></a></li>
 <li><a href='#crossval'><p>Cross-validation function for quadrupen fitting methods.</p></a></li>
 <li><a href='#cvpen-class'><p>Class &quot;cvpen&quot;</p></a></li>
@@ -26,7 +27,6 @@ function processMathHTML() {
 <li><a href='#plot,quadrupen-method'><p>Plot method for a quadrupen object</p></a></li>
 <li><a href='#plot,stability.path-method'><p>Plot method for <code>stability.path</code>.</p></a></li>
 <li><a href='#quadrupen-class'><p>Class &quot;quadrupen&quot;</p></a></li>
-<li><a href='#quadrupen-package'><p>Sparsity by Worst-Case Quadratic Penalties</p></a></li>
 <li><a href='#stability'><p>Stability selection for a quadrupen fit.</p></a></li>
 <li><a href='#stability.path-class'><p>Class &quot;stability.path&quot;</p></a></li>
 </ul>
@@ -55,7 +55,7 @@ function processMathHTML() {
 <td>Description:</td>
 <td>Fits classical sparse regression models with
     efficient active set algorithms by solving quadratic problems as described by 
-    Grandvalet, Chiquet and Ambroise (2017) &lt;<a href="https://arxiv.org/abs/1210.2077">arXiv:1210.2077</a>&gt;. Also provides a few 
+    Grandvalet, Chiquet and Ambroise (2017) &lt;<a href="https://doi.org/10.48550/arXiv.1210.2077">doi:10.48550/arXiv.1210.2077</a>&gt;. Also provides a few 
     methods for model selection purpose (cross-validation, stability selection).</td>
 </tr>
 <tr>
@@ -124,6 +124,183 @@ function processMathHTML() {
 <td>2023-12-18 09:50:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='quadrupen-package'>Sparsity by Worst-Case Quadratic Penalties</h2><span id='topic+quadrupen-package'></span><span id='topic+quadrupen'></span>
+
+<h3>Description</h3>
+
+<p>This package is designed to fit accurately several popular
+penalized linear regression models using the algorithm proposed in
+Grandvalet, Chiquet and Ambroise (submitted) by solving quadratic
+problems with increasing size.
+</p>
+
+
+<h3>Features</h3>
+
+<p>At the moment, two <code>R</code> fitting functions are available:
+</p>
+
+<ol>
+<li><p> the <code><a href="#topic+elastic.net">elastic.net</a></code> function, which solves a family of
+linear regression problems penalized by a mixture of
+<code class="reqn">\ell_1</code> and <code class="reqn">\ell_2</code> norms. It notably includes
+the LASSO (Tibshirani, 1996), the adaptive-LASSO (Zou, 2006), the
+Elastic-net (Zou and Hastie, 2006) or the Structured Elastic-net
+(Slawski et al., 2010). See examples as well as the available
+<code>demo(quad_enet)</code>.
+</p>
+</li>
+<li><p> the <code><a href="#topic+bounded.reg">bounded.reg</a></code> function, which fits a linear model
+penalized by a mixture of <code class="reqn">\ell_\infty</code> and
+<code class="reqn">\ell_2</code> norms. It owns the same versatility as the
+<code>elastic.net</code> function regarding the <code class="reqn">\ell_2</code> norm,
+yet the <code class="reqn">\ell_1</code>-norm is replaced by the infinity
+norm. Check <code>demo(quad_breg)</code> and examples.</p>
+</li></ol>
+
+<p>The problem commonly solved for these two functions writes
+
+
+
+&beta;<sup>hat</sup><sub>&lambda;<sub>1</sub>,&lambda;<sub>2</sub></sub> = argmin<sub>&beta;</sub> 1/2 RSS(&beta;) + &lambda;<sub>1</sub> &#124; D &beta; &#124;<sub>q</sub> + &lambda;/2 <sub>2</sub>&beta;<sup>T</sup> S &beta;, 
+
+ where
+<code class="reqn">q=1</code> for <code>elastic.net</code> and
+<code class="reqn">q=\infty</code> for <code>bounded.reg</code>.  The diagonal
+matrix <code class="reqn">D</code> allows different weights for the first part of
+the penalty. The structuring matrix <code class="reqn">S</code> can be used to
+introduce some prior information regarding the predictors. It is
+provided via a positive semidefinite matrix.
+</p>
+<p>The S4 objects produced by the fitting procedures own the
+classical methods for linear model in <code>R</code>, as well as methods
+for plotting, (double) cross-validation and for the stability
+selection procedure of Meinshausen and Buhlmann (2010).
+</p>
+<p>All the examples of this documentation have been included to the
+package source, in the 'examples' directory. Some (too few!)
+routine testing scripts using the <span class="pkg">testhat</span> package are also
+present in the 'tests' directory, where we check basic
+functionalities of the code, especially the reproducibility of the
+Lasso/Elastic-net solution path with the <span class="pkg">lars</span>,
+<span class="pkg">elasticnet</span> and <span class="pkg">glmnet</span> packages.  We also check the
+handling of runtime errors or unstabilities.
+</p>
+
+
+<h3>Algorithm</h3>
+
+<p>The general strategy of the algorithm relies on maintaining an
+active set of variables, starting from a vector of zeros. The
+underlying optimization problem is solved only on the activated
+variables, thus handling with small smooth problems with
+increasing size. Hence, by considering a decreasing grid of values
+for the penalty <code class="reqn">\lambda_1</code> and fixing
+<code class="reqn">\lambda_2</code>, we may explore the whole path of
+solutions at a reasonable numerical cost, providing that
+<code class="reqn">\lambda_1</code> does not end up too small.
+</p>
+<p>For the <code class="reqn">\ell_1</code>-based methods (available in the
+<code>elastic.net</code> function), the size of the underlying problems
+solved is related to the number of nonzero coefficients in the
+vector of parameters. With the <code class="reqn">\ell_\infty</code>-norm,
+(available in the <code>boundary.reg</code> function), we do not produce
+sparse estimator. Nevertheless, the size of the systems solved
+along the path deals with the number of unbounded variables for
+the current penalty level, which is quite smaller than the number
+of predictors for a reasonable <code class="reqn">\lambda_1</code>. The same
+kind of proposal was made in Zhao, Rocha and Yu (2009).
+</p>
+<p>Underlying optimization is performed by direct resolution of
+quadratic sub problems, which is the main purpose of this
+package. This strategy is thoroughly exposed in Grandvalet,
+Chiquet and Ambroise (submitted). Still, we also implemented the
+popular and versatile proximal (FISTA) approaches for routine
+checks and numerical comparisons. A coordinate descent approach is
+also included, yet only for the <code>elastic.net</code> fitting
+procedure.
+</p>
+<p>The default setting uses the quadratic approach that gives its
+name to the package. It has been optimized to be the method of
+choice for small and medium scale problems, and produce very
+accurate solutions. However, the first order methods (coordinate
+descent and FISTA) can be interesting in situations where the
+problem is close to singular, in which case the Cholesky
+decomposition used in the quadratic solver can be computationally
+unstable. Though it is extremely unlikely for
+<code><a href="#topic+elastic.net">elastic.net</a></code> &ndash; and if so, we encourage the user to
+send us back any report of such an event &ndash;, this happens at times
+with <code><a href="#topic+bounded.reg">bounded.reg</a></code>. Regarding this issue, we let the
+possibility for the user to run the optimization of the
+<code><a href="#topic+bounded.reg">bounded.reg</a></code> criterion in a (hopefully) 'bulletproof'
+mode: using mainly the fast and accurate quadratic approach, it
+switches to the slower but more robust proximal resolution when
+unstability is detected.
+</p>
+
+
+<h3>Technical remarks</h3>
+
+<p>Most of the numerical work is done in C++, relying on the
+<span class="pkg">RcppArmadillo</span> package. We also provide a (double)
+cross-validation procedure and functions for stability selection,
+both using the multi-core capability of the computer, through the
+<span class="pkg">parallel</span> package. This feature is not available for Windows
+user, though. Finally, note that the plot methods enjoy some
+(still very few) of the capabilities of the <span class="pkg">ggplot2</span> package.
+</p>
+<p>We hope to enrich <span class="pkg">quadrupen</span> with other popular fitting
+procedures and develop other statistical tools, particularly
+towards bootstrapping and model selection purpose. Sparse matrix
+encoding is partially supported at the moment, and will hopefully
+be thoroughly available in the future, thanks to upcoming updates
+of the great <span class="pkg">RcppArmadillo</span> package.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Julien Chiquet <a href="mailto:julien.chiquet@inrae.fr">julien.chiquet@inrae.fr</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Yves Grandvalet, Julien Chiquet and Christophe Ambroise,
+<a href="https://arxiv.org/abs/1210.2077">Sparsity by Worst-case Quadratic
+Penalties</a>, arXiv preprint, 2012.
+</p>
+
+<ul>
+<li><p> Nicolas Meinshausen and Peter Buhlmann. Stability Selection,
+JRSS(B), 2010.
+</p>
+</li>
+<li><p>  Martin Slawski, Wolfgang zu Castell, and Gerhard
+Tutz. Feature selection guided by structural information, AOAS,
+2010.
+</p>
+</li>
+<li><p> Peng Zhao, Guillerme Rocha and Bin Yu. The composite
+absolute penalties family for grouped and hierarchical variable
+selection, The Annals of Statistics, 2009.
+</p>
+</li>
+<li><p>  Hui Zou. The Adaptive Lasso and Its Oracle Properties,
+JASA, 2006.
+</p>
+</li>
+<li><p> Hui Zou and Trevor Hastie. Regularization and variable
+selection via the elastic net, JRSS(B), 2006.
+</p>
+</li>
+<li><p>  Robert Tibshirani. Regression Shrinkage and Selection
+via the Lasso, JRSS(B), 1996.
+</p>
+</li></ul>
+
+
 <hr>
 <h2 id='bounded.reg'>Fit a linear model with infinity-norm plus ridge-like regularization</h2><span id='topic+bounded.reg'></span>
 
@@ -1249,183 +1426,6 @@ corresponding to a value of <code>lambda1</code>.</p>
 
 <p>See also <code><a href="#topic+plot+2Cquadrupen-method">plot,quadrupen-method</a></code>.
 </p>
-
-<hr>
-<h2 id='quadrupen-package'>Sparsity by Worst-Case Quadratic Penalties</h2><span id='topic+quadrupen-package'></span><span id='topic+quadrupen'></span>
-
-<h3>Description</h3>
-
-<p>This package is designed to fit accurately several popular
-penalized linear regression models using the algorithm proposed in
-Grandvalet, Chiquet and Ambroise (submitted) by solving quadratic
-problems with increasing size.
-</p>
-
-
-<h3>Features</h3>
-
-<p>At the moment, two <code>R</code> fitting functions are available:
-</p>
-
-<ol>
-<li><p> the <code><a href="#topic+elastic.net">elastic.net</a></code> function, which solves a family of
-linear regression problems penalized by a mixture of
-<code class="reqn">\ell_1</code> and <code class="reqn">\ell_2</code> norms. It notably includes
-the LASSO (Tibshirani, 1996), the adaptive-LASSO (Zou, 2006), the
-Elastic-net (Zou and Hastie, 2006) or the Structured Elastic-net
-(Slawski et al., 2010). See examples as well as the available
-<code>demo(quad_enet)</code>.
-</p>
-</li>
-<li><p> the <code><a href="#topic+bounded.reg">bounded.reg</a></code> function, which fits a linear model
-penalized by a mixture of <code class="reqn">\ell_\infty</code> and
-<code class="reqn">\ell_2</code> norms. It owns the same versatility as the
-<code>elastic.net</code> function regarding the <code class="reqn">\ell_2</code> norm,
-yet the <code class="reqn">\ell_1</code>-norm is replaced by the infinity
-norm. Check <code>demo(quad_breg)</code> and examples.</p>
-</li></ol>
-
-<p>The problem commonly solved for these two functions writes
-
-
-
-&beta;<sup>hat</sup><sub>&lambda;<sub>1</sub>,&lambda;<sub>2</sub></sub> = argmin<sub>&beta;</sub> 1/2 RSS(&beta;) + &lambda;<sub>1</sub> &#124; D &beta; &#124;<sub>q</sub> + &lambda;/2 <sub>2</sub>&beta;<sup>T</sup> S &beta;, 
-
- where
-<code class="reqn">q=1</code> for <code>elastic.net</code> and
-<code class="reqn">q=\infty</code> for <code>bounded.reg</code>.  The diagonal
-matrix <code class="reqn">D</code> allows different weights for the first part of
-the penalty. The structuring matrix <code class="reqn">S</code> can be used to
-introduce some prior information regarding the predictors. It is
-provided via a positive semidefinite matrix.
-</p>
-<p>The S4 objects produced by the fitting procedures own the
-classical methods for linear model in <code>R</code>, as well as methods
-for plotting, (double) cross-validation and for the stability
-selection procedure of Meinshausen and Buhlmann (2010).
-</p>
-<p>All the examples of this documentation have been included to the
-package source, in the 'examples' directory. Some (too few!)
-routine testing scripts using the <span class="pkg">testhat</span> package are also
-present in the 'tests' directory, where we check basic
-functionalities of the code, especially the reproducibility of the
-Lasso/Elastic-net solution path with the <span class="pkg">lars</span>,
-<span class="pkg">elasticnet</span> and <span class="pkg">glmnet</span> packages.  We also check the
-handling of runtime errors or unstabilities.
-</p>
-
-
-<h3>Algorithm</h3>
-
-<p>The general strategy of the algorithm relies on maintaining an
-active set of variables, starting from a vector of zeros. The
-underlying optimization problem is solved only on the activated
-variables, thus handling with small smooth problems with
-increasing size. Hence, by considering a decreasing grid of values
-for the penalty <code class="reqn">\lambda_1</code> and fixing
-<code class="reqn">\lambda_2</code>, we may explore the whole path of
-solutions at a reasonable numerical cost, providing that
-<code class="reqn">\lambda_1</code> does not end up too small.
-</p>
-<p>For the <code class="reqn">\ell_1</code>-based methods (available in the
-<code>elastic.net</code> function), the size of the underlying problems
-solved is related to the number of nonzero coefficients in the
-vector of parameters. With the <code class="reqn">\ell_\infty</code>-norm,
-(available in the <code>boundary.reg</code> function), we do not produce
-sparse estimator. Nevertheless, the size of the systems solved
-along the path deals with the number of unbounded variables for
-the current penalty level, which is quite smaller than the number
-of predictors for a reasonable <code class="reqn">\lambda_1</code>. The same
-kind of proposal was made in Zhao, Rocha and Yu (2009).
-</p>
-<p>Underlying optimization is performed by direct resolution of
-quadratic sub problems, which is the main purpose of this
-package. This strategy is thoroughly exposed in Grandvalet,
-Chiquet and Ambroise (submitted). Still, we also implemented the
-popular and versatile proximal (FISTA) approaches for routine
-checks and numerical comparisons. A coordinate descent approach is
-also included, yet only for the <code>elastic.net</code> fitting
-procedure.
-</p>
-<p>The default setting uses the quadratic approach that gives its
-name to the package. It has been optimized to be the method of
-choice for small and medium scale problems, and produce very
-accurate solutions. However, the first order methods (coordinate
-descent and FISTA) can be interesting in situations where the
-problem is close to singular, in which case the Cholesky
-decomposition used in the quadratic solver can be computationally
-unstable. Though it is extremely unlikely for
-<code><a href="#topic+elastic.net">elastic.net</a></code> &ndash; and if so, we encourage the user to
-send us back any report of such an event &ndash;, this happens at times
-with <code><a href="#topic+bounded.reg">bounded.reg</a></code>. Regarding this issue, we let the
-possibility for the user to run the optimization of the
-<code><a href="#topic+bounded.reg">bounded.reg</a></code> criterion in a (hopefully) 'bulletproof'
-mode: using mainly the fast and accurate quadratic approach, it
-switches to the slower but more robust proximal resolution when
-unstability is detected.
-</p>
-
-
-<h3>Technical remarks</h3>
-
-<p>Most of the numerical work is done in C++, relying on the
-<span class="pkg">RcppArmadillo</span> package. We also provide a (double)
-cross-validation procedure and functions for stability selection,
-both using the multi-core capability of the computer, through the
-<span class="pkg">parallel</span> package. This feature is not available for Windows
-user, though. Finally, note that the plot methods enjoy some
-(still very few) of the capabilities of the <span class="pkg">ggplot2</span> package.
-</p>
-<p>We hope to enrich <span class="pkg">quadrupen</span> with other popular fitting
-procedures and develop other statistical tools, particularly
-towards bootstrapping and model selection purpose. Sparse matrix
-encoding is partially supported at the moment, and will hopefully
-be thoroughly available in the future, thanks to upcoming updates
-of the great <span class="pkg">RcppArmadillo</span> package.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Julien Chiquet <a href="mailto:julien.chiquet@inrae.fr">julien.chiquet@inrae.fr</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Yves Grandvalet, Julien Chiquet and Christophe Ambroise,
-<a href="https://arxiv.org/abs/1210.2077">Sparsity by Worst-case Quadratic
-Penalties</a>, arXiv preprint, 2012.
-</p>
-
-<ul>
-<li><p> Nicolas Meinshausen and Peter Buhlmann. Stability Selection,
-JRSS(B), 2010.
-</p>
-</li>
-<li><p>  Martin Slawski, Wolfgang zu Castell, and Gerhard
-Tutz. Feature selection guided by structural information, AOAS,
-2010.
-</p>
-</li>
-<li><p> Peng Zhao, Guillerme Rocha and Bin Yu. The composite
-absolute penalties family for grouped and hierarchical variable
-selection, The Annals of Statistics, 2009.
-</p>
-</li>
-<li><p>  Hui Zou. The Adaptive Lasso and Its Oracle Properties,
-JASA, 2006.
-</p>
-</li>
-<li><p> Hui Zou and Trevor Hastie. Regularization and variable
-selection via the elastic net, JRSS(B), 2006.
-</p>
-</li>
-<li><p>  Robert Tibshirani. Regression Shrinkage and Selection
-via the Lasso, JRSS(B), 1996.
-</p>
-</li></ul>
-
 
 <hr>
 <h2 id='stability'>Stability selection for a quadrupen fit.</h2><span id='topic+stability'></span>

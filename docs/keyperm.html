@@ -13,16 +13,16 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {keyperm}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#keyperm-package'><p>keyperm: Keyword Analysis Using Permutation Tests</p></a></li>
 <li><a href='#combine_results'><p>Combine results of permutation test for keyness</p></a></li>
 <li><a href='#create_ifl'><p>Create an Indexed Frequency List</p></a></li>
 <li><a href='#keyness_scores'><p>Calculate observed keyness scores</p></a></li>
 <li><a href='#keyperm'><p>Calculate the permutation distribution for a keyness measure</p></a></li>
-<li><a href='#keyperm-package'><p>keyperm: Keyword Analysis Using Permutation Tests</p></a></li>
 <li><a href='#p_value'><p>Convert results of permutation test for keyness to p-values</p></a></li>
 </ul>
 </div>
@@ -44,7 +44,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Description:</td>
-<td>Efficient implementation of permutation tests for keyword analysis in corpus linguistics as described in Mildenberger (2023) &lt;<a href="https://arxiv.org/abs/2308.13383">arXiv:2308.13383</a>&gt;.</td>
+<td>Efficient implementation of permutation tests for keyword analysis in corpus linguistics as described in Mildenberger (2023) &lt;<a href="https://doi.org/10.48550/arXiv.2308.13383">doi:10.48550/arXiv.2308.13383</a>&gt;.</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -88,6 +88,137 @@ function processMathHTML() {
 <td>2023-08-30 15:40:01 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='keyperm-package'>keyperm: Keyword Analysis Using Permutation Tests</h2><span id='topic+keyperm-package'></span><span id='topic+_PACKAGE'></span>
+
+<h3>Description</h3>
+
+<p>Implementation of permutation-based keyword analysis for corpus linguistics.
+</p>
+
+
+<h3>Details</h3>
+
+<p>This package contains an implementation of the permutation testing approach
+to keyness as used in corpus linguistics.
+</p>
+<p>Keywords are words that appear more frequently in one corpus compared to 
+another corpus. Usually this is assessed using test statistics, for example
+the likelihood-ratio test on 2x2 contingency tables, resulting in scores for every term
+that appears in the document. 
+</p>
+<p>Conventionally, keyness scores are judged by reference to a limiting null distribution
+under a token-by-token-sampling model. <code>keyperm</code> approximates the null distribution under
+a document-by-document sampling model. 
+</p>
+<p>The permutation distributions of a given keyness measure for 
+each term is calculated by repeatedly shuffeling the copus labels. 
+Number of documents per corpus is kept constant.
+</p>
+<p>Apart from obtaining null distributions of common test statistics like 
+LLR and Chi-Square, <code>keyperm</code> can also obtain null distributions of
+of the logratio measure that is normally used as an effect size. 
+</p>
+<p>Currently, the following types of scores are supported:
+</p>
+
+<dl>
+<dt><code>llr</code></dt><dd><p>The log-likelihood ratio</p>
+</dd>
+<dt><code>chisq</code></dt><dd><p>The Chi-Square-Statistic</p>
+</dd>
+<dt><code>diff</code></dt><dd><p>Difference of relative frequencies</p>
+</dd>
+<dt><code>logratio</code></dt><dd><p>Binary logarithm of the ratio of the relative frequencies, possibly using a laplace correction to avoid infinite values.</p>
+</dd>
+</dl>
+
+<p>The actual resampling procedure is implemented in an efficient manner using 
+the Rcpp package and utilizing a special data structure (indexed frequency list). 
+Currently, <code>keyperm</code> can generate indexed frequency lists from term-document-matrices as implemented in
+the package <code>tm</code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Thoralf Mildenberger <a href="mailto:mild@zhaw.ch">mild@zhaw.ch</a> (<a href="https://orcid.org/0000-0001-7242-1873">ORCID</a>)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(tm)
+library(keyperm)
+
+# load subcorpora "acq" and "crude" from Reuters
+
+data(acq)
+data(crude)
+
+# convert to term-document-matrices and combine into single tdm
+
+acq_tdm &lt;- TermDocumentMatrix(acq, control = list(removePunctuation = TRUE))
+crude_tdm &lt;- TermDocumentMatrix(crude, control = list(removePunctuation = TRUE))
+tdm &lt;- c(acq_tdm, crude_tdm)
+
+# generate a logical that indicates whether document comes from "acq" or "crude"
+
+ndoc_A &lt;- dim(acq_tdm)[2]
+ndoc_B &lt;- dim(crude_tdm)[2]
+corpus &lt;- rep(c(TRUE, FALSE), c(ndoc_A, ndoc_B))
+
+# generate an indexed frequency list, the data structure used by keyperm
+
+reuters_ifl &lt;- create_ifl(tdm, corpus = corpus)
+
+# calculate Log-Likelihood-Ratio scores for all terms and calculate
+# p-values according to the (wrong) token-by-token sampling model
+
+llr &lt;- keyness_scores(reuters_ifl, type = "llr", laplace = 0)
+head(round(pchisq(llr, df = 1, lower.tail = FALSE), digits = 4), n = 10)
+
+# generate permutation distribution and p-values based on document-by-document sampling model
+
+keyp &lt;- keyperm(reuters_ifl, llr, type = "llr", 
+                laplace = 1, output = "counts", nperm = 1000)
+head(p_value(keyp, alternative = "greater"), n = 10)
+
+# generate observed log-ratio values and (one-sided) p-values based
+# on the permutation distribution (document-by-document sampling model)
+# laplace-correction used (adding one occurence to both corpora)
+
+logratio &lt;- keyness_scores(reuters_ifl, type = "logratio", laplace = 1)
+keyp2 &lt;- keyperm(reuters_ifl, logratio, type = "logratio", 
+                laplace = 1, output = "counts", nperm = 1000)
+head(p_value(keyp2, alternative = "greater"), n = 10)
+
+# it may be of interest to improve accuracy of the small p-values. 
+# Think of this in terms of spending the computational budget mainly 
+# on the terms for which higher accuracy matters most 
+
+pvals &lt;- p_value(keyp2, alternative = "greater")
+table(pvals &gt; 0.1)
+
+small_p &lt;- which(pvals &lt; 0.1)
+
+logratio_subset &lt;- logratio[small_p]
+reuters_ifl_subset &lt;- create_ifl(tdm, subset_terms = small_p, corpus = corpus)
+
+keyp2_subset &lt;- keyperm(reuters_ifl_subset, logratio_subset, type = "logratio", 
+                 laplace = 1, output = "counts", nperm = 9000)
+
+# combine counts from both runs using the combiner
+
+keyp2_combined &lt;- combine_results(keyp2, keyp2_subset)
+
+# smaller p-values are based on 1000, the larger ones on 10000 random permutations
+# note that 10000 is still far too small for real applications
+
+head(p_value(keyp2_combined, alternative = "greater"), n = 10)
+
+</code></pre>
+
 <hr>
 <h2 id='combine_results'>Combine results of permutation test for keyness</h2><span id='topic+combine_results'></span>
 
@@ -504,137 +635,6 @@ effect when the number of occurences is large.
 of the keyness score (<code>output = "full"</code>) or the number of permutations for which the 
 score is strictly smaller than, equal to or strictly larger than the observed value (<code>output = "counts"</code>).
 </p>
-
-<hr>
-<h2 id='keyperm-package'>keyperm: Keyword Analysis Using Permutation Tests</h2><span id='topic+keyperm-package'></span><span id='topic+_PACKAGE'></span>
-
-<h3>Description</h3>
-
-<p>Implementation of permutation-based keyword analysis for corpus linguistics.
-</p>
-
-
-<h3>Details</h3>
-
-<p>This package contains an implementation of the permutation testing approach
-to keyness as used in corpus linguistics.
-</p>
-<p>Keywords are words that appear more frequently in one corpus compared to 
-another corpus. Usually this is assessed using test statistics, for example
-the likelihood-ratio test on 2x2 contingency tables, resulting in scores for every term
-that appears in the document. 
-</p>
-<p>Conventionally, keyness scores are judged by reference to a limiting null distribution
-under a token-by-token-sampling model. <code>keyperm</code> approximates the null distribution under
-a document-by-document sampling model. 
-</p>
-<p>The permutation distributions of a given keyness measure for 
-each term is calculated by repeatedly shuffeling the copus labels. 
-Number of documents per corpus is kept constant.
-</p>
-<p>Apart from obtaining null distributions of common test statistics like 
-LLR and Chi-Square, <code>keyperm</code> can also obtain null distributions of
-of the logratio measure that is normally used as an effect size. 
-</p>
-<p>Currently, the following types of scores are supported:
-</p>
-
-<dl>
-<dt><code>llr</code></dt><dd><p>The log-likelihood ratio</p>
-</dd>
-<dt><code>chisq</code></dt><dd><p>The Chi-Square-Statistic</p>
-</dd>
-<dt><code>diff</code></dt><dd><p>Difference of relative frequencies</p>
-</dd>
-<dt><code>logratio</code></dt><dd><p>Binary logarithm of the ratio of the relative frequencies, possibly using a laplace correction to avoid infinite values.</p>
-</dd>
-</dl>
-
-<p>The actual resampling procedure is implemented in an efficient manner using 
-the Rcpp package and utilizing a special data structure (indexed frequency list). 
-Currently, <code>keyperm</code> can generate indexed frequency lists from term-document-matrices as implemented in
-the package <code>tm</code>.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Thoralf Mildenberger <a href="mailto:mild@zhaw.ch">mild@zhaw.ch</a> (<a href="https://orcid.org/0000-0001-7242-1873">ORCID</a>)
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>library(tm)
-library(keyperm)
-
-# load subcorpora "acq" and "crude" from Reuters
-
-data(acq)
-data(crude)
-
-# convert to term-document-matrices and combine into single tdm
-
-acq_tdm &lt;- TermDocumentMatrix(acq, control = list(removePunctuation = TRUE))
-crude_tdm &lt;- TermDocumentMatrix(crude, control = list(removePunctuation = TRUE))
-tdm &lt;- c(acq_tdm, crude_tdm)
-
-# generate a logical that indicates whether document comes from "acq" or "crude"
-
-ndoc_A &lt;- dim(acq_tdm)[2]
-ndoc_B &lt;- dim(crude_tdm)[2]
-corpus &lt;- rep(c(TRUE, FALSE), c(ndoc_A, ndoc_B))
-
-# generate an indexed frequency list, the data structure used by keyperm
-
-reuters_ifl &lt;- create_ifl(tdm, corpus = corpus)
-
-# calculate Log-Likelihood-Ratio scores for all terms and calculate
-# p-values according to the (wrong) token-by-token sampling model
-
-llr &lt;- keyness_scores(reuters_ifl, type = "llr", laplace = 0)
-head(round(pchisq(llr, df = 1, lower.tail = FALSE), digits = 4), n = 10)
-
-# generate permutation distribution and p-values based on document-by-document sampling model
-
-keyp &lt;- keyperm(reuters_ifl, llr, type = "llr", 
-                laplace = 1, output = "counts", nperm = 1000)
-head(p_value(keyp, alternative = "greater"), n = 10)
-
-# generate observed log-ratio values and (one-sided) p-values based
-# on the permutation distribution (document-by-document sampling model)
-# laplace-correction used (adding one occurence to both corpora)
-
-logratio &lt;- keyness_scores(reuters_ifl, type = "logratio", laplace = 1)
-keyp2 &lt;- keyperm(reuters_ifl, logratio, type = "logratio", 
-                laplace = 1, output = "counts", nperm = 1000)
-head(p_value(keyp2, alternative = "greater"), n = 10)
-
-# it may be of interest to improve accuracy of the small p-values. 
-# Think of this in terms of spending the computational budget mainly 
-# on the terms for which higher accuracy matters most 
-
-pvals &lt;- p_value(keyp2, alternative = "greater")
-table(pvals &gt; 0.1)
-
-small_p &lt;- which(pvals &lt; 0.1)
-
-logratio_subset &lt;- logratio[small_p]
-reuters_ifl_subset &lt;- create_ifl(tdm, subset_terms = small_p, corpus = corpus)
-
-keyp2_subset &lt;- keyperm(reuters_ifl_subset, logratio_subset, type = "logratio", 
-                 laplace = 1, output = "counts", nperm = 9000)
-
-# combine counts from both runs using the combiner
-
-keyp2_combined &lt;- combine_results(keyp2, keyp2_subset)
-
-# smaller p-values are based on 1000, the larger ones on 10000 random permutations
-# note that 10000 is still far too small for real applications
-
-head(p_value(keyp2_combined, alternative = "greater"), n = 10)
-
-</code></pre>
 
 <hr>
 <h2 id='p_value'>Convert results of permutation test for keyness to p-values</h2><span id='topic+p_value'></span>

@@ -13,18 +13,18 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {ergmgp}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#ergmgp-package'><p>Tools for Modeling ERGM Generating Processes</p></a></li>
 <li><a href='#durations'>
 <p>Obtain Edge Spell Durations from an ERGM Generating Process Trajectory</p></a></li>
 <li><a href='#EGPHazard'>
 <p>Calculate Transition Hazards for an ERGM Generating Process</p></a></li>
 <li><a href='#EGPRateEst'>
 <p>Estimate Event Rates for an ERGM Generating Process</p></a></li>
-<li><a href='#ergmgp-package'><p>Tools for Modeling ERGM Generating Processes</p></a></li>
 <li><a href='#simEGP'>
 <p>Simulate Trajectories from an ERGM Generating Process</p></a></li>
 </ul>
@@ -100,6 +100,203 @@ parallel</td>
 <td>2023-12-05 11:50:05 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='ergmgp-package'>Tools for Modeling ERGM Generating Processes</h2><span id='topic+ergmgp-package'></span><span id='topic+ergmgp'></span><span id='topic+EGP_init'></span>
+
+<h3>Description</h3>
+
+<p>Tools for simulation and analysis of continuous time graph processes with equilibria that can be described in exponential family random graph (ERGM) form.
+</p>
+
+
+<h3>Details</h3>
+
+<p>A random graph <code class="reqn">G</code> on support <code class="reqn">\mathcal{G}</code> is said to be expressed in exponential family random graph (ERGM) form when its probability mass function (pmf) is written as
+</p>
+<p style="text-align: center;"><code class="reqn">\Pr(G=g|\theta,X) = \frac{\exp\left(\theta^T w(g,X)\right) h(g)}{\sum_{g' \in \mathcal{G}} \exp\left(\theta^T w(g',X)\right) h(g')}</code>
+</p>
+
+<p>where <code class="reqn">\theta</code> is a parameter vector, <code class="reqn">w</code> is a vector of sufficient statistics, <code class="reqn">X</code> is a covariate set, and <code class="reqn">h</code> is a reference measure.  This form is quite general; in particular, any pmf on finite support can be written in ERGM form (albeit not always elegantly), making it a natural language for expressing graph distributions.
+</p>
+<p>Now, consider a continuous time process whose state space is <code class="reqn">\mathcal{G}</code>.  A process of this type having an equilibrium distribution that can be written in (known) ERGM form is said to be an <em>ERGM generating process</em> or EGP.  Although there are many types of EGPs, perhaps the most natural are continuous time Markov chains (CTMCs) whose transitions involve the addition or removal of individual edges from the current graph state.  The transition rates of such CTMCs have the topology of the Hamming adjacency on <code class="reqn">\mathcal{G}</code>; this is only sensible when considering graphs on a fixed vertex set, which is the typical use case.  We can think of this class of EGPs as continuous time analogs of the Markov chains used in ERGM simulation (see <code><a href="ergm.html#topic+ergm">ergm</a></code>), with equilibrium obtained in the limit of time rather than simulation steps.  EGPs are potentially useful as dynamic interpretations of empirically obtained ERGMs, or as <em>a priori</em> models in their own right.  Since many Markovian EGPs are identified by their equilibrium ERGM together with a pacing constant, they are also natural choices when dynamics must be inferred from limited data (e.g., a cross-sectional network observation together with pacing or duration information).
+</p>
+<p>The <code>ergmgp</code> package supports a number of different EGPs, all of which are currently Markovian with support on graphs or digraphs of fixed order.  The following EGPs are currently supported; all definitions and notation follow Butts (2023).  Define  <code class="reqn">q(g) = \theta^T w(g,X) + \ln h(g)</code> to be the <em>graph potential</em>; in some cases, separate potentials (<code class="reqn">q_f</code> and <code class="reqn">q_d</code>) may be employed for the formation and dissolution of edges.  For brevity, we define the normalizing factor of the equilibrium ERGM distribution by <code class="reqn">Z = \sum_{g' \in \mathcal{G}} q(g')</code>, let <code class="reqn">w_e</code> be the edge count statistic, and let <code class="reqn">\mathcal{H}(g)</code> be the Hamming neighborhood of <code class="reqn">g</code> (i.e., the set of graphs reachable by single edge changes, or &ldquo;toggles&rdquo;).  All transition rates from graph <code class="reqn">a</code> to <code class="reqn">b</code> (denoted <code class="reqn">a \to b</code>) zero for <code class="reqn">b \not\in \mathcal{H}(a)</code>.  Processes not otherwise noted were introduced in Butts (2023).
+</p>
+
+<dl>
+<dt>Longitudinal ERGM (<code>LERGM</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p> Introduced by Koskinen and Snijders (2007), this process was originally conceived of as a continuum analog to the Gibbs sampler, with transition rates that are increasing with differences in graph potential.  Grazioli et al. (2019) subsequently showed that it can also be derived from a physical model with locally Arrhenius-like kinetics.  This process has a maximum change rate (but no minimum), and may thus be plausible in settings for which changes can only be made when (exogenously determined) opportunities arise.
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p><code class="reqn">[1+\exp[q(a)-q(b)]]^{-1}</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[q(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+<dt>Competing Rate Stochastic Actor-Oriented Model (<code>CRSAOM</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p> Introduced as an EGP by Snijders (2001), this model was originally proposed as a behavioral process, where vertices represent actors controlling their outgoing edges, the rate at which actors make tie changes is a function of the attractiveness of the networks reachable by making such changes, and (given opportunity to act) edge changes are chosen by a multinomial logit with utility function <code class="reqn">q</code>.  Dynamics in this model are distinctive in being driven solely by the attractiveness of the target state, which can sometimes lead to rapid state switching when multiple high-potential states are Hamming-adjacent.
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p><code class="reqn">\exp[q(b)]</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[q(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+<dt>Change Inhibition (<code>CI</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p>  In the same sense that the LERGM is analogous to a continuum Gibbs sampler, this process is loosely analogous to continuum Metropolis algorithm.  Downhill transitions with respect to the graph potential occur with a rate that is decreasing with the potential difference; uphill transitions, however, occur at a fixed rate (irrespective of the potential difference).  The process thus works by selectively inhibiting downhill moves, rather than by preferentially moving to graphs of highest local potential.  
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p><code class="reqn">\min(1,\exp[q(b)-q(a)])</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[q(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+<dt>Differential Statibility (<code>DS</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p> Analogous to a &ldquo;win-stay, lose-shift&rdquo; process, transition targets in this EGP are chosen uniformly at random, with structure arising entirely from transition <em>times</em>.  The time to exit a state <code class="reqn">g</code> is proportional to <code class="reqn">\exp[q(g)]</code>, making high-potential states exponentially more persistent than low-potential states.  Note that this process is in a sense the inverse of the <code>CRSAOM</code>, being dependent only on the potential of the source state (while the <code>CRSAOM</code> depends only on the potential of the target state).  Since the transitions themselves from a random walk, it should be noted that this process can generate very large numbers of transition events involving low-potential states that, while taking little phenomenological time, nevertheless are expensive to compute.
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p><code class="reqn">|\mathcal{H}(a)|^{-1} \exp[-q(a)]</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[q(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+<dt>Constant Dissolution Continuum STERGM (<code>CDCSTERGM</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p> This process is a continuum version of the discrete time constant dissolution separable temporal ERGM (STERGM) introduced by Carnegie et al. (2015); here, edges are lost randomly at a fixed rate, with a formation potential <code class="reqn">q_f</code> that governs edge addition.  This is a special case of the continuum STERGMs (below), and is particularly easy to identify from limited information.  
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p>If <code class="reqn">b</code> is formed by adding an edge to <code class="reqn">a</code>, then <code class="reqn">\exp[q_f(b)-q_f(a)]</code>; otherwise <code class="reqn">\exp[\theta_d]</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[q_f(a) - \theta_d w_e(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+<dt>Constant Formation Continuum STERGM (<code>CFCSTERGM</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p> This process is analogous to the <code>CDCSTERGM</code>, except that in this case edge <em>formation</em> occurs randomly at a fixed rate, with a dissolution potential <code class="reqn">q_d</code> governing edge loss.  It is a simple model for settings in which edges arise from essentially idiosyncratic events, with the resulting network structure subsequently stabilizing or destabilizing particular edges.
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p>If <code class="reqn">b</code> is formed by adding an edge to <code class="reqn">a</code>, then <code class="reqn">\exp[\theta_f]</code>; otherwise <code class="reqn">\exp[q_d(b)-q_d(a)]</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[q_d(a) + \theta_f w_e(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+<dt>Continuum STERGM (<code>CSTERGM</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p> This process represents a continuum limit of the discrete time separable temporal ERGMs (STERGMs) introduced by Krivitsky and Handcock (2014).  Edge formation is here governed by one potential (<code class="reqn">q_f</code>), while dissolution is governed by another (<code class="reqn">q_d</code>), allowing these processes to be governed by different effects.  The resulting equilibrium pmf is based on the sum of both potentials.
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p>If <code class="reqn">b</code> is formed by adding an edge to <code class="reqn">a</code>, then <code class="reqn">\exp[q_f(b)-q_f(a)]</code>; otherwise <code class="reqn">\exp[q_d(b)-q_d(a)]</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[q_d(a) + q_f(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+<dt>Continuum TERGM (<code>CTERGM</code>)</dt><dd>
+
+<dl>
+<dt>Description:</dt><dd><p> This process is a continuum limit of the discrete time temporal ERGMs (TERGMs) introduced in Robins and Pattison (2001).  The transition rates for this class are particularly natural, with the log rates being equal to the potential differences between states.  Note that the potential of the equilibrium ERGM is scaled by a factor of 2 from the transition potential (as can be obtained from the <code>CSTERGM</code> by letting <code class="reqn">q_f=q_d</code>); intuitively, this arises because states of higher potential are both more stable (lower exit rates) and more attractive (higher entrance rates) than states of lower potential.
+</p>
+</dd>
+<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
+<p><code class="reqn">\exp[q(b)-q(a)]</code>
+</p>
+</dd>
+<dt>Equilibrium:</dt><dd>
+<p><code class="reqn">\exp[2q(a)]/Z</code>
+</p>
+</dd>
+</dl>
+
+</dd>
+</dl>
+
+<p>Further details on each process can be found in Butts (2023).  All of the above transition rates are defined up to an arbitrary pacing constant (which is generally specified separately, and taken to be 1 in package tools if not otherwise indicated).  Note that the LERGM and Change Inhibition processes have unit-maximum transition rates, and thus the pacing constant sets the maximum rate of change.
+</p>
+<p>Information on functions for simulation or analysis of EGPs is provided in their respective manual pages.  Information on ERGMs and their specification can be found within the <code><a href="ergm.html#topic+ergm">ergm</a></code> page in the <code>ergm</code> library.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Carter T. Butts <a href="mailto:buttsc@uci.edu">buttsc@uci.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Butts, Carter T.  (2023).  &ldquo;Continuous Time Graph Processes with Known ERGM Equilibria: Contextual Review, Extensions, and Synthesis.&rdquo; <em>Journal of Mathematical Sociology</em>.  <a href="https://doi.org/10.1080/0022250X.2023.2180001">doi:10.1080/0022250X.2023.2180001</a>
+</p>
+<p>Carnegie, Nicole B.; Krivitsky, Pavel N.; Hunter, David R.; and Goodreau, Steven M. (2015). &ldquo;An Approximation Method for Improving Dynamic Network Model Fitting.&rdquo;  <em>Journal of Computational and Graphical Statistics</em>, 24(2):502-519.
+</p>
+<p>Grazioli, Gianmarc; Yu, Yue; Unhelkar, Megha H.; Martin, Rachel W.; and Butts, Carter T. (2019). &ldquo;Network-based Classification and Modeling of Amyloid Fibrils.&rdquo;  <em>Journal of Physical Chemistry, B</em>, 123(26):5452-5462.
+</p>
+<p>Koskinen, Johan H. and Snijders, Tom A. (2007). &ldquo;Bayesian Inference for Dynamic Social Network Data.&rdquo;  <em>Journal of Statistical Planning and Inference</em>, 137(12):393&ndash;3938. 5th St. Petersburg Workshop on Simulation, Part II.
+</p>
+<p>Krivitsky, Pavel N. and Handcock, Mark S. (2014). &ldquo;A Separable Model for Dynamic Networks.&rdquo; <em>Journal of the Royal Statistical Society, Series B,</em> 76(1):29-46.
+</p>
+<p>Robins, Garry L. and Pattison, Philippa E. (2001). &ldquo;Random Graph Models for Temporal Processes in Social Networks.&rdquo; <em>Journal of Mathematical Sociology</em>, 25:5-41.
+</p>
+<p>Snijders, Tom A. B. (2001). &ldquo;The Statistical Evaluation of Social Network Dynamics.&rdquo;  <em>Sociological Methodology,</em> 31:361-395.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+simEGP">simEGP</a></code>, <code><a href="#topic+EGPHazard">EGPHazard</a></code>, <code><a href="#topic+EGPRateEst">EGPRateEst</a></code>, <code><a href="ergm.html#topic+ergm">ergm</a></code>, <code><a href="#topic+durations">durations</a></code>
+</p>
+
 <hr>
 <h2 id='durations'>
 Obtain Edge Spell Durations from an ERGM Generating Process Trajectory
@@ -458,203 +655,6 @@ eevents &lt;- EGPRateEst(net ~ edges + esp(0), coef = co, process = "LERGM",
 eevents   #Expectation should be close to 500
 
 </code></pre>
-
-<hr>
-<h2 id='ergmgp-package'>Tools for Modeling ERGM Generating Processes</h2><span id='topic+ergmgp-package'></span><span id='topic+ergmgp'></span><span id='topic+EGP_init'></span>
-
-<h3>Description</h3>
-
-<p>Tools for simulation and analysis of continuous time graph processes with equilibria that can be described in exponential family random graph (ERGM) form.
-</p>
-
-
-<h3>Details</h3>
-
-<p>A random graph <code class="reqn">G</code> on support <code class="reqn">\mathcal{G}</code> is said to be expressed in exponential family random graph (ERGM) form when its probability mass function (pmf) is written as
-</p>
-<p style="text-align: center;"><code class="reqn">\Pr(G=g|\theta,X) = \frac{\exp\left(\theta^T w(g,X)\right) h(g)}{\sum_{g' \in \mathcal{G}} \exp\left(\theta^T w(g',X)\right) h(g')}</code>
-</p>
-
-<p>where <code class="reqn">\theta</code> is a parameter vector, <code class="reqn">w</code> is a vector of sufficient statistics, <code class="reqn">X</code> is a covariate set, and <code class="reqn">h</code> is a reference measure.  This form is quite general; in particular, any pmf on finite support can be written in ERGM form (albeit not always elegantly), making it a natural language for expressing graph distributions.
-</p>
-<p>Now, consider a continuous time process whose state space is <code class="reqn">\mathcal{G}</code>.  A process of this type having an equilibrium distribution that can be written in (known) ERGM form is said to be an <em>ERGM generating process</em> or EGP.  Although there are many types of EGPs, perhaps the most natural are continuous time Markov chains (CTMCs) whose transitions involve the addition or removal of individual edges from the current graph state.  The transition rates of such CTMCs have the topology of the Hamming adjacency on <code class="reqn">\mathcal{G}</code>; this is only sensible when considering graphs on a fixed vertex set, which is the typical use case.  We can think of this class of EGPs as continuous time analogs of the Markov chains used in ERGM simulation (see <code><a href="ergm.html#topic+ergm">ergm</a></code>), with equilibrium obtained in the limit of time rather than simulation steps.  EGPs are potentially useful as dynamic interpretations of empirically obtained ERGMs, or as <em>a priori</em> models in their own right.  Since many Markovian EGPs are identified by their equilibrium ERGM together with a pacing constant, they are also natural choices when dynamics must be inferred from limited data (e.g., a cross-sectional network observation together with pacing or duration information).
-</p>
-<p>The <code>ergmgp</code> package supports a number of different EGPs, all of which are currently Markovian with support on graphs or digraphs of fixed order.  The following EGPs are currently supported; all definitions and notation follow Butts (2023).  Define  <code class="reqn">q(g) = \theta^T w(g,X) + \ln h(g)</code> to be the <em>graph potential</em>; in some cases, separate potentials (<code class="reqn">q_f</code> and <code class="reqn">q_d</code>) may be employed for the formation and dissolution of edges.  For brevity, we define the normalizing factor of the equilibrium ERGM distribution by <code class="reqn">Z = \sum_{g' \in \mathcal{G}} q(g')</code>, let <code class="reqn">w_e</code> be the edge count statistic, and let <code class="reqn">\mathcal{H}(g)</code> be the Hamming neighborhood of <code class="reqn">g</code> (i.e., the set of graphs reachable by single edge changes, or &ldquo;toggles&rdquo;).  All transition rates from graph <code class="reqn">a</code> to <code class="reqn">b</code> (denoted <code class="reqn">a \to b</code>) zero for <code class="reqn">b \not\in \mathcal{H}(a)</code>.  Processes not otherwise noted were introduced in Butts (2023).
-</p>
-
-<dl>
-<dt>Longitudinal ERGM (<code>LERGM</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p> Introduced by Koskinen and Snijders (2007), this process was originally conceived of as a continuum analog to the Gibbs sampler, with transition rates that are increasing with differences in graph potential.  Grazioli et al. (2019) subsequently showed that it can also be derived from a physical model with locally Arrhenius-like kinetics.  This process has a maximum change rate (but no minimum), and may thus be plausible in settings for which changes can only be made when (exogenously determined) opportunities arise.
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p><code class="reqn">[1+\exp[q(a)-q(b)]]^{-1}</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[q(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-<dt>Competing Rate Stochastic Actor-Oriented Model (<code>CRSAOM</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p> Introduced as an EGP by Snijders (2001), this model was originally proposed as a behavioral process, where vertices represent actors controlling their outgoing edges, the rate at which actors make tie changes is a function of the attractiveness of the networks reachable by making such changes, and (given opportunity to act) edge changes are chosen by a multinomial logit with utility function <code class="reqn">q</code>.  Dynamics in this model are distinctive in being driven solely by the attractiveness of the target state, which can sometimes lead to rapid state switching when multiple high-potential states are Hamming-adjacent.
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p><code class="reqn">\exp[q(b)]</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[q(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-<dt>Change Inhibition (<code>CI</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p>  In the same sense that the LERGM is analogous to a continuum Gibbs sampler, this process is loosely analogous to continuum Metropolis algorithm.  Downhill transitions with respect to the graph potential occur with a rate that is decreasing with the potential difference; uphill transitions, however, occur at a fixed rate (irrespective of the potential difference).  The process thus works by selectively inhibiting downhill moves, rather than by preferentially moving to graphs of highest local potential.  
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p><code class="reqn">\min(1,\exp[q(b)-q(a)])</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[q(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-<dt>Differential Statibility (<code>DS</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p> Analogous to a &ldquo;win-stay, lose-shift&rdquo; process, transition targets in this EGP are chosen uniformly at random, with structure arising entirely from transition <em>times</em>.  The time to exit a state <code class="reqn">g</code> is proportional to <code class="reqn">\exp[q(g)]</code>, making high-potential states exponentially more persistent than low-potential states.  Note that this process is in a sense the inverse of the <code>CRSAOM</code>, being dependent only on the potential of the source state (while the <code>CRSAOM</code> depends only on the potential of the target state).  Since the transitions themselves from a random walk, it should be noted that this process can generate very large numbers of transition events involving low-potential states that, while taking little phenomenological time, nevertheless are expensive to compute.
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p><code class="reqn">|\mathcal{H}(a)|^{-1} \exp[-q(a)]</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[q(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-<dt>Constant Dissolution Continuum STERGM (<code>CDCSTERGM</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p> This process is a continuum version of the discrete time constant dissolution separable temporal ERGM (STERGM) introduced by Carnegie et al. (2015); here, edges are lost randomly at a fixed rate, with a formation potential <code class="reqn">q_f</code> that governs edge addition.  This is a special case of the continuum STERGMs (below), and is particularly easy to identify from limited information.  
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p>If <code class="reqn">b</code> is formed by adding an edge to <code class="reqn">a</code>, then <code class="reqn">\exp[q_f(b)-q_f(a)]</code>; otherwise <code class="reqn">\exp[\theta_d]</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[q_f(a) - \theta_d w_e(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-<dt>Constant Formation Continuum STERGM (<code>CFCSTERGM</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p> This process is analogous to the <code>CDCSTERGM</code>, except that in this case edge <em>formation</em> occurs randomly at a fixed rate, with a dissolution potential <code class="reqn">q_d</code> governing edge loss.  It is a simple model for settings in which edges arise from essentially idiosyncratic events, with the resulting network structure subsequently stabilizing or destabilizing particular edges.
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p>If <code class="reqn">b</code> is formed by adding an edge to <code class="reqn">a</code>, then <code class="reqn">\exp[\theta_f]</code>; otherwise <code class="reqn">\exp[q_d(b)-q_d(a)]</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[q_d(a) + \theta_f w_e(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-<dt>Continuum STERGM (<code>CSTERGM</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p> This process represents a continuum limit of the discrete time separable temporal ERGMs (STERGMs) introduced by Krivitsky and Handcock (2014).  Edge formation is here governed by one potential (<code class="reqn">q_f</code>), while dissolution is governed by another (<code class="reqn">q_d</code>), allowing these processes to be governed by different effects.  The resulting equilibrium pmf is based on the sum of both potentials.
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p>If <code class="reqn">b</code> is formed by adding an edge to <code class="reqn">a</code>, then <code class="reqn">\exp[q_f(b)-q_f(a)]</code>; otherwise <code class="reqn">\exp[q_d(b)-q_d(a)]</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[q_d(a) + q_f(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-<dt>Continuum TERGM (<code>CTERGM</code>)</dt><dd>
-
-<dl>
-<dt>Description:</dt><dd><p> This process is a continuum limit of the discrete time temporal ERGMs (TERGMs) introduced in Robins and Pattison (2001).  The transition rates for this class are particularly natural, with the log rates being equal to the potential differences between states.  Note that the potential of the equilibrium ERGM is scaled by a factor of 2 from the transition potential (as can be obtained from the <code>CSTERGM</code> by letting <code class="reqn">q_f=q_d</code>); intuitively, this arises because states of higher potential are both more stable (lower exit rates) and more attractive (higher entrance rates) than states of lower potential.
-</p>
-</dd>
-<dt>Event Rate (<code class="reqn">a \to b</code>):</dt><dd>
-<p><code class="reqn">\exp[q(b)-q(a)]</code>
-</p>
-</dd>
-<dt>Equilibrium:</dt><dd>
-<p><code class="reqn">\exp[2q(a)]/Z</code>
-</p>
-</dd>
-</dl>
-
-</dd>
-</dl>
-
-<p>Further details on each process can be found in Butts (2023).  All of the above transition rates are defined up to an arbitrary pacing constant (which is generally specified separately, and taken to be 1 in package tools if not otherwise indicated).  Note that the LERGM and Change Inhibition processes have unit-maximum transition rates, and thus the pacing constant sets the maximum rate of change.
-</p>
-<p>Information on functions for simulation or analysis of EGPs is provided in their respective manual pages.  Information on ERGMs and their specification can be found within the <code><a href="ergm.html#topic+ergm">ergm</a></code> page in the <code>ergm</code> library.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Carter T. Butts <a href="mailto:buttsc@uci.edu">buttsc@uci.edu</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Butts, Carter T.  (2023).  &ldquo;Continuous Time Graph Processes with Known ERGM Equilibria: Contextual Review, Extensions, and Synthesis.&rdquo; <em>Journal of Mathematical Sociology</em>.  <a href="https://doi.org/10.1080/0022250X.2023.2180001">doi:10.1080/0022250X.2023.2180001</a>
-</p>
-<p>Carnegie, Nicole B.; Krivitsky, Pavel N.; Hunter, David R.; and Goodreau, Steven M. (2015). &ldquo;An Approximation Method for Improving Dynamic Network Model Fitting.&rdquo;  <em>Journal of Computational and Graphical Statistics</em>, 24(2):502-519.
-</p>
-<p>Grazioli, Gianmarc; Yu, Yue; Unhelkar, Megha H.; Martin, Rachel W.; and Butts, Carter T. (2019). &ldquo;Network-based Classification and Modeling of Amyloid Fibrils.&rdquo;  <em>Journal of Physical Chemistry, B</em>, 123(26):5452-5462.
-</p>
-<p>Koskinen, Johan H. and Snijders, Tom A. (2007). &ldquo;Bayesian Inference for Dynamic Social Network Data.&rdquo;  <em>Journal of Statistical Planning and Inference</em>, 137(12):393&ndash;3938. 5th St. Petersburg Workshop on Simulation, Part II.
-</p>
-<p>Krivitsky, Pavel N. and Handcock, Mark S. (2014). &ldquo;A Separable Model for Dynamic Networks.&rdquo; <em>Journal of the Royal Statistical Society, Series B,</em> 76(1):29-46.
-</p>
-<p>Robins, Garry L. and Pattison, Philippa E. (2001). &ldquo;Random Graph Models for Temporal Processes in Social Networks.&rdquo; <em>Journal of Mathematical Sociology</em>, 25:5-41.
-</p>
-<p>Snijders, Tom A. B. (2001). &ldquo;The Statistical Evaluation of Social Network Dynamics.&rdquo;  <em>Sociological Methodology,</em> 31:361-395.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+simEGP">simEGP</a></code>, <code><a href="#topic+EGPHazard">EGPHazard</a></code>, <code><a href="#topic+EGPRateEst">EGPRateEst</a></code>, <code><a href="ergm.html#topic+ergm">ergm</a></code>, <code><a href="#topic+durations">durations</a></code>
-</p>
 
 <hr>
 <h2 id='simEGP'>

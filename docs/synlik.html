@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {synlik}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#synlik-package'>
+<p>Synthetic Likelihood Methods for Intractable Likelihoods</p></a></li>
 <li><a href='#ANYOrNULL-class'><p>Dummy class</p></a></li>
 <li><a href='#bf'><p>Nicholson's 1954 blowfly data</p></a></li>
 <li><a href='#blow_sl'><p>Blowfly model</p></a></li>
@@ -42,8 +44,6 @@ function processMathHTML() {
 <li><a href='#smcmc'><p>MCMC parameter estimation for objects of class <code>synlik</code>.</p></a></li>
 <li><a href='#smcmc-class'><p><code>smcmc-class</code></p></a></li>
 <li><a href='#synlik-class'><p><code>synlik-class</code></p></a></li>
-<li><a href='#synlik-package'>
-<p>Synthetic Likelihood Methods for Intractable Likelihoods</p></a></li>
 </ul>
 </div>
 <hr>
@@ -129,6 +129,146 @@ function processMathHTML() {
 <td>2023-03-02 14:10:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='synlik-package'>
+Synthetic Likelihood Methods for Intractable Likelihoods
+</h2><span id='topic+synlik-package'></span>
+
+<h3>Description</h3>
+
+<p>Package that provides Synthetic Likelihood methods for intractable likelihoods. The package is meant to be as general purpose
+as possible: as long as you are able to simulate data from your model you should be able to fit it.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> synlik</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 0.1.2 </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2018-05-22</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL (&gt;=2)</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>The package allows users to create objects of class <code>synlik</code> (S4), which are essentially constituted of a <code>simulator</code> function and 
+a function (<code>summaries</code>) that transforms the data into summary statistics. The <code>simulator</code> can output any kind of data (vector, list, etc)
+and this will be passed directly to the <code>summaries</code> function. This allow the package to fit a large variety of models. <br />
+</p>
+<p>Once the model of interest has been set up as a <code>synlik</code> object, it is possible several methods on it. The function most useful function is <code>slik</code>, which can be used to evaluate the synthetic likelihood. The <code>slice.synlik</code> function allows to obtain and plot slices of the synthetic likelihood with respect to model parameters. It is possible to simulate data or statistics from the model using the generic <code>simulate</code>, and to check the normality of the statistics using the <code>checkNorm</code> function. Unknow parameters can be estimated by MCMC, through the <code>smcmc</code> function. This function will return an object of class <code>smcmc</code> (S4), which contains all the inputs and results of the MCMC procedure. <br />
+</p>
+<p>Many functions in the package support parallel simulation on multiple cores.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Matteo Fasiolo and Simon N. Wood
+</p>
+<p>Maintainer: Matteo Fasiolo &lt;matteo.fasiolo@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Simon N Wood. Statistical inference for noisy nonlinear ecological dynamic systems. Nature, 466(7310):1102&ndash;1104, 2010.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>For some examples see the Vignettes (type <code>vignette("synlik")</code>).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## Not run: 
+#### Here I put a simple example, 
+#### if you want to see more type: vignette("synlik")
+
+## End(Not run)
+
+#### Create synlik object
+ricker_sl &lt;- synlik(simulator = rickerSimul,
+                    summaries = rickerStats,
+                    param = c(logR = 3.8, logSigma = log(0.3), logPhi = log(10)),
+                    extraArgs = list("nObs" = 50, "nBurn" = 50),
+                    plotFun = function(input, ...){
+                               plot(drop(input), type = 'l', ylab = "Pop", xlab = "Time", ...)
+                            }
+)
+
+#### Simulate from the object
+ricker_sl@data &lt;- simulate(ricker_sl)
+ricker_sl@extraArgs$obsData &lt;- ricker_sl@data
+
+#### Simulate statistics (each row is a vector of statistics)
+simulate(ricker_sl, seed = 523, nsim = 10, stats = TRUE)
+
+#### Plotting the data
+plot(ricker_sl)
+
+#### Checking multivariate normality of the statistics
+checkNorm(ricker_sl)
+
+#### Evaluate the likelihood
+set.seed(4234)
+slik(ricker_sl, 
+     param  = c(logR = 3.8, logSigma = log(0.3), logPhi = log(10)),
+     nsim    = 1e3)
+
+#### Plotting a slice of the log-Likelihood possibly using multiple cores
+slice(object = ricker_sl, 
+      ranges = list("logR" = seq(3.5, 3.9, by = 0.02),
+                    "logPhi" = seq(2, 2.6, by = 0.02),
+                    "logSigma" = seq(-2, -0.5, by = 0.05)), 
+      param = c(logR = 3.8, logSigma = log(0.3), logPhi = log(10)), 
+      nsim = 500, multicore = FALSE)
+
+#### MCMC estimation possibly using multiple cores
+set.seed(4235)
+ricker_sl &lt;- smcmc(ricker_sl, 
+                   initPar = c(3.2, -1, 2.6),
+                   niter = 50, 
+                   burn = 3,
+                   priorFun = function(input, ...) 0, 
+                   propCov = diag(c(0.1, 0.1, 0.1))^2, 
+                   nsim = 1e3, 
+                   multicore = FALSE)
+
+# Continue with additional 50 iterations
+ricker_sl &lt;- continue(ricker_sl, niter = 50)
+
+# Plotting results on transformed scale (exponential)
+trans &lt;- rep("exp", 3)
+names(trans) &lt;- names(ricker_sl@param)
+
+plot(ricker_sl)
+</code></pre>
+
 <hr>
 <h2 id='ANYOrNULL-class'>Dummy class</h2><span id='topic+ANYOrNULL-class'></span>
 
@@ -1763,146 +1903,6 @@ ricker_sl@data &lt;- simulate(ricker_sl)
 ricker_sl@extraArgs$obsData &lt;- ricker_sl@data # Needed by WOOD2010 statistics
 
 plot(ricker_sl)      
-</code></pre>
-
-<hr>
-<h2 id='synlik-package'>
-Synthetic Likelihood Methods for Intractable Likelihoods
-</h2><span id='topic+synlik-package'></span>
-
-<h3>Description</h3>
-
-<p>Package that provides Synthetic Likelihood methods for intractable likelihoods. The package is meant to be as general purpose
-as possible: as long as you are able to simulate data from your model you should be able to fit it.
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> synlik</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 0.1.2 </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2018-05-22</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL (&gt;=2)</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>The package allows users to create objects of class <code>synlik</code> (S4), which are essentially constituted of a <code>simulator</code> function and 
-a function (<code>summaries</code>) that transforms the data into summary statistics. The <code>simulator</code> can output any kind of data (vector, list, etc)
-and this will be passed directly to the <code>summaries</code> function. This allow the package to fit a large variety of models. <br />
-</p>
-<p>Once the model of interest has been set up as a <code>synlik</code> object, it is possible several methods on it. The function most useful function is <code>slik</code>, which can be used to evaluate the synthetic likelihood. The <code>slice.synlik</code> function allows to obtain and plot slices of the synthetic likelihood with respect to model parameters. It is possible to simulate data or statistics from the model using the generic <code>simulate</code>, and to check the normality of the statistics using the <code>checkNorm</code> function. Unknow parameters can be estimated by MCMC, through the <code>smcmc</code> function. This function will return an object of class <code>smcmc</code> (S4), which contains all the inputs and results of the MCMC procedure. <br />
-</p>
-<p>Many functions in the package support parallel simulation on multiple cores.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Matteo Fasiolo and Simon N. Wood
-</p>
-<p>Maintainer: Matteo Fasiolo &lt;matteo.fasiolo@gmail.com&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Simon N Wood. Statistical inference for noisy nonlinear ecological dynamic systems. Nature, 466(7310):1102&ndash;1104, 2010.
-</p>
-
-
-<h3>See Also</h3>
-
-<p>For some examples see the Vignettes (type <code>vignette("synlik")</code>).
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-## Not run: 
-#### Here I put a simple example, 
-#### if you want to see more type: vignette("synlik")
-
-## End(Not run)
-
-#### Create synlik object
-ricker_sl &lt;- synlik(simulator = rickerSimul,
-                    summaries = rickerStats,
-                    param = c(logR = 3.8, logSigma = log(0.3), logPhi = log(10)),
-                    extraArgs = list("nObs" = 50, "nBurn" = 50),
-                    plotFun = function(input, ...){
-                               plot(drop(input), type = 'l', ylab = "Pop", xlab = "Time", ...)
-                            }
-)
-
-#### Simulate from the object
-ricker_sl@data &lt;- simulate(ricker_sl)
-ricker_sl@extraArgs$obsData &lt;- ricker_sl@data
-
-#### Simulate statistics (each row is a vector of statistics)
-simulate(ricker_sl, seed = 523, nsim = 10, stats = TRUE)
-
-#### Plotting the data
-plot(ricker_sl)
-
-#### Checking multivariate normality of the statistics
-checkNorm(ricker_sl)
-
-#### Evaluate the likelihood
-set.seed(4234)
-slik(ricker_sl, 
-     param  = c(logR = 3.8, logSigma = log(0.3), logPhi = log(10)),
-     nsim    = 1e3)
-
-#### Plotting a slice of the log-Likelihood possibly using multiple cores
-slice(object = ricker_sl, 
-      ranges = list("logR" = seq(3.5, 3.9, by = 0.02),
-                    "logPhi" = seq(2, 2.6, by = 0.02),
-                    "logSigma" = seq(-2, -0.5, by = 0.05)), 
-      param = c(logR = 3.8, logSigma = log(0.3), logPhi = log(10)), 
-      nsim = 500, multicore = FALSE)
-
-#### MCMC estimation possibly using multiple cores
-set.seed(4235)
-ricker_sl &lt;- smcmc(ricker_sl, 
-                   initPar = c(3.2, -1, 2.6),
-                   niter = 50, 
-                   burn = 3,
-                   priorFun = function(input, ...) 0, 
-                   propCov = diag(c(0.1, 0.1, 0.1))^2, 
-                   nsim = 1e3, 
-                   multicore = FALSE)
-
-# Continue with additional 50 iterations
-ricker_sl &lt;- continue(ricker_sl, niter = 50)
-
-# Plotting results on transformed scale (exponential)
-trans &lt;- rep("exp", 3)
-names(trans) &lt;- names(ricker_sl@param)
-
-plot(ricker_sl)
 </code></pre>
 
 </main>

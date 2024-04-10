@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {myClim}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#myClim-package'><p>myClim: Microclimatic Data Processing</p></a></li>
 <li><a href='#[.myClimList'><p>Extract localities with []</p></a></li>
 <li><a href='#length.myClimList'><p>Length function for myClim object</p></a></li>
 <li><a href='#mc_agg'><p>Aggregate data by function</p></a></li>
@@ -115,7 +116,6 @@ function processMathHTML() {
 <li><a href='#mc_SensorMetadata-class'><p>Class for sensor metadata</p></a></li>
 <li><a href='#mc_TOMSTDataFormat-class'><p>Class for reading TOMST logger files</p></a></li>
 <li><a href='#mc_TOMSTJoinDataFormat-class'><p>Class for reading TMS join files</p></a></li>
-<li><a href='#myClim-package'><p>myClim: Microclimatic Data Processing</p></a></li>
 <li><a href='#myClimList'><p>Custom list for myClim object</p></a></li>
 <li><a href='#print.myClimList'><p>Print function for myClim object</p></a></li>
 </ul>
@@ -225,6 +225,270 @@ progress</td>
 <td>2024-02-16 11:20:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='myClim-package'>myClim: Microclimatic Data Processing</h2><span id='topic+myClim'></span><span id='topic+myClim-package'></span>
+
+<h3>Description</h3>
+
+<p>Package myClim was designed for microclimate data processing, storing, and analyzing.
+The myClim wofrkflow consists of reading logger files, pre-processing the time-series,
+time-series aggregation, and microclimatic variables calculation. The microclimatic
+data are stored in size-efficient hierarchical structure which respects the
+hierarchy of field microclimate measurement (locality&gt;loggers&gt;sensors).
+</p>
+<p>After data import, myClim can summarize the data and automatically correct
+for the most common problems.   The myClim package provides functions to
+calculate aggregated microclimate statistics as well as methods for data
+calibration, conversion and calculation of derived microclimatic variables
+like growing degree days, freezing degree days, snow cover duration,
+volumetric water content and vapor pressure deficit.
+</p>
+<p>Standardized microclimatic variables can be stored efficiently in myClim
+data format or easily exported to stadard R long or wide tables for further
+analyses and visualization.
+</p>
+<p><strong>myClim object</strong>
+</p>
+<p>We implemented two slightly different data formats of myClim objects calling them:
+Raw-format and Agg-format.
+Raw-format is designed for data preparation. Mainly data cleaning,
+metadata gathering, time zones handling and multiple downloads joining.
+Outputs of functions <code><a href="#topic+mc_read_files">mc_read_files()</a></code> and <code><a href="#topic+mc_read_data">mc_read_data()</a></code> are a Raw-format.
+Raw-format has the levels of: localities, loggers and sensors.
+Function <code><a href="#topic+mc_agg">mc_agg()</a></code> converts data from Raw-format to Agg-format.
+Agg-format is designed mainly for calculations,analysis and microclimatic variables
+derivations on the basis of cleaned microclimatic data.
+Agg-format is missing the level of loggers. In Agg-format sensors are organized
+directly in localities, without loggers.
+</p>
+<p>The highest hierarchical level of myClim structure is the <code>locality</code>. It has own metadata e.g.
+coordinates and elevation. For detail description of locality metadata see <a href="#topic+mc_LocalityMetadata">mc_LocalityMetadata</a>.
+On the locality in Raw-format there are <code>loggers</code>; in Agg-format the <code>sensors</code>.
+See below. Loggers represents the files imported with myClim reading functions.
+Both <code>loggesr</code> and <code>sensors</code> have own metadata. One logger could host more sensors e.g.
+Tomst TMS logger hosing TMS_T1 soil temperature, TMS_T2 surface temperature,
+TMS_T3 air temperature , TMS_moist soil moisture.
+For detailed description of logger and sensor metadata
+see <a href="#topic+mc_LoggerMetadata">mc_LoggerMetadata</a>, <a href="#topic+mc_SensorMetadata">mc_SensorMetadata</a>, <a href="#topic+mc_data_sensors">mc_data_sensors</a>
+</p>
+<p>In Raw-format Within the logger all sensors share time series. In Agg-format where level of
+logger is missing, all sensors within the locality share time series. In Raw-format
+the time series between the loggers or between the localities can be of different time
+step. E.g. on the locality there can be one logger measuring in time step
+15 minutes and another one measuring once a day.  In Agg-format this is not allowed.
+Therefore it is necessary to use <code><a href="#topic+mc_agg">mc_agg()</a></code> to switch from Raw-format to the Agg-format.
+</p>
+<p>myClim time step is defined in seconds (<code>data$metadata@step</code>).
+But some steps (especially irregular ones) may not be represented by seconds.
+For example step <code>month</code> has variable number of seconds within the year. Therefore, metadata contains also text
+representation of the step (<code>data$metadata@period</code>).
+</p>
+<p>Schema of myClim <strong>Raw-format</strong>
+</p>
+<pre>
+            +-------------------------+
+$metadata   | mc_MainMetadata - class |
+            +-------------------------+
+            | @version                |
+            | @format_type            |
+            +-------------------------+
+            +-------------------------------------------------------------------------------+
+$localities | locality[1]                                                                   |
+            +-------------------------------------------------------------------------------+
+            |           +-----------------------------+                                     |
+            | $metadata | mc_LocalityMetadata - class |                                     |
+            |           +-----------------------------+                                     |
+            |           | @locality_id                |                                     |
+            |           | @elevation                  |                                     |
+            |           | @lat_wgs84                  |                                     |
+            |           | @lon_wgs84                  |                                     |
+            |           | @tz_offset                  |                                     |
+            |           | @tz_type                    |                                     |
+            |           | @user_data                  |                                     |
+            |           +-----------------------------+                                     |
+            |           +------------------------------------------------------------------+|
+            | $loggers  | logger[1]                                                        ||
+            |           +------------------------------------------------------------------+|
+            |           |             +---------------------------+                        ||
+            |           | $metadata   | mc_LoggerMetadata - class |                        ||
+            |           |             +---------------------------+                        ||
+            |           |             | @type                     |                        ||
+            |           |             | @serial_number            |                        ||
+            |           |             +---------------------------+                        ||
+            |           |             +----------------------------+                       ||
+            |           | $clean_info | mc_LoggerCleanInfo - class |                       ||
+            |           |             +----------------------------+                       ||
+            |           |             | @step                      |                       ||
+            |           |             | @count_duplicities         |                       ||
+            |           |             | @count_missing             |                       ||
+            |           |             | @count_disordered          |                       ||
+            |           |             | @rounded                   |                       ||
+            |           |             +----------------------------+                       ||
+            |           | $datetime   POSIXct vector                                       ||
+            |           |             +---------------------------------------------------+||
+            |           | $sensors    | sensor[1]                                         |||
+            |           |             +---------------------------------------------------+||
+            |           |             |              +---------------------------+        |||
+            |           |             | $metadata    | mc_SensorMetadata - class |        |||
+            |           |             |              +---------------------------+        |||
+            |           |             |              | @sensor_id                |        |||
+            |           |             |              | @name                     |        |||
+            |           |             |              | @height                   |        |||
+            |           |             |              | @calibrated               |        |||
+            |           |             |              +---------------------------+        |||
+            |           |             | $values      numeric/logical vector               |||
+            |           |             |              +----------+------------+-----------+|||
+            |           |             | $calibration | datetime | cor_factor | cor_slope ||||
+            |           |             |              | ...      | ...        | ...       ||||
+            |           |             |              +----------+------------+-----------+|||
+            |           |             |              +-----+-------+-----+-------+        |||
+            |           |             | $states      | tag | start | end | value |        |||
+            |           |             |              | ... | ...   | ... | ...   |        |||
+            |           |             |              +-----+-------+-----+-------+        |||
+            |           |             +---------------------------------------------------+||
+            |           |             +---------------------------------------------------+||
+            |           |             | sensor[2]                                         |||
+            |           |             +---------------------------------------------------+||
+            |           |             ...                                                  ||
+            |           |             +---------------------------------------------------+||
+            |           |             | sensor[n]                                         |||
+            |           |             +---------------------------------------------------+||
+            |           +------------------------------------------------------------------+|
+            |           +------------------------------------------------------------------+|
+            |           | logger[2]                                                        ||
+            |           +------------------------------------------------------------------+|
+            |           ...                                                                 |
+            |           +------------------------------------------------------------------+|
+            |           | logger[n]                                                        ||
+            |           +------------------------------------------------------------------+|
+            +-------------------------------------------------------------------------------+
+            +-------------------------------------------------------------------------------+
+            | locality[2]                                                                   |
+            +-------------------------------------------------------------------------------+
+            ...
+            +-------------------------------------------------------------------------------+
+            | locality[n]                                                                   |
+            +-------------------------------------------------------------------------------+</pre>
+<p>Agg-format is the output of <code><a href="#topic+mc_agg">mc_agg()</a></code> function.
+Agg-format is mainly designed for calculations which are faster in Agg and slower in Raw.
+</p>
+<p>Schema of myClim <strong>Agg-format</strong>
+</p>
+<pre>
+            +----------------------------+
+$metadata   | mc_MainMetadataAgg - class |
+            +----------------------------+
+            | @version                   |
+            | @format_type               |
+            | @step                      |
+            | @period                    |
+            | @intervals_start           |
+            | @intervals_end             |
+            +----------------------------+
+            +-----------------------------------------------------------------+
+$localities | locality[1]                                                     |
+            +-----------------------------------------------------------------+
+            |            +-----------------------------+                      |
+            | $metadata  | mc_LocalityMetadata - class |                      |
+            |            +-----------------------------+                      |
+            |            | @locality_id                |                      |
+            |            | @elevation                  |                      |
+            |            | @lat_wgs84                  |                      |
+            |            | @lon_wgs84                  |                      |
+            |            | @tz_offset                  |                      |
+            |            | @tz_type                    |                      |
+            |            | @user_data                  |                      |
+            |            +-----------------------------+                      |
+            | $datetime  POSIXct vector                                       |
+            |            +---------------------------------------------------+|
+            | $sensors   | sensor[1]                                         ||
+            |            +---------------------------------------------------+|
+            |            |              +---------------------------+        ||
+            |            | $metadata    | mc_SensorMetadata - class |        ||
+            |            |              +---------------------------+        ||
+            |            |              | @sensor_id                |        ||
+            |            |              | @name                     |        ||
+            |            |              | @height                   |        ||
+            |            |              | @calibrated               |        ||
+            |            |              +---------------------------+        ||
+            |            | $values      numeric/logical vector               ||
+            |            |              +----------+------------+-----------+||
+            |            | $calibration | datetime | cor_factor | cor_slope |||
+            |            |              | ...      | ...        | ...       |||
+            |            |              +----------+------------+-----------+||
+            |            |              +-----+-------+-----+-------+        ||
+            |            | $states      | tag | start | end | value |        ||
+            |            |              | ... | ...   | ... | ...   |        ||
+            |            |              +-----+-------+-----+-------+        ||
+            |            +---------------------------------------------------+|
+            |            +---------------------------------------------------+|
+            |            | sensor[2]                                         ||
+            |            +---------------------------------------------------+|
+            |            ...                                                  |
+            |            +---------------------------------------------------+|
+            |            | sensor[n]                                         ||
+            |            +---------------------------------------------------+|
+            +-----------------------------------------------------------------+
+            +-----------------------------------------------------------------+
+            | locality[2]                                                     |
+            +-----------------------------------------------------------------+
+            ...
+            +-----------------------------------------------------------------+
+            | locality[n]                                                     |
+            +-----------------------------------------------------------------+</pre>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Vojtěch Kalčík <a href="mailto:Vojtech.Kalcik@ibot.cas.cz">Vojtech.Kalcik@ibot.cas.cz</a>
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> Matěj Man <a href="mailto:Matej.Man@ibot.cas.cz">Matej.Man@ibot.cas.cz</a>
+</p>
+</li>
+<li><p> Martin Macek <a href="mailto:Martin.Macek@ibot.cas.cz">Martin.Macek@ibot.cas.cz</a>
+</p>
+</li>
+<li><p> Josef Brůna <a href="mailto:Josef.Bruna@ibot.cas.cz">Josef.Bruna@ibot.cas.cz</a>
+</p>
+</li>
+<li><p> Lucia Hederová <a href="mailto:Lucia.Hederova@ibot.cas.cz">Lucia.Hederova@ibot.cas.cz</a>
+</p>
+</li>
+<li><p> Jan Wild <a href="mailto:Jan.Wild@ibot.cas.cz">Jan.Wild@ibot.cas.cz</a>
+</p>
+</li>
+<li><p> Martin Kopecký <a href="mailto:Martin.Kopecky@ibot.cas.cz">Martin.Kopecky@ibot.cas.cz</a>
+</p>
+</li></ul>
+
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> Institute of Botany of the Czech Academy of Sciences [copyright holder]
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="http://labgis.ibot.cas.cz/myclim/index.html">http://labgis.ibot.cas.cz/myclim/index.html</a>
+</p>
+</li>
+<li> <p><a href="https://github.com/ibot-geoecology/myClim">https://github.com/ibot-geoecology/myClim</a>
+</p>
+</li></ul>
+
+
 <hr>
 <h2 id='+5B.myClimList'>Extract localities with []</h2><span id='topic++5B.myClimList'></span>
 
@@ -5636,270 +5900,6 @@ The code defining the class is in section methods ./R/model.R
 
 <p><a href="#topic+mc_DataFormat">mc_DataFormat</a>,<a href="#topic+mc_data_formats">mc_data_formats</a>,<a href="#topic+mc_TOMSTDataFormat-class">mc_TOMSTDataFormat</a>, <a href="#topic+mc_TOMSTJoinDataFormat-class">mc_TOMSTJoinDataFormat</a>
 </p>
-
-<hr>
-<h2 id='myClim-package'>myClim: Microclimatic Data Processing</h2><span id='topic+myClim'></span><span id='topic+myClim-package'></span>
-
-<h3>Description</h3>
-
-<p>Package myClim was designed for microclimate data processing, storing, and analyzing.
-The myClim wofrkflow consists of reading logger files, pre-processing the time-series,
-time-series aggregation, and microclimatic variables calculation. The microclimatic
-data are stored in size-efficient hierarchical structure which respects the
-hierarchy of field microclimate measurement (locality&gt;loggers&gt;sensors).
-</p>
-<p>After data import, myClim can summarize the data and automatically correct
-for the most common problems.   The myClim package provides functions to
-calculate aggregated microclimate statistics as well as methods for data
-calibration, conversion and calculation of derived microclimatic variables
-like growing degree days, freezing degree days, snow cover duration,
-volumetric water content and vapor pressure deficit.
-</p>
-<p>Standardized microclimatic variables can be stored efficiently in myClim
-data format or easily exported to stadard R long or wide tables for further
-analyses and visualization.
-</p>
-<p><strong>myClim object</strong>
-</p>
-<p>We implemented two slightly different data formats of myClim objects calling them:
-Raw-format and Agg-format.
-Raw-format is designed for data preparation. Mainly data cleaning,
-metadata gathering, time zones handling and multiple downloads joining.
-Outputs of functions <code><a href="#topic+mc_read_files">mc_read_files()</a></code> and <code><a href="#topic+mc_read_data">mc_read_data()</a></code> are a Raw-format.
-Raw-format has the levels of: localities, loggers and sensors.
-Function <code><a href="#topic+mc_agg">mc_agg()</a></code> converts data from Raw-format to Agg-format.
-Agg-format is designed mainly for calculations,analysis and microclimatic variables
-derivations on the basis of cleaned microclimatic data.
-Agg-format is missing the level of loggers. In Agg-format sensors are organized
-directly in localities, without loggers.
-</p>
-<p>The highest hierarchical level of myClim structure is the <code>locality</code>. It has own metadata e.g.
-coordinates and elevation. For detail description of locality metadata see <a href="#topic+mc_LocalityMetadata">mc_LocalityMetadata</a>.
-On the locality in Raw-format there are <code>loggers</code>; in Agg-format the <code>sensors</code>.
-See below. Loggers represents the files imported with myClim reading functions.
-Both <code>loggesr</code> and <code>sensors</code> have own metadata. One logger could host more sensors e.g.
-Tomst TMS logger hosing TMS_T1 soil temperature, TMS_T2 surface temperature,
-TMS_T3 air temperature , TMS_moist soil moisture.
-For detailed description of logger and sensor metadata
-see <a href="#topic+mc_LoggerMetadata">mc_LoggerMetadata</a>, <a href="#topic+mc_SensorMetadata">mc_SensorMetadata</a>, <a href="#topic+mc_data_sensors">mc_data_sensors</a>
-</p>
-<p>In Raw-format Within the logger all sensors share time series. In Agg-format where level of
-logger is missing, all sensors within the locality share time series. In Raw-format
-the time series between the loggers or between the localities can be of different time
-step. E.g. on the locality there can be one logger measuring in time step
-15 minutes and another one measuring once a day.  In Agg-format this is not allowed.
-Therefore it is necessary to use <code><a href="#topic+mc_agg">mc_agg()</a></code> to switch from Raw-format to the Agg-format.
-</p>
-<p>myClim time step is defined in seconds (<code>data$metadata@step</code>).
-But some steps (especially irregular ones) may not be represented by seconds.
-For example step <code>month</code> has variable number of seconds within the year. Therefore, metadata contains also text
-representation of the step (<code>data$metadata@period</code>).
-</p>
-<p>Schema of myClim <strong>Raw-format</strong>
-</p>
-<pre>
-            +-------------------------+
-$metadata   | mc_MainMetadata - class |
-            +-------------------------+
-            | @version                |
-            | @format_type            |
-            +-------------------------+
-            +-------------------------------------------------------------------------------+
-$localities | locality[1]                                                                   |
-            +-------------------------------------------------------------------------------+
-            |           +-----------------------------+                                     |
-            | $metadata | mc_LocalityMetadata - class |                                     |
-            |           +-----------------------------+                                     |
-            |           | @locality_id                |                                     |
-            |           | @elevation                  |                                     |
-            |           | @lat_wgs84                  |                                     |
-            |           | @lon_wgs84                  |                                     |
-            |           | @tz_offset                  |                                     |
-            |           | @tz_type                    |                                     |
-            |           | @user_data                  |                                     |
-            |           +-----------------------------+                                     |
-            |           +------------------------------------------------------------------+|
-            | $loggers  | logger[1]                                                        ||
-            |           +------------------------------------------------------------------+|
-            |           |             +---------------------------+                        ||
-            |           | $metadata   | mc_LoggerMetadata - class |                        ||
-            |           |             +---------------------------+                        ||
-            |           |             | @type                     |                        ||
-            |           |             | @serial_number            |                        ||
-            |           |             +---------------------------+                        ||
-            |           |             +----------------------------+                       ||
-            |           | $clean_info | mc_LoggerCleanInfo - class |                       ||
-            |           |             +----------------------------+                       ||
-            |           |             | @step                      |                       ||
-            |           |             | @count_duplicities         |                       ||
-            |           |             | @count_missing             |                       ||
-            |           |             | @count_disordered          |                       ||
-            |           |             | @rounded                   |                       ||
-            |           |             +----------------------------+                       ||
-            |           | $datetime   POSIXct vector                                       ||
-            |           |             +---------------------------------------------------+||
-            |           | $sensors    | sensor[1]                                         |||
-            |           |             +---------------------------------------------------+||
-            |           |             |              +---------------------------+        |||
-            |           |             | $metadata    | mc_SensorMetadata - class |        |||
-            |           |             |              +---------------------------+        |||
-            |           |             |              | @sensor_id                |        |||
-            |           |             |              | @name                     |        |||
-            |           |             |              | @height                   |        |||
-            |           |             |              | @calibrated               |        |||
-            |           |             |              +---------------------------+        |||
-            |           |             | $values      numeric/logical vector               |||
-            |           |             |              +----------+------------+-----------+|||
-            |           |             | $calibration | datetime | cor_factor | cor_slope ||||
-            |           |             |              | ...      | ...        | ...       ||||
-            |           |             |              +----------+------------+-----------+|||
-            |           |             |              +-----+-------+-----+-------+        |||
-            |           |             | $states      | tag | start | end | value |        |||
-            |           |             |              | ... | ...   | ... | ...   |        |||
-            |           |             |              +-----+-------+-----+-------+        |||
-            |           |             +---------------------------------------------------+||
-            |           |             +---------------------------------------------------+||
-            |           |             | sensor[2]                                         |||
-            |           |             +---------------------------------------------------+||
-            |           |             ...                                                  ||
-            |           |             +---------------------------------------------------+||
-            |           |             | sensor[n]                                         |||
-            |           |             +---------------------------------------------------+||
-            |           +------------------------------------------------------------------+|
-            |           +------------------------------------------------------------------+|
-            |           | logger[2]                                                        ||
-            |           +------------------------------------------------------------------+|
-            |           ...                                                                 |
-            |           +------------------------------------------------------------------+|
-            |           | logger[n]                                                        ||
-            |           +------------------------------------------------------------------+|
-            +-------------------------------------------------------------------------------+
-            +-------------------------------------------------------------------------------+
-            | locality[2]                                                                   |
-            +-------------------------------------------------------------------------------+
-            ...
-            +-------------------------------------------------------------------------------+
-            | locality[n]                                                                   |
-            +-------------------------------------------------------------------------------+</pre>
-<p>Agg-format is the output of <code><a href="#topic+mc_agg">mc_agg()</a></code> function.
-Agg-format is mainly designed for calculations which are faster in Agg and slower in Raw.
-</p>
-<p>Schema of myClim <strong>Agg-format</strong>
-</p>
-<pre>
-            +----------------------------+
-$metadata   | mc_MainMetadataAgg - class |
-            +----------------------------+
-            | @version                   |
-            | @format_type               |
-            | @step                      |
-            | @period                    |
-            | @intervals_start           |
-            | @intervals_end             |
-            +----------------------------+
-            +-----------------------------------------------------------------+
-$localities | locality[1]                                                     |
-            +-----------------------------------------------------------------+
-            |            +-----------------------------+                      |
-            | $metadata  | mc_LocalityMetadata - class |                      |
-            |            +-----------------------------+                      |
-            |            | @locality_id                |                      |
-            |            | @elevation                  |                      |
-            |            | @lat_wgs84                  |                      |
-            |            | @lon_wgs84                  |                      |
-            |            | @tz_offset                  |                      |
-            |            | @tz_type                    |                      |
-            |            | @user_data                  |                      |
-            |            +-----------------------------+                      |
-            | $datetime  POSIXct vector                                       |
-            |            +---------------------------------------------------+|
-            | $sensors   | sensor[1]                                         ||
-            |            +---------------------------------------------------+|
-            |            |              +---------------------------+        ||
-            |            | $metadata    | mc_SensorMetadata - class |        ||
-            |            |              +---------------------------+        ||
-            |            |              | @sensor_id                |        ||
-            |            |              | @name                     |        ||
-            |            |              | @height                   |        ||
-            |            |              | @calibrated               |        ||
-            |            |              +---------------------------+        ||
-            |            | $values      numeric/logical vector               ||
-            |            |              +----------+------------+-----------+||
-            |            | $calibration | datetime | cor_factor | cor_slope |||
-            |            |              | ...      | ...        | ...       |||
-            |            |              +----------+------------+-----------+||
-            |            |              +-----+-------+-----+-------+        ||
-            |            | $states      | tag | start | end | value |        ||
-            |            |              | ... | ...   | ... | ...   |        ||
-            |            |              +-----+-------+-----+-------+        ||
-            |            +---------------------------------------------------+|
-            |            +---------------------------------------------------+|
-            |            | sensor[2]                                         ||
-            |            +---------------------------------------------------+|
-            |            ...                                                  |
-            |            +---------------------------------------------------+|
-            |            | sensor[n]                                         ||
-            |            +---------------------------------------------------+|
-            +-----------------------------------------------------------------+
-            +-----------------------------------------------------------------+
-            | locality[2]                                                     |
-            +-----------------------------------------------------------------+
-            ...
-            +-----------------------------------------------------------------+
-            | locality[n]                                                     |
-            +-----------------------------------------------------------------+</pre>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Vojtěch Kalčík <a href="mailto:Vojtech.Kalcik@ibot.cas.cz">Vojtech.Kalcik@ibot.cas.cz</a>
-</p>
-<p>Authors:
-</p>
-
-<ul>
-<li><p> Matěj Man <a href="mailto:Matej.Man@ibot.cas.cz">Matej.Man@ibot.cas.cz</a>
-</p>
-</li>
-<li><p> Martin Macek <a href="mailto:Martin.Macek@ibot.cas.cz">Martin.Macek@ibot.cas.cz</a>
-</p>
-</li>
-<li><p> Josef Brůna <a href="mailto:Josef.Bruna@ibot.cas.cz">Josef.Bruna@ibot.cas.cz</a>
-</p>
-</li>
-<li><p> Lucia Hederová <a href="mailto:Lucia.Hederova@ibot.cas.cz">Lucia.Hederova@ibot.cas.cz</a>
-</p>
-</li>
-<li><p> Jan Wild <a href="mailto:Jan.Wild@ibot.cas.cz">Jan.Wild@ibot.cas.cz</a>
-</p>
-</li>
-<li><p> Martin Kopecký <a href="mailto:Martin.Kopecky@ibot.cas.cz">Martin.Kopecky@ibot.cas.cz</a>
-</p>
-</li></ul>
-
-<p>Other contributors:
-</p>
-
-<ul>
-<li><p> Institute of Botany of the Czech Academy of Sciences [copyright holder]
-</p>
-</li></ul>
-
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="http://labgis.ibot.cas.cz/myclim/index.html">http://labgis.ibot.cas.cz/myclim/index.html</a>
-</p>
-</li>
-<li> <p><a href="https://github.com/ibot-geoecology/myClim">https://github.com/ibot-geoecology/myClim</a>
-</p>
-</li></ul>
-
 
 <hr>
 <h2 id='myClimList'>Custom list for myClim object</h2><span id='topic+myClimList'></span>

@@ -13,18 +13,18 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {npmr}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#npmr-package'>
+<p>Nuclear penalized multinomial regression</p></a></li>
 <li><a href='#cv.npmr'>
 <p>Cross-validated nuclear penalized multinomial regression</p></a></li>
 <li><a href='#logL'>
 <p>Log-likelihood for multinomial regression model</p></a></li>
 <li><a href='#npmr'>
-<p>Nuclear penalized multinomial regression</p></a></li>
-<li><a href='#npmr-package'>
 <p>Nuclear penalized multinomial regression</p></a></li>
 <li><a href='#nuclear'>
 <p>Nuclear norm of a matrix</p></a></li>
@@ -111,6 +111,90 @@ function processMathHTML() {
 <td>2023-11-11 18:13:18 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='npmr-package'>
+Nuclear penalized multinomial regression
+</h2><span id='topic+npmr-package'></span>
+
+<h3>Description</h3>
+
+<p>As an alternative to an l1- or l2-penalty on multinomial logistic regression,
+this package fits multinomial regression with a penalty on the nuclear norm
+of the fitted regression coefficient matrix. The result is often a matrix of
+reduced rank, leveraging structure among the response classes so that the
+likelihood of one class informs the likelihood of other classes. Proximal
+gradient descent is used to solve the NPMR optimization problem.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The primary functions in the package are <code><a href="#topic+npmr">npmr</a></code>, which solves
+nuclear penalized multinomial regression for a sequence of input values for the
+regularization parameter lambda, and <code><a href="#topic+cv.npmr">cv.npmr</a></code>, which chooses the
+optimal value of the regularization parameter lambda via cross validation. Both
+<code><a href="#topic+npmr">npmr</a></code> and <code><a href="#topic+cv.npmr">cv.npmr</a></code> have predict and plot methods.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Scott Powers, Trevor Hastie, Rob Tibshirani
+</p>
+<p>Maintainer: Scott Powers &lt;sspowers@stanford.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Scott Powers, Trevor Hastie and Rob Tibshirani (2016). &ldquo;Nuclear penalized
+multinomial regression with an application to predicting at bat outcomes in
+baseball.&rdquo; In prep.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#   Fit NPMR to simulated data
+
+K = 5
+n = 1000
+m = 10000
+p = 10
+r = 2
+
+# Simulated training data
+set.seed(8369)
+A = matrix(rnorm(p*r), p, r)
+C = matrix(rnorm(K*r), K, r)
+B = tcrossprod(A, C)            # low-rank coefficient matrix
+X = matrix(rnorm(n*p), n, p)    # covariate matrix with iid Gaussian entries
+eta = X 
+P = exp(eta)/rowSums(exp(eta))
+Y = t(apply(P, 1, rmultinom, n = 1, size = 1))
+
+# Simulate test data
+Xtest = matrix(rnorm(m*p), m, p)
+etatest = Xtest 
+Ptest = exp(etatest)/rowSums(exp(etatest))
+Ytest = t(apply(Ptest, 1, rmultinom, n = 1, size = 1))
+
+# Fit NPMR for a sequence of lambda values without CV:
+fit2 = npmr(X, Y, lambda = exp(seq(7, -2)))
+
+# Print the NPMR fit:
+fit2
+
+# Produce a biplot:
+plot(fit2, lambda = 20)
+
+# Compute mean test error using the predict function (for each value of lambda):
+getloss = function(pred, Y) {
+    -mean(log(rowSums(Y*pred)))
+}
+apply(predict(fit2, Xtest), 3, getloss, Ytest)
+</code></pre>
+
 <hr>
 <h2 id='cv.npmr'>
 Cross-validated nuclear penalized multinomial regression
@@ -585,90 +669,6 @@ baseball.&rdquo; In prep.
 
 <p><code><a href="#topic+cv.npmr">cv.npmr</a></code>, <code><a href="#topic+predict.npmr">predict.npmr</a></code>, <code><a href="#topic+print.npmr">print.npmr</a></code>,
 <code><a href="#topic+plot.npmr">plot.npmr</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>#   Fit NPMR to simulated data
-
-K = 5
-n = 1000
-m = 10000
-p = 10
-r = 2
-
-# Simulated training data
-set.seed(8369)
-A = matrix(rnorm(p*r), p, r)
-C = matrix(rnorm(K*r), K, r)
-B = tcrossprod(A, C)            # low-rank coefficient matrix
-X = matrix(rnorm(n*p), n, p)    # covariate matrix with iid Gaussian entries
-eta = X 
-P = exp(eta)/rowSums(exp(eta))
-Y = t(apply(P, 1, rmultinom, n = 1, size = 1))
-
-# Simulate test data
-Xtest = matrix(rnorm(m*p), m, p)
-etatest = Xtest 
-Ptest = exp(etatest)/rowSums(exp(etatest))
-Ytest = t(apply(Ptest, 1, rmultinom, n = 1, size = 1))
-
-# Fit NPMR for a sequence of lambda values without CV:
-fit2 = npmr(X, Y, lambda = exp(seq(7, -2)))
-
-# Print the NPMR fit:
-fit2
-
-# Produce a biplot:
-plot(fit2, lambda = 20)
-
-# Compute mean test error using the predict function (for each value of lambda):
-getloss = function(pred, Y) {
-    -mean(log(rowSums(Y*pred)))
-}
-apply(predict(fit2, Xtest), 3, getloss, Ytest)
-</code></pre>
-
-<hr>
-<h2 id='npmr-package'>
-Nuclear penalized multinomial regression
-</h2><span id='topic+npmr-package'></span>
-
-<h3>Description</h3>
-
-<p>As an alternative to an l1- or l2-penalty on multinomial logistic regression,
-this package fits multinomial regression with a penalty on the nuclear norm
-of the fitted regression coefficient matrix. The result is often a matrix of
-reduced rank, leveraging structure among the response classes so that the
-likelihood of one class informs the likelihood of other classes. Proximal
-gradient descent is used to solve the NPMR optimization problem.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The primary functions in the package are <code><a href="#topic+npmr">npmr</a></code>, which solves
-nuclear penalized multinomial regression for a sequence of input values for the
-regularization parameter lambda, and <code><a href="#topic+cv.npmr">cv.npmr</a></code>, which chooses the
-optimal value of the regularization parameter lambda via cross validation. Both
-<code><a href="#topic+npmr">npmr</a></code> and <code><a href="#topic+cv.npmr">cv.npmr</a></code> have predict and plot methods.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Scott Powers, Trevor Hastie, Rob Tibshirani
-</p>
-<p>Maintainer: Scott Powers &lt;sspowers@stanford.edu&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Scott Powers, Trevor Hastie and Rob Tibshirani (2016). &ldquo;Nuclear penalized
-multinomial regression with an application to predicting at bat outcomes in
-baseball.&rdquo; In prep.
 </p>
 
 

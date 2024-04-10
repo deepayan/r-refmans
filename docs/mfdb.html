@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {mfdb}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#mfdb-package'>
+<p>MareFrame DB querying library</p></a></li>
 <li><a href='#ewe_model'><p>MareFrame DB Rpath interface</p></a></li>
 <li><a href='#gadget_areafile'><p>Gadget area files</p></a></li>
 <li><a href='#gadget_directory'><p>Gadget directory objects</p></a></li>
@@ -40,8 +42,6 @@ function processMathHTML() {
 <li><a href='#mfdb_queries'><p>MareFrame DB queries</p></a></li>
 <li><a href='#mfdb_sharing'><p>MareFrame DB sharing options</p></a></li>
 <li><a href='#mfdb-data'><p>MareFrame DB Datasets</p></a></li>
-<li><a href='#mfdb-package'>
-<p>MareFrame DB querying library</p></a></li>
 </ul>
 </div>
 <hr>
@@ -127,6 +127,260 @@ unittest (&ge; 1.4)</td>
 <td>2022-06-21 14:50:03 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='mfdb-package'>
+MareFrame DB querying library
+</h2><span id='topic+mfdb-package'></span>
+
+<h3>Description</h3>
+
+<p>Tools to query a MareFrame DB and reformat results in forms
+useful for GADGET and EwE models.
+</p>
+
+
+<h3>Introduction &amp; Schema description</h3>
+
+<p>Before doing anything with <span class="pkg">mfdb</span>, it is worth knowing a bit about how data
+is stored. Broadly, there are 2 basic types of table in <span class="pkg">mfdb</span>,
+<em>taxonomy</em> and <em>measurement</em> tables.
+</p>
+<p>The measurement tables store all forms of sample data supported, at the finest
+available detail. These are then aggregated when using any of the mfdb query
+functions. All measurement data is separated by case study, so multiple case
+studies can be loaded into a database without conflicts.
+</p>
+<p>Taxonomy tables store all possible values for terms and their meaning, to
+ensure consistency in the data. For example, &lsquo;<span class="samp">&#8288;species&#8288;</span>&rsquo; stores short-names
+and full latin names of all known species to MFDB, to ensure consistency in naming.
+</p>
+<p>Most Taxonomies have defaults which are populated when the database is created,
+and their definitions are stored as data attached to this package. See <a href="#topic+mfdb-data">mfdb-data</a> for more
+information on these. Others, such as &lsquo;<span class="samp">&#8288;areacell&#8288;</span>&rsquo; and &lsquo;<span class="samp">&#8288;sampling_type&#8288;</span>&rsquo; are
+case study specific, and you will need to define your terms before you can
+import data.
+</p>
+
+
+<h3>Importing data</h3>
+
+<p>Unless you are working with a remote database, you will need to populate the
+database at least once before you are able to do any querying. The steps your
+script needs to do are:
+</p>
+
+
+<h4>Connect to database</h4>
+
+<p>Use the <a href="#topic+mfdb">mfdb</a>() function. This will create tables / populate taxonomies if necessary.
+</p>
+
+
+
+<h4>Define areas &amp; divisions</h4>
+
+<p><span class="pkg">mfdb</span> models space in the following way:
+</p>
+
+<dl>
+<dt>areacell</dt><dd>
+<p>The finest level of detail stored in the database. Every measurement (e.g.
+temperature, length sample) is assigned to an areacell. This will generally
+correspond to ICES gridcells, however there is no requirement to do so. You
+might augment gridcell information with depth, or include divisions when the
+measurement doesn't correlate to a specific areacell.
+</p>
+</dd>
+<dt>division</dt><dd>
+<p>Collections of areacells, e.g. ICES subdivisions, or whatever is appropriate.
+</p>
+</dd>
+</dl>
+
+<p>Finally, when querying, divisions are grouped together into named collections,
+for instance <code>mfdb_group(north = 1:3, south = 4:6)</code> will put anything in
+divisions 1&ndash;3 under an area named &quot;north&quot;, 4&ndash;5 under an area named &quot;south&quot;.
+</p>
+<p>Before you can upload any measurements, you have to define the areacells
+that they will use. You do this using the <a href="#topic+mfdb_import_area">mfdb_import_area</a>() function. This
+allows you to import tables of area/division information, such as:
+</p>
+<p><code>
+mfdb_import_area(mdb, data.frame(
+    area = c('101', '102', '103', '401','402', '403'),
+    division = c('1', '1', '1', '4', '4', '4'),
+    ))
+</code>
+</p>
+<p>If you want areas to be part of multiple divisions, then you can use
+<a href="#topic+mfdb_import_division">mfdb_import_division</a>() to import extra revisions.
+</p>
+
+
+
+<h4>Define sampling types</h4>
+
+<p>Any survey data can have a sampling type defined, which then can be used when
+querying data. If you want to use a sampling type, then define it using
+<a href="#topic+mfdb_import_sampling_type">mfdb_import_sampling_type</a>().
+</p>
+
+
+
+<h4>Import temperature data</h4>
+
+<p>At this point, you can start uploading actual measurements. The easiest of
+which is temperature. Upload a table of areacell/month/temperature data
+using <a href="#topic+mfdb_import_temperature">mfdb_import_temperature</a>().
+</p>
+
+
+
+<h4>Import survey data</h4>
+
+<p>Finally, import any survey data using <a href="#topic+mfdb_import_survey">mfdb_import_survey</a>(). Ideally
+upload your data in separate chunks. For example, if you have length and
+age-length data, don't combine them in R, upload them separately and both
+will be used when querying for length data. This keeps the process simple,
+and allows you to swap out data as necessary.
+</p>
+
+
+
+<h4>Import stomach survey</h4>
+
+<p>Stomach surveys are imported in much the same way, however there are 2 data.frames,
+one representing predators, one preys. The column &lsquo;<span class="samp">&#8288;stomach_name&#8288;</span>&rsquo; links the
+two, which can contain any numeric / character value, as long as it is unique
+for predators and prey measurements are assigned to the correct stomach.
+</p>
+
+<p>See <a href="#topic+mfdb_import_survey">mfdb_import_survey</a> for more information or 
+<a href="../demo">the demo directory</a> for concrete examples.
+</p>
+
+
+<h4>Dumping / Restoring a DB</h4>
+
+<p>You can also dump/import a dump from another host using the postgres pg_dump
+and pg_restore commands. You can dump/restore indvidual schemas (i.e. the 
+case study you give to the mfdb() command), to list all the schemas installed
+run <code>SELECT DISTINCT(table_schema) FROM information_schema.tables</code> from
+psql. Note that if you use <code>mfdb('Baltic')</code>, the Postgres schema name will
+be lower-cased.
+</p>
+<p>Create a dump of your chosen schema with the following command:
+</p>
+<pre>
+pg_dump --schema=baltic -Fc mf &gt; baltic.dump
+</pre>
+<p>This will make a dump of the &quot;baltic&quot; case study into &quot;baltic.tar&quot;. It can
+then be restored onto another computer with the following:
+</p>
+<pre>
+pg_restore --clean -d mf baltic.dump
+</pre>
+<p>If you already have a baltic schema you wish to preserve, you can rename it
+first by issuing <code>ALTER SCHEMA baltic RENAME TO baltic_o</code> in psql. Once
+the restore is done you can rename the new schema and put the name of the old
+schema back.
+</p>
+
+
+
+<h3>Querying data</h3>
+
+<p>There are a selection of querying functions available, all of which work
+same way. You give a set of parameters, each of which can be a vector of
+data you wish returned, for instance <code>year = 1998:2000</code> or
+<code>species = c('COD')</code>.
+</p>
+<p>If also grouping by this column (i.e. 'year', 'timestep', 'area' and any
+other columns given, e.g. 'age'), then the parameter will control how this
+grouping works, e.g. <code>maturity_stage = mfdb_group(imm = 1, mat = 2:5)</code>
+will result in the maturity_stage column having either 'imm' or 'mat'.
+These will also be used to generate GADGET aggregation files later.
+</p>
+<p>For example, the following queries the temperature table:
+</p>
+<pre>
+defaults &lt;- list(
+    area = mfdb_group("101" = ),
+    timestep = mfdb_timestep_quarterly, # Group months to create 2 timesteps for each year
+    year = 1996:2005)
+agg_data &lt;- mfdb_temperature(mdb, defaults)
+</pre>
+<p>All functions will result in a list of data.frame result tables (generally
+only one, unless you requested bootstrapping). Each are suitable for
+feeding into a gadget function to output into model files.
+</p>
+<p>See <a href="#topic+mfdb_sample_count">mfdb_sample_count</a> for more information or 
+<a href="../demo">the demo directory</a> for concrete examples.
+</p>
+
+
+<h3>Creating GADGET files</h3>
+
+<p>Finally, there are a set of functions that turn the output of queries into
+GADGET model files. These work on a <a href="#topic+gadget_directory">gadget_directory</a> object, which
+can either be an existing GADGET model to alter, or an empty / nonexistant
+directory.
+</p>
+<p>Generally, the result of an mfdb query will be enough to create a
+corresponding GADGET file, for instance, the following will create a GADGET
+area file in your gadget directory:
+</p>
+<pre>
+gadget_dir_write(gd,gadget_areafile(
+    size = mfdb_area_size(mdb, defaults)[[1]],
+    temperature = mfdb_temperature(mdb, defaults)[[1]]))
+</pre>
+<p>See <a href="#topic+gadget_areafile">gadget_areafile</a> or <a href="#topic+gadget_likelihood_component">gadget_likelihood_component</a> for more
+information or <a href="../demo">the demo directory</a> for concrete examples.
+</p>
+
+
+<h4>Stock and fleet files</h4>
+
+<p>Stocks and fleets aren't explicitly defined in the database. Instead, they are
+definied by querying on a column that differentiates them. For example, if
+your &quot;immature cod&quot; stock is definied as cod that is between maturity stages 1
+and 2, then if querying for a stockdistribution component, one could do:
+</p>
+<pre>
+    mfdb_sample_count(mdb, c('maturity_stage', 'age', 'length'), list(
+        species = 'COD',
+        maturity_stage = c(imm = 1:2, mat = 3:5),
+        . . .
+    )
+</pre>
+<p>...and the maturity_stage column will be treated as the stock.
+</p>
+
+
+
+<h3>Acknowledgements</h3>
+
+<p>This project has received funding from the European Union's Seventh Framework
+Programme for research, technological development and demonstration under grant
+agreement no.613571.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jamie Lentin
+</p>
+<p>Maintainer: Jamie Lentin &lt;jamie.lentin@shuttlethread.com&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="https://github.com/gadget-framework/rgadget">rgadget</a>,
+<a href="https://gadget-framework.github.io/gadget2/userguide/">Gadget user guide</a>
+</p>
+
 <hr>
 <h2 id='ewe_model'>MareFrame DB Rpath interface</h2><span id='topic+mfdb_rpath_params'></span>
 
@@ -2623,260 +2877,6 @@ institutes you can query 'NOR' to get all institutes in Norway.
 </dd>
 </dl>
 
-
-<hr>
-<h2 id='mfdb-package'>
-MareFrame DB querying library
-</h2><span id='topic+mfdb-package'></span>
-
-<h3>Description</h3>
-
-<p>Tools to query a MareFrame DB and reformat results in forms
-useful for GADGET and EwE models.
-</p>
-
-
-<h3>Introduction &amp; Schema description</h3>
-
-<p>Before doing anything with <span class="pkg">mfdb</span>, it is worth knowing a bit about how data
-is stored. Broadly, there are 2 basic types of table in <span class="pkg">mfdb</span>,
-<em>taxonomy</em> and <em>measurement</em> tables.
-</p>
-<p>The measurement tables store all forms of sample data supported, at the finest
-available detail. These are then aggregated when using any of the mfdb query
-functions. All measurement data is separated by case study, so multiple case
-studies can be loaded into a database without conflicts.
-</p>
-<p>Taxonomy tables store all possible values for terms and their meaning, to
-ensure consistency in the data. For example, &lsquo;<span class="samp">&#8288;species&#8288;</span>&rsquo; stores short-names
-and full latin names of all known species to MFDB, to ensure consistency in naming.
-</p>
-<p>Most Taxonomies have defaults which are populated when the database is created,
-and their definitions are stored as data attached to this package. See <a href="#topic+mfdb-data">mfdb-data</a> for more
-information on these. Others, such as &lsquo;<span class="samp">&#8288;areacell&#8288;</span>&rsquo; and &lsquo;<span class="samp">&#8288;sampling_type&#8288;</span>&rsquo; are
-case study specific, and you will need to define your terms before you can
-import data.
-</p>
-
-
-<h3>Importing data</h3>
-
-<p>Unless you are working with a remote database, you will need to populate the
-database at least once before you are able to do any querying. The steps your
-script needs to do are:
-</p>
-
-
-<h4>Connect to database</h4>
-
-<p>Use the <a href="#topic+mfdb">mfdb</a>() function. This will create tables / populate taxonomies if necessary.
-</p>
-
-
-
-<h4>Define areas &amp; divisions</h4>
-
-<p><span class="pkg">mfdb</span> models space in the following way:
-</p>
-
-<dl>
-<dt>areacell</dt><dd>
-<p>The finest level of detail stored in the database. Every measurement (e.g.
-temperature, length sample) is assigned to an areacell. This will generally
-correspond to ICES gridcells, however there is no requirement to do so. You
-might augment gridcell information with depth, or include divisions when the
-measurement doesn't correlate to a specific areacell.
-</p>
-</dd>
-<dt>division</dt><dd>
-<p>Collections of areacells, e.g. ICES subdivisions, or whatever is appropriate.
-</p>
-</dd>
-</dl>
-
-<p>Finally, when querying, divisions are grouped together into named collections,
-for instance <code>mfdb_group(north = 1:3, south = 4:6)</code> will put anything in
-divisions 1&ndash;3 under an area named &quot;north&quot;, 4&ndash;5 under an area named &quot;south&quot;.
-</p>
-<p>Before you can upload any measurements, you have to define the areacells
-that they will use. You do this using the <a href="#topic+mfdb_import_area">mfdb_import_area</a>() function. This
-allows you to import tables of area/division information, such as:
-</p>
-<p><code>
-mfdb_import_area(mdb, data.frame(
-    area = c('101', '102', '103', '401','402', '403'),
-    division = c('1', '1', '1', '4', '4', '4'),
-    ))
-</code>
-</p>
-<p>If you want areas to be part of multiple divisions, then you can use
-<a href="#topic+mfdb_import_division">mfdb_import_division</a>() to import extra revisions.
-</p>
-
-
-
-<h4>Define sampling types</h4>
-
-<p>Any survey data can have a sampling type defined, which then can be used when
-querying data. If you want to use a sampling type, then define it using
-<a href="#topic+mfdb_import_sampling_type">mfdb_import_sampling_type</a>().
-</p>
-
-
-
-<h4>Import temperature data</h4>
-
-<p>At this point, you can start uploading actual measurements. The easiest of
-which is temperature. Upload a table of areacell/month/temperature data
-using <a href="#topic+mfdb_import_temperature">mfdb_import_temperature</a>().
-</p>
-
-
-
-<h4>Import survey data</h4>
-
-<p>Finally, import any survey data using <a href="#topic+mfdb_import_survey">mfdb_import_survey</a>(). Ideally
-upload your data in separate chunks. For example, if you have length and
-age-length data, don't combine them in R, upload them separately and both
-will be used when querying for length data. This keeps the process simple,
-and allows you to swap out data as necessary.
-</p>
-
-
-
-<h4>Import stomach survey</h4>
-
-<p>Stomach surveys are imported in much the same way, however there are 2 data.frames,
-one representing predators, one preys. The column &lsquo;<span class="samp">&#8288;stomach_name&#8288;</span>&rsquo; links the
-two, which can contain any numeric / character value, as long as it is unique
-for predators and prey measurements are assigned to the correct stomach.
-</p>
-
-<p>See <a href="#topic+mfdb_import_survey">mfdb_import_survey</a> for more information or 
-<a href="../demo">the demo directory</a> for concrete examples.
-</p>
-
-
-<h4>Dumping / Restoring a DB</h4>
-
-<p>You can also dump/import a dump from another host using the postgres pg_dump
-and pg_restore commands. You can dump/restore indvidual schemas (i.e. the 
-case study you give to the mfdb() command), to list all the schemas installed
-run <code>SELECT DISTINCT(table_schema) FROM information_schema.tables</code> from
-psql. Note that if you use <code>mfdb('Baltic')</code>, the Postgres schema name will
-be lower-cased.
-</p>
-<p>Create a dump of your chosen schema with the following command:
-</p>
-<pre>
-pg_dump --schema=baltic -Fc mf &gt; baltic.dump
-</pre>
-<p>This will make a dump of the &quot;baltic&quot; case study into &quot;baltic.tar&quot;. It can
-then be restored onto another computer with the following:
-</p>
-<pre>
-pg_restore --clean -d mf baltic.dump
-</pre>
-<p>If you already have a baltic schema you wish to preserve, you can rename it
-first by issuing <code>ALTER SCHEMA baltic RENAME TO baltic_o</code> in psql. Once
-the restore is done you can rename the new schema and put the name of the old
-schema back.
-</p>
-
-
-
-<h3>Querying data</h3>
-
-<p>There are a selection of querying functions available, all of which work
-same way. You give a set of parameters, each of which can be a vector of
-data you wish returned, for instance <code>year = 1998:2000</code> or
-<code>species = c('COD')</code>.
-</p>
-<p>If also grouping by this column (i.e. 'year', 'timestep', 'area' and any
-other columns given, e.g. 'age'), then the parameter will control how this
-grouping works, e.g. <code>maturity_stage = mfdb_group(imm = 1, mat = 2:5)</code>
-will result in the maturity_stage column having either 'imm' or 'mat'.
-These will also be used to generate GADGET aggregation files later.
-</p>
-<p>For example, the following queries the temperature table:
-</p>
-<pre>
-defaults &lt;- list(
-    area = mfdb_group("101" = ),
-    timestep = mfdb_timestep_quarterly, # Group months to create 2 timesteps for each year
-    year = 1996:2005)
-agg_data &lt;- mfdb_temperature(mdb, defaults)
-</pre>
-<p>All functions will result in a list of data.frame result tables (generally
-only one, unless you requested bootstrapping). Each are suitable for
-feeding into a gadget function to output into model files.
-</p>
-<p>See <a href="#topic+mfdb_sample_count">mfdb_sample_count</a> for more information or 
-<a href="../demo">the demo directory</a> for concrete examples.
-</p>
-
-
-<h3>Creating GADGET files</h3>
-
-<p>Finally, there are a set of functions that turn the output of queries into
-GADGET model files. These work on a <a href="#topic+gadget_directory">gadget_directory</a> object, which
-can either be an existing GADGET model to alter, or an empty / nonexistant
-directory.
-</p>
-<p>Generally, the result of an mfdb query will be enough to create a
-corresponding GADGET file, for instance, the following will create a GADGET
-area file in your gadget directory:
-</p>
-<pre>
-gadget_dir_write(gd,gadget_areafile(
-    size = mfdb_area_size(mdb, defaults)[[1]],
-    temperature = mfdb_temperature(mdb, defaults)[[1]]))
-</pre>
-<p>See <a href="#topic+gadget_areafile">gadget_areafile</a> or <a href="#topic+gadget_likelihood_component">gadget_likelihood_component</a> for more
-information or <a href="../demo">the demo directory</a> for concrete examples.
-</p>
-
-
-<h4>Stock and fleet files</h4>
-
-<p>Stocks and fleets aren't explicitly defined in the database. Instead, they are
-definied by querying on a column that differentiates them. For example, if
-your &quot;immature cod&quot; stock is definied as cod that is between maturity stages 1
-and 2, then if querying for a stockdistribution component, one could do:
-</p>
-<pre>
-    mfdb_sample_count(mdb, c('maturity_stage', 'age', 'length'), list(
-        species = 'COD',
-        maturity_stage = c(imm = 1:2, mat = 3:5),
-        . . .
-    )
-</pre>
-<p>...and the maturity_stage column will be treated as the stock.
-</p>
-
-
-
-<h3>Acknowledgements</h3>
-
-<p>This project has received funding from the European Union's Seventh Framework
-Programme for research, technological development and demonstration under grant
-agreement no.613571.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Jamie Lentin
-</p>
-<p>Maintainer: Jamie Lentin &lt;jamie.lentin@shuttlethread.com&gt;
-</p>
-
-
-<h3>See Also</h3>
-
-<p><a href="https://github.com/gadget-framework/rgadget">rgadget</a>,
-<a href="https://gadget-framework.github.io/gadget2/userguide/">Gadget user guide</a>
-</p>
 
 </main>
 

@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {ROSE}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#ROSE-package'>
+<p>ROSE: Random Over-Sampling Examples</p></a></li>
 <li><a href='#accuracy.meas'>
 <p>Metrics to evaluate a classifier accuracy in imbalanced learning</p></a></li>
 <li><a href='#hacide'><p>Half circle filled data</p></a></li>
@@ -27,8 +29,6 @@ function processMathHTML() {
 <p>ROC curve</p></a></li>
 <li><a href='#ROSE'>
 <p>Generation of synthetic data by Randomly Over Sampling Examples (ROSE)</p></a></li>
-<li><a href='#ROSE-package'>
-<p>ROSE: Random Over-Sampling Examples</p></a></li>
 <li><a href='#ROSE.eval'>
 <p>Evaluation of learner accuracy by ROSE</p></a></li>
 </ul>
@@ -95,6 +95,107 @@ function processMathHTML() {
 <td>2021-06-14 08:10:09 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='ROSE-package'>
+ROSE: Random Over-Sampling Examples</h2><span id='topic+ROSE-package'></span><span id='topic+ROSEpack'></span>
+
+<h3>Description</h3>
+
+<p>Functions to deal with binary classification
+problems in the presence of imbalanced classes. Synthetic balanced samples are
+generated according to ROSE (Menardi and Torelli, 2014).
+Functions that implement more traditional remedies to the class imbalance
+are also provided, as well as different metrics to evaluate a learner accuracy.
+These are estimated by holdout, bootrstrap or cross-validation methods.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The package pivots on function <code><a href="#topic+ROSE">ROSE</a></code> which generates synthetic balanced
+samples and thus allows to strenghten the subsequent estimation of any binary classifier.
+ROSE (Random Over-Sampling Examples) is a bootstrap-based technique
+which aids the task of binary classification in the presence of rare classes.
+It handles both continuous and categorical data by generating synthetic examples from
+a conditional density estimate of the two classes. 
+Different metrics to evaluate a learner accuracy are supplied by
+functions <code><a href="#topic+roc.curve">roc.curve</a></code> and <code><a href="#topic+accuracy.meas">accuracy.meas</a></code>.
+Holdout, bootstrap or cross-validation estimators of these accuracy metrics are
+computed by means of ROSE and provided by function <code><a href="#topic+ROSE.eval">ROSE.eval</a></code>, to be used in
+conjuction with virtually any binary classifier.
+Additionally, function <code><a href="#topic+ovun.sample">ovun.sample</a></code> implements more traditional remedies
+to the class imbalance, such as over-sampling the minority class, under-sampling the majority
+class, or a combination of over- and under- sampling.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nicola Lunardon, Giovanna Menardi, Nicola Torelli
+</p>
+<p>Maintainer:
+Nicola Lunardon &lt;lunardon@stat.unipd.it&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Lunardon, N., Menardi, G., and Torelli, N. (2014). ROSE: a Package for Binary Imbalanced Learning. <em>R Jorunal</em>, 6:82&ndash;92.
+</p>
+<p>Menardi, G. and Torelli, N. (2014). Training and assessing classification rules with imbalanced data. <em>Data Mining and Knowledge Discovery</em>, 28:92&ndash;122.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="nnet.html#topic+nnet">nnet</a></code>,
+<code><a href="rpart.html#topic+rpart">rpart</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># loading data
+data(hacide)
+
+# check imbalance
+table(hacide.train$cls)
+
+# train logistic regression on imbalanced data
+log.reg.imb &lt;- glm(cls ~ ., data=hacide.train, family=binomial)
+
+# use the trained model to predict test data
+pred.log.reg.imb &lt;- predict(log.reg.imb, newdata=hacide.test,
+                            type="response")
+
+# generate new balanced data by ROSE
+hacide.rose &lt;- ROSE(cls ~ ., data=hacide.train, seed=123)$data
+
+# check (im)balance of new data
+table(hacide.rose$cls)
+
+# train logistic regression on balanced data
+log.reg.bal &lt;- glm(cls ~ ., data=hacide.rose, family=binomial)
+
+# use the trained model to predict test data
+pred.log.reg.bal &lt;- predict(log.reg.bal, newdata=hacide.test,
+                            type="response")
+
+# check accuracy of the two learners by measuring auc
+roc.curve(hacide.test$cls, pred.log.reg.imb)
+roc.curve(hacide.test$cls, pred.log.reg.bal, add.roc=TRUE, col=2)
+
+# determine bootstrap distribution of the AUC of logit models
+# trained on ROSE balanced samples
+# B has been reduced from 100 to 10 for time saving solely
+boot.auc.bal &lt;- ROSE.eval(cls ~ ., data=hacide.train, learner= glm,
+                          method.assess = "BOOT",
+                          control.learner=list(family=binomial),
+                          trace=TRUE, B=10)
+
+summary(boot.auc.bal)
+</code></pre>
+
 <hr>
 <h2 id='accuracy.meas'>
 Metrics to evaluate a classifier accuracy in imbalanced learning
@@ -767,114 +868,6 @@ pred.rose &lt;- predict(fit.rose, data=data.rose, type="response")
 roc.curve(data.rose$cls, pred.rose, 
           main="ROC curve \n (Half circle depleted data balanced by ROSE)")
 par(mfrow=c(1,1))
-</code></pre>
-
-<hr>
-<h2 id='ROSE-package'>
-ROSE: Random Over-Sampling Examples</h2><span id='topic+ROSE-package'></span><span id='topic+ROSEpack'></span>
-
-<h3>Description</h3>
-
-<p>Functions to deal with binary classification
-problems in the presence of imbalanced classes. Synthetic balanced samples are
-generated according to ROSE (Menardi and Torelli, 2014).
-Functions that implement more traditional remedies to the class imbalance
-are also provided, as well as different metrics to evaluate a learner accuracy.
-These are estimated by holdout, bootrstrap or cross-validation methods.
-</p>
-
-
-<h3>Details</h3>
-
-
-
-
-
-
-
-
-<p>The package pivots on function <code><a href="#topic+ROSE">ROSE</a></code> which generates synthetic balanced
-samples and thus allows to strenghten the subsequent estimation of any binary classifier.
-ROSE (Random Over-Sampling Examples) is a bootstrap-based technique
-which aids the task of binary classification in the presence of rare classes.
-It handles both continuous and categorical data by generating synthetic examples from
-a conditional density estimate of the two classes. 
-Different metrics to evaluate a learner accuracy are supplied by
-functions <code><a href="#topic+roc.curve">roc.curve</a></code> and <code><a href="#topic+accuracy.meas">accuracy.meas</a></code>.
-Holdout, bootstrap or cross-validation estimators of these accuracy metrics are
-computed by means of ROSE and provided by function <code><a href="#topic+ROSE.eval">ROSE.eval</a></code>, to be used in
-conjuction with virtually any binary classifier.
-Additionally, function <code><a href="#topic+ovun.sample">ovun.sample</a></code> implements more traditional remedies
-to the class imbalance, such as over-sampling the minority class, under-sampling the majority
-class, or a combination of over- and under- sampling.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Nicola Lunardon, Giovanna Menardi, Nicola Torelli
-</p>
-<p>Maintainer:
-Nicola Lunardon &lt;lunardon@stat.unipd.it&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Lunardon, N., Menardi, G., and Torelli, N. (2014). ROSE: a Package for Binary Imbalanced Learning. <em>R Jorunal</em>, 6:82&ndash;92.
-</p>
-<p>Menardi, G. and Torelli, N. (2014). Training and assessing classification rules with imbalanced data. <em>Data Mining and Knowledge Discovery</em>, 28:92&ndash;122.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="nnet.html#topic+nnet">nnet</a></code>,
-<code><a href="rpart.html#topic+rpart">rpart</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># loading data
-data(hacide)
-
-# check imbalance
-table(hacide.train$cls)
-
-# train logistic regression on imbalanced data
-log.reg.imb &lt;- glm(cls ~ ., data=hacide.train, family=binomial)
-
-# use the trained model to predict test data
-pred.log.reg.imb &lt;- predict(log.reg.imb, newdata=hacide.test,
-                            type="response")
-
-# generate new balanced data by ROSE
-hacide.rose &lt;- ROSE(cls ~ ., data=hacide.train, seed=123)$data
-
-# check (im)balance of new data
-table(hacide.rose$cls)
-
-# train logistic regression on balanced data
-log.reg.bal &lt;- glm(cls ~ ., data=hacide.rose, family=binomial)
-
-# use the trained model to predict test data
-pred.log.reg.bal &lt;- predict(log.reg.bal, newdata=hacide.test,
-                            type="response")
-
-# check accuracy of the two learners by measuring auc
-roc.curve(hacide.test$cls, pred.log.reg.imb)
-roc.curve(hacide.test$cls, pred.log.reg.bal, add.roc=TRUE, col=2)
-
-# determine bootstrap distribution of the AUC of logit models
-# trained on ROSE balanced samples
-# B has been reduced from 100 to 10 for time saving solely
-boot.auc.bal &lt;- ROSE.eval(cls ~ ., data=hacide.train, learner= glm,
-                          method.assess = "BOOT",
-                          control.learner=list(family=binomial),
-                          trace=TRUE, B=10)
-
-summary(boot.auc.bal)
 </code></pre>
 
 <hr>

@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {IP}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#IP-package'><p>Classes and methods for IP addresses</p></a></li>
 <li><a href='#Arithmetic'><p> Methods for IP arithmetic</p></a></li>
 <li><a href='#Bitwise-methods'><p> Bitwise operations</p></a></li>
 <li><a href='#Comparison'><p> Methods for IP Comparison</p></a></li>
@@ -25,7 +26,6 @@ function processMathHTML() {
 <li><a href='#Hostinfo'><p> host-info</p></a></li>
 <li><a href='#IP classes'><p>IPv4, IPv6 and IP classes</p></a></li>
 <li><a href='#IP range classes'><p>IPv4, IPv6 and IP ranges classes</p></a></li>
-<li><a href='#IP-package'><p>Classes and methods for IP addresses</p></a></li>
 <li><a href='#Varia'><p>Miscellaneous methods and functions for IP classes</p></a></li>
 </ul>
 </div>
@@ -102,6 +102,116 @@ function processMathHTML() {
 <td>2024-03-03 17:20:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='IP-package'>Classes and methods for IP addresses</h2><span id='topic+IP-package'></span><span id='topic+IP'></span>
+
+<h3>Description</h3>
+
+<p>Classes and methods for IP addresses
+</p>
+
+
+<h3>Details</h3>
+
+
+<p>The IP package provides vector-like classes and methods for Internet Protocol (IP) addresses. 
+It is based on the ip4r PostgreSQL extension available at <a href="https://github.com/RhodiumToad/ip4r">https://github.com/RhodiumToad/ip4r</a>.
+</p>
+<p>An IP address is a numerical label assigned to each device connected to a computer network that uses the Internet Protocol for communication. 
+The Internet Protocol uses those labels to identify nodes such as host or network interface for relaying datagrams between them across network boundaries.
+</p>
+<p>Internet Protocol version 4 (IPv4) defines an IP address as an unsigned 32-bit number. However, because of the growth of the Internet and the depletion of available IPv4 addresses, a new version of IP (IPv6) using 128 bits for the IP address was developed from 1995 on. IPv6 deployment has been ongoing since the mid-2000s. Note that there is no IPv5 address. In addition, IPv4 and IPv6 protocols differ in many respects besides IP addresses representation.
+</p>
+<p>IP addresses are usually written and displayed in human-readable notations, such as &quot;192.168.0.1&quot; in IPv4, and &quot;fe80::3b13:cff7:1013:d2e7&quot; in IPv6. 
+Ranges can be represented using two IP addresses separated by a dash or using the Classless Inter-Domain Routing (CIDR) notation. CIDR suffixes an address with he size of the routing prefix of the address which is the number of significant bits. For instance, &quot;192.168.0.0/16&quot; is a private network with subnet mask &quot;255.255.0.0&quot; and is equivalent to &quot;192.168.0.0-192.168.255.255&quot;. 
+
+Currently, the IP package supports the following object types implemented using S4 classes :
+
+</p>
+
+
+<ul>
+<li><p> the <code>IPv4</code> class stores IP version 4 addresses
+
+</p>
+</li>
+<li><p> the <code>IPv4r</code> class stores IP version 4 addresses ranges
+
+</p>
+</li>
+<li><p> the <code>IPv6</code> class stores IP version 6 addresses
+
+</p>
+</li>
+<li><p> the <code>IPv6r</code> class stores IP version 6 addresses ranges
+
+</p>
+</li>
+<li><p> the <code>IP</code> class stores both IPv4 and IPv6 addresses
+
+</p>
+</li>
+<li><p> the <code>IPr</code> class stores both IPv4r and IPv6r addresses
+
+</p>
+</li>
+<li><p> the (still experimental) <code>host</code> class holds the result of DNS lookup
+</p>
+</li></ul>
+
+<p>The IP package also provides methods for arithmetic, comparison and bitwise unary and binary operations in addition to sorting and lookup and querying information about IP addresses and domain names. 
+All operators are not available for all classes mostly by design but a few are still missing because they have not been implemented yet. IP objects can also be subseted or stored in a <code>data.frame</code> and serialized. 
+</p>
+<p>The IP and IPr classes are only convenience containers for instances when addresses must be created from vectors mixing both protocols. 
+The IPv4 and IPv6 protocols and their corresponding IP representation are indeed very different in many respects so only a subset of methods are available for them. In addition, methods for those containers tend to run slower because, at the moment, they need to make two passes (one for IPv4* and one for IPv6* objects). 
+Use the <code>ipv4(IP)</code> (resp. <code>ipv4r(IPr)</code>) and <code>ipv6(IP)</code> (resp. <code>ipv6r(IP)</code>) getters to work with v4 and v6 objects separately.
+</p>
+
+
+<h4>Design considerations</h4>
+
+
+<p>IP objects were designed to behave as much as possible like base R atomic vectors. 
+Therefore many R base functions such as <code>table()</code> or <code>factor()</code> or merging two <code>data.frame</code> using IP objects as keys work.
+</p>
+<p>But there are a few caveats when using functions or methods not provided by the IP package in which case you <b>may have to convert to the character representation of the addresses</b>.
+</p>
+<p>IP objects are S4 objects that all inherit from the integer class 
+and because of this there are instances where function calls will operate on the inherited integer <code>.Data</code> part of the object only. 
+As of writing, this is for example the case for the <code>nchar</code> function which returns the number of characters of the .Data vector only. But <code>grep</code> works because the x argument to the function is explicitly coerced to character before further processing.
+</p>
+<p>The .Data slot does not hold the addresses but an index to the addresses. 
+When calling a non-IP method, <span class="rlang"><b>R</b></span> will first look for a method for this particular object. If none is found, it will try to find one for the class this object inherits from. Hence, the call will operate on the index, and not on the object as a hole. 
+This is why some operations are explicitly blacklisted such as multiplication. Since there are no <code>`*`</code> for IP objects, multiplying an IP with a number would otherwise fall back to multiplying the index by this number, thus badly damaging the object.
+</p>
+
+<p>Reasons for using an index are twofold. First, each IP address space use the entire 32 (resp. 128) bits integer range. Thus, no value can be used for NA. 
+For instance, R defines <code>NA_integer_</code> as <code class="reqn">2^{31}</code> which a perfectly valid IP v4 address (&quot;128.0.0.0&quot;). 
+Second reason is IP words size. An IPv4 address uses 32 bits and thus can be stored using an integer vector (and IPv4 address ranges uses 64 bits and could be stored using a numeric vector). But an IP v6 address uses 128 bits and an IP v6 address range uses 256 bits and currently no <span class="rlang"><b>R</b></span> built-in atomic vectors are wide enough to hold them. IP addresses other than IPv4 have to be stored in a separate matrix and the index is used to retrieve their value.
+</p>
+<p>Therefore, each IP* object has an index which either points to the IP location in a table or mark the value as NA. 
+This way <span class="rlang"><b>R</b></span> believes it is dealing with a regular vector but at the cost of increased memory consumption. 
+The memory footprint is a function of the number of NA.
+</p>
+<p>On the other end, this design makes it easy to know if there are any NA and, if none, skip NA checking which makes things faster.
+</p>
+
+
+
+<h4>SIMD support</h4>
+
+<p>The IP package provide an experimental support for AVX2 vectorized operations for IP comparison and arithmetic. 
+To enable AVX2 support, please pass the <code>"--enable-avx2"</code> <code>configure.args</code> argument to the <code>install.packages()</code> function. 
+</p>
+
+
+
+<h4>Data protection</h4>
+
+<p>One last caveat. In certain countries such as EU member countries, IP addresses are considered personal data (see Article 29 Working Party Opinion 4/2007 and ECJ ruling dated 19 October 2016 &ndash;ref.: C582/14). IP processing must therefore be done in accordance to the applicable laws and regulations.
+</p>
+
+
 <hr>
 <h2 id='Arithmetic'> Methods for IP arithmetic </h2><span id='topic+Arith-methods'></span><span id='topic++2B'></span><span id='topic++2B-method'></span><span id='topic+-'></span><span id='topic+--method'></span><span id='topic++2B+2CIPv4+2CIPv4-method'></span><span id='topic++2B+2CIPv4+2Cinteger-method'></span><span id='topic++2B+2CIPv4+2Clogical-method'></span><span id='topic++2B+2CIPv4+2Cnumeric-method'></span><span id='topic+-+2CIPv4+2Cmissing-method'></span><span id='topic+-+2CIPv4+2CIPv4-method'></span><span id='topic+-+2CIPv4+2Cinteger-method'></span><span id='topic+-+2CIPv4+2Cnumeric-method'></span><span id='topic++2B+2CIPv6+2CIPv6-method'></span><span id='topic++2B+2CIPv6+2Cinteger-method'></span><span id='topic++2B+2CIPv6+2Cnumeric-method'></span><span id='topic++2B+2CIPv6+2Clogical-method'></span><span id='topic+-+2CIPv6+2Cmissing-method'></span><span id='topic+-+2CIPv6+2CIPv6-method'></span><span id='topic+-+2CIPv6+2Cinteger-method'></span><span id='topic+-+2CIPv6+2Cnumeric-method'></span><span id='topic+Arith+2CIP+2Cmissing-method'></span><span id='topic+Arith+2CIP+2CIP-method'></span><span id='topic+Arith+2CIP+2C.__intFP__.-method'></span><span id='topic++2B+2CIPv4r+2Cinteger-method'></span>
 
@@ -185,8 +295,6 @@ identical((2^64 +1)- 2^64  , 0 )
 ( (2^64 + 2^11 ) - (2^64))
 ## next representable number with IEEE 754 double precision floats; mind the gap
 ( (2^64 + 2^12 ) - (2^64))
-
-
 ## OTH,
 ((ipv6('::1') %&lt;&lt;% 53L) + ipv6('::1')) - (ipv6('::1') %&lt;&lt;% 53L)
 ##
@@ -1017,119 +1125,6 @@ seq(ipv6r('::/120'), length.out=3)
 </code></pre>
 
 <hr>
-<h2 id='IP-package'>Classes and methods for IP addresses</h2><span id='topic+IP-package'></span><span id='topic+IP'></span>
-
-<h3>Description</h3>
-
-<p>Classes and methods for IP addresses
-</p>
-
-
-<h3>Details</h3>
-
-
-<p>The IP package provides vector-like classes and methods for Internet Protocol (IP) addresses. 
-It is based on the ip4r PostgreSQL extension available at <a href="https://github.com/RhodiumToad/ip4r">https://github.com/RhodiumToad/ip4r</a>.
-</p>
-<p>An IP address is a numerical label assigned to each device connected to a computer network that uses the Internet Protocol for communication. 
-The Internet Protocol uses those labels to identify nodes such as host or network interface for relaying datagrams between them across network boundaries.
-</p>
-<p>Internet Protocol version 4 (IPv4) defines an IP address as an unsigned 32-bit number. However, because of the growth of the Internet and the depletion of available IPv4 addresses, a new version of IP (IPv6) using 128 bits for the IP address was developed from 1995 on. IPv6 deployment has been ongoing since the mid-2000s. Note that there is no IPv5 address. In addition, IPv4 and IPv6 protocols differ in many respects besides IP addresses representation.
-</p>
-<p>IP addresses are usually written and displayed in human-readable notations, such as &quot;192.168.0.1&quot; in IPv4, and &quot;fe80::3b13:cff7:1013:d2e7&quot; in IPv6. 
-Ranges can be represented using two IP addresses separated by a dash or using the Classless Inter-Domain Routing (CIDR) notation. CIDR suffixes an address with he size of the routing prefix of the address which is the number of significant bits. For instance, &quot;192.168.0.0/16&quot; is a private network with subnet mask &quot;255.255.0.0&quot; and is equivalent to &quot;192.168.0.0-192.168.255.255&quot;. 
-
-Currently, the IP package supports the following object types implemented using S4 classes :
-
-</p>
-
-
-<ul>
-<li><p> the <code>IPv4</code> class stores IP version 4 addresses
-
-</p>
-</li>
-<li><p> the <code>IPv4r</code> class stores IP version 4 addresses ranges
-
-</p>
-</li>
-<li><p> the <code>IPv6</code> class stores IP version 6 addresses
-
-</p>
-</li>
-<li><p> the <code>IPv6r</code> class stores IP version 6 addresses ranges
-
-</p>
-</li>
-<li><p> the <code>IP</code> class stores both IPv4 and IPv6 addresses
-
-</p>
-</li>
-<li><p> the <code>IPr</code> class stores both IPv4r and IPv6r addresses
-
-</p>
-</li>
-<li><p> the (still experimental) <code>host</code> class holds the result of DNS lookup
-</p>
-</li></ul>
-
-<p>The IP package also provides methods for arithmetic, comparison and bitwise unary and binary operations in addition to sorting and lookup and querying information about IP addresses and domain names. 
-All operators are not available for all classes mostly by design but a few are still missing because they have not been implemented yet. IP objects can also be subseted or stored in a <code>data.frame</code> and serialized. 
-</p>
-<p>The IP and IPr classes are only convenience containers for instances when addresses must be created from vectors mixing both protocols. 
-The IPv4 and IPv6 protocols and their corresponding IP representation are indeed very different in many respects so only a subset of methods are available for them. In addition, methods for those containers tend to run slower because, at the moment, they need to make two passes (one for IPv4* and one for IPv6* objects). 
-Use the <code>ipv4(IP)</code> (resp. <code>ipv4r(IPr)</code>) and <code>ipv6(IP)</code> (resp. <code>ipv6r(IP)</code>) getters to work with v4 and v6 objects separately.
-</p>
-
-
-
-<h4>Design considerations</h4>
-
-
-<p>IP objects were designed to behave as much as possible like base R atomic vectors. 
-Therefore many R base functions such as <code>table()</code> or <code>factor()</code> or merging two <code>data.frame</code> using IP objects as keys work.
-</p>
-<p>But there are a few caveats when using functions or methods not provided by the IP package in which case you <b>may have to convert to the character representation of the addresses</b>.
-</p>
-<p>IP objects are S4 objects that all inherit from the integer class 
-and because of this there are instances where function calls will operate on the inherited integer <code>.Data</code> part of the object only. 
-As of writing, this is for example the case for the <code>nchar</code> function which returns the number of characters of the .Data vector only. But <code>grep</code> works because the x argument to the function is explicitly coerced to character before further processing.
-</p>
-<p>The .Data slot does not hold the addresses but an index to the addresses. 
-When calling a non-IP method, <span class="rlang"><b>R</b></span> will first look for a method for this particular object. If none is found, it will try to find one for the class this object inherits from. Hence, the call will operate on the index, and not on the object as a hole. 
-This is why some operations are explicitly blacklisted such as multiplication. Since there are no <code>`*`</code> for IP objects, multiplying an IP with a number would otherwise fall back to multiplying the index by this number, thus badly damaging the object.
-</p>
-
-<p>Reasons for using an index are twofold. First, each IP address space use the entire 32 (resp. 128) bits integer range. Thus, no value can be used for NA. 
-For instance, R defines <code>NA_integer_</code> as <code class="reqn">2^{31}</code> which a perfectly valid IP v4 address (&quot;128.0.0.0&quot;). 
-Second reason is IP words size. An IPv4 address uses 32 bits and thus can be stored using an integer vector (and IPv4 address ranges uses 64 bits and could be stored using a numeric vector). But an IP v6 address uses 128 bits and an IP v6 address range uses 256 bits and currently no <span class="rlang"><b>R</b></span> built-in atomic vectors are wide enough to hold them. IP addresses other than IPv4 have to be stored in a separate matrix and the index is used to retrieve their value.
-</p>
-<p>Therefore, each IP* object has an index which either points to the IP location in a table or mark the value as NA. 
-This way <span class="rlang"><b>R</b></span> believes it is dealing with a regular vector but at the cost of increased memory consumption. 
-The memory footprint is a function of the number of NA.
-</p>
-<p>On the other end, this design makes it easy to know if there are any NA and, if none, skip NA checking which makes things faster.
-</p>
-
-
-
-
-<h4>SIMD support</h4>
-
-<p>The IP package provide an experimental support for AVX2 vectorized operations for IP comparison and arithmetic. 
-To enable AVX2 support, please pass the <code>"--enable-avx2"</code> <code>configure.args</code> argument to the <code>install.packages()</code> function. 
-</p>
-
-
-
-
-<h4>Data protection</h4>
-
-<p>One last caveat. In certain countries such as EU member countries, IP addresses are considered personal data (see Article 29 Working Party Opinion 4/2007 and ECJ ruling dated 19 October 2016 &ndash;ref.: C582/14). IP processing must therefore be done in accordance to the applicable laws and regulations.
-</p>
-
-
-<hr>
 <h2 id='Varia'>Miscellaneous methods and functions for IP classes</h2><span id='topic+ip.capabilities'></span><span id='topic+length'></span><span id='topic+length+2CIPv4-method'></span><span id='topic+length+2CIPv4r-method'></span><span id='topic+length+2CIPv6-method'></span><span id='topic+length+2CIPv6r-method'></span><span id='topic+is.na'></span><span id='topic+is.na+2CIPv4-method'></span><span id='topic+is.na+2CIPv4r-method'></span><span id='topic+is.na+2CIPv6-method'></span><span id='topic+is.na+2CIPv6r-method'></span><span id='topic+anyNA'></span><span id='topic+anyNA+2C.__ipvr__.-method'></span><span id='topic+anyNA+2CIPv4-method'></span><span id='topic+anyNA+2CIPv4r-method'></span><span id='topic+anyNA+2CIPv6-method'></span><span id='topic+anyNA+2CIPv6r-method'></span><span id='topic+unique'></span><span id='topic+unique.IPv4'></span><span id='topic+unique.IPv6'></span><span id='topic+unique.IPv4r'></span><span id='topic+unique.IPv6r'></span><span id='topic+unique.IP'></span><span id='topic+xtfrm'></span><span id='topic+xtfrm-methods'></span><span id='topic+xtfrm+2CIPv4-method'></span><span id='topic+xtfrm+2CIPv4r-method'></span><span id='topic+xtfrm+2CIPv6r-method'></span><span id='topic+xtfrm+2CIPv6-method'></span><span id='topic+ip.order'></span><span id='topic+ip.order-method'></span><span id='topic+ip.order+2CIPv4-method'></span><span id='topic+ip.order+2CIPv6-method'></span><span id='topic+ip.order+2CIPv4r-method'></span><span id='topic+ip.order+2CIPv6r-method'></span><span id='topic+match'></span><span id='topic+match-methods'></span><span id='topic+match+2CIPv4+2CIPv4-method'></span><span id='topic+match+2CIPv4+2CIPv4r-method'></span><span id='topic+match+2CIPv4r+2CIPv4r-method'></span><span id='topic+match+2CIPv6+2CIPv6-method'></span><span id='topic+match+2CIPv6+2CIPv6r-method'></span><span id='topic+match+2CIPv6r+2CIPv6r-method'></span><span id='topic+ip.match'></span><span id='topic+ip.match-method'></span><span id='topic+ip.match+2CIPv4+2CIPv4-method'></span><span id='topic+ip.match+2CIPv4+2CIPv4r-method'></span><span id='topic+ip.match+2CIPv4r+2CIPv4r-method'></span><span id='topic+ip.match+2CIPv6+2CIPv6-method'></span><span id='topic+ip.match+2CIPv6+2CIPv6r-method'></span><span id='topic+ip.match+2CIPv6r+2CIPv6r-method'></span><span id='topic+getIdx'></span><span id='topic+ip.index'></span><span id='topic+ip.index-method'></span><span id='topic+ip.index+2CIPv4r-method'></span><span id='topic+ip.index+2CIPv6r-method'></span><span id='topic+ip.setequal'></span><span id='topic+ip.setequal-method'></span><span id='topic+ip.setequal+2C.__IPvr__.+2C.__IPvr__.-method'></span><span id='topic+ip.union'></span><span id='topic+ip.union-method'></span><span id='topic+ip.union+2C.__IPvr__.+2C.__IPvr__.-method'></span><span id='topic+ip.intersect'></span><span id='topic+ip.intersect-method'></span><span id='topic+ip.intersect+2C.__IPvr__.+2C.__IPvr__.-method'></span><span id='topic+ip.setdiff'></span><span id='topic+ip.setdiff-method'></span><span id='topic+ip.setdiff+2C.__IPvr__.+2C.__IPvr__.-method'></span><span id='topic+ip.symdiff'></span><span id='topic+ip.symdiff-method'></span><span id='topic+ip.symdiff+2C.__IPvr__.+2C.__IPvr__.-method'></span>
 
 <h3>Description</h3>
@@ -1168,12 +1163,10 @@ To enable AVX2 support, please pass the <code>"--enable-avx2"</code> <code>confi
   
 
 
-
 <h4>Sorting</h4>
 
 <p>IP object may be efficiently sorted through call to <span class="rlang"><b>R</b></span> generic functions <code>order()</code> and <code>sort()</code> thanks to the <code><a href="#topic+xtfrm">xtfrm</a></code> generic function. The IP package also provides the <code>ip.order()</code> which falls back to the default order method at the moment. 
 </p>
-
 
 
 
@@ -1193,9 +1186,6 @@ When both overlap and value are TRUE, the function returns a two&ndash;columns <
 
 <p>Also, the incomparable argument for <code>match()</code> or <code>unique()</code> is not implemented yet.
 </p>
-
-
-
 
 
 

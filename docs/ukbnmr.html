@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {ukbnmr}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#ukbnmr'><p>Tools for processing the UK Biobank NMR metabolomics biomarker data</p></a></li>
 <li><a href='#compute_extended_ratio_qc_flags'><p>Aggregate QC Flags when computing the extended set of biomarker ratios</p></a></li>
 <li><a href='#compute_extended_ratios'><p>Compute extended set of biomarker ratios</p></a></li>
 <li><a href='#compute_nightingale_ratio_qc_flags'><p>Aggregate QC Flags when computing Nightingale's 81 biomarker ratios</p></a></li>
@@ -31,7 +32,6 @@ function processMathHTML() {
 <li><a href='#remove_technical_variation'><p>Remove technical variation from NMR biomarker data in UK Biobank.</p></a></li>
 <li><a href='#sample_qc_info'><p>Nightingale biomarker sample processing information</p></a></li>
 <li><a href='#test_data'><p>Data for testing package functions</p></a></li>
-<li><a href='#ukbnmr'><p>Tools for processing the UK Biobank NMR metabolomics biomarker data</p></a></li>
 </ul>
 </div>
 <hr>
@@ -124,6 +124,155 @@ Metabolomics Biomarker Data</td>
 <td>2023-08-23 15:50:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='ukbnmr'>Tools for processing the UK Biobank NMR metabolomics biomarker data</h2><span id='topic+ukbnmr'></span><span id='topic+ukbnmr-package'></span>
+
+<h3>Description</h3>
+
+<p>@description
+This package provides utilities for working with the
+<a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=220">UK Biobank MR metabolomics data</a>.
+Details are provided below, and in the package vignette (type <code>vignette("ukbnmr")</code> to view).
+</p>
+
+
+<h3>Details</h3>
+
+<p>There are three groups of functions in this package: (1) data extraction,
+(2) removal of technical variation, and (3) recomputing derived biomarkers
+and biomarker ratios.
+</p>
+<p>All functions can be applied directly to raw data extracted from UK Biobank.
+</p>
+<p>This package also provides a <code>data.frame</code> of biomarker information, loaded
+as <code><a href="#topic+nmr_info">nmr_info</a></code>, and <code>data.frame</code> of sample processing information,
+loaded as <code><a href="#topic+sample_qc_info">sample_qc_info</a></code>.
+</p>
+
+
+<h3>Data Extraction Functions</h3>
+
+<p>The <code><a href="#topic+extract_biomarkers">extract_biomarkers</a>()</code> function will take a raw dataset output
+by <a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide">ukbconv</a>,
+extract the <a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=220">NMR biomarker fields</a>
+and give them short comprehensible column names as described in <code><a href="#topic+nmr_info">nmr_info</a></code>. Measurements are also split
+into multiple rows where a participant has measurements at both baseline and first repeat assessment.
+</p>
+<p>The <code><a href="#topic+extract_biomarker_qc_flags">extract_biomarker_qc_flags</a>()</code> function will take a raw dataset output
+by <a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide">ukbconv</a>,
+extract the <a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=221">Nightingale quality control flags</a>
+for each biomarker measurement, returning a single column per biomarker
+(corresponding to respective columns output by <code><a href="#topic+extract_biomarkers">extract_biomarkers</a>()</code>).
+</p>
+<p>The <code><a href="#topic+extract_sample_qc_flags">extract_sample_qc_flags</a>()</code>function will take a raw dataset output
+by <a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide">ukbconv</a>,
+and extract the <a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=222">sample quality control tags</a>
+for the Nightingale NMR metabolomics data.
+</p>
+
+
+<h3>Removal of technical variation</h3>
+
+<p>The <code><a href="#topic+remove_technical_variation">remove_technical_variation</a>()</code> function will take a raw dataset output by
+<a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide)">ukbconv</a>,
+remove the effects of technical variation on biomarker concentrations, and return a list
+containing the adjusted NMR biomarker data, biomarker QC flags, and sample quality control
+and processing information.
+</p>
+<p>This applies a multistep process as described in Ritchie <em>et al.</em> 2023:
+</p>
+
+<ol>
+<li><p>First biomarker data is filtered to the 107 biomarkers that
+cannot be derived from any combination of other biomarkers.
+</p>
+</li>
+<li><p>Absolute concentrations are log transformed, with a small offset
+applied to biomarkers with concentrations of 0.
+</p>
+</li>
+<li><p>Each biomarker is adjusted for the time between sample preparation
+and sample measurement (hours) on a log scale.
+</p>
+</li>
+<li><p>Each biomarker is adjusted for systematic differences between rows
+(A-H) on the 96-well shipment plates.
+</p>
+</li>
+<li><p>Each biomarker is adjusted for remaining systematic differences
+between columns (1-12) on the 96-well shipment plates.
+</p>
+</li>
+<li><p>Each biomarker is adjusted for drift over time within each of the six
+spectrometers. To do so, samples are grouped into 10 bins, within each
+spectrometer, by the date the majority of samples on their respective
+96-well plates were measured.
+</p>
+</li>
+<li><p>Regression residuals after the sequential adjustments are
+transformed back to absolute concentrations.
+</p>
+</li>
+<li><p>Samples belonging to shipment plates that are outliers of
+non-biological origin are identified and set to missing.
+</p>
+</li>
+<li><p>The 61 composite biomarkers and 81 biomarker ratios are recomputed
+from their adjusted parts.
+</p>
+</li>
+<li><p>An additional 76 biomarker ratios of potential biological
+significance are computed.
+</p>
+</li></ol>
+
+<p>Further details can be found in Ritchie S. C. <em>et al.</em> Quality control
+and removal of technical variation of NMR metabolic biomarker data in
+~120,000 UK Biobank participants, <em>Sci Data</em> <strong>10</strong>, 64 (2023). doi:
+<a href="https://www.nature.com/articles/s41597-023-01949-y">10.1038/s41597-023-01949-y</a>
+</p>
+
+
+<h3>Methods for computing biomarker ratios</h3>
+
+<p>The <code><a href="#topic+compute_nightingale_ratios">compute_nightingale_ratios</a>()</code> function will compute the
+<a href="https://research.nightingalehealth.com/biomarkers/">81 Nightingale Health biomarker ratios</a>
+that were missing prior to the August 2021 update of
+<a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=220">UK Biobank</a>.
+A companion function, <code><a href="#topic+compute_nightingale_ratio_qc_flags">compute_nightingale_ratio_qc_flags</a>()</code> will
+aggregate the QC flags for the biomarkers underlying each ratio.
+</p>
+<p>The <code><a href="#topic+compute_extended_ratios">compute_extended_ratios</a>()</code> function will compute an extended
+set of biomarker ratios expanding on the biomarkers available directly from
+the Nightingale platform. A companion function, <code><a href="#topic+compute_extended_ratio_qc_flags">compute_extended_ratio_qc_flags</a>()</code>,
+will aggregate the QC flags for the biomarkers underlying each ratio.
+</p>
+<p>The <code><a href="#topic+recompute_derived_biomarkers">recompute_derived_biomarkers</a>()</code> function will recompute all
+composite biomarkers and ratios from 107 non-derived biomarkers, which is
+useful for ensuring data consistency when adjusting for unwanted biological
+variation. A companion function, <code><a href="#topic+recompute_derived_biomarker_qc_flags">recompute_derived_biomarker_qc_flags</a>()</code> will
+aggregate the QC flags for the biomarkers underlying each composite biomarker
+and ratio.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Scott C Ritchie <a href="mailto:sritchie73@gmail.com">sritchie73@gmail.com</a> (0000-0002-8454-9548)
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li><p> Report bugs at <a href="https://github.com/sritchie73/ukbnmr/issues">https://github.com/sritchie73/ukbnmr/issues</a>
+</p>
+</li></ul>
+
+
 <hr>
 <h2 id='compute_extended_ratio_qc_flags'>Aggregate QC Flags when computing the extended set of biomarker ratios</h2><span id='topic+compute_extended_ratio_qc_flags'></span>
 
@@ -1061,155 +1210,6 @@ present in the UK Biobank dataset. Importantly, random sampling was performed
 for each column separately, thus no rows represent real observations or
 participants in UK Biobank.
 </p>
-
-<hr>
-<h2 id='ukbnmr'>Tools for processing the UK Biobank NMR metabolomics biomarker data</h2><span id='topic+ukbnmr'></span><span id='topic+ukbnmr-package'></span>
-
-<h3>Description</h3>
-
-<p>@description
-This package provides utilities for working with the
-<a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=220">UK Biobank MR metabolomics data</a>.
-Details are provided below, and in the package vignette (type <code>vignette("ukbnmr")</code> to view).
-</p>
-
-
-<h3>Details</h3>
-
-<p>There are three groups of functions in this package: (1) data extraction,
-(2) removal of technical variation, and (3) recomputing derived biomarkers
-and biomarker ratios.
-</p>
-<p>All functions can be applied directly to raw data extracted from UK Biobank.
-</p>
-<p>This package also provides a <code>data.frame</code> of biomarker information, loaded
-as <code><a href="#topic+nmr_info">nmr_info</a></code>, and <code>data.frame</code> of sample processing information,
-loaded as <code><a href="#topic+sample_qc_info">sample_qc_info</a></code>.
-</p>
-
-
-<h3>Data Extraction Functions</h3>
-
-<p>The <code><a href="#topic+extract_biomarkers">extract_biomarkers</a>()</code> function will take a raw dataset output
-by <a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide">ukbconv</a>,
-extract the <a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=220">NMR biomarker fields</a>
-and give them short comprehensible column names as described in <code><a href="#topic+nmr_info">nmr_info</a></code>. Measurements are also split
-into multiple rows where a participant has measurements at both baseline and first repeat assessment.
-</p>
-<p>The <code><a href="#topic+extract_biomarker_qc_flags">extract_biomarker_qc_flags</a>()</code> function will take a raw dataset output
-by <a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide">ukbconv</a>,
-extract the <a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=221">Nightingale quality control flags</a>
-for each biomarker measurement, returning a single column per biomarker
-(corresponding to respective columns output by <code><a href="#topic+extract_biomarkers">extract_biomarkers</a>()</code>).
-</p>
-<p>The <code><a href="#topic+extract_sample_qc_flags">extract_sample_qc_flags</a>()</code>function will take a raw dataset output
-by <a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide">ukbconv</a>,
-and extract the <a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=222">sample quality control tags</a>
-for the Nightingale NMR metabolomics data.
-</p>
-
-
-<h3>Removal of technical variation</h3>
-
-<p>The <code><a href="#topic+remove_technical_variation">remove_technical_variation</a>()</code> function will take a raw dataset output by
-<a href="https://biobank.ctsu.ox.ac.uk/crystal/exinfo.cgi?src=accessing_data_guide)">ukbconv</a>,
-remove the effects of technical variation on biomarker concentrations, and return a list
-containing the adjusted NMR biomarker data, biomarker QC flags, and sample quality control
-and processing information.
-</p>
-<p>This applies a multistep process as described in Ritchie <em>et al.</em> 2023:
-</p>
-
-<ol>
-<li><p>First biomarker data is filtered to the 107 biomarkers that
-cannot be derived from any combination of other biomarkers.
-</p>
-</li>
-<li><p>Absolute concentrations are log transformed, with a small offset
-applied to biomarkers with concentrations of 0.
-</p>
-</li>
-<li><p>Each biomarker is adjusted for the time between sample preparation
-and sample measurement (hours) on a log scale.
-</p>
-</li>
-<li><p>Each biomarker is adjusted for systematic differences between rows
-(A-H) on the 96-well shipment plates.
-</p>
-</li>
-<li><p>Each biomarker is adjusted for remaining systematic differences
-between columns (1-12) on the 96-well shipment plates.
-</p>
-</li>
-<li><p>Each biomarker is adjusted for drift over time within each of the six
-spectrometers. To do so, samples are grouped into 10 bins, within each
-spectrometer, by the date the majority of samples on their respective
-96-well plates were measured.
-</p>
-</li>
-<li><p>Regression residuals after the sequential adjustments are
-transformed back to absolute concentrations.
-</p>
-</li>
-<li><p>Samples belonging to shipment plates that are outliers of
-non-biological origin are identified and set to missing.
-</p>
-</li>
-<li><p>The 61 composite biomarkers and 81 biomarker ratios are recomputed
-from their adjusted parts.
-</p>
-</li>
-<li><p>An additional 76 biomarker ratios of potential biological
-significance are computed.
-</p>
-</li></ol>
-
-<p>Further details can be found in Ritchie S. C. <em>et al.</em> Quality control
-and removal of technical variation of NMR metabolic biomarker data in
-~120,000 UK Biobank participants, <em>Sci Data</em> <strong>10</strong>, 64 (2023). doi:
-<a href="https://www.nature.com/articles/s41597-023-01949-y">10.1038/s41597-023-01949-y</a>
-</p>
-
-
-<h3>Methods for computing biomarker ratios</h3>
-
-<p>The <code><a href="#topic+compute_nightingale_ratios">compute_nightingale_ratios</a>()</code> function will compute the
-<a href="https://research.nightingalehealth.com/biomarkers/">81 Nightingale Health biomarker ratios</a>
-that were missing prior to the August 2021 update of
-<a href="https://biobank.ndph.ox.ac.uk/showcase/label.cgi?id=220">UK Biobank</a>.
-A companion function, <code><a href="#topic+compute_nightingale_ratio_qc_flags">compute_nightingale_ratio_qc_flags</a>()</code> will
-aggregate the QC flags for the biomarkers underlying each ratio.
-</p>
-<p>The <code><a href="#topic+compute_extended_ratios">compute_extended_ratios</a>()</code> function will compute an extended
-set of biomarker ratios expanding on the biomarkers available directly from
-the Nightingale platform. A companion function, <code><a href="#topic+compute_extended_ratio_qc_flags">compute_extended_ratio_qc_flags</a>()</code>,
-will aggregate the QC flags for the biomarkers underlying each ratio.
-</p>
-<p>The <code><a href="#topic+recompute_derived_biomarkers">recompute_derived_biomarkers</a>()</code> function will recompute all
-composite biomarkers and ratios from 107 non-derived biomarkers, which is
-useful for ensuring data consistency when adjusting for unwanted biological
-variation. A companion function, <code><a href="#topic+recompute_derived_biomarker_qc_flags">recompute_derived_biomarker_qc_flags</a>()</code> will
-aggregate the QC flags for the biomarkers underlying each composite biomarker
-and ratio.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Scott C Ritchie <a href="mailto:sritchie73@gmail.com">sritchie73@gmail.com</a> (0000-0002-8454-9548)
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li><p> Report bugs at <a href="https://github.com/sritchie73/ukbnmr/issues">https://github.com/sritchie73/ukbnmr/issues</a>
-</p>
-</li></ul>
-
 
 </main>
 

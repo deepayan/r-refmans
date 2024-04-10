@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {errors}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#errors-package'><p><span class="pkg">errors</span>: Uncertainty Propagation for R Vectors</p></a></li>
 <li><a href='#as.data.frame.errors'><p>Coerce to a Data Frame</p></a></li>
 <li><a href='#as.list.errors'><p>Coerce to a List</p></a></li>
 <li><a href='#as.matrix.errors'><p>Coerce to a Matrix</p></a></li>
@@ -28,7 +29,6 @@ function processMathHTML() {
 <li><a href='#diff.errors'><p>Lagged Differences</p></a></li>
 <li><a href='#drop_errors'><p>Drop Uncertainty</p></a></li>
 <li><a href='#errors'><p>Handle Uncertainty on a Numeric Vector</p></a></li>
-<li><a href='#errors-package'><p><span class="pkg">errors</span>: Uncertainty Propagation for R Vectors</p></a></li>
 <li><a href='#Extract.errors'><p>Extract or Replace Parts of an Object</p></a></li>
 <li><a href='#format.errors'><p>Encode <code>errors</code></p></a></li>
 <li><a href='#geom_errors'><p>Errorbars for <code>errors</code> objects</p></a></li>
@@ -130,6 +130,105 @@ function processMathHTML() {
 <td>2023-12-06 13:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='errors-package'><span class="pkg">errors</span>: Uncertainty Propagation for R Vectors</h2><span id='topic+errors-package'></span>
+
+<h3>Description</h3>
+
+<p>Support for measurement errors in R vectors, matrices and arrays: automatic
+uncertainty propagation and reporting.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Every measurement has an unknown error associated. Uncertainty is the
+acknowledgement of that error: we are aware that our representation of reality
+may differ from reality itself. This package provides support for measurement
+errors in <span class="rlang"><b>R</b></span> vectors, matrices and arrays. Uncertainty metadata is associated
+to quantity values (see <code><a href="#topic+errors">errors</a></code>), and this uncertainty is
+automatically propagated when you operate with <code>errors</code> objects (see
+<code><a href="#topic+groupGeneric.errors">groupGeneric.errors</a></code>), or with <code>errors</code> and numeric objects
+(then numeric values are automatically coerced to <code>errors</code> objects with
+no uncertainty).
+</p>
+<p>Correlations between measurements are also supported. In particular, any
+operation (e.g., <code>z &lt;- x + y</code>) results in a correlation between output
+and input variables (i.e., <code>z</code> is correlated to <code>x</code> and <code>y</code>,
+even if there was no correlation between <code>x</code> and <code>y</code>). And in
+general, the user can establish correlations between any pair of variables
+(see <code><a href="#topic+correl">correl</a></code>).
+</p>
+<p>This package treats uncertainty as coming from Gaussian and linear sources
+(note that, even for non-Gaussian non-linear sources, this is a reasonable
+assumption for averages of many measurements), and propagates them using the
+first-order Taylor series method for propagation of uncertainty. Although the
+above assumptions are valid in a wide range of applications in science and
+engineering, the practitioner should evaluate whether they apply for each
+particular case.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Iñaki Ucar
+</p>
+
+
+<h3>References</h3>
+
+<p>Iñaki Ucar, Edzer Pebesma and Arturo Azcorra (2018).
+Measurement Errors in <span class="rlang"><b>R</b></span>. <em>The R Journal</em>, 10(2), 549-557.
+<a href="https://doi.org/10.32614/RJ-2018-075">doi:10.32614/RJ-2018-075</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+datasets">datasets</a></code> for a description of the datasets used in the
+examples below.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Simultaneous resistance and reactance measurements
+
+# Obtain mean values and uncertainty from measured values
+V   &lt;- mean(set_errors(GUM.H.2$V))
+I   &lt;- mean(set_errors(GUM.H.2$I))
+phi &lt;- mean(set_errors(GUM.H.2$phi))
+
+# Set correlations between variables
+correl(V, I)   &lt;- with(GUM.H.2, cor(V, I))
+correl(V, phi) &lt;- with(GUM.H.2, cor(V, phi))
+correl(I, phi) &lt;- with(GUM.H.2, cor(I, phi))
+
+# Computation of resistance, reactance and impedance values
+(R &lt;- (V / I) * cos(phi))
+(X &lt;- (V / I) * sin(phi))
+(Z &lt;- (V / I))
+
+# Correlations between derived quantities
+correl(R, X)
+correl(R, Z)
+correl(X, Z)
+
+## Calibration of a thermometer
+
+# Least-squares fit for a reference temperature of 20 degC
+fit &lt;- lm(bk ~ I(tk - 20), data = GUM.H.3)
+
+# Extract coefficients and set correlation using the covariance matrix
+y1 &lt;- set_errors(coef(fit)[1], sqrt(vcov(fit)[1, 1]))
+y2 &lt;- set_errors(coef(fit)[2], sqrt(vcov(fit)[2, 2]))
+covar(y1, y2) &lt;- vcov(fit)[1, 2]
+
+# Predicted correction for 30 degC
+(b.30 &lt;- y1 + y2 * set_errors(30 - 20))
+
+</code></pre>
+
 <hr>
 <h2 id='as.data.frame.errors'>Coerce to a Data Frame</h2><span id='topic+as.data.frame.errors'></span>
 
@@ -689,105 +788,6 @@ x
 (x &lt;- set_errors(x, seq(0.1, 0.3, 0.1)))
 errors_max(x)
 errors_min(x)
-
-</code></pre>
-
-<hr>
-<h2 id='errors-package'><span class="pkg">errors</span>: Uncertainty Propagation for R Vectors</h2><span id='topic+errors-package'></span>
-
-<h3>Description</h3>
-
-<p>Support for measurement errors in R vectors, matrices and arrays: automatic
-uncertainty propagation and reporting.
-</p>
-
-
-<h3>Details</h3>
-
-<p>Every measurement has an unknown error associated. Uncertainty is the
-acknowledgement of that error: we are aware that our representation of reality
-may differ from reality itself. This package provides support for measurement
-errors in <span class="rlang"><b>R</b></span> vectors, matrices and arrays. Uncertainty metadata is associated
-to quantity values (see <code><a href="#topic+errors">errors</a></code>), and this uncertainty is
-automatically propagated when you operate with <code>errors</code> objects (see
-<code><a href="#topic+groupGeneric.errors">groupGeneric.errors</a></code>), or with <code>errors</code> and numeric objects
-(then numeric values are automatically coerced to <code>errors</code> objects with
-no uncertainty).
-</p>
-<p>Correlations between measurements are also supported. In particular, any
-operation (e.g., <code>z &lt;- x + y</code>) results in a correlation between output
-and input variables (i.e., <code>z</code> is correlated to <code>x</code> and <code>y</code>,
-even if there was no correlation between <code>x</code> and <code>y</code>). And in
-general, the user can establish correlations between any pair of variables
-(see <code><a href="#topic+correl">correl</a></code>).
-</p>
-<p>This package treats uncertainty as coming from Gaussian and linear sources
-(note that, even for non-Gaussian non-linear sources, this is a reasonable
-assumption for averages of many measurements), and propagates them using the
-first-order Taylor series method for propagation of uncertainty. Although the
-above assumptions are valid in a wide range of applications in science and
-engineering, the practitioner should evaluate whether they apply for each
-particular case.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Iñaki Ucar
-</p>
-
-
-<h3>References</h3>
-
-<p>Iñaki Ucar, Edzer Pebesma and Arturo Azcorra (2018).
-Measurement Errors in <span class="rlang"><b>R</b></span>. <em>The R Journal</em>, 10(2), 549-557.
-<a href="https://doi.org/10.32614/RJ-2018-075">doi:10.32614/RJ-2018-075</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+datasets">datasets</a></code> for a description of the datasets used in the
-examples below.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Simultaneous resistance and reactance measurements
-
-# Obtain mean values and uncertainty from measured values
-V   &lt;- mean(set_errors(GUM.H.2$V))
-I   &lt;- mean(set_errors(GUM.H.2$I))
-phi &lt;- mean(set_errors(GUM.H.2$phi))
-
-# Set correlations between variables
-correl(V, I)   &lt;- with(GUM.H.2, cor(V, I))
-correl(V, phi) &lt;- with(GUM.H.2, cor(V, phi))
-correl(I, phi) &lt;- with(GUM.H.2, cor(I, phi))
-
-# Computation of resistance, reactance and impedance values
-(R &lt;- (V / I) * cos(phi))
-(X &lt;- (V / I) * sin(phi))
-(Z &lt;- (V / I))
-
-# Correlations between derived quantities
-correl(R, X)
-correl(R, Z)
-correl(X, Z)
-
-## Calibration of a thermometer
-
-# Least-squares fit for a reference temperature of 20 degC
-fit &lt;- lm(bk ~ I(tk - 20), data = GUM.H.3)
-
-# Extract coefficients and set correlation using the covariance matrix
-y1 &lt;- set_errors(coef(fit)[1], sqrt(vcov(fit)[1, 1]))
-y2 &lt;- set_errors(coef(fit)[2], sqrt(vcov(fit)[2, 2]))
-covar(y1, y2) &lt;- vcov(fit)[1, 2]
-
-# Predicted correction for 30 degC
-(b.30 &lt;- y1 + y2 * set_errors(30 - 20))
 
 </code></pre>
 

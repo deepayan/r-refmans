@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {IsingSampler}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#IsingSampler-package'>
+<p>Sampling methods and distribution functions for the Ising model</p></a></li>
 <li><a href='#EstimateIsing'>
 <p>non-regularized estimation methods for the Ising Model</p></a></li>
 <li><a href='#IsingEntrophy'>
@@ -28,8 +30,6 @@ function processMathHTML() {
 <p>Pseudo-likelihood</p></a></li>
 <li><a href='#IsingSampler'>
 <p>Sample states from the Ising model</p></a></li>
-<li><a href='#IsingSampler-package'>
-<p>Sampling methods and distribution functions for the Ising model</p></a></li>
 <li><a href='#IsingStateProb'>
 <p>Likelihood of single state from tractible Ising model.</p></a></li>
 <li><a href='#IsingSumLikelihood'>
@@ -104,6 +104,88 @@ function processMathHTML() {
 <td>2023-08-21 09:42:33 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='IsingSampler-package'>
+Sampling methods and distribution functions for the Ising model
+</h2><span id='topic+IsingSampler-package'></span>
+
+<h3>Description</h3>
+
+<p>This package can be used to sample states from the Ising model and compute the probability of states. Sampling can be done for any number of nodes, but due to the intractibility of the Ising model the distribution can only be computed up to ~10 nodes.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Sacha Epskamp
+</p>
+<p>Maintainer: Sacha Epskamp &lt;mail@sachaepskamp.com&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## This code compares the different sampling algorithms to the expected
+## distribution of states in a tractible number of nodes.
+
+## In the end are examples on how to obtain the distribution.
+
+# Input:
+N &lt;- 5 # Number of nodes
+nSample &lt;- 5000 # Number of samples
+
+# Ising parameters:
+Graph &lt;- matrix(sample(0:1,N^2,TRUE,prob = c(0.7, 0.3)),N,N) * rnorm(N^2)
+Graph &lt;- pmax(Graph,t(Graph)) / N
+diag(Graph) &lt;- 0
+Thresh &lt;- -(rnorm(N)^2)
+Beta &lt;- 1
+
+# Response options (0,1 or -1,1):
+Resp &lt;- c(0L,1L)
+
+# All posible states:
+AllStates &lt;- do.call(expand.grid,lapply(1:N,function(x)Resp))
+
+# Simulate with metropolis:
+MetData &lt;- IsingSampler(nSample, Graph, Thresh, Beta, 1000/N, 
+  responses = Resp, method = "MH")
+
+# Simulate exact samples (CFTP):
+ExData &lt;- IsingSampler(nSample, Graph, Thresh, Beta, 100,
+  responses = Resp, method = "CFTP")
+
+# Direct simulation:
+DirectData &lt;- IsingSampler(nSample, Graph, Thresh, Beta, method = "direct")
+
+# State distirbutions:
+MetDist &lt;- apply(AllStates,1,function(x)sum(colSums(t(MetData) == x)==N))
+ExDist &lt;- apply(AllStates,1,function(x)sum(colSums(t(ExData) == x)==N))
+DirectDist &lt;- apply(AllStates,1,function(x)sum(colSums(t(DirectData) == x)==N))
+ExpDist &lt;- exp(- Beta * apply(AllStates,1,function(s)IsingSampler:::H(Graph,s,Thresh)))  
+ExpDist &lt;- ExpDist/sum(ExpDist) * nSample
+
+## Plot to compare distributions:
+plot(MetDist, type="l", col="blue", pch=16, xlab="State", ylab="Freq", 
+  ylim=c(0,max(MetDist,DirectDist,ExDist)))
+points(DirectDist,type="l",col="red",pch=16)
+points(ExpDist,type="l",col="green",pch=16)
+points(ExDist,type="l",col="purple",pch=16)
+legend("topright", col=c("blue","red","purple","green"), 
+  legend=c("Metropolis","Direct","Exact","Expected"),lty=1,bty='n')
+
+## Likelihoods:
+
+# Sumscores:
+IsingSumLikelihood(Graph, Thresh, Beta, Resp)
+
+# All states:
+IsingLikelihood(Graph, Thresh, Beta, Resp)
+
+# Single state:
+IsingStateProb(rep(Resp[1],N),Graph, Thresh, Beta, Resp)
+</code></pre>
+
 <hr>
 <h2 id='EstimateIsing'>
 non-regularized estimation methods for the Ising Model
@@ -223,7 +305,6 @@ EstimateIsingLL(data, responses, beta = 1, adj = matrix(1, ncol(data),
 <td>
 <p>The results object used in the analysis</p>
 </td></tr>
-
 </table>
 
 
@@ -581,88 +662,6 @@ Sample states from the Ising model
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## See IsingSampler-package help page
-</code></pre>
-
-<hr>
-<h2 id='IsingSampler-package'>
-Sampling methods and distribution functions for the Ising model
-</h2><span id='topic+IsingSampler-package'></span>
-
-<h3>Description</h3>
-
-<p>This package can be used to sample states from the Ising model and compute the probability of states. Sampling can be done for any number of nodes, but due to the intractibility of the Ising model the distribution can only be computed up to ~10 nodes.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Sacha Epskamp
-</p>
-<p>Maintainer: Sacha Epskamp &lt;mail@sachaepskamp.com&gt;
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## This code compares the different sampling algorithms to the expected
-## distribution of states in a tractible number of nodes.
-
-## In the end are examples on how to obtain the distribution.
-
-# Input:
-N &lt;- 5 # Number of nodes
-nSample &lt;- 5000 # Number of samples
-
-# Ising parameters:
-Graph &lt;- matrix(sample(0:1,N^2,TRUE,prob = c(0.7, 0.3)),N,N) * rnorm(N^2)
-Graph &lt;- pmax(Graph,t(Graph)) / N
-diag(Graph) &lt;- 0
-Thresh &lt;- -(rnorm(N)^2)
-Beta &lt;- 1
-
-# Response options (0,1 or -1,1):
-Resp &lt;- c(0L,1L)
-
-# All posible states:
-AllStates &lt;- do.call(expand.grid,lapply(1:N,function(x)Resp))
-
-# Simulate with metropolis:
-MetData &lt;- IsingSampler(nSample, Graph, Thresh, Beta, 1000/N, 
-  responses = Resp, method = "MH")
-
-# Simulate exact samples (CFTP):
-ExData &lt;- IsingSampler(nSample, Graph, Thresh, Beta, 100,
-  responses = Resp, method = "CFTP")
-
-# Direct simulation:
-DirectData &lt;- IsingSampler(nSample, Graph, Thresh, Beta, method = "direct")
-
-# State distirbutions:
-MetDist &lt;- apply(AllStates,1,function(x)sum(colSums(t(MetData) == x)==N))
-ExDist &lt;- apply(AllStates,1,function(x)sum(colSums(t(ExData) == x)==N))
-DirectDist &lt;- apply(AllStates,1,function(x)sum(colSums(t(DirectData) == x)==N))
-ExpDist &lt;- exp(- Beta * apply(AllStates,1,function(s)IsingSampler:::H(Graph,s,Thresh)))  
-ExpDist &lt;- ExpDist/sum(ExpDist) * nSample
-
-## Plot to compare distributions:
-plot(MetDist, type="l", col="blue", pch=16, xlab="State", ylab="Freq", 
-  ylim=c(0,max(MetDist,DirectDist,ExDist)))
-points(DirectDist,type="l",col="red",pch=16)
-points(ExpDist,type="l",col="green",pch=16)
-points(ExDist,type="l",col="purple",pch=16)
-legend("topright", col=c("blue","red","purple","green"), 
-  legend=c("Metropolis","Direct","Exact","Expected"),lty=1,bty='n')
-
-## Likelihoods:
-
-# Sumscores:
-IsingSumLikelihood(Graph, Thresh, Beta, Resp)
-
-# All states:
-IsingLikelihood(Graph, Thresh, Beta, Resp)
-
-# Single state:
-IsingStateProb(rep(Resp[1],N),Graph, Thresh, Beta, Resp)
 </code></pre>
 
 <hr>

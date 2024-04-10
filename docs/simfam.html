@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {simfam}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#simfam-package'><p>Simulate and Model Family Pedigrees With Structured Founders</p></a></li>
 <li><a href='#admix_fam'><p>Calculate admixture matrix of a pedigree with known admixture of founders</p></a></li>
 <li><a href='#admix_last_gen'><p>Calculate admixture matrix for last generation of a pedigree with admixture of founders</p></a></li>
 <li><a href='#draw_sex'><p>Draw sex values randomly for a list of individuals</p></a></li>
@@ -38,7 +39,6 @@ function processMathHTML() {
 <li><a href='#recomb_map_inds'><p>Map recombination breaks from genetic positions to base pair coordinates</p></a></li>
 <li><a href='#recomb_map_simplify_chr'><p>Simplify recombination map of one chromosome to a desired numerical precision</p></a></li>
 <li><a href='#sim_pedigree'><p>Construct a random pedigree</p></a></li>
-<li><a href='#simfam-package'><p>Simulate and Model Family Pedigrees With Structured Founders</p></a></li>
 </ul>
 </div>
 <hr>
@@ -132,6 +132,95 @@ RColorBrewer, knitr, rmarkdown</td>
 <td>2023-01-09 21:50:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='simfam-package'>Simulate and Model Family Pedigrees With Structured Founders</h2><span id='topic+simfam-package'></span><span id='topic+_PACKAGE'></span><span id='topic+simfam'></span>
+
+<h3>Description</h3>
+
+<p>The <code>simfam</code> package is for constructing large random families&mdash;with population studies in mind&mdash;with realistic constraints including avoidance of close relative pairings but otherwise biased for closest pairs in a 1-dimensional geography.
+There is also code to draw genotypes across the pedigree starting from genotypes for the founders.
+Our model allows for the founders to be related or structured&mdash;which arises in practice when there are different ancestries among founders&mdash;and given known parameters for these founders, we provide code to calculate the true kinship and expected admixture proportions of all descendants.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Alejandro Ochoa <a href="mailto:alejandro.ochoa@duke.edu">alejandro.ochoa@duke.edu</a> (<a href="https://orcid.org/0000-0003-4928-3403">ORCID</a>)
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/OchoaLab/simfam">https://github.com/OchoaLab/simfam</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/OchoaLab/simfam/issues">https://github.com/OchoaLab/simfam/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># create some toy data for examples
+# data dimensions
+n &lt;- 10 # number of individuals per generation
+G &lt;- 3 # number of generations
+m &lt;- 100 # number of loci
+K &lt;- 3 # number of ancestries
+
+# start by simulating pedigree
+data &lt;- sim_pedigree( n, G )
+# creates FAM table (describes pedigree, most important!)
+fam &lt;- data$fam
+# lists of IDs split by generation
+ids &lt;- data$ids
+# and local kinship of last generation
+kinship_local_G &lt;- data$kinship_local
+
+# prune pedigree to speed up simulations/etc by removing individuals without
+# descendants among set of individuals (here it's last generation)
+fam &lt;- prune_fam( fam, ids[[ G ]] )
+
+# to model descendants, first need to setup founders with dummy toy data
+# 1) random genotypes
+X_1 &lt;- matrix( rbinom( n*m, 2, 0.5 ), m, n )
+colnames( X_1 ) &lt;- ids[[ 1 ]] # need IDs to match founders
+# 2) kinship of unrelated/outbred individuals
+# (but in practice can be any structure!)
+kinship_1 &lt;- diag( n ) / 2
+colnames( kinship_1 ) &lt;- ids[[ 1 ]] # need IDs to match founders
+rownames( kinship_1 ) &lt;- ids[[ 1 ]] # ditto
+# 3) construct dummy admixture proportions
+admix_proportions_1 &lt;- matrix( runif( n * K ), n, K )
+# normalize so rows sum to 1
+admix_proportions_1 &lt;- admix_proportions_1 / rowSums( admix_proportions_1 )
+rownames( admix_proportions_1 ) &lt;- ids[[ 1 ]] # need IDs to match founders
+
+# now construct/draw/propagate information across the pedigree!
+
+# 1) draw genotypes through pedigree, starting from founders!
+X &lt;- geno_fam( X_1, fam )
+# version for last generation only, which uses less memory
+X_G &lt;- geno_last_gen( X_1, fam, ids )
+
+# 2) calculate kinship through pedigree, starting from kinship of founders!
+kinship &lt;- kinship_fam( kinship_1, fam )
+# version for last generation only, which uses less memory
+kinship_G &lt;- kinship_last_gen( kinship_1, fam, ids )
+
+# 3) calculate expected admixture proportions through pedigree, starting from admixture of founders!
+admix_proportions &lt;- admix_fam( admix_proportions_1, fam )
+# version for last generation only, which uses less memory
+admix_proportions_G &lt;- admix_last_gen( admix_proportions_1, fam, ids )
+
+
+</code></pre>
+
 <hr>
 <h2 id='admix_fam'>Calculate admixture matrix of a pedigree with known admixture of founders</h2><span id='topic+admix_fam'></span>
 
@@ -1817,95 +1906,6 @@ data$ids
 
 # bonus: the local kinship matrix of the final generation
 data$kinship_local
-
-</code></pre>
-
-<hr>
-<h2 id='simfam-package'>Simulate and Model Family Pedigrees With Structured Founders</h2><span id='topic+simfam-package'></span><span id='topic+_PACKAGE'></span><span id='topic+simfam'></span>
-
-<h3>Description</h3>
-
-<p>The <code>simfam</code> package is for constructing large random families&mdash;with population studies in mind&mdash;with realistic constraints including avoidance of close relative pairings but otherwise biased for closest pairs in a 1-dimensional geography.
-There is also code to draw genotypes across the pedigree starting from genotypes for the founders.
-Our model allows for the founders to be related or structured&mdash;which arises in practice when there are different ancestries among founders&mdash;and given known parameters for these founders, we provide code to calculate the true kinship and expected admixture proportions of all descendants.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Alejandro Ochoa <a href="mailto:alejandro.ochoa@duke.edu">alejandro.ochoa@duke.edu</a> (<a href="https://orcid.org/0000-0003-4928-3403">ORCID</a>)
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://github.com/OchoaLab/simfam">https://github.com/OchoaLab/simfam</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/OchoaLab/simfam/issues">https://github.com/OchoaLab/simfam/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># create some toy data for examples
-# data dimensions
-n &lt;- 10 # number of individuals per generation
-G &lt;- 3 # number of generations
-m &lt;- 100 # number of loci
-K &lt;- 3 # number of ancestries
-
-# start by simulating pedigree
-data &lt;- sim_pedigree( n, G )
-# creates FAM table (describes pedigree, most important!)
-fam &lt;- data$fam
-# lists of IDs split by generation
-ids &lt;- data$ids
-# and local kinship of last generation
-kinship_local_G &lt;- data$kinship_local
-
-# prune pedigree to speed up simulations/etc by removing individuals without
-# descendants among set of individuals (here it's last generation)
-fam &lt;- prune_fam( fam, ids[[ G ]] )
-
-# to model descendants, first need to setup founders with dummy toy data
-# 1) random genotypes
-X_1 &lt;- matrix( rbinom( n*m, 2, 0.5 ), m, n )
-colnames( X_1 ) &lt;- ids[[ 1 ]] # need IDs to match founders
-# 2) kinship of unrelated/outbred individuals
-# (but in practice can be any structure!)
-kinship_1 &lt;- diag( n ) / 2
-colnames( kinship_1 ) &lt;- ids[[ 1 ]] # need IDs to match founders
-rownames( kinship_1 ) &lt;- ids[[ 1 ]] # ditto
-# 3) construct dummy admixture proportions
-admix_proportions_1 &lt;- matrix( runif( n * K ), n, K )
-# normalize so rows sum to 1
-admix_proportions_1 &lt;- admix_proportions_1 / rowSums( admix_proportions_1 )
-rownames( admix_proportions_1 ) &lt;- ids[[ 1 ]] # need IDs to match founders
-
-# now construct/draw/propagate information across the pedigree!
-
-# 1) draw genotypes through pedigree, starting from founders!
-X &lt;- geno_fam( X_1, fam )
-# version for last generation only, which uses less memory
-X_G &lt;- geno_last_gen( X_1, fam, ids )
-
-# 2) calculate kinship through pedigree, starting from kinship of founders!
-kinship &lt;- kinship_fam( kinship_1, fam )
-# version for last generation only, which uses less memory
-kinship_G &lt;- kinship_last_gen( kinship_1, fam, ids )
-
-# 3) calculate expected admixture proportions through pedigree, starting from admixture of founders!
-admix_proportions &lt;- admix_fam( admix_proportions_1, fam )
-# version for last generation only, which uses less memory
-admix_proportions_G &lt;- admix_last_gen( admix_proportions_1, fam, ids )
-
 
 </code></pre>
 

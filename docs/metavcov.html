@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {metavcov}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#metavcov-package'><p>Computing Variances and Covariances, Visualization and Missing Data Solution for Multivariate Meta Analysis</p></a></li>
 <li><a href='#Craft2003'><p>Correlation Coefficients Data from the Craft et al. Meta-Analysis</p></a></li>
 <li><a href='#Geeganage2010'><p>Multivariate Effect Sizes of Different Types from the Geeganage et al. Meta-Analysis</p></a></li>
 <li><a href='#lgor_lgrr'><p>Computing Covariance between Log Odds Ratio and Log Risk Ratio</p></a></li>
@@ -32,7 +33,6 @@ function processMathHTML() {
 <li><a href='#md.vcov'><p>Computing Variance-Covariance Matrices for Mean Differences</p></a></li>
 <li><a href='#metafixed'><p>Fitting Fixed-Effect Meta-Analysis Models</p></a></li>
 <li><a href='#metami'><p>Multiple Imputation for Missing Data in Meta-Analysis</p></a></li>
-<li><a href='#metavcov-package'><p>Computing Variances and Covariances, Visualization and Missing Data Solution for Multivariate Meta Analysis</p></a></li>
 <li><a href='#mix.vcov'><p>Computing Variance-Covariance Matrices for Effect Sizes of the Same or Different Types</p></a></li>
 <li><a href='#plotCI'><p>Plot Confidence Intervals for a Meta-Analysis</p></a></li>
 <li><a href='#r.vcov'><p>Computing Variance-Covariance Matrices for Correlation Coefficients</p></a></li>
@@ -121,6 +121,144 @@ Data Solution for Multivariate Meta-Analysis</td>
 <td>2023-06-24 04:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='metavcov-package'>Computing Variances and Covariances, Visualization and Missing Data Solution for Multivariate Meta Analysis</h2><span id='topic+metavcov-package'></span><span id='topic+metavcov'></span>
+
+<h3>Description</h3>
+
+<p>The package <code>metavcov</code> computes variances and covariances for effect sizes as preparations for multivariate meta-analysis. Effect sizes include correlation (r), mean difference (MD), standardized mean difference (SMD), log odds ratio (logOR), log risk ratio (logRR), and risk difference (RD). Functions for plotting confidence intervals and multiple imputation for missing data are offered. It can fit a fixed-effect model for demonstration purposes; users are highly encouraged to use packages <code>mixmeta</code> and <code>metaSEM</code> for random-effect models. </p>
+
+
+<h3>Author(s)</h3>
+
+<p>Min Lu (Maintainer,&lt;m.lu6@umiami.edu&gt;)
+</p>
+
+
+<h3>References</h3>
+
+<p>Lu, M. (2023). Computing within-study covariances, data visualization, and missing data solutions for multivariate meta-analysis with metavcov. <em>Frontiers in Psychology</em>, 14:1185012.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+###############################################
+# Effect size: correlation coefficients
+###############################################
+data(Craft2003)
+# extract correlation from the dataset (craft)
+corflat &lt;- subset(Craft2003, select=C1:C6)
+# transform correlations to z and compute variance-covariance matrix.
+computvcov &lt;- r.vcov(n = Craft2003$N, corflat = corflat, method = "average")
+# name transformed z scores as y
+y &lt;- computvcov$ef
+# name variance-covariance matrix of trnasformed z scores as S
+S &lt;- computvcov$matrix.vcov
+S[1, ]
+## fixed-effect model
+MMA_FE &lt;- summary(metafixed(y = y, Slist = computvcov$list.vcov))
+MMA_FE
+# Restricted maximum likelihood (REML) estimator from the mixmeta package
+#library(mixmeta)
+#mvmeta_RE &lt;- summary(mixmeta(cbind(C1, C2, C3, C4, C5, C6)~1,
+#                           S = S, data = y, method = "reml"))
+#mvmeta_RE
+
+# maximum likelihood estimators from the metaSEM package
+# library(metaSEM)
+# metaSEM_RE &lt;- summary(meta(y = y, v = S))
+# metaSEM_RE
+# Plotting the result:
+obj &lt;- MMA_FE
+# obj &lt;- mvmeta_RE
+# obj &lt;- metaSEM_RE
+# pdf("CI.pdf", width = 4, height = 7)
+plotCI(y = computvcov$ef, v = computvcov$list.vcov,
+        name.y = NULL, name.study = Craft2003$ID,
+        y.all = obj$coefficients[,1],
+        y.all.se = obj$coefficients[,2])
+# dev.off()
+#########################################################################
+# Other effect sizes of the same or different type
+# Choose variable SBP, DBP, DD, D with effect sizes "MD","MD","RD","lgOR"
+#########################################################################
+data(Geeganage2010)
+## set the correlation coefficients list r
+r12 &lt;- 0.71
+r13 &lt;- 0.5
+r14 &lt;- 0.25
+r23 &lt;- 0.6
+r24 &lt;- 0.16
+r34 &lt;- 0.16
+r &lt;- vecTosm(c(r12, r13, r14, r23, r24, r34))
+diag(r) &lt;- 1
+mix.r &lt;- lapply(1:nrow(Geeganage2010), function(i){r})
+attach(Geeganage2010)
+## compute variance co-variances
+computvcov &lt;- mix.vcov(type = c("MD", "MD", "RD", "lgOR"),
+                       d = cbind(MD_SBP, MD_DBP, NA, NA),
+                       sdt = cbind(sdt_SBP, sdt_DBP, NA, NA),
+                       sdc = cbind(sdc_SBP, sdc_DBP, NA, NA),
+                       nt = cbind(nt_SBP, nt_DBP, nt_DD, nt_D),
+                       nc = cbind(nc_SBP, nc_DBP, nc_DD, nc_D),
+                       st = cbind(NA, NA, st_DD, st_D),
+                       sc = cbind(NA, NA, sc_DD, sc_D),
+                       r = mix.r,
+                       name = c("MD.SBP", "MD.DBP", "RD.DD", "lgOR.D"))
+# save different effect sizes in y
+y &lt;- computvcov$ef
+head(y)
+# save variances and covariances of all the effect sizes in a matrix S
+S &lt;- computvcov$matrix.vcov
+S[1, ]
+## fixed-effect model
+MMA_FE &lt;- summary(metafixed(y = y, Slist = computvcov$list.vcov))
+# Restricted maximum likelihood (REML) estimator from the mixmeta package
+# library(mixmeta)
+# mvmeta_RE &lt;- summary(mixmeta(cbind(MD.SBP, MD.DBP, RD.DD, lgOR.D) ~1,
+#                            S = S, data = y, method = "reml"))
+# mvmeta_RE
+
+# maximum likelihood estimators from the metaSEM package
+# library(metaSEM)
+# metaSEM_RE &lt;- summary(meta(y = y, v = S))
+# metaSEM_RE
+# Plotting the result:
+obj &lt;- MMA_FE
+# obj &lt;- mvmeta_RE
+# obj &lt;- metaSEM_RE
+# pdf("CI.pdf", width = 4, height = 7)
+plotCI(y = computvcov$ef, v = computvcov$list.vcov,
+        name.y = NULL, name.study = Geeganage2010$studyID,
+        y.all = obj$coefficients[,1],
+        y.all.se = obj$coefficients[,2],
+        hline = c(0, 0, 0, 1))
+# dev.off()
+#####################################################################################
+# Multiple Imputation for missing data
+#####################################################################################
+# prepare a dataset with missing values and input arguments for meta.mi
+Craft2003.mnar &lt;- Craft2003[, c(2, 4:10)]
+Craft2003.mnar[sample(which(Craft2003$C4 &lt; 0), 6), "C4"] &lt;- NA
+dat &lt;- Craft2003.mnar
+n.name &lt;- "N"
+ef.name &lt;- c("C1", "C2", "C3", "C4", "C5", "C6")
+# fixed-effect model
+obj &lt;- metami(dat, M = 2, vcov = "r.vcov",
+             n.name, ef.name,
+             func = "metafixed")
+# Plotting the result
+computvcov &lt;- r.vcov(n = Craft2003$N,
+                     corflat = subset(Craft2003.mnar, select = C1:C6),
+                     method = "average")
+plotCI(y = computvcov$ef, v = computvcov$list.vcov,
+        name.y = NULL, name.study = Craft2003$ID,
+        y.all = obj$coefficients[,1],
+        y.all.se = obj$coefficients[,2])
+</code></pre>
+
 <hr>
 <h2 id='Craft2003'>Correlation Coefficients Data from the Craft et al. Meta-Analysis</h2><span id='topic+Craft2003'></span>
 
@@ -1945,144 +2083,6 @@ plotCI(y = computvcov$ef, v = computvcov$list.vcov,
 #               sc = c(NA, NA, "sc_DD", "sc_D"),
 #               r = mix.r,
 #               func = "metafixed")
-</code></pre>
-
-<hr>
-<h2 id='metavcov-package'>Computing Variances and Covariances, Visualization and Missing Data Solution for Multivariate Meta Analysis</h2><span id='topic+metavcov-package'></span><span id='topic+metavcov'></span>
-
-<h3>Description</h3>
-
-<p>The package <code>metavcov</code> computes variances and covariances for effect sizes as preparations for multivariate meta-analysis. Effect sizes include correlation (r), mean difference (MD), standardized mean difference (SMD), log odds ratio (logOR), log risk ratio (logRR), and risk difference (RD). Functions for plotting confidence intervals and multiple imputation for missing data are offered. It can fit a fixed-effect model for demonstration purposes; users are highly encouraged to use packages <code>mixmeta</code> and <code>metaSEM</code> for random-effect models. </p>
-
-
-<h3>Author(s)</h3>
-
-<p>Min Lu (Maintainer,&lt;m.lu6@umiami.edu&gt;)
-</p>
-
-
-<h3>References</h3>
-
-<p>Lu, M. (2023). Computing within-study covariances, data visualization, and missing data solutions for multivariate meta-analysis with metavcov. <em>Frontiers in Psychology</em>, 14:1185012.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-###############################################
-# Effect size: correlation coefficients
-###############################################
-data(Craft2003)
-# extract correlation from the dataset (craft)
-corflat &lt;- subset(Craft2003, select=C1:C6)
-# transform correlations to z and compute variance-covariance matrix.
-computvcov &lt;- r.vcov(n = Craft2003$N, corflat = corflat, method = "average")
-# name transformed z scores as y
-y &lt;- computvcov$ef
-# name variance-covariance matrix of trnasformed z scores as S
-S &lt;- computvcov$matrix.vcov
-S[1, ]
-## fixed-effect model
-MMA_FE &lt;- summary(metafixed(y = y, Slist = computvcov$list.vcov))
-MMA_FE
-# Restricted maximum likelihood (REML) estimator from the mixmeta package
-#library(mixmeta)
-#mvmeta_RE &lt;- summary(mixmeta(cbind(C1, C2, C3, C4, C5, C6)~1,
-#                           S = S, data = y, method = "reml"))
-#mvmeta_RE
-
-# maximum likelihood estimators from the metaSEM package
-# library(metaSEM)
-# metaSEM_RE &lt;- summary(meta(y = y, v = S))
-# metaSEM_RE
-# Plotting the result:
-obj &lt;- MMA_FE
-# obj &lt;- mvmeta_RE
-# obj &lt;- metaSEM_RE
-# pdf("CI.pdf", width = 4, height = 7)
-plotCI(y = computvcov$ef, v = computvcov$list.vcov,
-        name.y = NULL, name.study = Craft2003$ID,
-        y.all = obj$coefficients[,1],
-        y.all.se = obj$coefficients[,2])
-# dev.off()
-#########################################################################
-# Other effect sizes of the same or different type
-# Choose variable SBP, DBP, DD, D with effect sizes "MD","MD","RD","lgOR"
-#########################################################################
-data(Geeganage2010)
-## set the correlation coefficients list r
-r12 &lt;- 0.71
-r13 &lt;- 0.5
-r14 &lt;- 0.25
-r23 &lt;- 0.6
-r24 &lt;- 0.16
-r34 &lt;- 0.16
-r &lt;- vecTosm(c(r12, r13, r14, r23, r24, r34))
-diag(r) &lt;- 1
-mix.r &lt;- lapply(1:nrow(Geeganage2010), function(i){r})
-attach(Geeganage2010)
-## compute variance co-variances
-computvcov &lt;- mix.vcov(type = c("MD", "MD", "RD", "lgOR"),
-                       d = cbind(MD_SBP, MD_DBP, NA, NA),
-                       sdt = cbind(sdt_SBP, sdt_DBP, NA, NA),
-                       sdc = cbind(sdc_SBP, sdc_DBP, NA, NA),
-                       nt = cbind(nt_SBP, nt_DBP, nt_DD, nt_D),
-                       nc = cbind(nc_SBP, nc_DBP, nc_DD, nc_D),
-                       st = cbind(NA, NA, st_DD, st_D),
-                       sc = cbind(NA, NA, sc_DD, sc_D),
-                       r = mix.r,
-                       name = c("MD.SBP", "MD.DBP", "RD.DD", "lgOR.D"))
-# save different effect sizes in y
-y &lt;- computvcov$ef
-head(y)
-# save variances and covariances of all the effect sizes in a matrix S
-S &lt;- computvcov$matrix.vcov
-S[1, ]
-## fixed-effect model
-MMA_FE &lt;- summary(metafixed(y = y, Slist = computvcov$list.vcov))
-# Restricted maximum likelihood (REML) estimator from the mixmeta package
-# library(mixmeta)
-# mvmeta_RE &lt;- summary(mixmeta(cbind(MD.SBP, MD.DBP, RD.DD, lgOR.D) ~1,
-#                            S = S, data = y, method = "reml"))
-# mvmeta_RE
-
-# maximum likelihood estimators from the metaSEM package
-# library(metaSEM)
-# metaSEM_RE &lt;- summary(meta(y = y, v = S))
-# metaSEM_RE
-# Plotting the result:
-obj &lt;- MMA_FE
-# obj &lt;- mvmeta_RE
-# obj &lt;- metaSEM_RE
-# pdf("CI.pdf", width = 4, height = 7)
-plotCI(y = computvcov$ef, v = computvcov$list.vcov,
-        name.y = NULL, name.study = Geeganage2010$studyID,
-        y.all = obj$coefficients[,1],
-        y.all.se = obj$coefficients[,2],
-        hline = c(0, 0, 0, 1))
-# dev.off()
-#####################################################################################
-# Multiple Imputation for missing data
-#####################################################################################
-# prepare a dataset with missing values and input arguments for meta.mi
-Craft2003.mnar &lt;- Craft2003[, c(2, 4:10)]
-Craft2003.mnar[sample(which(Craft2003$C4 &lt; 0), 6), "C4"] &lt;- NA
-dat &lt;- Craft2003.mnar
-n.name &lt;- "N"
-ef.name &lt;- c("C1", "C2", "C3", "C4", "C5", "C6")
-# fixed-effect model
-obj &lt;- metami(dat, M = 2, vcov = "r.vcov",
-             n.name, ef.name,
-             func = "metafixed")
-# Plotting the result
-computvcov &lt;- r.vcov(n = Craft2003$N,
-                     corflat = subset(Craft2003.mnar, select = C1:C6),
-                     method = "average")
-plotCI(y = computvcov$ef, v = computvcov$list.vcov,
-        name.y = NULL, name.study = Craft2003$ID,
-        y.all = obj$coefficients[,1],
-        y.all.se = obj$coefficients[,2])
 </code></pre>
 
 <hr>

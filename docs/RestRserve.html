@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {RestRserve}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#RestRserve-package'><p>RestRserve: A Framework for Building HTTP API</p></a></li>
 <li><a href='#Application'><p>Creates application - RestRserve usage starts from here</p></a></li>
 <li><a href='#ApplicationProcess'><p>Creates ApplicationProcess object</p></a></li>
 <li><a href='#AuthBackend'><p>Create AuthBackend</p></a></li>
@@ -39,7 +40,6 @@ function processMathHTML() {
 <li><a href='#raise'><p>Interrupts request processing</p></a></li>
 <li><a href='#Request'><p>Creates Request object</p></a></li>
 <li><a href='#Response'><p>Creates Response object</p></a></li>
-<li><a href='#RestRserve-package'><p>RestRserve: A Framework for Building HTTP API</p></a></li>
 <li><a href='#Router'><p>Creates Router object.</p></a></li>
 <li><a href='#to_json'><p>Simple JSON encoder</p></a></li>
 </ul>
@@ -155,6 +155,251 @@ curl, sys</td>
 <td>2022-09-12 08:42:57 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='RestRserve-package'>RestRserve: A Framework for Building HTTP API</h2><span id='topic+RestRserve'></span><span id='topic+RestRserve-package'></span>
+
+<h3>Description</h3>
+
+<p><img src="../help/figures/logo.png" style='float: right' alt='logo' width='120' />
+</p>
+<p>Allows to easily create high-performance full featured HTTP APIs from R functions. Provides high-level classes such as 'Request', 'Response', 'Application', 'Middleware' in order to streamline server side application development. Out of the box allows to serve requests using 'Rserve' package, but flexible enough to integrate with other HTTP servers such as 'httpuv'.
+</p>
+
+
+<h3>Details</h3>
+
+
+
+<h4>Introduction</h4>
+
+<p>Suppose you’ve developed a very useful algorithm or statistical model
+and you need to integrate it with some external system. Nowadays HTTP
+became de facto a lingua-franca for this kind of tasks.
+</p>
+<p>In this article we will demonstrate how to use RestRserve to build a
+basic REST API.
+</p>
+
+
+
+<h4>Workflow overview</h4>
+
+<p>Generally RestRserve workflow consists of several major steps:
+</p>
+
+<ol>
+<li><p> Create application with <code>Application$new()</code>
+</p>
+</li>
+<li><p> Create a function which follows RestRserve API:
+</p>
+
+<ul>
+<li><p> should take 2 arguments - <code>request</code> and <code>response</code> as an input.
+<code>request</code> and <code>response</code> are instances of <code>RestRserve::Request</code>
+and <code>RestRserve::Response</code>. It is <strong>important to remember</strong> that
+both <code>request</code> and <code>response</code> are <strong>mutable</strong> objects.
+</p>
+</li>
+<li><p> should modify <code>response</code> in place or <code>raise()</code> exception in case
+of error
+</p>
+</li></ul>
+
+</li>
+<li><p> Register this function as a handler for an endpoint
+</p>
+</li>
+<li><p> Start application
+</p>
+</li></ol>
+
+
+
+
+<h4>1. Create application</h4>
+
+<div class="sourceCode r"><pre>library(RestRserve)
+app = Application$new()
+</pre></div>
+
+
+
+<h4>2. Define logic</h4>
+
+<p>For simplicity we will use Fibonacci number calculation as an algorithm
+we want to expose.
+</p>
+<div class="sourceCode r"><pre>calc_fib = function(n) {
+  if (n &lt; 0L) stop("n should be &gt;= 0")
+  if (n == 0L) return(0L)
+  if (n == 1L || n == 2L) return(1L)
+  x = rep(1L, n)
+  
+  for (i in 3L:n) {
+   x[[i]] = x[[i - 1]] + x[[i - 2]] 
+  }
+  
+  return(x[[n]])
+}
+</pre></div>
+<p>Create function which will handle requests.
+</p>
+<div class="sourceCode r"><pre>fib_handler = function(.req, .res) {
+  n = as.integer(.req$parameters_query[["n"]])
+  if (length(n) == 0L || is.na(n)) {
+    raise(HTTPError$bad_request())
+  }
+  .res$set_body(as.character(calc_fib(n)))
+  .res$set_content_type("text/plain")
+}
+</pre></div>
+<p>You may have noticed strange <code>.req</code> and <code>.res</code> argument names. Starting
+from <code>RestRserve</code> v0.4.0 these “reserved” names allows to benefit from
+autocomplete:
+</p>
+<p>&lt;img src=“<a href="https://cdn.rexy.ai/assets/req-res.gif">https://cdn.rexy.ai/assets/req-res.gif</a>” width=“640”
+style=“vertical-align:bottom”, alt=“request-response autocomplete gif”&gt;
+</p>
+<p>Technically <code>.req</code> and <code>.res</code> are just empty instances of <code>?Request</code> and
+<code>?Response</code> classes exported by <code>RestRserve</code> in order to make
+autocomplete work.
+</p>
+
+
+
+<h4>2. Register endpoint</h4>
+
+<div class="sourceCode r"><pre>app$add_get(path = "/fib", FUN = fib_handler)
+</pre></div>
+
+
+
+<h4>3. Test endpoints</h4>
+
+<p>Now we can test our application without starting it:
+</p>
+<div class="sourceCode r"><pre>request = Request$new(path = "/fib", parameters_query = list(n = 10))
+response = app$process_request(request)
+
+cat("Response status:", response$status)
+#&gt; Response status: 200 OK
+cat("Response body:", response$body)
+#&gt; Response body: 55
+</pre></div>
+<p>It is generally a good idea to write unit tests against application. One
+can use a common framework such as
+<a href="https://cran.r-project.org/package=tinytest">tinytest</a>.
+</p>
+
+
+
+<h4>4. Add OpenAPI description and Swagger UI</h4>
+
+<p>Generally it is a good idea to provide documentation along with the API.
+Convenient way to do that is to supply a <a href="https://swagger.io/docs/specification/about/">openapi specification</a>. This as
+simple as adding a yaml file as an additional endpoint:
+</p>
+<div class="sourceCode yaml"><pre>openapi: 3.0.1
+info:
+  title: RestRserve OpenAPI
+  version: '1.0'
+servers:
+  - url: /
+paths:
+  /fib:
+    get:
+      description: Calculates Fibonacci number
+      parameters:
+        - name: "n"
+          description: "x for Fibonnacci number"
+          in: query
+          schema:
+            type: integer
+          example: 10
+          required: true
+      responses:
+        200:
+          description: API response
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: 5
+        400:
+          description: Bad Request
+</pre></div>
+<div class="sourceCode r"><pre>yaml_file = system.file("examples", "openapi", "openapi.yaml", package = "RestRserve")
+app$add_openapi(path = "/openapi.yaml", file_path = yaml_file)
+app$add_swagger_ui(path = "/doc", path_openapi = "/openapi.yaml", use_cdn = TRUE)
+</pre></div>
+
+
+
+<h4>5. Start the app</h4>
+
+<p>Now all is ready and we can start application with Rserve backend. It
+will block R session and start listening for incoming requests.
+</p>
+<div class="sourceCode r"><pre>backend = BackendRserve$new()
+backend$start(app, http_port = 8080)
+</pre></div>
+
+
+
+<h4>6. Test it</h4>
+
+<p>Send request to calculate fibonacci number:
+</p>
+<div class="sourceCode bash"><pre>curl localhost:8080/fib?n=10
+</pre></div>
+<p>Check out a swagger UI in the browser: <code style="white-space: pre;">&#8288;http://localhost:8080/doc&#8288;</code>
+</p>
+
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Dmitry Selivanov <a href="mailto:ds@rexy.ai">ds@rexy.ai</a> (<a href="https://orcid.org/0000-0001-5413-1506">ORCID</a>)
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> Artem Klevtsov <a href="mailto:a.a.klevtsov@gmail.com">a.a.klevtsov@gmail.com</a> (<a href="https://orcid.org/0000-0003-0492-6647">ORCID</a>)
+</p>
+</li></ul>
+
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> David Zimmermann <a href="mailto:david_j_zimmermann@hotmail.com">david_j_zimmermann@hotmail.com</a> [contributor]
+</p>
+</li>
+<li><p> rexy.ai [copyright holder, funder]
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://restrserve.org">https://restrserve.org</a>
+</p>
+</li>
+<li> <p><a href="https://github.com/rexyai/RestRserve">https://github.com/rexyai/RestRserve</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/rexyai/RestRserve/issues">https://github.com/rexyai/RestRserve/issues</a>
+</p>
+</li></ul>
+
+
 <hr>
 <h2 id='Application'>Creates application - RestRserve usage starts from here</h2><span id='topic+Application'></span>
 
@@ -6148,251 +6393,6 @@ rs$set_header("Last-Modified", as(file_mtime, "HTTPDate"))
 rs
 
 </code></pre>
-
-<hr>
-<h2 id='RestRserve-package'>RestRserve: A Framework for Building HTTP API</h2><span id='topic+RestRserve'></span><span id='topic+RestRserve-package'></span>
-
-<h3>Description</h3>
-
-<p><img src="../help/figures/logo.png" style='float: right' alt='logo' width='120' />
-</p>
-<p>Allows to easily create high-performance full featured HTTP APIs from R functions. Provides high-level classes such as 'Request', 'Response', 'Application', 'Middleware' in order to streamline server side application development. Out of the box allows to serve requests using 'Rserve' package, but flexible enough to integrate with other HTTP servers such as 'httpuv'.
-</p>
-
-
-<h3>Details</h3>
-
-
-
-<h4>Introduction</h4>
-
-<p>Suppose you’ve developed a very useful algorithm or statistical model
-and you need to integrate it with some external system. Nowadays HTTP
-became de facto a lingua-franca for this kind of tasks.
-</p>
-<p>In this article we will demonstrate how to use RestRserve to build a
-basic REST API.
-</p>
-
-
-
-<h4>Workflow overview</h4>
-
-<p>Generally RestRserve workflow consists of several major steps:
-</p>
-
-<ol>
-<li><p> Create application with <code>Application$new()</code>
-</p>
-</li>
-<li><p> Create a function which follows RestRserve API:
-</p>
-
-<ul>
-<li><p> should take 2 arguments - <code>request</code> and <code>response</code> as an input.
-<code>request</code> and <code>response</code> are instances of <code>RestRserve::Request</code>
-and <code>RestRserve::Response</code>. It is <strong>important to remember</strong> that
-both <code>request</code> and <code>response</code> are <strong>mutable</strong> objects.
-</p>
-</li>
-<li><p> should modify <code>response</code> in place or <code>raise()</code> exception in case
-of error
-</p>
-</li></ul>
-
-</li>
-<li><p> Register this function as a handler for an endpoint
-</p>
-</li>
-<li><p> Start application
-</p>
-</li></ol>
-
-
-
-
-<h4>1. Create application</h4>
-
-<div class="sourceCode r"><pre>library(RestRserve)
-app = Application$new()
-</pre></div>
-
-
-
-<h4>2. Define logic</h4>
-
-<p>For simplicity we will use Fibonacci number calculation as an algorithm
-we want to expose.
-</p>
-<div class="sourceCode r"><pre>calc_fib = function(n) {
-  if (n &lt; 0L) stop("n should be &gt;= 0")
-  if (n == 0L) return(0L)
-  if (n == 1L || n == 2L) return(1L)
-  x = rep(1L, n)
-  
-  for (i in 3L:n) {
-   x[[i]] = x[[i - 1]] + x[[i - 2]] 
-  }
-  
-  return(x[[n]])
-}
-</pre></div>
-<p>Create function which will handle requests.
-</p>
-<div class="sourceCode r"><pre>fib_handler = function(.req, .res) {
-  n = as.integer(.req$parameters_query[["n"]])
-  if (length(n) == 0L || is.na(n)) {
-    raise(HTTPError$bad_request())
-  }
-  .res$set_body(as.character(calc_fib(n)))
-  .res$set_content_type("text/plain")
-}
-</pre></div>
-<p>You may have noticed strange <code>.req</code> and <code>.res</code> argument names. Starting
-from <code>RestRserve</code> v0.4.0 these “reserved” names allows to benefit from
-autocomplete:
-</p>
-<p>&lt;img src=“<a href="https://cdn.rexy.ai/assets/req-res.gif">https://cdn.rexy.ai/assets/req-res.gif</a>” width=“640”
-style=“vertical-align:bottom”, alt=“request-response autocomplete gif”&gt;
-</p>
-<p>Technically <code>.req</code> and <code>.res</code> are just empty instances of <code>?Request</code> and
-<code>?Response</code> classes exported by <code>RestRserve</code> in order to make
-autocomplete work.
-</p>
-
-
-
-<h4>2. Register endpoint</h4>
-
-<div class="sourceCode r"><pre>app$add_get(path = "/fib", FUN = fib_handler)
-</pre></div>
-
-
-
-<h4>3. Test endpoints</h4>
-
-<p>Now we can test our application without starting it:
-</p>
-<div class="sourceCode r"><pre>request = Request$new(path = "/fib", parameters_query = list(n = 10))
-response = app$process_request(request)
-
-cat("Response status:", response$status)
-#&gt; Response status: 200 OK
-cat("Response body:", response$body)
-#&gt; Response body: 55
-</pre></div>
-<p>It is generally a good idea to write unit tests against application. One
-can use a common framework such as
-<a href="https://cran.r-project.org/package=tinytest">tinytest</a>.
-</p>
-
-
-
-<h4>4. Add OpenAPI description and Swagger UI</h4>
-
-<p>Generally it is a good idea to provide documentation along with the API.
-Convenient way to do that is to supply a <a href="https://swagger.io/docs/specification/about/">openapi specification</a>. This as
-simple as adding a yaml file as an additional endpoint:
-</p>
-<div class="sourceCode yaml"><pre>openapi: 3.0.1
-info:
-  title: RestRserve OpenAPI
-  version: '1.0'
-servers:
-  - url: /
-paths:
-  /fib:
-    get:
-      description: Calculates Fibonacci number
-      parameters:
-        - name: "n"
-          description: "x for Fibonnacci number"
-          in: query
-          schema:
-            type: integer
-          example: 10
-          required: true
-      responses:
-        200:
-          description: API response
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: 5
-        400:
-          description: Bad Request
-</pre></div>
-<div class="sourceCode r"><pre>yaml_file = system.file("examples", "openapi", "openapi.yaml", package = "RestRserve")
-app$add_openapi(path = "/openapi.yaml", file_path = yaml_file)
-app$add_swagger_ui(path = "/doc", path_openapi = "/openapi.yaml", use_cdn = TRUE)
-</pre></div>
-
-
-
-<h4>5. Start the app</h4>
-
-<p>Now all is ready and we can start application with Rserve backend. It
-will block R session and start listening for incoming requests.
-</p>
-<div class="sourceCode r"><pre>backend = BackendRserve$new()
-backend$start(app, http_port = 8080)
-</pre></div>
-
-
-
-<h4>6. Test it</h4>
-
-<p>Send request to calculate fibonacci number:
-</p>
-<div class="sourceCode bash"><pre>curl localhost:8080/fib?n=10
-</pre></div>
-<p>Check out a swagger UI in the browser: <code style="white-space: pre;">&#8288;http://localhost:8080/doc&#8288;</code>
-</p>
-
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Dmitry Selivanov <a href="mailto:ds@rexy.ai">ds@rexy.ai</a> (<a href="https://orcid.org/0000-0001-5413-1506">ORCID</a>)
-</p>
-<p>Authors:
-</p>
-
-<ul>
-<li><p> Artem Klevtsov <a href="mailto:a.a.klevtsov@gmail.com">a.a.klevtsov@gmail.com</a> (<a href="https://orcid.org/0000-0003-0492-6647">ORCID</a>)
-</p>
-</li></ul>
-
-<p>Other contributors:
-</p>
-
-<ul>
-<li><p> David Zimmermann <a href="mailto:david_j_zimmermann@hotmail.com">david_j_zimmermann@hotmail.com</a> [contributor]
-</p>
-</li>
-<li><p> rexy.ai [copyright holder, funder]
-</p>
-</li></ul>
-
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://restrserve.org">https://restrserve.org</a>
-</p>
-</li>
-<li> <p><a href="https://github.com/rexyai/RestRserve">https://github.com/rexyai/RestRserve</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/rexyai/RestRserve/issues">https://github.com/rexyai/RestRserve/issues</a>
-</p>
-</li></ul>
-
 
 <hr>
 <h2 id='Router'>Creates Router object.</h2><span id='topic+Router'></span>

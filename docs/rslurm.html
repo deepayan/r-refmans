@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {rslurm}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#rslurm-package'><p>Introduction to the <code>rslurm</code> Package</p></a></li>
 <li><a href='#cancel_slurm'><p>Cancels a scheduled Slurm job</p></a></li>
 <li><a href='#cleanup_files'><p>Deletes temporary files associated with a Slurm job</p></a></li>
 <li><a href='#get_job_status'><p>Get the status of a Slurm job</p></a></li>
@@ -25,7 +26,6 @@ function processMathHTML() {
 <li><a href='#local_slurm_array'><p>Execute a Slurm job locally</p></a></li>
 <li><a href='#print_job_status'><p>Deprecated functions in package <span class="pkg">rslurm</span>.</p></a></li>
 <li><a href='#print_job_status-deprecated'><p>Prints the status of a Slurm job and, if completed, its console/error output</p></a></li>
-<li><a href='#rslurm-package'><p>Introduction to the <code>rslurm</code> Package</p></a></li>
 <li><a href='#slurm_apply'><p>Parallel execution of a function on the Slurm cluster</p></a></li>
 <li><a href='#slurm_call'><p>Execution of a single function call on the Slurm cluster</p></a></li>
 <li><a href='#slurm_job'><p>Create a slurm_job object</p></a></li>
@@ -134,6 +134,105 @@ DBI-1052875 and DBI-1639145.</td>
 <td>2023-02-24 08:42:35 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='rslurm-package'>Introduction to the <code>rslurm</code> Package</h2><span id='topic+rslurm-package'></span>
+
+<h3>Description</h3>
+
+<p>Send long-running or parallel jobs to a Slurm workload manager (i.e. cluster)
+using the <code><a href="#topic+slurm_call">slurm_call</a></code>, <code><a href="#topic+slurm_apply">slurm_apply</a></code>, or
+<code><a href="#topic+slurm_map">slurm_map</a></code> functions.
+</p>
+
+
+<h3>Job submission</h3>
+
+<p>This package includes three core functions used to send computations to a 
+Slurm cluster: 1) <code><a href="#topic+slurm_call">slurm_call</a></code> executes a function using a 
+single set of parameters (passed as a list), 2) <code><a href="#topic+slurm_apply">slurm_apply</a></code> 
+evaluates a function in parallel for each row of parameters in a given 
+data frame, and 3) <code><a href="#topic+slurm_map">slurm_map</a></code> evaluates a function in parallel
+for each element of a list. 
+The functions <code>slurm_apply</code> and <code>slurm_map</code> automatically split the 
+parameter rows or list elements into equal-size chunks, 
+each chunk to be processed by a separate cluster node. 
+They use functions from the <code><a href="parallel.html#topic+parallel-package">parallel-package</a></code> 
+package to parallelize computations across processors on a given node.
+</p>
+<p>The output of <code>slurm_apply</code>, <code>slurm_map</code>, or <code>slurm_call</code> 
+is a <code>slurm_job</code> object that serves as an input to the other functions in the package: 
+<code><a href="#topic+print_job_status">print_job_status</a></code>, <code><a href="#topic+cancel_slurm">cancel_slurm</a></code>, 
+<code><a href="#topic+get_slurm_out">get_slurm_out</a></code> and <code><a href="#topic+cleanup_files">cleanup_files</a></code>.
+</p>
+
+
+<h3>Function specification</h3>
+
+<p>To be compatible with <code><a href="#topic+slurm_apply">slurm_apply</a></code>, a function may accept any 
+number of single value parameters. The names of these parameters must match
+the column names of the <code>params</code> data frame supplied. There are no 
+restrictions on the types of parameters passed as a list to 
+<code><a href="#topic+slurm_call">slurm_call</a></code> or <code><a href="#topic+slurm_map">slurm_map</a></code>
+</p>
+<p>If the function passed to <code>slurm_call</code> or <code>slurm_apply</code> requires 
+knowledge of any R objects (data, custom helper functions) besides 
+<code>params</code>, a character vector corresponding to their names should be 
+passed to the optional <code>global_objects</code> argument.
+</p>
+<p>When parallelizing a function, since any error will interrupt all 
+calculations for the current node, it may be useful to wrap expressions 
+which may generate errors into a <code><a href="base.html#topic+try">try</a></code> or 
+<code><a href="base.html#topic+conditions">tryCatch</a></code> function. This will ensure the computation 
+continues with the next parameter set after reporting the error.
+</p>
+
+
+<h3>Output Format</h3>
+
+<p>The default output format for <code>get_slurm_out</code> (<code>outtype = "raw"</code>)
+is a list where each element is the return value of one function call. If 
+the function passed to <code>slurm_apply</code> produces a vector output, you may
+use <code>outtype = "table"</code> to collect the output in a single data frame, 
+with one row by function call.
+</p>
+
+
+<h3>Slurm Configuration</h3>
+
+<p>Advanced options for the Slurm workload manager may accompany job submission
+by <code><a href="#topic+slurm_call">slurm_call</a></code>, <code><a href="#topic+slurm_map">slurm_map</a></code>, and <code><a href="#topic+slurm_apply">slurm_apply</a></code> 
+through the optional <code>slurm_options</code> argument. For example, passing
+<code>list(time = '1:30:00')</code> for this options limits the job to 1 hour and 30
+minutes. Some advanced configuration must be set through environment 
+variables. On a multi-cluster head node, for example, the <code>SLURM_CLUSTERS</code>
+environment variable must be set to direct jobs to a non-default cluster.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## Not run: 
+# Create a data frame of mean/sd values for normal distributions 
+pars &lt;- data.frame(par_m = seq(-10, 10, length.out = 1000), 
+                   par_sd = seq(0.1, 10, length.out = 1000))
+                   
+# Create a function to parallelize
+ftest &lt;- function(par_m, par_sd) {
+ samp &lt;- rnorm(10^7, par_m, par_sd)
+ c(s_m = mean(samp), s_sd = sd(samp))
+}
+
+sjob1 &lt;- slurm_apply(ftest, pars)
+print_job_status(sjob1)
+res &lt;- get_slurm_out(sjob1, "table")
+all.equal(pars, res) # Confirm correct output
+cleanup_files(sjob1)
+
+## End(Not run)
+  
+</code></pre>
+
 <hr>
 <h2 id='cancel_slurm'>Cancels a scheduled Slurm job</h2><span id='topic+cancel_slurm'></span>
 
@@ -450,105 +549,6 @@ console and error output, if any, generated by each node.
 
 <p><code><a href="#topic+rslurm-deprecated">rslurm-deprecated</a></code>
 </p>
-
-<hr>
-<h2 id='rslurm-package'>Introduction to the <code>rslurm</code> Package</h2><span id='topic+rslurm-package'></span>
-
-<h3>Description</h3>
-
-<p>Send long-running or parallel jobs to a Slurm workload manager (i.e. cluster)
-using the <code><a href="#topic+slurm_call">slurm_call</a></code>, <code><a href="#topic+slurm_apply">slurm_apply</a></code>, or
-<code><a href="#topic+slurm_map">slurm_map</a></code> functions.
-</p>
-
-
-<h3>Job submission</h3>
-
-<p>This package includes three core functions used to send computations to a 
-Slurm cluster: 1) <code><a href="#topic+slurm_call">slurm_call</a></code> executes a function using a 
-single set of parameters (passed as a list), 2) <code><a href="#topic+slurm_apply">slurm_apply</a></code> 
-evaluates a function in parallel for each row of parameters in a given 
-data frame, and 3) <code><a href="#topic+slurm_map">slurm_map</a></code> evaluates a function in parallel
-for each element of a list. 
-The functions <code>slurm_apply</code> and <code>slurm_map</code> automatically split the 
-parameter rows or list elements into equal-size chunks, 
-each chunk to be processed by a separate cluster node. 
-They use functions from the <code><a href="parallel.html#topic+parallel-package">parallel-package</a></code> 
-package to parallelize computations across processors on a given node.
-</p>
-<p>The output of <code>slurm_apply</code>, <code>slurm_map</code>, or <code>slurm_call</code> 
-is a <code>slurm_job</code> object that serves as an input to the other functions in the package: 
-<code><a href="#topic+print_job_status">print_job_status</a></code>, <code><a href="#topic+cancel_slurm">cancel_slurm</a></code>, 
-<code><a href="#topic+get_slurm_out">get_slurm_out</a></code> and <code><a href="#topic+cleanup_files">cleanup_files</a></code>.
-</p>
-
-
-<h3>Function specification</h3>
-
-<p>To be compatible with <code><a href="#topic+slurm_apply">slurm_apply</a></code>, a function may accept any 
-number of single value parameters. The names of these parameters must match
-the column names of the <code>params</code> data frame supplied. There are no 
-restrictions on the types of parameters passed as a list to 
-<code><a href="#topic+slurm_call">slurm_call</a></code> or <code><a href="#topic+slurm_map">slurm_map</a></code>
-</p>
-<p>If the function passed to <code>slurm_call</code> or <code>slurm_apply</code> requires 
-knowledge of any R objects (data, custom helper functions) besides 
-<code>params</code>, a character vector corresponding to their names should be 
-passed to the optional <code>global_objects</code> argument.
-</p>
-<p>When parallelizing a function, since any error will interrupt all 
-calculations for the current node, it may be useful to wrap expressions 
-which may generate errors into a <code><a href="base.html#topic+try">try</a></code> or 
-<code><a href="base.html#topic+conditions">tryCatch</a></code> function. This will ensure the computation 
-continues with the next parameter set after reporting the error.
-</p>
-
-
-<h3>Output Format</h3>
-
-<p>The default output format for <code>get_slurm_out</code> (<code>outtype = "raw"</code>)
-is a list where each element is the return value of one function call. If 
-the function passed to <code>slurm_apply</code> produces a vector output, you may
-use <code>outtype = "table"</code> to collect the output in a single data frame, 
-with one row by function call.
-</p>
-
-
-<h3>Slurm Configuration</h3>
-
-<p>Advanced options for the Slurm workload manager may accompany job submission
-by <code><a href="#topic+slurm_call">slurm_call</a></code>, <code><a href="#topic+slurm_map">slurm_map</a></code>, and <code><a href="#topic+slurm_apply">slurm_apply</a></code> 
-through the optional <code>slurm_options</code> argument. For example, passing
-<code>list(time = '1:30:00')</code> for this options limits the job to 1 hour and 30
-minutes. Some advanced configuration must be set through environment 
-variables. On a multi-cluster head node, for example, the <code>SLURM_CLUSTERS</code>
-environment variable must be set to direct jobs to a non-default cluster.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-## Not run: 
-# Create a data frame of mean/sd values for normal distributions 
-pars &lt;- data.frame(par_m = seq(-10, 10, length.out = 1000), 
-                   par_sd = seq(0.1, 10, length.out = 1000))
-                   
-# Create a function to parallelize
-ftest &lt;- function(par_m, par_sd) {
- samp &lt;- rnorm(10^7, par_m, par_sd)
- c(s_m = mean(samp), s_sd = sd(samp))
-}
-
-sjob1 &lt;- slurm_apply(ftest, pars)
-print_job_status(sjob1)
-res &lt;- get_slurm_out(sjob1, "table")
-all.equal(pars, res) # Confirm correct output
-cleanup_files(sjob1)
-
-## End(Not run)
-  
-</code></pre>
 
 <hr>
 <h2 id='slurm_apply'>Parallel execution of a function on the Slurm cluster</h2><span id='topic+slurm_apply'></span>

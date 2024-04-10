@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {Simile}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#Simile-package'>
+<p>Interface to executable Simile models</p></a></li>
 <li><a href='#consult.parameter.metafile'>
 <p>Set a model's parameters from a file saved by Simile</p></a></li>
 <li><a href='#create.model'>
@@ -47,8 +49,6 @@ tests to run.</a></li>
 <p>Sets a model parameter with data in an array</p></a></li>
 <li><a href='#set.model.step'>
 <p>Sets the time step used to execute a model.</p></a></li>
-<li><a href='#Simile-package'>
-<p>Interface to executable Simile models</p></a></li>
 <li><a href='#tcl.paired.to.array'>
 <p>Re-format model value array</p></a></li>
 <li><a href='#tcl.paired.to.list'>
@@ -121,6 +121,164 @@ tests to run.</a></li>
 </tr>
 </table>
 <hr>
+<h2 id='Simile-package'>
+Interface to executable Simile models
+</h2><span id='topic+Simile-package'></span><span id='topic+Simile'></span>
+
+<h3>Description</h3>
+
+<p>This package loads, parameterizes, executes and interrogates executable
+models saved by Simile.
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> Simile</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.3.1</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2013-06-01</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> Unrestricted</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+LazyLoad: </td><td style="text-align: left;"> yes</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>The package loads some Simile libraries into R's tcltk extension, so you
+need Simile installed to use it. Initialize the package by calling
+use.simile.at() to tell it where to find Simile in the file system. Tell
+it where to find the saved executable model with load.model() which
+returns a handle to the loaded model. This can be used to interrogate
+static model info via list.objects() and get.model.property(), and to
+create executable instances with create.model(), which returns their handles.
+</p>
+<p>An executable instance can be parameterized either by loading a Simile
+parameter metafile with consult.parameter.metafile(), or directly from R
+arrays with create.param.array() and set.model.parameter(). The
+functions set.model.step(), reset.model() and execute.model() control
+execution. get.model.time() returns the time at which execution
+finished. Use get.value.array() to get the values from any model
+component as an R array, or get.value.list() to get them as an R list.
+</p>
+<p>This version works with Simile versions 5.97 on.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Simulistics Ltd
+</p>
+
+
+<h3>References</h3>
+
+<p>Simile modelling environment: http://simulistics.com
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>require("Simile")
+exec.extn &lt;- as.character(tcl("info","sharedlibextension"))
+if (interactive()) {
+  path.to.installation &lt;- tcl("tk_chooseDirectory", "-title",
+  		       "Folder where Simile is installed:")
+
+  path.to.spiro &lt;- tcl("tk_getOpenFile",
+		       "-title", "Compiled binary for Spiro example:",		
+                       "-initialfile", paste("spiro",exec.extn,sep=""))
+} else { 
+  path.to.installation &lt;- "dummy/path"
+  path.to.spiro &lt;- "dummy.dll"
+}
+
+use.simile.at(path.to.installation)
+mHandle &lt;- load.model(path.to.spiro)
+objs &lt;- list.objects(mHandle)
+
+for (obj in objs) {
+  print(c(obj, get.model.property(mHandle, obj, "Class")))
+}
+
+iHandle &lt;- create.model(mHandle)
+# model step is 0.1 by default but spiro only needs 1.0
+set.model.step(iHandle, 1, 1)
+
+# initialize the model, including default slider values
+reset.model(iHandle, -2)
+
+xs &lt;- list(get.value.list(iHandle, "/runs/x"))
+ys &lt;- list(get.value.list(iHandle, "/runs/y"))
+for (count in 1:1739) {
+  execute.model(iHandle, count)
+  xs[[count+1]] &lt;- get.value.list(iHandle, "/runs/x")
+  ys[[count+1]] &lt;- get.value.list(iHandle, "/runs/y")
+}
+xs &lt;- mapply(c,xs)
+ys &lt;- mapply(c,ys)
+print("View default pattern -- now try to plot dancer")
+plot(xs, ys, type="l")
+
+# now we are going to parameterize it using a state file for the slider helper
+# -- to make this work we load the mime library, which is needed only because
+# the dancer.spf in Simile v5.97 is an older v4.x format file. No need to load 
+# if testing, and will always be available if live because required for Simile.
+
+if (!is.dummy(iHandle)) {
+   tcl("package","require","mime")
+}
+pFile  &lt;- tcl("file", "join", path.to.installation, "Examples", "dancer.spf")
+consult.parameter.metafile(iHandle, pFile)
+
+# also the file from the distribution has no value for "Wheel outside?"
+# so we set this boolean directly
+pHandle &lt;- create.param.array(iHandle, "/start/Wheel outside?")
+set.model.parameter(pHandle, FALSE)
+
+# apply reset at level 0 to propagate input values
+reset.model(iHandle, 0)
+
+xs &lt;- list(get.value.list(iHandle, "/runs/x"))
+ys &lt;- list(get.value.list(iHandle, "/runs/y"))
+for (count in 1:419) {
+  execute.model(iHandle, count)
+  xs[[count+1]] &lt;- get.value.list(iHandle, "/runs/x")
+  ys[[count+1]] &lt;- get.value.list(iHandle, "/runs/y")
+}
+xs &lt;- mapply(c,xs)
+ys &lt;- mapply(c,ys)
+plot(xs, ys, type="l")
+
+print("OK, but that's not how it looks on Simile is it? Try this...")
+xs &lt;- aperm(xs, c(2,1))
+ys &lt;- aperm(ys, c(2,1))
+plot(xs, ys, type="l")
+</code></pre>
+
+<hr>
 <h2 id='consult.parameter.metafile'>
 Set a model's parameters from a file saved by Simile
 </h2><span id='topic+consult.parameter.metafile'></span>
@@ -166,11 +324,6 @@ references to other files. They may refer to the whole model or a submodel.
 <h3>Value</h3>
 
 <p>None
-
-
-
-
-
 </p>
 
 
@@ -219,11 +372,6 @@ description, each with its own execution state.
 
 <p>A handle to a new instance of the model, which will have its own
 component values, parameter values and execution settings
-
-
-
-
-
 </p>
 
 
@@ -278,11 +426,6 @@ parameters to be held
 <h3>Value</h3>
 
 <p>A handle to the location that has been created.
-
-
-
-
-
 </p>
 
 
@@ -376,11 +519,6 @@ its specified maximum or minimum). Default is FALSE.</p>
 
 <p>Result code: value of system error (-ve), user-defined
 interruption (+ve) or 0 if model runs to finish.time
-
-
-
-
-
 </p>
 
 
@@ -419,7 +557,6 @@ about a component in a loaded Simile model</p>
 <table>
 <tr><td><code id="get.model.property_+3A_model.handle">model.handle</code></td>
 <td>
-
 
 <p>Model handle created when calling load.model()
 </p>
@@ -490,11 +627,6 @@ preset member count.
 
 
 
-
-
-
-
-
 <h3>Author(s)</h3>
 
 <p>Jasper Taylor
@@ -544,11 +676,6 @@ before that point for various reasons.
 <h3>Value</h3>
 
 <p>The current model time
-
-
-
-
-
 </p>
 
 
@@ -577,8 +704,7 @@ of values with the appropriate dimensions
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>
-get.value.array(instance.handle, value.name, as.enum.types)
+<pre><code class='language-R'>get.value.array(instance.handle, value.name, as.enum.types)
 </code></pre>
 
 
@@ -613,11 +739,6 @@ enumerated type names if applicable. Default is false: values are numerical.
 </p>
 
 
-
-
-
-
-
 <h3>Note</h3>
 
 
@@ -634,7 +755,6 @@ more appropriate than the array structure when not all values exist.
 
 
 <h3>See Also</h3>
-
 
 <p><code><a href="#topic+get.value.list">get.value.list</a></code>
 </p>
@@ -661,8 +781,7 @@ possibly nested list of values
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>
-get.value.list(instance.handle, value.name, as.enum.types)
+<pre><code class='language-R'>get.value.list(instance.handle, value.name, as.enum.types)
 </code></pre>
 
 
@@ -698,11 +817,6 @@ integers and values are numerical.
 </p>
 
 
-
-
-
-
-
 <h3>Author(s)</h3>
 
 <p>Jasper Taylor
@@ -710,7 +824,6 @@ integers and values are numerical.
 
 
 <h3>See Also</h3>
-
 
 <p><code><a href="#topic+get.value.array">get.value.array</a></code>
 </p>
@@ -767,11 +880,6 @@ attempted but some sample output may be returned.
 <h3>Value</h3>
 
 <p>A boolean which is true in the case of a dummy argument.
-
-
-
-
-
 </p>
 
 
@@ -865,7 +973,6 @@ file depending on platform)
 <td>
 
 <p>Absolute or relative path to file to be loaded
-
 </p>
 </td></tr>
 </table>
@@ -874,11 +981,6 @@ file depending on platform)
 <h3>Value</h3>
 
 <p>Handle to be used for querying or instantiating model, as a Tcl object
-
-
-
-
-
 </p>
 
 
@@ -962,11 +1064,6 @@ time plots etc in the model. Default is 0.
 <h3>Value</h3>
 
 <p>None
-
-
-
-
-
 </p>
 
 
@@ -1029,11 +1126,6 @@ enumerated type names if applicable. Default is false: values are numerical.
 <h3>Value</h3>
 
 <p>None
-
-
-
-
-
 </p>
 
 
@@ -1095,11 +1187,6 @@ this is step 1. Higher levels are set to shorter steps.
 <h3>Value</h3>
 
 <p>None
-
-
-
-
-
 </p>
 
 
@@ -1112,165 +1199,6 @@ this is step 1. Higher levels are set to shorter steps.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>set.model.step("dummy_ih", 1, 0.1)
-</code></pre>
-
-<hr>
-<h2 id='Simile-package'>
-Interface to executable Simile models
-</h2><span id='topic+Simile-package'></span><span id='topic+Simile'></span>
-
-<h3>Description</h3>
-
-<p>This package loads, parameterizes, executes and interrogates executable
-models saved by Simile.
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> Simile</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 1.3.1</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2013-06-01</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> Unrestricted</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-LazyLoad: </td><td style="text-align: left;"> yes</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>The package loads some Simile libraries into R's tcltk extension, so you
-need Simile installed to use it. Initialize the package by calling
-use.simile.at() to tell it where to find Simile in the file system. Tell
-it where to find the saved executable model with load.model() which
-returns a handle to the loaded model. This can be used to interrogate
-static model info via list.objects() and get.model.property(), and to
-create executable instances with create.model(), which returns their handles.
-</p>
-<p>An executable instance can be parameterized either by loading a Simile
-parameter metafile with consult.parameter.metafile(), or directly from R
-arrays with create.param.array() and set.model.parameter(). The
-functions set.model.step(), reset.model() and execute.model() control
-execution. get.model.time() returns the time at which execution
-finished. Use get.value.array() to get the values from any model
-component as an R array, or get.value.list() to get them as an R list.
-</p>
-<p>This version works with Simile versions 5.97 on.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Simulistics Ltd
-</p>
-
-
-<h3>References</h3>
-
-<p>Simile modelling environment: http://simulistics.com
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-require("Simile")
-exec.extn &lt;- as.character(tcl("info","sharedlibextension"))
-if (interactive()) {
-  path.to.installation &lt;- tcl("tk_chooseDirectory", "-title",
-  		       "Folder where Simile is installed:")
-
-  path.to.spiro &lt;- tcl("tk_getOpenFile",
-		       "-title", "Compiled binary for Spiro example:",		
-                       "-initialfile", paste("spiro",exec.extn,sep=""))
-} else { 
-  path.to.installation &lt;- "dummy/path"
-  path.to.spiro &lt;- "dummy.dll"
-}
-
-use.simile.at(path.to.installation)
-mHandle &lt;- load.model(path.to.spiro)
-objs &lt;- list.objects(mHandle)
-
-for (obj in objs) {
-  print(c(obj, get.model.property(mHandle, obj, "Class")))
-}
-
-iHandle &lt;- create.model(mHandle)
-# model step is 0.1 by default but spiro only needs 1.0
-set.model.step(iHandle, 1, 1)
-
-# initialize the model, including default slider values
-reset.model(iHandle, -2)
-
-xs &lt;- list(get.value.list(iHandle, "/runs/x"))
-ys &lt;- list(get.value.list(iHandle, "/runs/y"))
-for (count in 1:1739) {
-  execute.model(iHandle, count)
-  xs[[count+1]] &lt;- get.value.list(iHandle, "/runs/x")
-  ys[[count+1]] &lt;- get.value.list(iHandle, "/runs/y")
-}
-xs &lt;- mapply(c,xs)
-ys &lt;- mapply(c,ys)
-print("View default pattern -- now try to plot dancer")
-plot(xs, ys, type="l")
-
-# now we are going to parameterize it using a state file for the slider helper
-# -- to make this work we load the mime library, which is needed only because
-# the dancer.spf in Simile v5.97 is an older v4.x format file. No need to load 
-# if testing, and will always be available if live because required for Simile.
-
-if (!is.dummy(iHandle)) {
-   tcl("package","require","mime")
-}
-pFile  &lt;- tcl("file", "join", path.to.installation, "Examples", "dancer.spf")
-consult.parameter.metafile(iHandle, pFile)
-
-# also the file from the distribution has no value for "Wheel outside?"
-# so we set this boolean directly
-pHandle &lt;- create.param.array(iHandle, "/start/Wheel outside?")
-set.model.parameter(pHandle, FALSE)
-
-# apply reset at level 0 to propagate input values
-reset.model(iHandle, 0)
-
-xs &lt;- list(get.value.list(iHandle, "/runs/x"))
-ys &lt;- list(get.value.list(iHandle, "/runs/y"))
-for (count in 1:419) {
-  execute.model(iHandle, count)
-  xs[[count+1]] &lt;- get.value.list(iHandle, "/runs/x")
-  ys[[count+1]] &lt;- get.value.list(iHandle, "/runs/y")
-}
-xs &lt;- mapply(c,xs)
-ys &lt;- mapply(c,ys)
-plot(xs, ys, type="l")
-
-print("OK, but that's not how it looks on Simile is it? Try this...")
-xs &lt;- aperm(xs, c(2,1))
-ys &lt;- aperm(ys, c(2,1))
-plot(xs, ys, type="l")
 </code></pre>
 
 <hr>
@@ -1287,8 +1215,7 @@ list of alternating indices and values to an R array structure
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>
-tcl.paired.to.array(paired, dims, as.enum.types)
+<pre><code class='language-R'>tcl.paired.to.array(paired, dims, as.enum.types)
 </code></pre>
 
 
@@ -1323,13 +1250,7 @@ they are numeric
 </p>
 
 
-
-
-
-
-
 <h3>Note</h3>
-
 
 <p>Note that the dimensions of the array returned will be in the opposite
 order from those supplied in the 'dims' argument. This is because
@@ -1345,7 +1266,6 @@ R's is to list the outermost dimension last.
 
 
 <h3>See Also</h3>
-
 
 <p><code><a href="#topic+tcl.paired.to.list">tcl.paired.to.list</a></code>
 </p>
@@ -1374,8 +1294,7 @@ list of alternating indices and values to an R nested list structure
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>
-tcl.paired.to.list(paired, as.enum.types)
+<pre><code class='language-R'>tcl.paired.to.list(paired, as.enum.types)
 </code></pre>
 
 
@@ -1402,11 +1321,6 @@ strings, otherwise they are numeric
 
 <p>A numerical value or nested list of numerical values, from the Tcl value or array
 </p>
-
-
-
-
-
 
 
 <h3>Author(s)</h3>
@@ -1481,11 +1395,6 @@ models. It should be called only once in a session.
 <h3>Value</h3>
 
 <p>undefined.
-
-
-
-
-
 </p>
 
 

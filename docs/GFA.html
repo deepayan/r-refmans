@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {GFA}</h1>
 <h2>Contents</h2>
 <ul class="menu">
-<li><a href='#getDefaultOpts'><p>A function for generating the default priors of GFA model</p></a></li>
-<li><a href='#gfa'><p>Gibbs sampling for group factor analysis</p></a></li>
 <li><a href='#GFA-package'>
 <p>Group factor analysis.</p></a></li>
+<li><a href='#getDefaultOpts'><p>A function for generating the default priors of GFA model</p></a></li>
+<li><a href='#gfa'><p>Gibbs sampling for group factor analysis</p></a></li>
 <li><a href='#informativeNoisePrior'><p>Informative noise residual prior</p></a></li>
 <li><a href='#normalizeData'><p>Normalize data to be used by GFA</p></a></li>
 <li><a href='#reconstruction'><p>Full data reconstruction based on posterior samples</p></a></li>
@@ -98,6 +98,58 @@ function processMathHTML() {
 <td>2023-10-21 09:20:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='GFA-package'>
+Group factor analysis.
+</h2><span id='topic+GFA-package'></span><span id='topic+GFA'></span>
+
+<h3>Description</h3>
+
+<p>GFA does factor analysis for multiple data sets having matched observations, for exploratory or predictive data analysis.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The posterior distribution of GFA model parameters can be inferred with
+function <code><a href="#topic+gfa">gfa</a></code>, once the priors have been defined with
+<code><a href="#topic+getDefaultOpts">getDefaultOpts</a></code>. The priors are widely customizable, with two
+recommended setups: (i) dense group-sparse components (default; similar to
+package CCAGFA that provides variational Bayesian inference for the same
+model) and (ii) components interpretable as biclusters. It is recommended
+to preprocess the data with function <code><a href="#topic+normalizeData">normalizeData</a></code>.
+Functions are provided for predicting missing data, choosing a prior for
+the residual noise, identifying robust components and
+visualizing the inferred model. A simple toy example of the pipeline
+is provided as demo(GFApipeline), and a more elaborate one as
+demo(GFAexample). Finally, the experiment presented in (Bunte, Leppaaho,
+Saarinen and Kaski: Sparse group factor analysis for biclustering of
+multiple data sources, Bioinformatics, 32(16):2457&ndash;2463, 2016) can
+be replicated with demo(GFAdream). Most of the computational complexity
+of the package is related to matrix operations, which can be parallelized
+inherently by using e.g. OpenBLAS libraries.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#Data generation
+X &lt;- matrix(rnorm(20*3),20,3)                     #Latent variables
+W &lt;- matrix(rnorm(30*3),30,3)                     #Projection matrix
+Y &lt;- tcrossprod(X,W) + matrix(rnorm(20*30),20,30) #Observations
+Y &lt;- sweep(Y, MARGIN=2, runif(30), "+")           #Feature means
+Y &lt;- list(Y[,1:10], Y[,11:30])                    #Data grouping
+#Model inference and visualization
+norm &lt;- normalizeData(Y, type="center")           #Centering
+opts &lt;- getDefaultOpts()                          #Model options
+#Fast runs for the demo, default options recommended in general
+opts[c("iter.burnin", "iter.max")] &lt;- c(500, 1000)
+res &lt;- gfa(norm$train, K=5, opts=opts)            #Model inference
+rec &lt;- reconstruction(res)                        #Reconstruction
+recOrig &lt;- undoNormalizeData(rec, norm)           #... to original space
+vis &lt;- visualizeComponents(res, Y, norm)          #Visualization
+</code></pre>
+
 <hr>
 <h2 id='getDefaultOpts'>A function for generating the default priors of GFA model</h2><span id='topic+getDefaultOpts'></span>
 
@@ -433,58 +485,6 @@ non-converged model, and hence the need for a longer sampling chain.</p>
 <p>The CPU time (in seconds) used to sample the model.</p>
 </td></tr>
 </table>
-
-<hr>
-<h2 id='GFA-package'>
-Group factor analysis.
-</h2><span id='topic+GFA-package'></span><span id='topic+GFA'></span>
-
-<h3>Description</h3>
-
-<p>GFA does factor analysis for multiple data sets having matched observations, for exploratory or predictive data analysis.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The posterior distribution of GFA model parameters can be inferred with
-function <code><a href="#topic+gfa">gfa</a></code>, once the priors have been defined with
-<code><a href="#topic+getDefaultOpts">getDefaultOpts</a></code>. The priors are widely customizable, with two
-recommended setups: (i) dense group-sparse components (default; similar to
-package CCAGFA that provides variational Bayesian inference for the same
-model) and (ii) components interpretable as biclusters. It is recommended
-to preprocess the data with function <code><a href="#topic+normalizeData">normalizeData</a></code>.
-Functions are provided for predicting missing data, choosing a prior for
-the residual noise, identifying robust components and
-visualizing the inferred model. A simple toy example of the pipeline
-is provided as demo(GFApipeline), and a more elaborate one as
-demo(GFAexample). Finally, the experiment presented in (Bunte, Leppaaho,
-Saarinen and Kaski: Sparse group factor analysis for biclustering of
-multiple data sources, Bioinformatics, 32(16):2457&ndash;2463, 2016) can
-be replicated with demo(GFAdream). Most of the computational complexity
-of the package is related to matrix operations, which can be parallelized
-inherently by using e.g. OpenBLAS libraries.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>#Data generation
-X &lt;- matrix(rnorm(20*3),20,3)                     #Latent variables
-W &lt;- matrix(rnorm(30*3),30,3)                     #Projection matrix
-Y &lt;- tcrossprod(X,W) + matrix(rnorm(20*30),20,30) #Observations
-Y &lt;- sweep(Y, MARGIN=2, runif(30), "+")           #Feature means
-Y &lt;- list(Y[,1:10], Y[,11:30])                    #Data grouping
-#Model inference and visualization
-norm &lt;- normalizeData(Y, type="center")           #Centering
-opts &lt;- getDefaultOpts()                          #Model options
-#Fast runs for the demo, default options recommended in general
-opts[c("iter.burnin", "iter.max")] &lt;- c(500, 1000)
-res &lt;- gfa(norm$train, K=5, opts=opts)            #Model inference
-rec &lt;- reconstruction(res)                        #Reconstruction
-recOrig &lt;- undoNormalizeData(rec, norm)           #... to original space
-vis &lt;- visualizeComponents(res, Y, norm)          #Visualization
-</code></pre>
 
 <hr>
 <h2 id='informativeNoisePrior'>Informative noise residual prior</h2><span id='topic+informativeNoisePrior'></span>

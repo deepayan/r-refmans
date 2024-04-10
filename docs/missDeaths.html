@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {missDeaths}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#missDeaths'><p>Simulating and analyzing time to event data in the presence of population mortality</p></a></li>
 <li><a href='#+,md.simdata,md.simdataobject-method'><p>operator</p></a></li>
 <li><a href='#md.binom'><p>md.binom</p></a></li>
 <li><a href='#md.censor'><p>Censoring simulated survival data</p></a></li>
@@ -44,7 +45,6 @@ with missing information of possible deaths</a></li>
 <li><a href='#md.survprob'><p>Initializes the missDeaths population table cache</p></a></li>
 <li><a href='#md.survtime'><p>Initializes the missDeaths population table cache</p></a></li>
 <li><a href='#md.uniform'><p>md.uniform</p></a></li>
-<li><a href='#missDeaths'><p>Simulating and analyzing time to event data in the presence of population mortality</p></a></li>
 <li><a href='#observed'><p>A simulated dataset with non-recorded deaths</p></a></li>
 </ul>
 </div>
@@ -118,6 +118,87 @@ Population Mortality</td>
 <td>2020-10-17 18:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='missDeaths'>Simulating and analyzing time to event data in the presence of population mortality</h2><span id='topic+missDeaths'></span><span id='topic+missDeaths-package'></span>
+
+<h3>Description</h3>
+
+<p>In analysis of time to event data we may have a situation where we know that a 
+certain non-negligible competing risk exists, but is not recorded in the data. 
+Due to competing nature of the risks, ignoring such a risk may significantly 
+impact the at-risk group and thus lead to biased estimates. <br /><br />
+This problem can be found in several national registries of benign diseases, 
+medical device implantations (e.g. hip, knee or heart pacemaker) etc. where law obliges 
+physicians to report events whereas the information on patient deaths is unavailable; 
+it is hence unclear how many devices are still in use at a given time.<br /><br />
+Under the assumption that the survival of an individual is not influenced by the 
+event under study, general population mortality tables can be used to obtain unbiased 
+estimates of the measures of interest or to verify the assumption that the bias
+introduced by the non-recorded deaths is truly negligible.<br /><br />
+Two approaches are implemented in the missdeaths package: <br />
+- an iterative imputation method <code><a href="#topic+md.survcox">md.survcox</a></code> and<br /> 
+- a mortality adjusted at risk function <code><a href="#topic+md.survnp">md.survnp</a></code>.<br /><br />
+The package also includes a comprehensive set of functions to simulate data 
+that can be used for better understanding of these methods (See <code><a href="#topic+md.simulate">md.simulate</a></code>).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Tomaz Stupnik &lt;tomaz.stupnik@gmail.com&gt; and Maja Pohar Perme
+</p>
+
+
+<h3>References</h3>
+
+<p>Stupnik T., Pohar Perme M. (2015) &quot;Analysing disease recurrence
+with missing at risk information.&quot; Statistics in Medicine 35. p1130-43.
+<a href="https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.6766">https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.6766</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+library(missDeaths)
+ratetable = survexp.us
+
+sim = md.simparams() +
+          md.sex("sex", 0.5) + 
+          md.binom("Z1", 0.5) +
+          md.mvnorm(c("Z2", "Z3"), c(100, 0), matrix(c(225, 3, 2, 1), 2, 2)) +
+          md.sample("Z4", c(1, 2, 3, 4), c(0.25, 0.25, 0.25, 0.25)) +
+          md.uniform("birth", as.Date("1925-1-1"), as.Date("1950-1-1")) +
+          md.uniform("start", as.Date("2000-1-1"), as.Date("2005-1-1")) +
+          md.death("death", ratetable, "sex", "birth", "start") +
+          md.eval("age", "as.numeric(start - birth)/365.2425", 80, FALSE) + 
+          md.exp("event", "start", c("age", "sex", "Z1", "Z2"), 
+             c(0.1, 2, 1, 0.01), 0.05/365.2425)
+data = md.simulate(sim, 1000)
+          
+#construct a complete right censored data set
+complete = md.censor(data, "start", as.Date("2010-1-1"), c("event", "death"))
+
+#construct an observed right censored data set with non-reported deaths
+observed = complete
+observed$time[which(complete$status == 2)] = observed$maxtime[which(complete$status == 2)]
+observed$status[which(complete$status == 2)] = 0
+
+#estimate coefficients of the proportional hazards model
+D = md.D(age=observed$age, sex=observed$sex, year=observed$start)
+md.survcox(observed, Surv(time, status) ~ age + sex + Z1 + Z2, 
+          observed$maxtime, D, ratetable, iterations=4, R=50)
+          
+#estimate net- and event-free survival
+np = md.survnp(observed$time, observed$status, observed$maxtime, D, ratetable)
+w = list(list(time=np$time, est=np$surv.net, var=(np$std.err.net)^2))
+timepoints(w, times=c(3,9)*365.2425)
+plot(np$time/365.2425, np$surv.net)
+plot(np$time/365.2425, np$surv.efs)
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='+2B+2Cmd.simdata+2Cmd.simdataobject-method'>operator</h2><span id='topic++2B+2Cmd.simdata+2Cmd.simdataobject-method'></span>
 
@@ -1342,87 +1423,6 @@ sim = md.simparams() +
 
 ## End(Not run)
 
-</code></pre>
-
-<hr>
-<h2 id='missDeaths'>Simulating and analyzing time to event data in the presence of population mortality</h2><span id='topic+missDeaths'></span><span id='topic+missDeaths-package'></span>
-
-<h3>Description</h3>
-
-<p>In analysis of time to event data we may have a situation where we know that a 
-certain non-negligible competing risk exists, but is not recorded in the data. 
-Due to competing nature of the risks, ignoring such a risk may significantly 
-impact the at-risk group and thus lead to biased estimates. <br /><br />
-This problem can be found in several national registries of benign diseases, 
-medical device implantations (e.g. hip, knee or heart pacemaker) etc. where law obliges 
-physicians to report events whereas the information on patient deaths is unavailable; 
-it is hence unclear how many devices are still in use at a given time.<br /><br />
-Under the assumption that the survival of an individual is not influenced by the 
-event under study, general population mortality tables can be used to obtain unbiased 
-estimates of the measures of interest or to verify the assumption that the bias
-introduced by the non-recorded deaths is truly negligible.<br /><br />
-Two approaches are implemented in the missdeaths package: <br />
-- an iterative imputation method <code><a href="#topic+md.survcox">md.survcox</a></code> and<br /> 
-- a mortality adjusted at risk function <code><a href="#topic+md.survnp">md.survnp</a></code>.<br /><br />
-The package also includes a comprehensive set of functions to simulate data 
-that can be used for better understanding of these methods (See <code><a href="#topic+md.simulate">md.simulate</a></code>).
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Tomaz Stupnik &lt;tomaz.stupnik@gmail.com&gt; and Maja Pohar Perme
-</p>
-
-
-<h3>References</h3>
-
-<p>Stupnik T., Pohar Perme M. (2015) &quot;Analysing disease recurrence
-with missing at risk information.&quot; Statistics in Medicine 35. p1130-43.
-<a href="https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.6766">https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.6766</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-library(missDeaths)
-ratetable = survexp.us
-
-sim = md.simparams() +
-          md.sex("sex", 0.5) + 
-          md.binom("Z1", 0.5) +
-          md.mvnorm(c("Z2", "Z3"), c(100, 0), matrix(c(225, 3, 2, 1), 2, 2)) +
-          md.sample("Z4", c(1, 2, 3, 4), c(0.25, 0.25, 0.25, 0.25)) +
-          md.uniform("birth", as.Date("1925-1-1"), as.Date("1950-1-1")) +
-          md.uniform("start", as.Date("2000-1-1"), as.Date("2005-1-1")) +
-          md.death("death", ratetable, "sex", "birth", "start") +
-          md.eval("age", "as.numeric(start - birth)/365.2425", 80, FALSE) + 
-          md.exp("event", "start", c("age", "sex", "Z1", "Z2"), 
-             c(0.1, 2, 1, 0.01), 0.05/365.2425)
-data = md.simulate(sim, 1000)
-          
-#construct a complete right censored data set
-complete = md.censor(data, "start", as.Date("2010-1-1"), c("event", "death"))
-
-#construct an observed right censored data set with non-reported deaths
-observed = complete
-observed$time[which(complete$status == 2)] = observed$maxtime[which(complete$status == 2)]
-observed$status[which(complete$status == 2)] = 0
-
-#estimate coefficients of the proportional hazards model
-D = md.D(age=observed$age, sex=observed$sex, year=observed$start)
-md.survcox(observed, Surv(time, status) ~ age + sex + Z1 + Z2, 
-          observed$maxtime, D, ratetable, iterations=4, R=50)
-          
-#estimate net- and event-free survival
-np = md.survnp(observed$time, observed$status, observed$maxtime, D, ratetable)
-w = list(list(time=np$time, est=np$surv.net, var=(np$std.err.net)^2))
-timepoints(w, times=c(3,9)*365.2425)
-plot(np$time/365.2425, np$surv.net)
-plot(np$time/365.2425, np$surv.efs)
-
-## End(Not run)
 </code></pre>
 
 <hr>

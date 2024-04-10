@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {maditr}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#maditr-package'><p>maditr: Pipe-Style Interface for 'data.table'</p></a></li>
 <li><a href='#coalesce'><p>Return first non-missing element</p></a></li>
 <li><a href='#columns'><p>Selects columns or rows from the data set</p></a></li>
 <li><a href='#copy'><p>Copy an entire object</p></a></li>
@@ -26,7 +27,6 @@ function processMathHTML() {
 <li><a href='#dt_left_join'><p>Join two data.frames by common columns.</p></a></li>
 <li><a href='#dt_mutate'><p>'dplyr'-like interface for data.table.</p></a></li>
 <li><a href='#let_if'><p>Modify, aggregate, select or filter data.frame/data.table</p></a></li>
-<li><a href='#maditr-package'><p>maditr: Pipe-Style Interface for 'data.table'</p></a></li>
 <li><a href='#query_if'><p>One-to-one interface for data.table '[' method</p></a></li>
 <li><a href='#reexports'><p>Objects exported from other packages</p></a></li>
 <li><a href='#text_expand'><p>Evaluate expressions in curly brackets inside strings</p></a></li>
@@ -122,6 +122,311 @@ and 'data.table'</td>
 <td>2024-01-11 22:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='maditr-package'>maditr: Pipe-Style Interface for 'data.table'</h2><span id='topic+maditr'></span><span id='topic+maditr-package'></span>
+
+<h3>Description</h3>
+
+<p>Package provides pipe-style interface for <code>data.table</code>. It preserves
+all data.table features without significant impact on performance. '<code>let</code>'
+and '<code>take</code>' functions are simplified interfaces for most common data
+manipulation tasks.
+</p>
+
+
+<h3>Details</h3>
+
+
+<ul>
+<li><p> To select rows from data: <code>rows(mtcars, am==0)</code>
+</p>
+</li>
+<li><p> To select columns from data: <code>columns(mtcars, mpg, vs:carb)</code>
+</p>
+</li>
+<li><p> To aggregate data: <code>take(mtcars, mean_mpg = mean(mpg), by = am)</code>
+</p>
+</li>
+<li><p> To aggregate all non-grouping columns: <code>take_all(mtcars, mean, by = am)</code>
+</p>
+</li>
+<li><p> To aggregate several columns with one summary: <code>take(mtcars, mpg, hp, fun = mean, by = am)</code>
+</p>
+</li>
+<li><p> To get total summary skip <code>by</code> argument: <code>take_all(mtcars, mean)</code>
+</p>
+</li>
+<li><p> Use magrittr pipe '%&gt;%' to chain several operations:
+</p>
+</li></ul>
+
+<div class="sourceCode"><pre>     mtcars %&gt;%
+        let(mpg_hp = mpg/hp) %&gt;%
+        take(mean(mpg_hp), by = am)
+</pre></div>
+
+<ul>
+<li><p> To modify variables or add new variables:
+</p>
+</li></ul>
+
+<div class="sourceCode"><pre>      mtcars %&gt;%
+         let(new_var = 42,
+             new_var2 = new_var*hp) %&gt;%
+          head()
+</pre></div>
+
+<ul>
+<li><p> To modify all non-grouping variables:
+</p>
+</li></ul>
+
+<div class="sourceCode"><pre>      iris %&gt;%
+         let_all(
+             scaled = (.x - mean(.x))/sd(.x),
+             by = Species) %&gt;%
+          head()
+</pre></div>
+
+<ul>
+<li><p> To drop variable assign NULL: <code>let(mtcars, am = NULL) %&gt;% head()</code>
+</p>
+</li>
+<li><p> To aggregate all variables conditionally on name:
+</p>
+</li></ul>
+
+<div class="sourceCode"><pre>      iris %&gt;%
+          take_all(
+              mean = if(startsWith(.name, "Sepal")) mean(.x),
+              median = if(startsWith(.name, "Petal")) median(.x),
+              by = Species
+          )
+</pre></div>
+
+<ul>
+<li><p> For parametric assignment use ':=':
+</p>
+</li></ul>
+
+<div class="sourceCode"><pre>     new_var = "my_var"
+     old_var = "mpg"
+     mtcars %&gt;%
+         let((new_var) := get(old_var)*2) %&gt;%
+         head()
+</pre></div>
+
+<ul>
+<li><p> For more sophisticated operations see 'query'/'query_if': these
+functions translates its arguments one-to-one to '<code style="white-space: pre;">&#8288;[.data.table&#8288;</code>'
+method. Additionally there are some conveniences such as automatic
+'data.frame' conversion to 'data.table'.
+</p>
+</li></ul>
+
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Gregory Demin <a href="mailto:gdemin@gmail.com">gdemin@gmail.com</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/gdemin/maditr">https://github.com/gdemin/maditr</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/gdemin/maditr/issues">https://github.com/gdemin/maditr/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># examples form 'dplyr' package
+data(mtcars)
+
+# Newly created variables are available immediately
+mtcars %&gt;%
+    let(
+        cyl2 = cyl * 2,
+        cyl4 = cyl2 * 2
+    ) %&gt;%
+    head()
+
+# You can also use let() to remove variables and
+# modify existing variables
+mtcars %&gt;%
+    let(
+        mpg = NULL,
+        disp = disp * 0.0163871 # convert to litres
+    ) %&gt;%
+    head()
+
+
+# window functions are useful for grouped computations
+mtcars %&gt;%
+    let(rank = rank(-mpg, ties.method = "min"),
+        by = cyl) %&gt;%
+    head()
+
+# You can drop variables by setting them to NULL
+mtcars %&gt;% let(cyl = NULL) %&gt;% head()
+
+# keeps all existing variables
+mtcars %&gt;%
+    let(displ_l = disp / 61.0237) %&gt;%
+    head()
+
+# keeps only the variables you create
+mtcars %&gt;%
+    take(displ_l = disp / 61.0237)
+
+
+# can refer to both contextual variables and variable names:
+var = 100
+mtcars %&gt;%
+    let(cyl = cyl * var) %&gt;%
+    head()
+
+# select rows
+mtcars %&gt;%
+    rows(am==0) %&gt;%
+    head()
+
+# select rows with compound condition
+mtcars %&gt;%
+    rows(am==0 &amp; mpg&gt;mean(mpg))
+
+# select columns
+mtcars %&gt;%
+    columns(vs:carb, cyl)
+
+mtcars %&gt;%
+    columns(-am, -cyl)
+
+# regular expression pattern
+columns(iris, "^Petal") # variables which start from 'Petal'
+columns(iris, "Width$") # variables which end with 'Width'
+
+# move Species variable to the front
+# pattern "^." matches all variables
+columns(iris, Species, "^.")
+
+# pattern "^.*al" means "contains 'al'"
+columns(iris, "^.*al")
+
+# numeric indexing - all variables except Species
+columns(iris, 1:4)
+
+# A 'take' with summary functions applied without 'by' argument returns an aggregated data
+mtcars %&gt;%
+    take(mean = mean(disp), n = .N)
+
+# Usually, you'll want to group first
+mtcars %&gt;%
+    take(mean = mean(disp), n = .N, by = cyl)
+
+# You can group by expressions:
+mtcars %&gt;%
+    take_all(mean, by = list(vsam = vs + am))
+
+# modify all non-grouping variables in-place
+mtcars %&gt;%
+    let_all((.x - mean(.x))/sd(.x), by = am) %&gt;%
+    head()
+
+# modify all non-grouping variables to new variables
+mtcars %&gt;%
+    let_all(scaled = (.x - mean(.x))/sd(.x), by = am) %&gt;%
+    head()
+
+# conditionally modify all variables
+iris %&gt;%
+    let_all(mean = if(is.numeric(.x)) mean(.x)) %&gt;%
+    head()
+
+# modify all variables conditionally on name
+iris %&gt;%
+    let_all(
+        mean = if(startsWith(.name, "Sepal")) mean(.x),
+        median = if(startsWith(.name, "Petal")) median(.x),
+        by = Species
+    ) %&gt;%
+    head()
+
+# aggregation with 'take_all'
+mtcars %&gt;%
+    take_all(mean = mean(.x), sd = sd(.x), n = .N, by = am)
+
+# conditionally aggregate all variables
+iris %&gt;%
+    take_all(mean = if(is.numeric(.x)) mean(.x))
+
+# aggregate all variables conditionally on name
+iris %&gt;%
+    take_all(
+        mean = if(startsWith(.name, "Sepal")) mean(.x),
+        median = if(startsWith(.name, "Petal")) median(.x),
+        by = Species
+    )
+
+# parametric evaluation:
+var = quote(mean(cyl))
+mtcars %&gt;%
+    let(mean_cyl = eval(var)) %&gt;%
+    head()
+take(mtcars, eval(var))
+
+# all together
+new_var = "mean_cyl"
+mtcars %&gt;%
+    let((new_var) := eval(var)) %&gt;%
+    head()
+take(mtcars, (new_var) := eval(var))
+
+########################################
+# variable selection
+
+# range selection
+iris %&gt;%
+    let(
+        avg = rowMeans(Sepal.Length %to% Petal.Width)
+    ) %&gt;%
+    head()
+
+# multiassignment
+iris %&gt;%
+    let(
+        # starts with Sepal or Petal
+        multipled1 %to% multipled4 := cols("^(Sepal|Petal)")*2
+    ) %&gt;%
+    head()
+
+
+mtcars %&gt;%
+    let(
+        # text expansion
+        cols("scaled_{names(mtcars)}") := lapply(cols("{names(mtcars)}"), scale)
+    ) %&gt;%
+    head()
+
+# range selection in 'by'
+# range selection  + additional column
+mtcars %&gt;%
+    take(
+        res = sum(cols(mpg, disp %to% drat)),
+        by = vs %to% gear
+    )
+
+</code></pre>
+
 <hr>
 <h2 id='coalesce'>Return first non-missing element</h2><span id='topic+coalesce'></span>
 
@@ -1295,311 +1600,6 @@ dat %&gt;%
     sort_by(-V1) %&gt;%                  # ordering results
     head()
 
-
-</code></pre>
-
-<hr>
-<h2 id='maditr-package'>maditr: Pipe-Style Interface for 'data.table'</h2><span id='topic+maditr'></span><span id='topic+maditr-package'></span>
-
-<h3>Description</h3>
-
-<p>Package provides pipe-style interface for <code>data.table</code>. It preserves
-all data.table features without significant impact on performance. '<code>let</code>'
-and '<code>take</code>' functions are simplified interfaces for most common data
-manipulation tasks.
-</p>
-
-
-<h3>Details</h3>
-
-
-<ul>
-<li><p> To select rows from data: <code>rows(mtcars, am==0)</code>
-</p>
-</li>
-<li><p> To select columns from data: <code>columns(mtcars, mpg, vs:carb)</code>
-</p>
-</li>
-<li><p> To aggregate data: <code>take(mtcars, mean_mpg = mean(mpg), by = am)</code>
-</p>
-</li>
-<li><p> To aggregate all non-grouping columns: <code>take_all(mtcars, mean, by = am)</code>
-</p>
-</li>
-<li><p> To aggregate several columns with one summary: <code>take(mtcars, mpg, hp, fun = mean, by = am)</code>
-</p>
-</li>
-<li><p> To get total summary skip <code>by</code> argument: <code>take_all(mtcars, mean)</code>
-</p>
-</li>
-<li><p> Use magrittr pipe '%&gt;%' to chain several operations:
-</p>
-</li></ul>
-
-<div class="sourceCode"><pre>     mtcars %&gt;%
-        let(mpg_hp = mpg/hp) %&gt;%
-        take(mean(mpg_hp), by = am)
-</pre></div>
-
-<ul>
-<li><p> To modify variables or add new variables:
-</p>
-</li></ul>
-
-<div class="sourceCode"><pre>      mtcars %&gt;%
-         let(new_var = 42,
-             new_var2 = new_var*hp) %&gt;%
-          head()
-</pre></div>
-
-<ul>
-<li><p> To modify all non-grouping variables:
-</p>
-</li></ul>
-
-<div class="sourceCode"><pre>      iris %&gt;%
-         let_all(
-             scaled = (.x - mean(.x))/sd(.x),
-             by = Species) %&gt;%
-          head()
-</pre></div>
-
-<ul>
-<li><p> To drop variable assign NULL: <code>let(mtcars, am = NULL) %&gt;% head()</code>
-</p>
-</li>
-<li><p> To aggregate all variables conditionally on name:
-</p>
-</li></ul>
-
-<div class="sourceCode"><pre>      iris %&gt;%
-          take_all(
-              mean = if(startsWith(.name, "Sepal")) mean(.x),
-              median = if(startsWith(.name, "Petal")) median(.x),
-              by = Species
-          )
-</pre></div>
-
-<ul>
-<li><p> For parametric assignment use ':=':
-</p>
-</li></ul>
-
-<div class="sourceCode"><pre>     new_var = "my_var"
-     old_var = "mpg"
-     mtcars %&gt;%
-         let((new_var) := get(old_var)*2) %&gt;%
-         head()
-</pre></div>
-
-<ul>
-<li><p> For more sophisticated operations see 'query'/'query_if': these
-functions translates its arguments one-to-one to '<code style="white-space: pre;">&#8288;[.data.table&#8288;</code>'
-method. Additionally there are some conveniences such as automatic
-'data.frame' conversion to 'data.table'.
-</p>
-</li></ul>
-
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Gregory Demin <a href="mailto:gdemin@gmail.com">gdemin@gmail.com</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://github.com/gdemin/maditr">https://github.com/gdemin/maditr</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/gdemin/maditr/issues">https://github.com/gdemin/maditr/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># examples form 'dplyr' package
-data(mtcars)
-
-# Newly created variables are available immediately
-mtcars %&gt;%
-    let(
-        cyl2 = cyl * 2,
-        cyl4 = cyl2 * 2
-    ) %&gt;%
-    head()
-
-# You can also use let() to remove variables and
-# modify existing variables
-mtcars %&gt;%
-    let(
-        mpg = NULL,
-        disp = disp * 0.0163871 # convert to litres
-    ) %&gt;%
-    head()
-
-
-# window functions are useful for grouped computations
-mtcars %&gt;%
-    let(rank = rank(-mpg, ties.method = "min"),
-        by = cyl) %&gt;%
-    head()
-
-# You can drop variables by setting them to NULL
-mtcars %&gt;% let(cyl = NULL) %&gt;% head()
-
-# keeps all existing variables
-mtcars %&gt;%
-    let(displ_l = disp / 61.0237) %&gt;%
-    head()
-
-# keeps only the variables you create
-mtcars %&gt;%
-    take(displ_l = disp / 61.0237)
-
-
-# can refer to both contextual variables and variable names:
-var = 100
-mtcars %&gt;%
-    let(cyl = cyl * var) %&gt;%
-    head()
-
-# select rows
-mtcars %&gt;%
-    rows(am==0) %&gt;%
-    head()
-
-# select rows with compound condition
-mtcars %&gt;%
-    rows(am==0 &amp; mpg&gt;mean(mpg))
-
-# select columns
-mtcars %&gt;%
-    columns(vs:carb, cyl)
-
-mtcars %&gt;%
-    columns(-am, -cyl)
-
-# regular expression pattern
-columns(iris, "^Petal") # variables which start from 'Petal'
-columns(iris, "Width$") # variables which end with 'Width'
-
-# move Species variable to the front
-# pattern "^." matches all variables
-columns(iris, Species, "^.")
-
-# pattern "^.*al" means "contains 'al'"
-columns(iris, "^.*al")
-
-# numeric indexing - all variables except Species
-columns(iris, 1:4)
-
-# A 'take' with summary functions applied without 'by' argument returns an aggregated data
-mtcars %&gt;%
-    take(mean = mean(disp), n = .N)
-
-# Usually, you'll want to group first
-mtcars %&gt;%
-    take(mean = mean(disp), n = .N, by = cyl)
-
-# You can group by expressions:
-mtcars %&gt;%
-    take_all(mean, by = list(vsam = vs + am))
-
-# modify all non-grouping variables in-place
-mtcars %&gt;%
-    let_all((.x - mean(.x))/sd(.x), by = am) %&gt;%
-    head()
-
-# modify all non-grouping variables to new variables
-mtcars %&gt;%
-    let_all(scaled = (.x - mean(.x))/sd(.x), by = am) %&gt;%
-    head()
-
-# conditionally modify all variables
-iris %&gt;%
-    let_all(mean = if(is.numeric(.x)) mean(.x)) %&gt;%
-    head()
-
-# modify all variables conditionally on name
-iris %&gt;%
-    let_all(
-        mean = if(startsWith(.name, "Sepal")) mean(.x),
-        median = if(startsWith(.name, "Petal")) median(.x),
-        by = Species
-    ) %&gt;%
-    head()
-
-# aggregation with 'take_all'
-mtcars %&gt;%
-    take_all(mean = mean(.x), sd = sd(.x), n = .N, by = am)
-
-# conditionally aggregate all variables
-iris %&gt;%
-    take_all(mean = if(is.numeric(.x)) mean(.x))
-
-# aggregate all variables conditionally on name
-iris %&gt;%
-    take_all(
-        mean = if(startsWith(.name, "Sepal")) mean(.x),
-        median = if(startsWith(.name, "Petal")) median(.x),
-        by = Species
-    )
-
-# parametric evaluation:
-var = quote(mean(cyl))
-mtcars %&gt;%
-    let(mean_cyl = eval(var)) %&gt;%
-    head()
-take(mtcars, eval(var))
-
-# all together
-new_var = "mean_cyl"
-mtcars %&gt;%
-    let((new_var) := eval(var)) %&gt;%
-    head()
-take(mtcars, (new_var) := eval(var))
-
-########################################
-# variable selection
-
-# range selection
-iris %&gt;%
-    let(
-        avg = rowMeans(Sepal.Length %to% Petal.Width)
-    ) %&gt;%
-    head()
-
-# multiassignment
-iris %&gt;%
-    let(
-        # starts with Sepal or Petal
-        multipled1 %to% multipled4 := cols("^(Sepal|Petal)")*2
-    ) %&gt;%
-    head()
-
-
-mtcars %&gt;%
-    let(
-        # text expansion
-        cols("scaled_{names(mtcars)}") := lapply(cols("{names(mtcars)}"), scale)
-    ) %&gt;%
-    head()
-
-# range selection in 'by'
-# range selection  + additional column
-mtcars %&gt;%
-    take(
-        res = sum(cols(mpg, disp %to% drat)),
-        by = vs %to% gear
-    )
 
 </code></pre>
 

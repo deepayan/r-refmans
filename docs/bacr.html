@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {bacr}</h1>
 <h2>Contents</h2>
 <ul class="menu">
-<li><a href='#bac'>
-<p>Bayesian Adjustment for Confounding (BAC)</p></a></li>
 <li><a href='#bacr-package'>
 <p>Bayesian Adjustment for Confounding</p></a></li>
+<li><a href='#bac'>
+<p>Bayesian Adjustment for Confounding (BAC)</p></a></li>
 <li><a href='#plot.bacr'>
 <p>Plot Method for Class 'bacr'</p></a></li>
 <li><a href='#summary.bacr'>
@@ -85,6 +85,119 @@ function processMathHTML() {
 <td>2016-10-23 22:58:52</td>
 </tr>
 </table>
+<hr>
+<h2 id='bacr-package'>
+Bayesian Adjustment for Confounding
+</h2><span id='topic+bacr-package'></span><span id='topic+bacr'></span>
+
+<h3>Description</h3>
+
+<p>This package implements the Bayesian Adjustment for Confounding (BAC) algorithm for estiamting the Average Causal Effect (ACE) in Generalized Linear Models. It accounts for uncertainty in confounder and effect modifier
+selection and allows estimation of the ACE for the whole population or for a specific subpopulation. 
+</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package: </td><td style="text-align: left;"> bacr</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type: </td><td style="text-align: left;"> Package</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version: </td><td style="text-align: left;"> 1.0.1</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Depends: </td><td style="text-align: left;"> R(&gt;= 2.13.0), graphics, stats, MCMCpack</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date: </td><td style="text-align: left;"> 2016-10-23</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License: </td><td style="text-align: left;"> GPL-2
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Chi Wang
+</p>
+<p>Maintainer: Chi Wang &lt;chi.wang@uky.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Wang C, Dominici F, Parmigiani G, Zigler CW.
+Accounting for Uncertainty in Confounder and Effect Modifier
+Selection When Estimating Average Causal Effects in Generalized
+Linear Models.<br />
+<em>Biometrics, 71(3): 654-665, 2015.</em>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>######## Note that the example below is for illustration purpose only. ####
+######## In practice, larger number of iterations will be needed.##########
+##### simulate data ############
+n = 200; m = 4
+V = matrix(rnorm(n*m),ncol=m)
+X = rbinom(n, size=1, prob=exp(V[,1])/(1+exp(V[,1])))
+beta = c(1,1,1,0.5)
+temp0 = cbind(rep(0,n), V[,1:3]) 
+temp1 = cbind(rep(1,n), V[,1:3]) 
+Y0 = rbinom(n, size=1, prob=exp(temp0)/(1+exp(temp0)))
+Y1 = rbinom(n, size=1, prob=exp(temp1)/(1+exp(temp1)))
+Y = Y0
+Y[X==1] = Y1[X==1]
+Z = as.data.frame(cbind(Y, X, V))
+names(Z) = c("Y", "X", paste("V", 1:m, sep=""))
+##### run BAC  ################# 
+result = bac(data=Z, exposure="X", outcome="Y", confounders=paste("V", 1:m, sep=""), 
+            interactors=NULL, familyX="binomial", familyY="binomial", omega=Inf, 
+            num_its=5, burnM=1, burnB=1, thin=1)
+##### summarize results ########
+summary(result)
+plot(result)
+
+### Adding interaction terms #############
+beta = c(1,1,1,1,1)
+temp0 = cbind(rep(0,n), V[,1:3], rep(0,n)*V[,3]) 
+temp1 = cbind(rep(1,n), V[,1:3], rep(1,n)*V[,3]) 
+Y0 = rbinom(n, size=1, prob=exp(temp0)/(1+exp(temp0)))
+Y1 = rbinom(n, size=1, prob=exp(temp1)/(1+exp(temp1)))
+Y = Y0
+Y[X==1] = Y1[X==1]
+Z = as.data.frame(cbind(Y, X, V))
+names(Z) = c("Y", "X", paste("V", 1:m, sep=""))
+result = bac(data=Z, exposure="X", outcome="Y", confounders=paste("V", 1:m, sep=""), 
+            interactors=paste("V", 1:m, sep=""), familyX="binomial", familyY="binomial", 
+            omega=Inf, num_its=5, burnM=1, burnB=1, thin=1)
+summary(result)
+plot(result)
+
+##### Estimate the ACE in the exposed subgroup  #################
+result = bac(data=Z, exposure="X", outcome="Y", confounders=paste("V", 1:m, sep=""), 
+            interactors=paste("V", 1:m, sep=""), familyX="binomial", familyY="binomial", 
+            omega=Inf, num_its=5, burnM=1, burnB=1, thin=1, population=(X==1))
+summary(result)
+plot(result)
+</code></pre>
+
 <hr>
 <h2 id='bac'>
 Bayesian Adjustment for Confounding (BAC)
@@ -290,119 +403,6 @@ Linear Models.<br />
 
 <p><code><a href="#topic+plot.bacr">plot.bacr</a></code>, <code><a href="#topic+summary.bacr">summary.bacr</a></code>
 </p>
-
-<hr>
-<h2 id='bacr-package'>
-Bayesian Adjustment for Confounding
-</h2><span id='topic+bacr-package'></span><span id='topic+bacr'></span>
-
-<h3>Description</h3>
-
-<p>This package implements the Bayesian Adjustment for Confounding (BAC) algorithm for estiamting the Average Causal Effect (ACE) in Generalized Linear Models. It accounts for uncertainty in confounder and effect modifier
-selection and allows estimation of the ACE for the whole population or for a specific subpopulation. 
-</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package: </td><td style="text-align: left;"> bacr</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type: </td><td style="text-align: left;"> Package</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 1.0.1</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Depends: </td><td style="text-align: left;"> R(&gt;= 2.13.0), graphics, stats, MCMCpack</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2016-10-23</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License: </td><td style="text-align: left;"> GPL-2
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Chi Wang
-</p>
-<p>Maintainer: Chi Wang &lt;chi.wang@uky.edu&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Wang C, Dominici F, Parmigiani G, Zigler CW.
-Accounting for Uncertainty in Confounder and Effect Modifier
-Selection When Estimating Average Causal Effects in Generalized
-Linear Models.<br />
-<em>Biometrics, 71(3): 654-665, 2015.</em>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>######## Note that the example below is for illustration purpose only. ####
-######## In practice, larger number of iterations will be needed.##########
-##### simulate data ############
-n = 200; m = 4
-V = matrix(rnorm(n*m),ncol=m)
-X = rbinom(n, size=1, prob=exp(V[,1])/(1+exp(V[,1])))
-beta = c(1,1,1,0.5)
-temp0 = cbind(rep(0,n), V[,1:3]) 
-temp1 = cbind(rep(1,n), V[,1:3]) 
-Y0 = rbinom(n, size=1, prob=exp(temp0)/(1+exp(temp0)))
-Y1 = rbinom(n, size=1, prob=exp(temp1)/(1+exp(temp1)))
-Y = Y0
-Y[X==1] = Y1[X==1]
-Z = as.data.frame(cbind(Y, X, V))
-names(Z) = c("Y", "X", paste("V", 1:m, sep=""))
-##### run BAC  ################# 
-result = bac(data=Z, exposure="X", outcome="Y", confounders=paste("V", 1:m, sep=""), 
-            interactors=NULL, familyX="binomial", familyY="binomial", omega=Inf, 
-            num_its=5, burnM=1, burnB=1, thin=1)
-##### summarize results ########
-summary(result)
-plot(result)
-
-### Adding interaction terms #############
-beta = c(1,1,1,1,1)
-temp0 = cbind(rep(0,n), V[,1:3], rep(0,n)*V[,3]) 
-temp1 = cbind(rep(1,n), V[,1:3], rep(1,n)*V[,3]) 
-Y0 = rbinom(n, size=1, prob=exp(temp0)/(1+exp(temp0)))
-Y1 = rbinom(n, size=1, prob=exp(temp1)/(1+exp(temp1)))
-Y = Y0
-Y[X==1] = Y1[X==1]
-Z = as.data.frame(cbind(Y, X, V))
-names(Z) = c("Y", "X", paste("V", 1:m, sep=""))
-result = bac(data=Z, exposure="X", outcome="Y", confounders=paste("V", 1:m, sep=""), 
-            interactors=paste("V", 1:m, sep=""), familyX="binomial", familyY="binomial", 
-            omega=Inf, num_its=5, burnM=1, burnB=1, thin=1)
-summary(result)
-plot(result)
-
-##### Estimate the ACE in the exposed subgroup  #################
-result = bac(data=Z, exposure="X", outcome="Y", confounders=paste("V", 1:m, sep=""), 
-            interactors=paste("V", 1:m, sep=""), familyX="binomial", familyY="binomial", 
-            omega=Inf, num_its=5, burnM=1, burnB=1, thin=1, population=(X==1))
-summary(result)
-plot(result)
-</code></pre>
 
 <hr>
 <h2 id='plot.bacr'>

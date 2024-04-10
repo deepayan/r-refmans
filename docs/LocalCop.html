@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {LocalCop}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#LocalCop-package'><p>Local likelihood inference for conditional copula models.</p></a></li>
 <li><a href='#CondiCopLikCV'><p>Cross-validated likelihood.</p></a></li>
 <li><a href='#CondiCopLocFit'><p>Local likelihood estimation.</p></a></li>
 <li><a href='#CondiCopLocFun'><p>Create a <span class="pkg">TMB</span> local likelihood function.</p></a></li>
@@ -25,7 +26,6 @@ function processMathHTML() {
 <li><a href='#ConvertPar'><p>Conversions between various bivariate copula parametrizations.</p></a></li>
 <li><a href='#KernFun'><p>Local likelihood kernel functions.</p></a></li>
 <li><a href='#KernWeight'><p>Calculate local likelihood kernel weights.</p></a></li>
-<li><a href='#LocalCop-package'><p>Local likelihood inference for conditional copula models.</p></a></li>
 </ul>
 </div>
 <hr>
@@ -116,6 +116,111 @@ dplyr, readr, tidyr, ggplot2</td>
 <td>2024-03-21 14:50:06 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='LocalCop-package'>Local likelihood inference for conditional copula models.</h2><span id='topic+LocalCop'></span><span id='topic+LocalCop-package'></span>
+
+<h3>Description</h3>
+
+<p>Fits a bivariate conditional copula <code class="reqn">C(u_1, u_2 | \theta_x)</code>, where <code class="reqn">\theta_x</code> is a variable dependence parameter, nonparametrically estimated from a single covariate <code class="reqn">x</code> via local likelihood.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Martin Lysy <a href="mailto:mlysy@uwaterloo.ca">mlysy@uwaterloo.ca</a>
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> Elif Acar <a href="mailto:elif.acar@umanitoba.ca">elif.acar@umanitoba.ca</a>
+</p>
+</li></ul>
+
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> Alan Kuchinsky [contributor]
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/mlysy/LocalCop">https://github.com/mlysy/LocalCop</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/mlysy/LocalCop/issues">https://github.com/mlysy/LocalCop/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># simulate data
+set.seed(123)
+family &lt;- 5 # Frank copula
+n &lt;- 1000
+x &lt;- runif(n) # covariate values
+eta_fun &lt;- function(x) 2*cos(12*pi*x) # copula dependence parameter
+eta_true &lt;- eta_fun(x)
+par_true &lt;- BiCopEta2Par(family, eta = eta_true)
+udata &lt;- VineCopula::BiCopSim(n, family=family,
+                              par = par_true$par)
+
+# bandwidth and family selection
+bandset &lt;- c(.01, .04, .1) # bandwidth set
+famset &lt;- c(2, 5) # family set
+n_loo &lt;- 100 # number of leave-one-out observations in CV likelihood calculation
+system.time({
+  cvsel &lt;- CondiCopSelect(u1= udata[,1], u2 = udata[,2],
+                          x = x, family = famset, band = bandset,
+                          xind = n_loo)
+})
+
+# compare estimates to true value
+xseq &lt;- cvsel$x
+famsel &lt;- cvsel$cv$family
+bandsel &lt;- cvsel$cv$band
+etasel &lt;- cvsel$eta
+clrs &lt;- c("red", "blue", "green4")
+names(clrs) &lt;- bandset
+
+plot_fun &lt;- function(fam) {
+  nband &lt;- length(bandset)
+  if(fam == 2) {
+    famind &lt;- 1:nband
+    main &lt;- "Student-t Copula"
+  } else {
+    famind &lt;- nband+1:nband
+    main &lt;- "Frank Copula"
+  }
+  plot(xseq, BiCopEta2Tau(family, eta = eta_fun(xseq)),
+       type = "l", lwd = 2, ylim = c(-.5, .5),
+       xlab = expression(x), ylab = expression(tau(x)),
+       main = main)
+  for(ii in famind) {
+    lines(xseq, BiCopEta2Tau(fam, eta = etasel[,ii]),
+          col = clrs[as.character(bandsel[ii])], lwd = 1)
+  }
+  legend("bottomright", fill = clrs,
+         legend = paste0("band_", bandsel[famind],
+                         " = ", signif(cvsel$cv$cv[famind], 3)))
+}
+
+oldpar &lt;- par(mfrow = c(1,2))
+plot_fun(2)
+plot_fun(5)
+par(oldpar)
+</code></pre>
+
 <hr>
 <h2 id='CondiCopLikCV'>Cross-validated likelihood.</h2><span id='topic+CondiCopLikCV'></span>
 
@@ -812,111 +917,6 @@ KernTriAng(t)
 x0 &lt;- runif(1, min = min(x), max= max(x))
 KernWeight(x, x0, band=0.3, kernel = KernEpa, band_type = "constant")
 KernWeight(x, x0, band=0.3, kernel = KernEpa, band_type = "variable")
-</code></pre>
-
-<hr>
-<h2 id='LocalCop-package'>Local likelihood inference for conditional copula models.</h2><span id='topic+LocalCop'></span><span id='topic+LocalCop-package'></span>
-
-<h3>Description</h3>
-
-<p>Fits a bivariate conditional copula <code class="reqn">C(u_1, u_2 | \theta_x)</code>, where <code class="reqn">\theta_x</code> is a variable dependence parameter, nonparametrically estimated from a single covariate <code class="reqn">x</code> via local likelihood.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Martin Lysy <a href="mailto:mlysy@uwaterloo.ca">mlysy@uwaterloo.ca</a>
-</p>
-<p>Authors:
-</p>
-
-<ul>
-<li><p> Elif Acar <a href="mailto:elif.acar@umanitoba.ca">elif.acar@umanitoba.ca</a>
-</p>
-</li></ul>
-
-<p>Other contributors:
-</p>
-
-<ul>
-<li><p> Alan Kuchinsky [contributor]
-</p>
-</li></ul>
-
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://github.com/mlysy/LocalCop">https://github.com/mlysy/LocalCop</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/mlysy/LocalCop/issues">https://github.com/mlysy/LocalCop/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># simulate data
-set.seed(123)
-family &lt;- 5 # Frank copula
-n &lt;- 1000
-x &lt;- runif(n) # covariate values
-eta_fun &lt;- function(x) 2*cos(12*pi*x) # copula dependence parameter
-eta_true &lt;- eta_fun(x)
-par_true &lt;- BiCopEta2Par(family, eta = eta_true)
-udata &lt;- VineCopula::BiCopSim(n, family=family,
-                              par = par_true$par)
-
-# bandwidth and family selection
-bandset &lt;- c(.01, .04, .1) # bandwidth set
-famset &lt;- c(2, 5) # family set
-n_loo &lt;- 100 # number of leave-one-out observations in CV likelihood calculation
-system.time({
-  cvsel &lt;- CondiCopSelect(u1= udata[,1], u2 = udata[,2],
-                          x = x, family = famset, band = bandset,
-                          xind = n_loo)
-})
-
-# compare estimates to true value
-xseq &lt;- cvsel$x
-famsel &lt;- cvsel$cv$family
-bandsel &lt;- cvsel$cv$band
-etasel &lt;- cvsel$eta
-clrs &lt;- c("red", "blue", "green4")
-names(clrs) &lt;- bandset
-
-plot_fun &lt;- function(fam) {
-  nband &lt;- length(bandset)
-  if(fam == 2) {
-    famind &lt;- 1:nband
-    main &lt;- "Student-t Copula"
-  } else {
-    famind &lt;- nband+1:nband
-    main &lt;- "Frank Copula"
-  }
-  plot(xseq, BiCopEta2Tau(family, eta = eta_fun(xseq)),
-       type = "l", lwd = 2, ylim = c(-.5, .5),
-       xlab = expression(x), ylab = expression(tau(x)),
-       main = main)
-  for(ii in famind) {
-    lines(xseq, BiCopEta2Tau(fam, eta = etasel[,ii]),
-          col = clrs[as.character(bandsel[ii])], lwd = 1)
-  }
-  legend("bottomright", fill = clrs,
-         legend = paste0("band_", bandsel[famind],
-                         " = ", signif(cvsel$cv$cv[famind], 3)))
-}
-
-oldpar &lt;- par(mfrow = c(1,2))
-plot_fun(2)
-plot_fun(5)
-par(oldpar)
 </code></pre>
 
 </main>

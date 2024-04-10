@@ -13,17 +13,17 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {osmclass}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#osmclass-package'><p>Classify Open Street Map Features</p></a></li>
 <li><a href='#classifications'><p>A Classification of OSM Features by Economic Function</p></a></li>
 <li><a href='#djibouti_points'><p>OSM Points Layer for Djibouti, August 2023</p></a></li>
 <li><a href='#osm_classify'><p>Classify OSM Features</p></a></li>
 <li><a href='#osm_other_tags_list'><p>Generate a List from the 'other_tags' Column in OSM PBF Data</p></a></li>
 <li><a href='#osm_tags_df'><p>Extract Tags as Columns from an OSM PBF Layer</p></a></li>
-<li><a href='#osmclass-package'><p>Classify Open Street Map Features</p></a></li>
 </ul>
 </div>
 <hr>
@@ -102,6 +102,129 @@ function processMathHTML() {
 <td>2023-08-17 07:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='osmclass-package'>Classify Open Street Map Features</h2><span id='topic+osmclass-package'></span><span id='topic+osmclass'></span>
+
+<h3>Description</h3>
+
+<p>An R package to classify Open Street Map (OSM) features into meaningful functional or analytical categories.
+It expects OSM PBF data, e.g. from https://download.geofabrik.de/, imported as data frames (e.g. using <em>sf</em>), and
+is well optimized to deal with large quantities of OSM data. <br /><br />
+</p>
+
+
+<h3>Functions</h3>
+
+<p>Main Function to Classify OSM Features
+</p>
+<p><code><a href="#topic+osm_classify">osm_classify()</a></code>
+</p>
+<p>Auxiliary Functions to Extract Information (Tags) from OSM PBF Layers
+</p>
+<p><code><a href="#topic+osm_other_tags_list">osm_other_tags_list()</a></code><br />
+<code><a href="#topic+osm_tags_df">osm_tags_df()</a></code><br /><br />
+</p>
+
+
+<h3>Classifications</h3>
+
+<p>A Classification of OSM Features by Economic Function, developed for the Africa OSM following Krantz (2023)
+</p>
+<p><code><a href="#topic+osm_point_polygon_class">osm_point_polygon_class</a></code><br />
+<code><a href="#topic+osm_line_class">osm_line_class</a></code><br />
+<code><a href="#topic+osm_line_info_tags">osm_line_info_tags</a></code>
+</p>
+
+
+<h3>References</h3>
+
+<p>Krantz, Sebastian, Mapping Africa’s Infrastructure Potential with Geospatial Big Data, Causal ML, and XAI (August 10, 2023). Available at SSRN: https://www.ssrn.com/abstract=4537867
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# Download OSM PBF file for Djibouti
+download.file("https://download.geofabrik.de/africa/djibouti-latest.osm.pbf",
+              destfile = "djibouti-latest.osm.pbf", mode = "wb")
+
+# Import OSM data for Djibouti
+library(sf)
+st_layers("djibouti-latest.osm.pbf")
+points &lt;- st_read("djibouti-latest.osm.pbf", "points")
+lines &lt;- st_read("djibouti-latest.osm.pbf", "lines")
+polygons &lt;- st_read("djibouti-latest.osm.pbf", "multipolygons")
+
+# Classify features
+library(osmclass)
+points_class &lt;- osm_classify(points, osm_point_polygon_class)
+polygons_class &lt;- osm_classify(polygons, osm_point_polygon_class)
+lines_class &lt;- osm_classify(lines, osm_line_class)
+
+# See what proportion of the data we have classified
+sum(points_class$classified)/nrow(points)
+sum(polygons_class$classified)/nrow(polygons)
+sum(lines_class$classified)/nrow(lines)
+
+# Get some additional info for lines
+library(collapse)
+lines_info &lt;- lines |&gt; ss(lines_class$classified) |&gt;
+  rsplit(lines_class$main_cat[lines_class$classified]) |&gt;
+  get_vars(names(osm_line_info_tags), regex = TRUE)
+
+lines_info &lt;- Map(osm_tags_df, lines_info, osm_line_info_tags[names(lines_info)])
+str(lines_info)
+
+# Get 'other_tags' of points layer as list
+other_point_tags &lt;- osm_other_tags_list(points$other_tags, values = TRUE)
+str(other_point_tags)
+
+
+
+# TIP: For larger OSM files, importing layers (esp. lines and polygons) at once
+# may not be feasible memory-wise. In this case, translating to GPKG and using
+# an SQL query for stepwise processing is helpful:
+
+library(fastverse)
+library(sf)
+
+# Get all Africa OSM (6 Gb)
+opt &lt;- options(timeout = 6000)
+download.file("https://download.geofabrik.de/africa-latest.osm.pbf",
+              destfile = "africa-latest.osm.pbf", mode = "wb")
+
+# GPKG is large (&gt; 40 Gb)
+gdal_utils("vectortranslate", "africa-latest.osm.pbf", "africa-latest.gpkg")
+
+# Get map layers: shows how many features per layer
+layers &lt;- st_layers("africa-latest.gpkg")
+print(layers)
+
+# Example: stepwise classifying lines, 1M features at a time
+N &lt;- layers$features[layers$name == "lines"]
+int &lt;- seq(0L, N, 1e6L)
+lines_class &lt;- vector("list", length(int))
+
+for (i in seq_len(length(int))) {
+  cat("\nReading Lines Chunk:", i, "\n")
+  temp = st_read("africa-latest.gpkg",
+                 query = paste("SELECT * FROM lines LIMIT 1000000 OFFSET", int[i]))
+  # Some pre-selection: removing residential roads
+  temp %&lt;&gt;% fsubset(is.na(highway) | highway %chin% osm_line_class$road$highway)
+  # Classifying
+  temp_class &lt;- osm_classify(temp, osm_line_class)
+  lines_class[[i]] &lt;- ss(temp_class, temp_class$classified, check = FALSE)
+}
+
+# Combining
+lines_class &lt;- rbindlist(lines_class)
+options(opt)
+
+## End(Not run)
+
+</code></pre>
+
 <hr>
 <h2 id='classifications'>A Classification of OSM Features by Economic Function</h2><span id='topic+classifications'></span><span id='topic+osm_point_polygon_class'></span><span id='topic+osm_line_class'></span><span id='topic+osm_line_info_tags'></span>
 
@@ -426,129 +549,6 @@ head(osm_tags_df(djibouti_points, tags))
 
 # Only keeping tags with at least 5\% non-missing
 head(osm_tags_df(djibouti_points, tags, na.prop = 0.05))
-
-</code></pre>
-
-<hr>
-<h2 id='osmclass-package'>Classify Open Street Map Features</h2><span id='topic+osmclass-package'></span><span id='topic+osmclass'></span>
-
-<h3>Description</h3>
-
-<p>An R package to classify Open Street Map (OSM) features into meaningful functional or analytical categories.
-It expects OSM PBF data, e.g. from https://download.geofabrik.de/, imported as data frames (e.g. using <em>sf</em>), and
-is well optimized to deal with large quantities of OSM data. <br /><br />
-</p>
-
-
-<h3>Functions</h3>
-
-<p>Main Function to Classify OSM Features
-</p>
-<p><code><a href="#topic+osm_classify">osm_classify()</a></code>
-</p>
-<p>Auxiliary Functions to Extract Information (Tags) from OSM PBF Layers
-</p>
-<p><code><a href="#topic+osm_other_tags_list">osm_other_tags_list()</a></code><br />
-<code><a href="#topic+osm_tags_df">osm_tags_df()</a></code><br /><br />
-</p>
-
-
-<h3>Classifications</h3>
-
-<p>A Classification of OSM Features by Economic Function, developed for the Africa OSM following Krantz (2023)
-</p>
-<p><code><a href="#topic+osm_point_polygon_class">osm_point_polygon_class</a></code><br />
-<code><a href="#topic+osm_line_class">osm_line_class</a></code><br />
-<code><a href="#topic+osm_line_info_tags">osm_line_info_tags</a></code>
-</p>
-
-
-<h3>References</h3>
-
-<p>Krantz, Sebastian, Mapping Africa’s Infrastructure Potential with Geospatial Big Data, Causal ML, and XAI (August 10, 2023). Available at SSRN: https://www.ssrn.com/abstract=4537867
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-# Download OSM PBF file for Djibouti
-download.file("https://download.geofabrik.de/africa/djibouti-latest.osm.pbf",
-              destfile = "djibouti-latest.osm.pbf", mode = "wb")
-
-# Import OSM data for Djibouti
-library(sf)
-st_layers("djibouti-latest.osm.pbf")
-points &lt;- st_read("djibouti-latest.osm.pbf", "points")
-lines &lt;- st_read("djibouti-latest.osm.pbf", "lines")
-polygons &lt;- st_read("djibouti-latest.osm.pbf", "multipolygons")
-
-# Classify features
-library(osmclass)
-points_class &lt;- osm_classify(points, osm_point_polygon_class)
-polygons_class &lt;- osm_classify(polygons, osm_point_polygon_class)
-lines_class &lt;- osm_classify(lines, osm_line_class)
-
-# See what proportion of the data we have classified
-sum(points_class$classified)/nrow(points)
-sum(polygons_class$classified)/nrow(polygons)
-sum(lines_class$classified)/nrow(lines)
-
-# Get some additional info for lines
-library(collapse)
-lines_info &lt;- lines |&gt; ss(lines_class$classified) |&gt;
-  rsplit(lines_class$main_cat[lines_class$classified]) |&gt;
-  get_vars(names(osm_line_info_tags), regex = TRUE)
-
-lines_info &lt;- Map(osm_tags_df, lines_info, osm_line_info_tags[names(lines_info)])
-str(lines_info)
-
-# Get 'other_tags' of points layer as list
-other_point_tags &lt;- osm_other_tags_list(points$other_tags, values = TRUE)
-str(other_point_tags)
-
-
-
-# TIP: For larger OSM files, importing layers (esp. lines and polygons) at once
-# may not be feasible memory-wise. In this case, translating to GPKG and using
-# an SQL query for stepwise processing is helpful:
-
-library(fastverse)
-library(sf)
-
-# Get all Africa OSM (6 Gb)
-opt &lt;- options(timeout = 6000)
-download.file("https://download.geofabrik.de/africa-latest.osm.pbf",
-              destfile = "africa-latest.osm.pbf", mode = "wb")
-
-# GPKG is large (&gt; 40 Gb)
-gdal_utils("vectortranslate", "africa-latest.osm.pbf", "africa-latest.gpkg")
-
-# Get map layers: shows how many features per layer
-layers &lt;- st_layers("africa-latest.gpkg")
-print(layers)
-
-# Example: stepwise classifying lines, 1M features at a time
-N &lt;- layers$features[layers$name == "lines"]
-int &lt;- seq(0L, N, 1e6L)
-lines_class &lt;- vector("list", length(int))
-
-for (i in seq_len(length(int))) {
-  cat("\nReading Lines Chunk:", i, "\n")
-  temp = st_read("africa-latest.gpkg",
-                 query = paste("SELECT * FROM lines LIMIT 1000000 OFFSET", int[i]))
-  # Some pre-selection: removing residential roads
-  temp %&lt;&gt;% fsubset(is.na(highway) | highway %chin% osm_line_class$road$highway)
-  # Classifying
-  temp_class &lt;- osm_classify(temp, osm_line_class)
-  lines_class[[i]] &lt;- ss(temp_class, temp_class$classified, check = FALSE)
-}
-
-# Combining
-lines_class &lt;- rbindlist(lines_class)
-options(opt)
-
-## End(Not run)
 
 </code></pre>
 

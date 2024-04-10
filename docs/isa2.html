@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {isa2}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#isa2-package'><p>The isa package</p></a></li>
 <li><a href='#generate.seeds'><p>Generate seed vectors for the Iterative Signature Algorithm</p></a></li>
 <li><a href='#isa'><p>Iterative Signature Algorithm</p></a></li>
 <li><a href='#isa.biclust'><p>Convert ISA modules to a Biclust class, as defined by the</p>
@@ -28,7 +29,6 @@ biclust package</a></li>
 <li><a href='#isa.option'><p>Options for the isa package</p></a></li>
 <li><a href='#isa.sweep'><p>Create a hierarchical structure of ISA biclusters</p></a></li>
 <li><a href='#isa.unique'><p>Filter out biclusters that are very similar to each other</p></a></li>
-<li><a href='#isa2-package'><p>The isa package</p></a></li>
 <li><a href='#plotModules'><p>Image plots of biclusters</p></a></li>
 <li><a href='#ppa'><p>The Ping-Pong Algorithm</p></a></li>
 <li><a href='#ppa.in.silico'><p>Generate in-silico input data for testing the PPA algorithm</p></a></li>
@@ -105,6 +105,205 @@ biclust package</a></li>
 <td>2023-02-21 21:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='isa2-package'>The isa package</h2><span id='topic+isa2-package'></span>
+
+<h3>Description</h3>
+
+<p>The Iterative Signature Algorithm</p>
+
+
+<h3>Introduction</h3>
+
+<p>The Iterative Signature Algorithm (ISA) is a biclustering
+algorithm. Biclustering algorithms classify simultaneously the rows
+and columns of an input matrix into biclusters, or as we will call
+them here, modules.
+</p>
+
+
+<h3>For the impatient</h3>
+
+<p>The easiest way to run ISA is to call the <code><a href="#topic+isa">isa</a></code> function
+with your input matrix as the single argument. This does all steps of
+a typical ISA work flow, with the default parameters.
+</p>
+
+
+<h3>ISA biclusters</h3>
+
+<p>An ISA module is pair; a subset of the rows of the input matrix and a
+subset of its columns. In other words, a bicluster is a block of the
+reordered input matrix, where reordering means a permutation of both
+the rows and columns. (Another bicluster might be block of the same
+permuted input matrix or one after a different permutation.)
+</p>
+<p>The criteria of a good bicluster is that 1) its rows are significantly
+different than the other rows, when we consider only the positions
+defined by the columns of the same bicluster, and (symmetrically) 2)
+its columns are significantly different than the other columns, when
+we consider only the positions defined by the rows of the same
+bicluster.
+</p>
+<p>In other words, the rows of the bicluster are correlated, but only on
+the columns defined by the same bicluster; and the opposite is also
+true, the columns of the bicluster are correlated, but only on the
+rows defined by the same bicluster.
+</p>
+<p>ISA biclusters are soft, two biclusters may overlap in their 
+rows, columns or even both. It is also possible that some rows and/or
+columns of the input matrix are not found to be part of any ISA
+biclusters. Depending on the stringency parameters, it might even
+happen that ISA does not find any biclusters.  
+</p>
+
+
+<h3>ISA row and column scores</h3>
+
+<p>ISA biclusters are not only soft, but every row and column in a given
+bicluster has a score, a number between minus one and one. The further
+this number is from zero, then stronger is the association of the
+given row or column to the bicluster.
+</p>
+
+
+<h3>How ISA works</h3>
+
+<p>ISA works in an iterative way. For an <code class="reqn">E (m\times n)</code>
+input matrix it starts from seed vector <code class="reqn">r_0</code>, which is
+typically a sparse 0/1 vector of length <code class="reqn">m</code>. This defines a set of
+rows in <code class="reqn">E</code>. Then <code class="reqn">E'</code> is multiplied by <code class="reqn">r_0</code> and the
+result is thresholded. (Please see also &lsquo;Normalization&rsquo; below.)
+</p>
+<p>The thresholding is an important step of the ISA, without thresholding
+ISA would be equivalent to a (not too effective) numerical singular
+value decomposition (SVD). Currently thresholding is done by
+calculating the mean and standard deviation of the vector and keeping
+only elements that are further than a given number of standard
+deviations from the mean. Based on the <code>direction</code> parameter,
+this means 1) keeping values that are significantly higher than the
+mean (<code>direction="up"</code>), significantly lower
+(<code>direction="down"</code>) or both
+(<code>direction="updown"</code>).
+</p>
+<p>The thresholded vector <code class="reqn">c_0</code> is the (column)
+&lsquo;signature&rsquo; of <code class="reqn">r_0</code>. Then the (row) signature of
+<code class="reqn">c_0</code> is calculated, <code class="reqn">E</code> is multiplied by
+<code class="reqn">c_0</code> and then thresholded to get <code class="reqn">r_1</code>. 
+</p>
+<p>This iteration is performed until it converges, i.e. <code class="reqn">r_i</code>
+and <code class="reqn">r_{i-1}</code> are &ldquo;close&rdquo;, and <code class="reqn">c_i</code> and
+<code class="reqn">c_{i-1}</code> are also close. The convergence criteria,
+i.e. what &ldquo;close&rdquo; means is by default defined by high Pearson
+correlation.
+</p>
+<p>It is very possible that the ISA finds the same modules more than once;
+two or more seeds might converge to the same module. The function
+<code><a href="#topic+isa.unique">isa.unique</a></code> eliminates every module from the result of 
+<code><a href="#topic+isa.iterate">isa.iterate</a></code> that is very similar (in terms of
+Pearson correlation) to the one that was already found before it.
+</p>
+
+
+<h3>Parameters</h3>
+
+<p>The two main parameters of ISA are the two thresholds (one for the
+rows and one for the columns). They basically define the stringency of
+the modules. If the row threshold is high, then the modules will have
+very similar rows. If it is mild, then modules will be bigger, with
+less similar rows than in the first case.
+</p>
+
+
+<h3>Random seeding and smart seeding</h3>
+
+<p>By default (i.e. if the <code><a href="#topic+isa">isa</a></code> function is used) the ISA is
+performed from random sparse starting seeds, generated by
+<code><a href="#topic+generate.seeds">generate.seeds</a></code>. This way the algorithm is 
+completely unsupervised, but also stochastic: it might give different
+results for different runs.
+</p>
+<p>It is possible to use non-random seeds as well, if you have some
+knowledge about the data or are interested in a particular subset of
+rows/columns, then you can feed in your seeds into the
+<code><a href="#topic+isa.iterate">isa.iterate</a></code> function directly. In this case the
+algorithm is deterministic, for the same seed you will always get the
+same results.
+</p>
+
+
+<h3>Normalization</h3>
+
+<p>On in silico data we observed that ISA has the best performance if the
+input matrix is normalized (see <code><a href="#topic+isa.normalize">isa.normalize</a></code>). The
+normalization produces two matrices: <code class="reqn">E_r</code> and
+<code class="reqn">E_c</code>. <code class="reqn">E_r</code> is calculated by transposing <code class="reqn">E</code> and
+centering and scaling its rows (see <code><a href="base.html#topic+scale">scale</a></code>). <code class="reqn">E_c</code> is
+calculated by centering and scaling the rows of <code class="reqn">E</code>. <code class="reqn">E_r</code> is
+used to calculate the column signature of rows and <code class="reqn">E_c</code> is used
+to calculate the signature of the columns.
+</p>
+<p>It is possible to use another normalization, then the user is
+requested to supply the normalized input data in a named list,
+including the two matrices of appropriate
+dimensions. &lsquo;<code>Er</code>&rsquo; will be used for calculating the
+signature of the rows, &lsquo;<code>Ec</code>&rsquo; the signature of the
+columns. If you want to use the same matrix in both steps, then supply
+it twice, the first one transposed.
+</p>
+
+
+<h3>Robustness</h3>
+
+<p>As ISA is an unsupervised algorithm, it may very well find some
+modules, even if you feed in noise as an input matrix. To avoid these
+spurious modules we defined a robustness measure, a single number for
+a modules that gives how well the rows and the columns are
+correlated.
+</p>
+<p>It recommended that the user uses <code><a href="#topic+isa.filter.robust">isa.filter.robust</a></code> to
+run ISA on the scrambled input matrix with the same threshold
+parameters and then drop every module, which has a robustness score
+lower than the highest robustness score among modules found in the
+scrambled data.
+</p>
+
+
+<h3>A typical ISA work flow</h3>
+
+<p>Please see the manual page and the source code of <code><a href="#topic+isa">isa</a></code>
+for a typical ISA work flow. (You can obtain the source code by typing
+&lsquo;<code>isa</code>&rsquo; (without the apostrophes) into your R prompt and
+pressing ENTER.)
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Gabor Csardi <a href="mailto:Gabor.Csardi@unil.ch">Gabor.Csardi@unil.ch</a></p>
+
+
+<h3>References</h3>
+
+<p>Bergmann S, Ihmels J, Barkai N: Iterative signature algorithm for the
+analysis of large-scale gene expression data <em>Phys Rev E Stat
+Nonlin Soft Matter Phys.</em> 2003 Mar;67(3 Pt 1):031902. Epub 2003 Mar 11.
+</p>
+<p>Ihmels J, Friedlander G, Bergmann S, Sarig O, Ziv Y, Barkai N:
+Revealing modular organization in the yeast transcriptional network
+<em>Nat Genet.</em> 2002 Aug;31(4):370-7. Epub 2002 Jul 22
+</p>
+<p>Ihmels J, Bergmann S, Barkai N:
+Defining transcription modules using large-scale gene expression data
+<em>Bioinformatics</em> 2004 Sep 1;20(13):1993-2003. Epub 2004 Mar 25.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>The vignette in the package and <code><a href="#topic+isa">isa</a></code> for running ISA.
+</p>
+
 <hr>
 <h2 id='generate.seeds'>Generate seed vectors for the Iterative Signature Algorithm</h2><span id='topic+generate.seeds'></span>
 
@@ -1527,205 +1726,6 @@ if (interactive()) { hist(cc2[lower.tri(cc2)],10) }
 sum(undiag(cc2) &gt; 0.99, na.rm=TRUE)
 
 </code></pre>
-
-<hr>
-<h2 id='isa2-package'>The isa package</h2><span id='topic+isa2-package'></span>
-
-<h3>Description</h3>
-
-<p>The Iterative Signature Algorithm</p>
-
-
-<h3>Introduction</h3>
-
-<p>The Iterative Signature Algorithm (ISA) is a biclustering
-algorithm. Biclustering algorithms classify simultaneously the rows
-and columns of an input matrix into biclusters, or as we will call
-them here, modules.
-</p>
-
-
-<h3>For the impatient</h3>
-
-<p>The easiest way to run ISA is to call the <code><a href="#topic+isa">isa</a></code> function
-with your input matrix as the single argument. This does all steps of
-a typical ISA work flow, with the default parameters.
-</p>
-
-
-<h3>ISA biclusters</h3>
-
-<p>An ISA module is pair; a subset of the rows of the input matrix and a
-subset of its columns. In other words, a bicluster is a block of the
-reordered input matrix, where reordering means a permutation of both
-the rows and columns. (Another bicluster might be block of the same
-permuted input matrix or one after a different permutation.)
-</p>
-<p>The criteria of a good bicluster is that 1) its rows are significantly
-different than the other rows, when we consider only the positions
-defined by the columns of the same bicluster, and (symmetrically) 2)
-its columns are significantly different than the other columns, when
-we consider only the positions defined by the rows of the same
-bicluster.
-</p>
-<p>In other words, the rows of the bicluster are correlated, but only on
-the columns defined by the same bicluster; and the opposite is also
-true, the columns of the bicluster are correlated, but only on the
-rows defined by the same bicluster.
-</p>
-<p>ISA biclusters are soft, two biclusters may overlap in their 
-rows, columns or even both. It is also possible that some rows and/or
-columns of the input matrix are not found to be part of any ISA
-biclusters. Depending on the stringency parameters, it might even
-happen that ISA does not find any biclusters.  
-</p>
-
-
-<h3>ISA row and column scores</h3>
-
-<p>ISA biclusters are not only soft, but every row and column in a given
-bicluster has a score, a number between minus one and one. The further
-this number is from zero, then stronger is the association of the
-given row or column to the bicluster.
-</p>
-
-
-<h3>How ISA works</h3>
-
-<p>ISA works in an iterative way. For an <code class="reqn">E (m\times n)</code>
-input matrix it starts from seed vector <code class="reqn">r_0</code>, which is
-typically a sparse 0/1 vector of length <code class="reqn">m</code>. This defines a set of
-rows in <code class="reqn">E</code>. Then <code class="reqn">E'</code> is multiplied by <code class="reqn">r_0</code> and the
-result is thresholded. (Please see also &lsquo;Normalization&rsquo; below.)
-</p>
-<p>The thresholding is an important step of the ISA, without thresholding
-ISA would be equivalent to a (not too effective) numerical singular
-value decomposition (SVD). Currently thresholding is done by
-calculating the mean and standard deviation of the vector and keeping
-only elements that are further than a given number of standard
-deviations from the mean. Based on the <code>direction</code> parameter,
-this means 1) keeping values that are significantly higher than the
-mean (<code>direction="up"</code>), significantly lower
-(<code>direction="down"</code>) or both
-(<code>direction="updown"</code>).
-</p>
-<p>The thresholded vector <code class="reqn">c_0</code> is the (column)
-&lsquo;signature&rsquo; of <code class="reqn">r_0</code>. Then the (row) signature of
-<code class="reqn">c_0</code> is calculated, <code class="reqn">E</code> is multiplied by
-<code class="reqn">c_0</code> and then thresholded to get <code class="reqn">r_1</code>. 
-</p>
-<p>This iteration is performed until it converges, i.e. <code class="reqn">r_i</code>
-and <code class="reqn">r_{i-1}</code> are &ldquo;close&rdquo;, and <code class="reqn">c_i</code> and
-<code class="reqn">c_{i-1}</code> are also close. The convergence criteria,
-i.e. what &ldquo;close&rdquo; means is by default defined by high Pearson
-correlation.
-</p>
-<p>It is very possible that the ISA finds the same modules more than once;
-two or more seeds might converge to the same module. The function
-<code><a href="#topic+isa.unique">isa.unique</a></code> eliminates every module from the result of 
-<code><a href="#topic+isa.iterate">isa.iterate</a></code> that is very similar (in terms of
-Pearson correlation) to the one that was already found before it.
-</p>
-
-
-<h3>Parameters</h3>
-
-<p>The two main parameters of ISA are the two thresholds (one for the
-rows and one for the columns). They basically define the stringency of
-the modules. If the row threshold is high, then the modules will have
-very similar rows. If it is mild, then modules will be bigger, with
-less similar rows than in the first case.
-</p>
-
-
-<h3>Random seeding and smart seeding</h3>
-
-<p>By default (i.e. if the <code><a href="#topic+isa">isa</a></code> function is used) the ISA is
-performed from random sparse starting seeds, generated by
-<code><a href="#topic+generate.seeds">generate.seeds</a></code>. This way the algorithm is 
-completely unsupervised, but also stochastic: it might give different
-results for different runs.
-</p>
-<p>It is possible to use non-random seeds as well, if you have some
-knowledge about the data or are interested in a particular subset of
-rows/columns, then you can feed in your seeds into the
-<code><a href="#topic+isa.iterate">isa.iterate</a></code> function directly. In this case the
-algorithm is deterministic, for the same seed you will always get the
-same results.
-</p>
-
-
-<h3>Normalization</h3>
-
-<p>On in silico data we observed that ISA has the best performance if the
-input matrix is normalized (see <code><a href="#topic+isa.normalize">isa.normalize</a></code>). The
-normalization produces two matrices: <code class="reqn">E_r</code> and
-<code class="reqn">E_c</code>. <code class="reqn">E_r</code> is calculated by transposing <code class="reqn">E</code> and
-centering and scaling its rows (see <code><a href="base.html#topic+scale">scale</a></code>). <code class="reqn">E_c</code> is
-calculated by centering and scaling the rows of <code class="reqn">E</code>. <code class="reqn">E_r</code> is
-used to calculate the column signature of rows and <code class="reqn">E_c</code> is used
-to calculate the signature of the columns.
-</p>
-<p>It is possible to use another normalization, then the user is
-requested to supply the normalized input data in a named list,
-including the two matrices of appropriate
-dimensions. &lsquo;<code>Er</code>&rsquo; will be used for calculating the
-signature of the rows, &lsquo;<code>Ec</code>&rsquo; the signature of the
-columns. If you want to use the same matrix in both steps, then supply
-it twice, the first one transposed.
-</p>
-
-
-<h3>Robustness</h3>
-
-<p>As ISA is an unsupervised algorithm, it may very well find some
-modules, even if you feed in noise as an input matrix. To avoid these
-spurious modules we defined a robustness measure, a single number for
-a modules that gives how well the rows and the columns are
-correlated.
-</p>
-<p>It recommended that the user uses <code><a href="#topic+isa.filter.robust">isa.filter.robust</a></code> to
-run ISA on the scrambled input matrix with the same threshold
-parameters and then drop every module, which has a robustness score
-lower than the highest robustness score among modules found in the
-scrambled data.
-</p>
-
-
-<h3>A typical ISA work flow</h3>
-
-<p>Please see the manual page and the source code of <code><a href="#topic+isa">isa</a></code>
-for a typical ISA work flow. (You can obtain the source code by typing
-&lsquo;<code>isa</code>&rsquo; (without the apostrophes) into your R prompt and
-pressing ENTER.)
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Gabor Csardi <a href="mailto:Gabor.Csardi@unil.ch">Gabor.Csardi@unil.ch</a></p>
-
-
-<h3>References</h3>
-
-<p>Bergmann S, Ihmels J, Barkai N: Iterative signature algorithm for the
-analysis of large-scale gene expression data <em>Phys Rev E Stat
-Nonlin Soft Matter Phys.</em> 2003 Mar;67(3 Pt 1):031902. Epub 2003 Mar 11.
-</p>
-<p>Ihmels J, Friedlander G, Bergmann S, Sarig O, Ziv Y, Barkai N:
-Revealing modular organization in the yeast transcriptional network
-<em>Nat Genet.</em> 2002 Aug;31(4):370-7. Epub 2002 Jul 22
-</p>
-<p>Ihmels J, Bergmann S, Barkai N:
-Defining transcription modules using large-scale gene expression data
-<em>Bioinformatics</em> 2004 Sep 1;20(13):1993-2003. Epub 2004 Mar 25.
-</p>
-
-
-<h3>See Also</h3>
-
-<p>The vignette in the package and <code><a href="#topic+isa">isa</a></code> for running ISA.
-</p>
 
 <hr>
 <h2 id='plotModules'>Image plots of biclusters</h2><span id='topic+images'></span><span id='topic+plotModules'></span><span id='topic+plotModules+2Clist-method'></span>

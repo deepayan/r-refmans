@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {coxed}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#coxed-package'><p>Duration-Based Quantities of Interest and Simulation Methods for the Cox Proportional Hazards Model</p></a></li>
 <li><a href='#baseline.build'><p>Generate simulated baseline hazard, cumulative hazard, survival, failure PDF, and failure CDF functions</p></a></li>
 <li><a href='#baseline.plot'><p>Plot the simulated baseline functions</p></a></li>
 <li><a href='#bca'><p>Bias-corrected and accelerated confidence intervals</p></a></li>
@@ -27,7 +28,6 @@ Janet M. Box-Steffensmeier</a></li>
 <li><a href='#censor.x'><p>Generate right-censoring to be dependent on the data</p></a></li>
 <li><a href='#coxed'><p>Expected durations and marginal changes in expected duration from the</p>
 Cox proportional hazards model</a></li>
-<li><a href='#coxed-package'><p>Duration-Based Quantities of Interest and Simulation Methods for the Cox Proportional Hazards Model</p></a></li>
 <li><a href='#coxed.gam'><p>Predict expected durations using the GAM method</p></a></li>
 <li><a href='#coxed.gam.tvc'><p>Predict expected durations using the GAM method with time-varying covariates</p></a></li>
 <li><a href='#coxed.npsf'><p>Predict expected durations using the GAM method</p></a></li>
@@ -128,6 +128,188 @@ Hazards Model</td>
 <td>2020-08-02 01:20:07 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='coxed-package'>Duration-Based Quantities of Interest and Simulation Methods for the Cox Proportional Hazards Model</h2><span id='topic+coxed-package'></span>
+
+<h3>Description</h3>
+
+<p>The Cox proportional hazards model (implemented in R with <code><a href="survival.html#topic+coxph">coxph</a></code> in the <code>survival</code>
+package or with <code><a href="rms.html#topic+cph">cph</a></code> in the <code>rms</code> package) is one of the most frequently used estimators
+in duration (survival) analysis. Because it is estimated using only the observed durations' rank ordering, typical
+quantities of interest used to communicate results of the Cox model come from the hazard function (e.g., hazard ratios
+or percentage changes in the hazard rate). These quantities are substantively vague and difficult for many audiences
+of research to understand. The <code>coxed</code> package introduces a suite of methods to address these problems.
+The package allows researchers to calculate duration-based quantities from Cox model results, such as the expected
+duration (or survival time) given covariate values and marginal changes in duration for a specified change in a
+covariate. These duration-based quantities often match better with researchers' substantive interests and are
+easily understood by most readers.
+In addition, no standard method exists for simulating durations directly from the Cox model's data generating
+process because it does not assume a distributional form for the baseline hazard function. The <code>coxed</code> package
+also contains functions to simulate general duration data that does not rely on an assumption of any particular parametric
+hazard function.
+</p>
+
+
+<h3>Duration-Based Quantities of Interest for the Cox Model</h3>
+
+<p>The <code><a href="#topic+coxed">coxed</a></code> function generates expected durations for individual
+observations and/or marginal changes in expected duration given a change in a covariate
+from the Cox proportional hazards model. Specifically, the methods can compute (1) the
+expected duration for each observation used to fit the Cox model, given the covariates,
+(2) the expected duration for a &quot;new&quot; observation with a covariate profile set by the
+analyst, or (3) the first difference, or change, in expected duration given two new data frames.
+</p>
+<p>There are two different methods of generating duration-based quantities in the package.
+<code><a href="#topic+coxed">coxed</a></code> with <code>type="npsf"</code> calculates expected durations by using the method proposed by
+Cox and Oakes (1984, 107-109) for estimating the cumulative baseline hazard function.  This
+method is nonparametric and results in a step-function representation of the cumulative
+baseline hazard. Cox and Oakes (1984, 108) show that the cumulative baseline hazard function can be estimated
+after fitting a Cox model by
+</p>
+<p style="text-align: center;"><code class="reqn">\hat{H}_0(t) = \sum_{\tau_j &lt; t}\frac{d_j}{\sum_{l\in\Re(\tau_j)}\hat{\psi}(l)},</code>
+</p>
+
+<p>where <code class="reqn">\tau_j</code> represents time points earlier than <code class="reqn">t</code>, <code class="reqn">d_j</code> is a count of the
+total number of failures at <code class="reqn">\tau_j</code>, <code class="reqn">\Re(\tau_j)</code> is the remaining risk set at <code class="reqn">\tau_j</code>,
+and <code class="reqn">\hat{\psi}(l)</code> represents the ELP from the Cox model for observations still in the
+risk set at <code class="reqn">\tau_j</code>. This equation is used calculate the cumulative baseline hazard at
+all time points in the range of observed durations. This estimate is a stepwise function
+because time points with no failures do not contribute to the cumulative hazard, so the function
+is flat until the next time point with observed failures.
+</p>
+<p>We extend this method to obtain expected durations by first calculating the baseline survivor
+function from the cumulative hazard function, using
+</p>
+<p style="text-align: center;"><code class="reqn">\hat{S}_0(t) = \exp[-\hat{H}_0(t)].</code>
+</p>
+
+<p>Each observation's survivor function is related to the baseline survivor function by
+</p>
+<p style="text-align: center;"><code class="reqn">\hat{S}_i(t) = \hat{S}_0(t)^{\hat{\psi}(i)},</code>
+</p>
+
+<p>where <code class="reqn">\hat{\psi}(i)</code> is the exponentiated linear predictor (ELP) for observation <code class="reqn">i</code>.
+These survivor functions can be used directly to calculate expected durations for each
+observation.  The expected value of a non-negative random variable can be calculated by
+</p>
+<p style="text-align: center;"><code class="reqn">E(X) = \int_0^{\infty} \bigg(1 - F(t)\bigg)dt,</code>
+</p>
+
+<p>where <code class="reqn">F(.)</code> is the cumulative distribution function for <code class="reqn">X</code>.  In the case of a
+duration variable <code class="reqn">t_i</code>, the expected duration is
+</p>
+<p style="text-align: center;"><code class="reqn">E(t_i) = \int_0^T S_i(t)\,dt,</code>
+</p>
+
+<p>where <code class="reqn">T</code> is the largest possible duration and <code class="reqn">S(t)</code> is the individual's survivor
+function.  We approximate this integral with a right Riemann-sum by calculating the survivor
+functions at every discrete time point from the minimum to the maximum observed durations,
+and multiplying these values by the length of the interval between time points with observed failures:
+</p>
+<p style="text-align: center;"><code class="reqn">E(t_i) \approx \sum_{t_j \in [0,T]} (t_j - t_{j-1})S_i(t_j).</code>
+</p>
+
+<p><code><a href="#topic+coxed">coxed</a></code> with <code>type="gam"</code> employs a generalized additive model (GAM) to map the model's estimated linear
+predictor values to duration times and proceeds according to five steps. First, it uses coefficient
+estimates from the Cox model, so researchers must first estimate the model just as they always have.
+Then the method computes expected values of risk for each observation by matrix-multiplying the
+covariates by the estimated coefficients from the model, then exponentiating the result. This creates
+the exponentiated linear predictor (ELP). Then the observations are ranked from smallest to largest
+according to their values of the ELP. This ranking is interpreted as the expected order of failure;
+the larger the value of the ELP, the sooner the model expects that observation to fail, relative to
+the other observations. The next step is to connect the model's expected risk for each observation (ELP) to duration time
+(the observed durations). A <code><a href="mgcv.html#topic+gam">gam</a></code> fits a model to data by using a series of locally-estimated polynomial
+splines set by the user (see, for example, Wood, Pya, and Saefken 2016). It is a flexible means of allowing for
+the possibility of nonlinear relationships between variables. <code>coxed</code> with <code>type="gam"</code> uses a GAM to model the observed
+durations as a function of the linear predictor ranks generated in the previous step. More specifically, the method
+utilizes a cubic regression spline to draw a smoothed line summarizing the bivariate relationship between
+the observed durations and the ranks. The GAM fit can be used directly to compute expected durations, given the covariates, for each observation
+in the data.
+</p>
+<p>See Kropko and Harden (2018) for further details about generating expected durations and marginal changes in expected
+duration from the Cox model. The <code><a href="#topic+coxed">coxed</a></code> function can also generate these quantities from data with time-varying
+covariates (see <code><a href="#topic+coxed.npsf.tvc">coxed.npsf.tvc</a></code> and <code><a href="#topic+coxed.gam.tvc">coxed.gam.tvc</a></code>).
+</p>
+
+
+<h3>Simulating duration data for the Cox model</h3>
+
+<p>The <code><a href="#topic+sim.survdata">sim.survdata</a></code> function generates simulated duration data. It can accept a user-supplied
+hazard function, or else it uses the flexible-hazard method described in Harden and Kropko (2018) to generate
+a hazard that does not necessarily conform to any parametric hazard function. It can generate data with time-varying
+covariates or coefficients. For time-varying covariates <code>type="tvc"</code> it employs the permutational algorithm by Sylvestre and Abrahamowicz (2008).
+For time-varying coefficients with <code>type="tvbeta"</code>, the first beta coefficient that is either supplied by the user or generated by
+the function is multiplied by the natural log of the failure time under consideration.
+</p>
+<p>The flexible-hazard method employed when <code>hazard.fun</code> is <code>NULL</code> generates a unique baseline hazard by fitting a curve to
+randomly-drawn points. This produces a wide variety
+of shapes for the baseline hazard, including those that are unimodal, multimodal, monotonically increasing or decreasing, and many other
+shapes. The method then generates a density function based on each baseline hazard and draws durations from it in a way that circumvents
+the need to calculate the inverse cumulative baseline hazard. Because the shape of the baseline hazard can vary considerably, this approach
+matches the Cox model’s inherent flexibility and better corresponds to the assumed data generating process (DGP) of the Cox model. Moreover,
+repeating this process over many iterations in a simulation produces simulated samples of data that better reflect the considerable
+heterogeneity in data used by applied researchers. This increases the generalizability of the simulation results. See Harden and Kropko (2018)
+for more detail.
+</p>
+<p>When generating a marginal effect, first the user specifies a covariate by typing its column number in the <code>X</code> matrix into the <code>covariate</code>
+argument, then specifies the high and low values at which to fix this covariate.  The function calculates the differences in expected duration for each
+observation when fixing the covariate to the high and low values.  If <code>compare</code> is <code>median</code>, the function reports the median of these differences,
+and if <code>compare</code> is <code>mean</code>, the function reports the median of these differences, but any function may be employed that takes a vector as input and
+outputs a scalar.
+</p>
+<p>If <code>censor.cond</code> is <code>FALSE</code> then a proportion of the observations specified by <code>censor</code> is randomly and uniformly selected to be right-censored.
+If <code>censor.cond</code> is <code>TRUE</code> then censoring depends on the covariates as follows: new coefficients are drawn from normal distributions with mean 0 and
+standard deviation of 0.1, and these new coefficients are used to create a new linear predictor using the <code>X</code> matrix.  The observations with the largest
+(100 x <code>censor</code>) percent of the linear predictors are designated as right-censored.
+</p>
+<p>Finally, <code>link[coxed]{survsim.plot}</code> is useful for visualizing the baseline functions, including hazard, that result from
+<code>link[coxed]{sim.survdata}</code> for a particular draw of simulated duration data. The function uses <code><a href="ggplot2.html#topic+ggplot">ggplot</a></code>
+to create line plots for the baseline failure PDF, the baseline failure CDF, the baseline survivor function,
+and the baseline hazard function over time.  The baseline functions and time are attributes of the
+<code><a href="#topic+sim.survdata">sim.survdata</a></code> output.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Jonathan Kropko &lt;jkropko@virginia.edu&gt; and Jeffrey J. Harden &lt;jharden2@nd.edu&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Harden, J. J. and Kropko, J. (2018) Simulating Duration Data for the Cox Model.
+<em>Political Science Research and Methods</em> <a href="https://doi.org/10.1017/psrm.2018.19">https://doi.org/10.1017/psrm.2018.19</a>
+</p>
+<p>Kropko, J. and Harden, J. J. (2018) Beyond the Hazard Ratio: Generating Expected
+Durations from the Cox Proportional Hazards Model. <em>British Journal of Political Science</em>
+<a href="https://doi.org/10.1017/S000712341700045X">https://doi.org/10.1017/S000712341700045X</a>
+</p>
+<p>Box-Steffensmeier, J. M. (1996)
+A Dynamic Analysis of The Role of War Chests in Campaign Strategy.
+<em>American Journal of Political Science</em> <strong>40</strong> 352-371
+</p>
+<p>Hyman, J. M. (1983) Accurate monotonicity preserving cubic interpolation. <em>SIAM J. Sci. Stat. Comput.</em> <strong>4</strong>, 645–654.
+<a href="https://doi.org/10.1137/0904045">https://doi.org/10.1137/0904045</a>
+</p>
+<p>Martin, L. W and Vanberg, G. (2003) Wasting Time?
+The Impact of Ideology and Size on Delay in Coalition Formation.
+<em>British Journal of Political Science</em> <strong>33</strong> 323-344
+<a href="https://doi.org/10.1017/S0007123403000140">https://doi.org/10.1017/S0007123403000140</a>
+</p>
+<p>Sylvestre M.-P., Abrahamowicz M. (2008) Comparison of algorithms to generate event times conditional on time-dependent
+covariates. <em>Statistics in Medicine</em> <strong>27(14)</strong>:2618–34. <a href="https://doi.org/10.1002/sim.3092">https://doi.org/10.1002/sim.3092</a>
+</p>
+<p>Wood, S.N., N. Pya and B. Saefken (2016) Smoothing parameter and model selection for general smooth models (with discussion). <em>Journal of the American Statistical Association</em> <strong>111</strong>, 1548-1575
+<a href="http://dx.doi.org/10.1080/01621459.2016.1180986">http://dx.doi.org/10.1080/01621459.2016.1180986</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## See the examples for coxed, sim.survdata, and survsim.plot
+</code></pre>
+
 <hr>
 <h2 id='baseline.build'>Generate simulated baseline hazard, cumulative hazard, survival, failure PDF, and failure CDF functions</h2><span id='topic+baseline.build'></span>
 
@@ -892,188 +1074,6 @@ summary(bs.cox)
 ed1 &lt;- coxed(bs.cox, method="npsf", id=boxsteffensmeier$caseid)
 ed1$exp.dur
 summary(ed1, stat="mean")
-</code></pre>
-
-<hr>
-<h2 id='coxed-package'>Duration-Based Quantities of Interest and Simulation Methods for the Cox Proportional Hazards Model</h2><span id='topic+coxed-package'></span>
-
-<h3>Description</h3>
-
-<p>The Cox proportional hazards model (implemented in R with <code><a href="survival.html#topic+coxph">coxph</a></code> in the <code>survival</code>
-package or with <code><a href="rms.html#topic+cph">cph</a></code> in the <code>rms</code> package) is one of the most frequently used estimators
-in duration (survival) analysis. Because it is estimated using only the observed durations' rank ordering, typical
-quantities of interest used to communicate results of the Cox model come from the hazard function (e.g., hazard ratios
-or percentage changes in the hazard rate). These quantities are substantively vague and difficult for many audiences
-of research to understand. The <code>coxed</code> package introduces a suite of methods to address these problems.
-The package allows researchers to calculate duration-based quantities from Cox model results, such as the expected
-duration (or survival time) given covariate values and marginal changes in duration for a specified change in a
-covariate. These duration-based quantities often match better with researchers' substantive interests and are
-easily understood by most readers.
-In addition, no standard method exists for simulating durations directly from the Cox model's data generating
-process because it does not assume a distributional form for the baseline hazard function. The <code>coxed</code> package
-also contains functions to simulate general duration data that does not rely on an assumption of any particular parametric
-hazard function.
-</p>
-
-
-<h3>Duration-Based Quantities of Interest for the Cox Model</h3>
-
-<p>The <code><a href="#topic+coxed">coxed</a></code> function generates expected durations for individual
-observations and/or marginal changes in expected duration given a change in a covariate
-from the Cox proportional hazards model. Specifically, the methods can compute (1) the
-expected duration for each observation used to fit the Cox model, given the covariates,
-(2) the expected duration for a &quot;new&quot; observation with a covariate profile set by the
-analyst, or (3) the first difference, or change, in expected duration given two new data frames.
-</p>
-<p>There are two different methods of generating duration-based quantities in the package.
-<code><a href="#topic+coxed">coxed</a></code> with <code>type="npsf"</code> calculates expected durations by using the method proposed by
-Cox and Oakes (1984, 107-109) for estimating the cumulative baseline hazard function.  This
-method is nonparametric and results in a step-function representation of the cumulative
-baseline hazard. Cox and Oakes (1984, 108) show that the cumulative baseline hazard function can be estimated
-after fitting a Cox model by
-</p>
-<p style="text-align: center;"><code class="reqn">\hat{H}_0(t) = \sum_{\tau_j &lt; t}\frac{d_j}{\sum_{l\in\Re(\tau_j)}\hat{\psi}(l)},</code>
-</p>
-
-<p>where <code class="reqn">\tau_j</code> represents time points earlier than <code class="reqn">t</code>, <code class="reqn">d_j</code> is a count of the
-total number of failures at <code class="reqn">\tau_j</code>, <code class="reqn">\Re(\tau_j)</code> is the remaining risk set at <code class="reqn">\tau_j</code>,
-and <code class="reqn">\hat{\psi}(l)</code> represents the ELP from the Cox model for observations still in the
-risk set at <code class="reqn">\tau_j</code>. This equation is used calculate the cumulative baseline hazard at
-all time points in the range of observed durations. This estimate is a stepwise function
-because time points with no failures do not contribute to the cumulative hazard, so the function
-is flat until the next time point with observed failures.
-</p>
-<p>We extend this method to obtain expected durations by first calculating the baseline survivor
-function from the cumulative hazard function, using
-</p>
-<p style="text-align: center;"><code class="reqn">\hat{S}_0(t) = \exp[-\hat{H}_0(t)].</code>
-</p>
-
-<p>Each observation's survivor function is related to the baseline survivor function by
-</p>
-<p style="text-align: center;"><code class="reqn">\hat{S}_i(t) = \hat{S}_0(t)^{\hat{\psi}(i)},</code>
-</p>
-
-<p>where <code class="reqn">\hat{\psi}(i)</code> is the exponentiated linear predictor (ELP) for observation <code class="reqn">i</code>.
-These survivor functions can be used directly to calculate expected durations for each
-observation.  The expected value of a non-negative random variable can be calculated by
-</p>
-<p style="text-align: center;"><code class="reqn">E(X) = \int_0^{\infty} \bigg(1 - F(t)\bigg)dt,</code>
-</p>
-
-<p>where <code class="reqn">F(.)</code> is the cumulative distribution function for <code class="reqn">X</code>.  In the case of a
-duration variable <code class="reqn">t_i</code>, the expected duration is
-</p>
-<p style="text-align: center;"><code class="reqn">E(t_i) = \int_0^T S_i(t)\,dt,</code>
-</p>
-
-<p>where <code class="reqn">T</code> is the largest possible duration and <code class="reqn">S(t)</code> is the individual's survivor
-function.  We approximate this integral with a right Riemann-sum by calculating the survivor
-functions at every discrete time point from the minimum to the maximum observed durations,
-and multiplying these values by the length of the interval between time points with observed failures:
-</p>
-<p style="text-align: center;"><code class="reqn">E(t_i) \approx \sum_{t_j \in [0,T]} (t_j - t_{j-1})S_i(t_j).</code>
-</p>
-
-<p><code><a href="#topic+coxed">coxed</a></code> with <code>type="gam"</code> employs a generalized additive model (GAM) to map the model's estimated linear
-predictor values to duration times and proceeds according to five steps. First, it uses coefficient
-estimates from the Cox model, so researchers must first estimate the model just as they always have.
-Then the method computes expected values of risk for each observation by matrix-multiplying the
-covariates by the estimated coefficients from the model, then exponentiating the result. This creates
-the exponentiated linear predictor (ELP). Then the observations are ranked from smallest to largest
-according to their values of the ELP. This ranking is interpreted as the expected order of failure;
-the larger the value of the ELP, the sooner the model expects that observation to fail, relative to
-the other observations. The next step is to connect the model's expected risk for each observation (ELP) to duration time
-(the observed durations). A <code><a href="mgcv.html#topic+gam">gam</a></code> fits a model to data by using a series of locally-estimated polynomial
-splines set by the user (see, for example, Wood, Pya, and Saefken 2016). It is a flexible means of allowing for
-the possibility of nonlinear relationships between variables. <code>coxed</code> with <code>type="gam"</code> uses a GAM to model the observed
-durations as a function of the linear predictor ranks generated in the previous step. More specifically, the method
-utilizes a cubic regression spline to draw a smoothed line summarizing the bivariate relationship between
-the observed durations and the ranks. The GAM fit can be used directly to compute expected durations, given the covariates, for each observation
-in the data.
-</p>
-<p>See Kropko and Harden (2018) for further details about generating expected durations and marginal changes in expected
-duration from the Cox model. The <code><a href="#topic+coxed">coxed</a></code> function can also generate these quantities from data with time-varying
-covariates (see <code><a href="#topic+coxed.npsf.tvc">coxed.npsf.tvc</a></code> and <code><a href="#topic+coxed.gam.tvc">coxed.gam.tvc</a></code>).
-</p>
-
-
-<h3>Simulating duration data for the Cox model</h3>
-
-<p>The <code><a href="#topic+sim.survdata">sim.survdata</a></code> function generates simulated duration data. It can accept a user-supplied
-hazard function, or else it uses the flexible-hazard method described in Harden and Kropko (2018) to generate
-a hazard that does not necessarily conform to any parametric hazard function. It can generate data with time-varying
-covariates or coefficients. For time-varying covariates <code>type="tvc"</code> it employs the permutational algorithm by Sylvestre and Abrahamowicz (2008).
-For time-varying coefficients with <code>type="tvbeta"</code>, the first beta coefficient that is either supplied by the user or generated by
-the function is multiplied by the natural log of the failure time under consideration.
-</p>
-<p>The flexible-hazard method employed when <code>hazard.fun</code> is <code>NULL</code> generates a unique baseline hazard by fitting a curve to
-randomly-drawn points. This produces a wide variety
-of shapes for the baseline hazard, including those that are unimodal, multimodal, monotonically increasing or decreasing, and many other
-shapes. The method then generates a density function based on each baseline hazard and draws durations from it in a way that circumvents
-the need to calculate the inverse cumulative baseline hazard. Because the shape of the baseline hazard can vary considerably, this approach
-matches the Cox model’s inherent flexibility and better corresponds to the assumed data generating process (DGP) of the Cox model. Moreover,
-repeating this process over many iterations in a simulation produces simulated samples of data that better reflect the considerable
-heterogeneity in data used by applied researchers. This increases the generalizability of the simulation results. See Harden and Kropko (2018)
-for more detail.
-</p>
-<p>When generating a marginal effect, first the user specifies a covariate by typing its column number in the <code>X</code> matrix into the <code>covariate</code>
-argument, then specifies the high and low values at which to fix this covariate.  The function calculates the differences in expected duration for each
-observation when fixing the covariate to the high and low values.  If <code>compare</code> is <code>median</code>, the function reports the median of these differences,
-and if <code>compare</code> is <code>mean</code>, the function reports the median of these differences, but any function may be employed that takes a vector as input and
-outputs a scalar.
-</p>
-<p>If <code>censor.cond</code> is <code>FALSE</code> then a proportion of the observations specified by <code>censor</code> is randomly and uniformly selected to be right-censored.
-If <code>censor.cond</code> is <code>TRUE</code> then censoring depends on the covariates as follows: new coefficients are drawn from normal distributions with mean 0 and
-standard deviation of 0.1, and these new coefficients are used to create a new linear predictor using the <code>X</code> matrix.  The observations with the largest
-(100 x <code>censor</code>) percent of the linear predictors are designated as right-censored.
-</p>
-<p>Finally, <code>link[coxed]{survsim.plot}</code> is useful for visualizing the baseline functions, including hazard, that result from
-<code>link[coxed]{sim.survdata}</code> for a particular draw of simulated duration data. The function uses <code><a href="ggplot2.html#topic+ggplot">ggplot</a></code>
-to create line plots for the baseline failure PDF, the baseline failure CDF, the baseline survivor function,
-and the baseline hazard function over time.  The baseline functions and time are attributes of the
-<code><a href="#topic+sim.survdata">sim.survdata</a></code> output.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Jonathan Kropko &lt;jkropko@virginia.edu&gt; and Jeffrey J. Harden &lt;jharden2@nd.edu&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Harden, J. J. and Kropko, J. (2018) Simulating Duration Data for the Cox Model.
-<em>Political Science Research and Methods</em> <a href="https://doi.org/10.1017/psrm.2018.19">https://doi.org/10.1017/psrm.2018.19</a>
-</p>
-<p>Kropko, J. and Harden, J. J. (2018) Beyond the Hazard Ratio: Generating Expected
-Durations from the Cox Proportional Hazards Model. <em>British Journal of Political Science</em>
-<a href="https://doi.org/10.1017/S000712341700045X">https://doi.org/10.1017/S000712341700045X</a>
-</p>
-<p>Box-Steffensmeier, J. M. (1996)
-A Dynamic Analysis of The Role of War Chests in Campaign Strategy.
-<em>American Journal of Political Science</em> <strong>40</strong> 352-371
-</p>
-<p>Hyman, J. M. (1983) Accurate monotonicity preserving cubic interpolation. <em>SIAM J. Sci. Stat. Comput.</em> <strong>4</strong>, 645–654.
-<a href="https://doi.org/10.1137/0904045">https://doi.org/10.1137/0904045</a>
-</p>
-<p>Martin, L. W and Vanberg, G. (2003) Wasting Time?
-The Impact of Ideology and Size on Delay in Coalition Formation.
-<em>British Journal of Political Science</em> <strong>33</strong> 323-344
-<a href="https://doi.org/10.1017/S0007123403000140">https://doi.org/10.1017/S0007123403000140</a>
-</p>
-<p>Sylvestre M.-P., Abrahamowicz M. (2008) Comparison of algorithms to generate event times conditional on time-dependent
-covariates. <em>Statistics in Medicine</em> <strong>27(14)</strong>:2618–34. <a href="https://doi.org/10.1002/sim.3092">https://doi.org/10.1002/sim.3092</a>
-</p>
-<p>Wood, S.N., N. Pya and B. Saefken (2016) Smoothing parameter and model selection for general smooth models (with discussion). <em>Journal of the American Statistical Association</em> <strong>111</strong>, 1548-1575
-<a href="http://dx.doi.org/10.1080/01621459.2016.1180986">http://dx.doi.org/10.1080/01621459.2016.1180986</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## See the examples for coxed, sim.survdata, and survsim.plot
 </code></pre>
 
 <hr>

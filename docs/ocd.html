@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {ocd}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#ocd'><p>ocd: A package for high-dimensional multiscale online changepoint detection</p></a></li>
 <li><a href='#accessor'><p>Accessor functions to attributes of class ChangepointDetector</p></a></li>
 <li><a href='#Chan_update'><p>Processing a new data point for the 'Chan' class</p></a></li>
 <li><a href='#ChangepointDetector'><p>Constructor for the ChangepointDetector S3 class</p></a></li>
@@ -33,7 +34,6 @@ function processMathHTML() {
 <li><a href='#new_OCD'><p>constructor of subclass 'OCD' in class 'ChangepointDetector'</p></a></li>
 <li><a href='#new_XS'><p>constructor of subclass 'XS' in class 'ChangepointDetector'</p></a></li>
 <li><a href='#normalisedStatistics'><p>Compute maximum ratio between detection statistic and its threshold</p></a></li>
-<li><a href='#ocd'><p>ocd: A package for high-dimensional multiscale online changepoint detection</p></a></li>
 <li><a href='#ocd_update'><p>Processing a new data point for the 'OCD' class</p></a></li>
 <li><a href='#ParkfieldSensors'><p>Parkfield seismic sensor data</p></a></li>
 <li><a href='#print.ChangepointDetector'><p>Printing methods for the 'ChangepointDetector' class</p></a></li>
@@ -79,7 +79,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Description:</td>
-<td>Implements the algorithm in Chen, Wang and Samworth (2020) &lt;<a href="https://arxiv.org/abs/2003.03668">arXiv:2003.03668</a>&gt; for online detection of sudden mean changes in a sequence of high-dimensional observations. It also implements methods by Mei (2010) &lt;<a href="https://doi.org/10.1093%2Fbiomet%2Fasq010">doi:10.1093/biomet/asq010</a>&gt;, Xie and Siegmund (2013) &lt;<a href="https://doi.org/10.1214%2F13-AOS1094">doi:10.1214/13-AOS1094</a>&gt; and Chan (2017) &lt;<a href="https://doi.org/10.1214%2F17-AOS1546">doi:10.1214/17-AOS1546</a>&gt;.</td>
+<td>Implements the algorithm in Chen, Wang and Samworth (2020) &lt;<a href="https://doi.org/10.48550/arXiv.2003.03668">doi:10.48550/arXiv.2003.03668</a>&gt; for online detection of sudden mean changes in a sequence of high-dimensional observations. It also implements methods by Mei (2010) &lt;<a href="https://doi.org/10.1093%2Fbiomet%2Fasq010">doi:10.1093/biomet/asq010</a>&gt;, Xie and Siegmund (2013) &lt;<a href="https://doi.org/10.1214%2F13-AOS1094">doi:10.1214/13-AOS1094</a>&gt; and Chan (2017) &lt;<a href="https://doi.org/10.1214%2F17-AOS1546">doi:10.1214/17-AOS1546</a>&gt;.</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -106,6 +106,75 @@ function processMathHTML() {
 <td>2020-10-07 10:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='ocd'>ocd: A package for high-dimensional multiscale online changepoint detection</h2><span id='topic+ocd'></span><span id='topic+ocd-package'></span>
+
+<h3>Description</h3>
+
+<p>The ocd package provides the S3 class <code><a href="#topic+ChangepointDetector">ChangepointDetector</a></code> that
+processes data sequentially using the <code><a href="#topic+getData">getData</a></code> function and
+aims to detect change as soon as it occurs online subject to false alarm
+rates.
+</p>
+
+
+<h3>References</h3>
+
+<p>Chen, Y., Wang, T. and Samworth, R. J. (2020) High-dimensional
+multiscale online changepoint detection <em>Preprint</em>. arxiv:2003.03668.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+ChangepointDetector">ChangepointDetector</a></code> for detailed usage.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>set.seed(2020)
+p &lt;- 100
+thresh &lt;- setNames(c(11.62, 179.48, 54.87), c('diag', 'off_d', 'off_s'))
+detector &lt;- ChangepointDetector(dim=p, method='ocd', beta=1, thresh=thresh)
+old_mean &lt;- rnorm(p); new_mean &lt;- old_mean + c(rnorm(p/4), rep(0,3*p/4)) / sqrt(p/4)
+
+# using functional semantics native in R
+detector &lt;- setStatus(detector, 'estimating')
+for (i in 1:10000){
+  x_new &lt;- rnorm(p, mean=old_mean)
+  detector &lt;- getData(detector, x_new)
+}
+print(detector)
+
+detector &lt;- setStatus(detector, 'monitoring')
+for (i in 1:200){
+  x_new &lt;- rnorm(p, old_mean * (i &lt; 100) + new_mean * (i&gt;=100))
+  detector &lt;- getData(detector, x_new)
+}
+print(detector)
+
+## Not run: 
+# alternative way to write the above using the piping semantics
+library(magrittr)
+detector %&lt;&gt;% reset
+detector %&lt;&gt;% setStatus('estimating')
+for (i in 1:10000){
+  x_new &lt;- rnorm(p, mean=old_mean)
+  detector %&lt;&gt;% getData(x_new)
+}
+detector %&gt;% print
+
+detector %&lt;&gt;% setStatus('monitoring')
+for (i in 1:200){
+  x_new &lt;- rnorm(p, old_mean * (i &lt; 100) + new_mean * (i&gt;=100))
+  detector %&lt;&gt;% getData(x_new)
+}
+detector %&gt;% print
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='accessor'>Accessor functions to attributes of class ChangepointDetector</h2><span id='topic+accessor'></span><span id='topic+data_dim'></span><span id='topic+ocdMethod'></span><span id='topic+n_obs'></span><span id='topic+patience'></span><span id='topic+param'></span><span id='topic+thresholds'></span><span id='topic+baselineMean'></span><span id='topic+baselineSD'></span><span id='topic+tracked'></span><span id='topic+statistics'></span><span id='topic+status'></span>
 
@@ -1105,75 +1174,6 @@ detection.  <em>Ann. Statist.</em>, <strong>41</strong>, 670&ndash;692.
 <p>maximum of the ratio between the current test statistics and their
 respective thresholds.
 </p>
-
-<hr>
-<h2 id='ocd'>ocd: A package for high-dimensional multiscale online changepoint detection</h2><span id='topic+ocd'></span><span id='topic+ocd-package'></span>
-
-<h3>Description</h3>
-
-<p>The ocd package provides the S3 class <code><a href="#topic+ChangepointDetector">ChangepointDetector</a></code> that
-processes data sequentially using the <code><a href="#topic+getData">getData</a></code> function and
-aims to detect change as soon as it occurs online subject to false alarm
-rates.
-</p>
-
-
-<h3>References</h3>
-
-<p>Chen, Y., Wang, T. and Samworth, R. J. (2020) High-dimensional
-multiscale online changepoint detection <em>Preprint</em>. arxiv:2003.03668.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+ChangepointDetector">ChangepointDetector</a></code> for detailed usage.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>set.seed(2020)
-p &lt;- 100
-thresh &lt;- setNames(c(11.62, 179.48, 54.87), c('diag', 'off_d', 'off_s'))
-detector &lt;- ChangepointDetector(dim=p, method='ocd', beta=1, thresh=thresh)
-old_mean &lt;- rnorm(p); new_mean &lt;- old_mean + c(rnorm(p/4), rep(0,3*p/4)) / sqrt(p/4)
-
-# using functional semantics native in R
-detector &lt;- setStatus(detector, 'estimating')
-for (i in 1:10000){
-  x_new &lt;- rnorm(p, mean=old_mean)
-  detector &lt;- getData(detector, x_new)
-}
-print(detector)
-
-detector &lt;- setStatus(detector, 'monitoring')
-for (i in 1:200){
-  x_new &lt;- rnorm(p, old_mean * (i &lt; 100) + new_mean * (i&gt;=100))
-  detector &lt;- getData(detector, x_new)
-}
-print(detector)
-
-## Not run: 
-# alternative way to write the above using the piping semantics
-library(magrittr)
-detector %&lt;&gt;% reset
-detector %&lt;&gt;% setStatus('estimating')
-for (i in 1:10000){
-  x_new &lt;- rnorm(p, mean=old_mean)
-  detector %&lt;&gt;% getData(x_new)
-}
-detector %&gt;% print
-
-detector %&lt;&gt;% setStatus('monitoring')
-for (i in 1:200){
-  x_new &lt;- rnorm(p, old_mean * (i &lt; 100) + new_mean * (i&gt;=100))
-  detector %&lt;&gt;% getData(x_new)
-}
-detector %&gt;% print
-
-## End(Not run)
-</code></pre>
 
 <hr>
 <h2 id='ocd_update'>Processing a new data point for the 'OCD' class</h2><span id='topic+ocd_update'></span>

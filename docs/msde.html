@@ -13,13 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {msde}</h1>
 <h2>Contents</h2>
 <ul class="menu">
-<li><a href='#mou.loglik'><p>Loglikelihood for multivariate Ornstein-Uhlenbeck process.</p></a></li>
 <li><a href='#msde-package'><p>msde: Bayesian Inference for Multivariate Stochastic Differential Equations</p></a></li>
+<li><a href='#mou.loglik'><p>Loglikelihood for multivariate Ornstein-Uhlenbeck process.</p></a></li>
 <li><a href='#mvn.hyper.check'><p>Argument checking for the default multivariate normal prior.</p></a></li>
 <li><a href='#sde.diff'><p>SDE diffusion function.</p></a></li>
 <li><a href='#sde.drift'><p>SDE drift function.</p></a></li>
@@ -115,6 +115,93 @@ Equations</td>
 <td>2021-12-17 07:50:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='msde-package'>msde: Bayesian Inference for Multivariate Stochastic Differential Equations</h2><span id='topic+msde'></span><span id='topic+msde-package'></span>
+
+<h3>Description</h3>
+
+<p>Implements an MCMC sampler for the posterior distribution of arbitrary time-homogeneous multivariate stochastic differential equation (SDE) models with possibly latent components. The package provides a simple entry point to integrate user-defined models directly with the sampler's C++ code, and parallelizes large portions of the calculations when compiled with 'OpenMP'.
+</p>
+
+
+<h3>Details</h3>
+
+<p>See package vignettes; <code>vignette("msde-quicktut")</code> for a tutorial and <code>vignette("msde-exmodels")</code> for several example models.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Martin Lysy <a href="mailto:mlysy@uwaterloo.ca">mlysy@uwaterloo.ca</a>
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> Feiyu Zhu
+</p>
+</li>
+<li><p> JunYong Tong
+</p>
+</li></ul>
+
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> Trevor Kitt [contributor]
+</p>
+</li>
+<li><p> Nigel Delaney [contributor]
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# Posterior inference for Heston's model
+
+# compile model
+hfile &lt;- sde.examples("hest", file.only = TRUE)
+param.names &lt;- c("alpha", "gamma", "beta", "sigma", "rho")
+data.names &lt;- c("X", "Z")
+hmod &lt;- sde.make.model(ModelFile = hfile,
+                       param.names = param.names,
+                       data.names = data.names)
+# or simply load pre-compiled version
+hmod &lt;- sde.examples("hest")
+
+# Simulate data
+X0 &lt;- c(X = log(1000), Z = 0.1)
+theta &lt;- c(alpha = 0.1, gamma = 1, beta = 0.8, sigma = 0.6, rho = -0.8)
+dT &lt;- 1/252
+nobs &lt;- 1000
+hest.sim &lt;- sde.sim(model = hmod, x0 = X0, theta = theta,
+                    dt = dT, dt.sim = dT/10, nobs = nobs)
+
+# initialize MCMC sampler
+# both components observed, no missing data between observations
+init &lt;- sde.init(model = hmod, x = hest.sim$data,
+                 dt = hest.sim$dt, theta = theta)
+
+# Initialize posterior sampling argument
+nsamples &lt;- 1e4
+burn &lt;- 1e3
+hyper &lt;- NULL # flat prior
+hest.post &lt;- sde.post(model = hmod, init = init, hyper = hyper,
+                      nsamples = nsamples, burn = burn)
+
+# plot the histogram for the sampled parameters
+par(mfrow = c(2,3))
+for(ii in 1:length(hmod$param.names)) {
+  hist(hest.post$params[,ii],breaks=100, freq = FALSE,
+       main = parse(text = hmod$param.names[ii]), xlab = "")
+}
+
+</code></pre>
+
 <hr>
 <h2 id='mou.loglik'>Loglikelihood for multivariate Ornstein-Uhlenbeck process.</h2><span id='topic+mou.loglik'></span>
 
@@ -263,93 +350,6 @@ hist(L1.mcmc, breaks = 100, freq = FALSE,
 lines(L1.seq, L1.Kalman, col = "red")
 legend("topright", legend = c("Analytic", "MCMC"),
        pch = c(NA, 22), lty = c(1, NA), col = c("red", "black"))
-
-</code></pre>
-
-<hr>
-<h2 id='msde-package'>msde: Bayesian Inference for Multivariate Stochastic Differential Equations</h2><span id='topic+msde'></span><span id='topic+msde-package'></span>
-
-<h3>Description</h3>
-
-<p>Implements an MCMC sampler for the posterior distribution of arbitrary time-homogeneous multivariate stochastic differential equation (SDE) models with possibly latent components. The package provides a simple entry point to integrate user-defined models directly with the sampler's C++ code, and parallelizes large portions of the calculations when compiled with 'OpenMP'.
-</p>
-
-
-<h3>Details</h3>
-
-<p>See package vignettes; <code>vignette("msde-quicktut")</code> for a tutorial and <code>vignette("msde-exmodels")</code> for several example models.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Martin Lysy <a href="mailto:mlysy@uwaterloo.ca">mlysy@uwaterloo.ca</a>
-</p>
-<p>Authors:
-</p>
-
-<ul>
-<li><p> Feiyu Zhu
-</p>
-</li>
-<li><p> JunYong Tong
-</p>
-</li></ul>
-
-<p>Other contributors:
-</p>
-
-<ul>
-<li><p> Trevor Kitt [contributor]
-</p>
-</li>
-<li><p> Nigel Delaney [contributor]
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# Posterior inference for Heston's model
-
-# compile model
-hfile &lt;- sde.examples("hest", file.only = TRUE)
-param.names &lt;- c("alpha", "gamma", "beta", "sigma", "rho")
-data.names &lt;- c("X", "Z")
-hmod &lt;- sde.make.model(ModelFile = hfile,
-                       param.names = param.names,
-                       data.names = data.names)
-# or simply load pre-compiled version
-hmod &lt;- sde.examples("hest")
-
-# Simulate data
-X0 &lt;- c(X = log(1000), Z = 0.1)
-theta &lt;- c(alpha = 0.1, gamma = 1, beta = 0.8, sigma = 0.6, rho = -0.8)
-dT &lt;- 1/252
-nobs &lt;- 1000
-hest.sim &lt;- sde.sim(model = hmod, x0 = X0, theta = theta,
-                    dt = dT, dt.sim = dT/10, nobs = nobs)
-
-# initialize MCMC sampler
-# both components observed, no missing data between observations
-init &lt;- sde.init(model = hmod, x = hest.sim$data,
-                 dt = hest.sim$dt, theta = theta)
-
-# Initialize posterior sampling argument
-nsamples &lt;- 1e4
-burn &lt;- 1e3
-hyper &lt;- NULL # flat prior
-hest.post &lt;- sde.post(model = hmod, init = init, hyper = hyper,
-                      nsamples = nsamples, burn = burn)
-
-# plot the histogram for the sampled parameters
-par(mfrow = c(2,3))
-for(ii in 1:length(hmod$param.names)) {
-  hist(hest.post$params[,ii],breaks=100, freq = FALSE,
-       main = parse(text = hmod$param.names[ii]), xlab = "")
-}
 
 </code></pre>
 

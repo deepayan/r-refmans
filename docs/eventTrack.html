@@ -13,14 +13,14 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {eventTrack}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#eventTrack-package'><p>Event Prediction for Time-to-Event Endpoints</p></a></li>
 <li><a href='#bootstrapTimeToEvent'><p>Bootstrap the predicted time when a given number of events is reached, for hybrid Exponential model</p></a></li>
 <li><a href='#bootSurvivalSample'><p>Bootstrap survival data</p></a></li>
-<li><a href='#eventTrack-package'><p>Event Prediction for Time-to-Event Endpoints</p></a></li>
 <li><a href='#exactDatesFromMonths'><p>Compute exact timepoint when a certain number of events is reached, based on monthly number of events</p></a></li>
 <li><a href='#hybrid_Exponential'><p>Estimate survival function, as hybrid between Kaplan-Meier and Exponential tail</p></a></li>
 <li><a href='#kaplanMeier_at_t0'><p>Compute value of Kaplan-Meier estimate at a given time</p></a></li>
@@ -101,6 +101,122 @@ function processMathHTML() {
 <td>2023-08-08 11:20:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='eventTrack-package'>Event Prediction for Time-to-Event Endpoints</h2><span id='topic+eventTrack-package'></span><span id='topic+eventTrack'></span>
+
+<h3>Description</h3>
+
+<p>Implements the hybrid framework for event prediction described in Fang &amp; Zheng (2011). To estimate the survival function the event prediction is based on, a piecewise Exponential hazard function is fit to the time-to-event data to infer the potential change points. Prior to the last identified change point, the survival function is estimated using Kaplan-Meier, and the tail after the change point is fit using piecewise Exponential. The Weibull version described in Fang and Zheng (2011) is not implemented here.
+</p>
+<p>An example has been presented in this talk: <a href="https://baselbiometrics.github.io/home/docs/talks/20160428/1_Rufibach.pdf">https://baselbiometrics.github.io/home/docs/talks/20160428/1_Rufibach.pdf</a>.</p>
+
+
+<h3>Details</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+Package:  </td><td style="text-align: left;"> eventTrack  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Type:     </td><td style="text-align: left;"> Package    </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Version:  </td><td style="text-align: left;"> 1.0.3      </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+Date:     </td><td style="text-align: left;"> 2023-08-03 </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+License:  </td><td style="text-align: left;"> GPL (&gt;=2)  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+LazyLoad: </td><td style="text-align: left;"> yes        </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Validation status</h3>
+
+<p>The functions in this package have been written by Kaspar Rufibach and are generally to be considered experimental.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kaspar Rufibach (maintainer) <br /> 
+<a href="mailto:kaspar.rufibach@roche.com">kaspar.rufibach@roche.com</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# --------------------------------------------------
+# simulate data 
+# --------------------------------------------------
+set.seed(2021)
+n &lt;- 600
+time0 &lt;- rexp(n, rate = log(2) / 20)
+cens &lt;- rexp(n, rate = log(2) / 50)
+time &lt;- pmin(time0, cens)
+event &lt;- as.numeric(time0 &lt; cens)
+accrual_after_ccod &lt;- 1:(n - length(time)) / 30
+
+# --------------------------------------------------
+# compute hybrid estimate and predict timepoint
+# --------------------------------------------------
+plot(survfit(Surv(time, event) ~ 1), mark = "", xlim = c(0, 200), 
+     ylim = c(0, 1), conf.int = FALSE, xaxs = "i", yaxs = "i",
+     main = "estimated survival functions", xlab = "time", 
+     ylab = "survival probability", col = grey(0.75), lwd = 5)
+
+# how far out should we predict monthly number of events?
+future.units &lt;- 15
+tab &lt;- matrix(NA, ncol = 2, nrow = future.units)
+tab[, 1] &lt;- 1:nrow(tab)
+ts &lt;- seq(0, 100, by = 0.01)
+
+# --------------------------------------------------
+# starting from a piecewise Exponential hazard with 
+# K = 5 change points, infer the last "significant"
+# change point
+# --------------------------------------------------
+pe5 &lt;- piecewiseExp_MLE(time = time, event = event, K = 5)
+pe5.tab &lt;- piecewiseExp_test_changepoint(peMLE = pe5, alpha = 0.05)
+cp.select &lt;- max(c(0, as.numeric(pe5.tab[, "established change point"])), na.rm = TRUE)
+
+# the function predictEvents takes as an argument any survival function
+# hybrid exponential with cp.select
+St1 &lt;- function(t0, time, event, cp){
+     return(hybrid_Exponential(t0 = t0, time = time, event = event, 
+     changepoint = cp))}
+
+pe1 &lt;- predictEvents(time = time, event = event, 
+          St = function(t0){St1(t0, time = time, 
+          event = event, cp.select)}, accrual_after_ccod, 
+          future.units = future.units)
+tab[, 2] &lt;- pe1[, 2]
+lines(ts, St1(ts, time, event, cp.select), col = 2, lwd = 2)
+
+# --------------------------------------------------
+# compute exact date when we see targeted number of events
+# for hybrid Exponential model, through linear interpolation
+# --------------------------------------------------
+exactDatesFromMonths(predicted = tab, 450)
+</code></pre>
+
 <hr>
 <h2 id='bootstrapTimeToEvent'>Bootstrap the predicted time when a given number of events is reached, for hybrid Exponential model</h2><span id='topic+bootstrapTimeToEvent'></span>
 
@@ -300,122 +416,6 @@ event &lt;- sample(round(runif(n, 0, 1)))
 # draw 20 bootstrap samples of size 10
 # --------------------------------------------------
 bootSurvivalSample(surv.obj = Surv(time, event), n = 10, M = 20)
-</code></pre>
-
-<hr>
-<h2 id='eventTrack-package'>Event Prediction for Time-to-Event Endpoints</h2><span id='topic+eventTrack-package'></span><span id='topic+eventTrack'></span>
-
-<h3>Description</h3>
-
-<p>Implements the hybrid framework for event prediction described in Fang &amp; Zheng (2011). To estimate the survival function the event prediction is based on, a piecewise Exponential hazard function is fit to the time-to-event data to infer the potential change points. Prior to the last identified change point, the survival function is estimated using Kaplan-Meier, and the tail after the change point is fit using piecewise Exponential. The Weibull version described in Fang and Zheng (2011) is not implemented here.
-</p>
-<p>An example has been presented in this talk: <a href="https://baselbiometrics.github.io/home/docs/talks/20160428/1_Rufibach.pdf">https://baselbiometrics.github.io/home/docs/talks/20160428/1_Rufibach.pdf</a>.</p>
-
-
-<h3>Details</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-Package:  </td><td style="text-align: left;"> eventTrack  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Type:     </td><td style="text-align: left;"> Package    </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Version:  </td><td style="text-align: left;"> 1.0.3      </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-Date:     </td><td style="text-align: left;"> 2023-08-03 </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-License:  </td><td style="text-align: left;"> GPL (&gt;=2)  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-LazyLoad: </td><td style="text-align: left;"> yes        </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Validation status</h3>
-
-<p>The functions in this package have been written by Kaspar Rufibach and are generally to be considered experimental.</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Kaspar Rufibach (maintainer) <br /> 
-<a href="mailto:kaspar.rufibach@roche.com">kaspar.rufibach@roche.com</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# --------------------------------------------------
-# simulate data 
-# --------------------------------------------------
-set.seed(2021)
-n &lt;- 600
-time0 &lt;- rexp(n, rate = log(2) / 20)
-cens &lt;- rexp(n, rate = log(2) / 50)
-time &lt;- pmin(time0, cens)
-event &lt;- as.numeric(time0 &lt; cens)
-accrual_after_ccod &lt;- 1:(n - length(time)) / 30
-
-# --------------------------------------------------
-# compute hybrid estimate and predict timepoint
-# --------------------------------------------------
-plot(survfit(Surv(time, event) ~ 1), mark = "", xlim = c(0, 200), 
-     ylim = c(0, 1), conf.int = FALSE, xaxs = "i", yaxs = "i",
-     main = "estimated survival functions", xlab = "time", 
-     ylab = "survival probability", col = grey(0.75), lwd = 5)
-
-# how far out should we predict monthly number of events?
-future.units &lt;- 15
-tab &lt;- matrix(NA, ncol = 2, nrow = future.units)
-tab[, 1] &lt;- 1:nrow(tab)
-ts &lt;- seq(0, 100, by = 0.01)
-
-# --------------------------------------------------
-# starting from a piecewise Exponential hazard with 
-# K = 5 change points, infer the last "significant"
-# change point
-# --------------------------------------------------
-pe5 &lt;- piecewiseExp_MLE(time = time, event = event, K = 5)
-pe5.tab &lt;- piecewiseExp_test_changepoint(peMLE = pe5, alpha = 0.05)
-cp.select &lt;- max(c(0, as.numeric(pe5.tab[, "established change point"])), na.rm = TRUE)
-
-# the function predictEvents takes as an argument any survival function
-# hybrid exponential with cp.select
-St1 &lt;- function(t0, time, event, cp){
-     return(hybrid_Exponential(t0 = t0, time = time, event = event, 
-     changepoint = cp))}
-
-pe1 &lt;- predictEvents(time = time, event = event, 
-          St = function(t0){St1(t0, time = time, 
-          event = event, cp.select)}, accrual_after_ccod, 
-          future.units = future.units)
-tab[, 2] &lt;- pe1[, 2]
-lines(ts, St1(ts, time, event, cp.select), col = 2, lwd = 2)
-
-# --------------------------------------------------
-# compute exact date when we see targeted number of events
-# for hybrid Exponential model, through linear interpolation
-# --------------------------------------------------
-exactDatesFromMonths(predicted = tab, 450)
 </code></pre>
 
 <hr>

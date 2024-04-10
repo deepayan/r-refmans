@@ -13,16 +13,16 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {JuliaConnectoR}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#JuliaConnectoR-package'><p>A Functionally Oriented Interface for Integrating Julia with R</p></a></li>
 <li><a href='#AccessMutate.JuliaProxy'><p>Access or mutate Julia objects via proxy objects</p></a></li>
 <li><a href='#as.data.frame.JuliaProxy'><p>Coerce a Julia Table to a Data Frame</p></a></li>
 <li><a href='#EnvVars-JuliaConnectoR'><p>Environment variables used by the <span class="pkg">JuliaConnectoR</span></p></a></li>
 <li><a href='#juliaCall'><p>Call a Julia function by name</p></a></li>
-<li><a href='#JuliaConnectoR-package'><p>A Functionally Oriented Interface for Integrating Julia with R</p></a></li>
 <li><a href='#juliaEval'><p>Evaluate a Julia expression</p></a></li>
 <li><a href='#juliaExpr'><p>Mark a string as Julia expression</p></a></li>
 <li><a href='#juliaFun'><p>Wrap a Julia function in an R function</p></a></li>
@@ -109,6 +109,290 @@ function processMathHTML() {
 <td>2023-12-06 15:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='JuliaConnectoR-package'>A Functionally Oriented Interface for Integrating Julia with R</h2><span id='topic+JuliaConnectoR-package'></span>
+
+<h3>Description</h3>
+
+<p>This package provides a functionally oriented interface between R and Julia.
+The goal is to call functions from Julia packages directly as R functions.
+</p>
+
+
+<h3>Details</h3>
+
+<p>This R-package provides a functionally oriented interface between R and Julia.
+The goal is to call functions from Julia packages directly as R functions.
+Julia functions imported via the <span class="pkg">JuliaConnectoR</span> can accept and return R variables.
+It is also possible to pass R functions as arguments in place of Julia functions,
+which allows <em>callbacks</em> from Julia to R.
+</p>
+<p>From a technical perspective, R data structures are serialized with an optimized custom streaming format,
+sent to a (local) Julia TCP server, and translated to Julia data structures by Julia.
+The results are returned back to R.
+Simple objects, which correspond to vectors in R, are directly translated.
+Complex Julia structures are by default transferred to R by reference via proxy objects.
+This enables an effective and intuitive handling of the Julia objects via R.
+It is also possible to fully translate Julia objects to R objects.
+These translated objects are annotated with information
+about the original Julia objects, such that they can be translated back to Julia.
+This makes it also possible to serialize them as R objects.
+</p>
+
+
+<h3>Setup</h3>
+
+<p>The package requires that
+<a href="https://julialang.org/downloads/">Julia (Version <code class="reqn">\geq</code> 1.0) is installed</a>
+and that the Julia executable is in the system search <span class="env">PATH</span> or that the
+<span class="env">JULIA_BINDIR</span> environment variable is set to the <code>bin</code> directory of
+the Julia installation.
+If the <span class="env">JULIA_BINDIR</span> variable is set, it takes precedence over
+looking in the executable path.
+By setting the <span class="env">JULIA_BINDIR</span> variable before starting Julia,
+it is therefore possible to use different installations of Julia on the
+same machine without having to change the executable path.
+</p>
+
+
+<h3>Function overview</h3>
+
+<p>The function <code><a href="#topic+juliaImport">juliaImport</a></code> makes
+functions and data types from Julia packages or modules available as R functions.
+</p>
+<p>If only a single Julia function needs to be imported in R, <code><a href="#topic+juliaFun">juliaFun</a></code>
+can do this. The simplest way to call a Julia function without any importing
+is to use <code><a href="#topic+juliaCall">juliaCall</a></code> with the function name given
+as character string.
+</p>
+<p>For evaluating expressions in Julia, <code><a href="#topic+juliaEval">juliaEval</a></code> and
+<code><a href="#topic+juliaLet">juliaLet</a></code> can be used. With <code><a href="#topic+juliaLet">juliaLet</a></code> one can use
+R variables in a expression.
+</p>
+<p><code><a href="#topic+juliaExpr">juliaExpr</a></code> makes it possible use complex Julia syntax in R via R strings
+that contain Julia expressions.
+</p>
+<p>With <code><a href="#topic+juliaGet">juliaGet</a></code>, a full translation of a Julia proxy object into an R object
+is performed.
+</p>
+<p><code>as.data.frame</code> is overloaded (<code><a href="#topic+as.data.frame.JuliaProxy">as.data.frame.JuliaProxy</a></code>)
+for translating Julia objects that implement the
+<a href="https://github.com/JuliaData/Tables.jl"><code>Tables</code></a> interface
+to R data frames.
+</p>
+
+
+<h3>Translation</h3>
+
+<p>Since Julia is more type-sensitive than R, and many Julia functions expect to be called
+using specific types, it is important to know the translations of the R data structures
+to Julia.
+</p>
+
+
+<h4>Translation from R to Julia</h4>
+
+<p>The type correspondences of the basic R data types in Julia are the following:
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<strong>R</strong> </td><td style="text-align: center;">  </td><td style="text-align: left;"> <strong>Julia</strong></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code>integer</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Int</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code>double</code>  </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Float64</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code>logical</code>   </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Bool</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code>character</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>String</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code>complex</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Complex{Float64}</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code>raw</code>  </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>UInt8</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code>symbol</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Symbol</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>R vectors of length 1 of the types in the table above will be translated to the types shown.
+</p>
+<p>R vectors or arrays with more than one element will be translated to Julia <code>Array</code>s
+of the corresponding types. The dimensions of an R array, as returned by <code>dim()</code>,
+will also be respected.
+For example, the R integer vector <code>c(1L, 2L)</code> will be of type <code>Vector{Int}</code>,
+or <code>Array{Int,1}</code>, in Julia.
+A double matrix such as <code>matrix(c(1,2,3,4), nrow = 2)</code>
+will be of type <code>Array{Float64,2}</code>.
+</p>
+<p>Missing values (<code>NA</code>) in R are translated to <code>missing</code> values in Julia.
+R vectors and arrays with missing values are converted to Julia arrays
+of type <code>Array{Union{Missing, T}}</code>, where <code>T</code> stands for the translated
+type in the table above.
+</p>
+<p>R lists are translated as <code>Vector{T}</code> in Julia, with <code>T</code> being
+the most specific supertype of the list elements after translation to Julia.
+</p>
+<p>An R function that is handed to Julia as argument in a function
+call is translated to a Julia callback function that will call the given R function.
+</p>
+<p>Strings with attribute <code>"JLEXPR"</code>
+will be evaluated as Julia expressions,
+and the value is used in their place (see <code><a href="#topic+juliaExpr">juliaExpr</a></code>).
+</p>
+<p>R data frames are translated to objects that implement the Julia
+<a href="https://github.com/JuliaData/Tables.jl"><code>Tables</code></a> interface.
+Such objects can be used by functions of many different
+Julia packages that deal with table-like data structures.
+</p>
+
+
+
+<h4>Translation from Julia to R</h4>
+
+<p>The type system of Julia is richer than that of R. Therefore, to be able to turn
+the Julia data structures that have been translated to R back to the original Julia
+data structures, the original Julia types are added to the translated Julia objects
+in R via the attribute <code>"JLTYPE"</code>.
+When passed to Julia, R variables with this
+attribute will be coerced to the respective type.
+This allows the reconstruction of the objects
+with their original type.
+</p>
+<p>It should not be necessary to worry too much
+about the translations from Julia to R because the resulting R objects should be
+intuitive to handle.
+</p>
+<p>The following table shows how basic R-compatible types of Julia are translated to R:
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<strong>Julia</strong> </td><td style="text-align: center;">  </td><td style="text-align: left;"> <strong>R</strong> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Float64</code></td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>double</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Float16</code>, <code>Float32</code>, <code>UInt32</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>double</code> with type attribute </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Int64</code> that fits in 32 bits </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>integer</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Int64</code> not fitting in 32 bits </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>double</code> with type attribute </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Int8</code>, <code>Int16</code>, <code>UInt16</code>, <code>Int32</code>, <code>Char</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>integer</code> with type attribute </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>UInt8</code></td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>raw</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>UInt64</code>, <code>Int128</code>, <code>UInt128</code>, <code>Ptr</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>raw</code> with type attribute </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Complex{Float64}</code></td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>complex</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Complex{Int<var>X</var>}</code> with <var>X</var> <code class="reqn">\leq</code> 64 </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>complex</code> with type attribute </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+ <code>Complex{Float<var>X</var>}</code> with <var>X</var> <code class="reqn">\leq</code> 32 </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>complex</code> with type attribute </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+<p>Julia <code>Array</code>s of these types are translated to <code>vector</code>s or <code>array</code>s of the corresponding types in R.
+</p>
+<p>Julia functions are translated to R functions that call the Julia function.
+These functions can also be translated back to the
+corresponding Julia functions when used as argument of another function
+(see <code><a href="#topic+juliaFun">juliaFun</a></code>).
+</p>
+<p>Julia object of other types, in particular <code>struct</code>s, <code>Tuple</code>s, <code>NamedTuple</code>s,
+and <code>AbstractArray</code>s of other types are transferred by reference in the form of proxy objects.
+Elements and properties of these proxy objects can be accessed and mutated via the operators <code>`[[`</code>,
+<code>`[`</code>, and <code>`$`</code> (see <a href="#topic+AccessMutate.JuliaProxy">AccessMutate.JuliaProxy</a>).
+</p>
+<p>A full translation of the proxy objects into R objects, which also allows saving these objects in R,
+is possible via <code><a href="#topic+juliaGet">juliaGet</a></code>.
+</p>
+
+
+
+<h3>Limitations</h3>
+
+
+
+<h4>Possible inexactness when dealing with large 64 bit integers</h4>
+
+<p>Numbers of type <code>Int64</code> that are too big to be expressed as 32-bit
+<code>integer</code> values in R will be translated to <code>double</code> numbers.
+This may lead to a inaccurate results for very large numbers,
+when they are translated back to Julia, since, e. g.,
+<code>(2^53 + 1) - 2^53 == 0</code> holds for double-precision
+floating point numbers.
+</p>
+
+
+
+<h4>Non-ASCII characters in variable names</h4>
+
+<p>Julia uses UTF-8 as default string encoding everywhere.
+In particular, Julia permits characters that are not
+expressible in encodings such as &quot;Latin-1&quot; in variable and function names.
+In R, the encoding of names in lists of environments depends on the platform.
+On locales without UTF-8 as native encoding, (i.e., mostly Windows),
+unexpected translations may happen when using UTF-8 characters in strings.
+</p>
+<p>When using <code><a href="#topic+juliaImport">juliaImport</a></code> for importing packages/modules,
+alternative names for variables using non-ASCII characters are added,
+which are compatible across different encodings.
+(For more information, see <code><a href="#topic+juliaImport">juliaImport</a></code>.)
+</p>
+<p>In other places, such as when evaluating code via <code><a href="#topic+juliaEval">juliaEval</a></code> and
+<code><a href="#topic+juliaLet">juliaLet</a></code>, the problem cannot be addressed.
+It should therefore be avoided to use non-ASCII characters
+if code should be portable across different platforms.
+</p>
+
+
 <hr>
 <h2 id='AccessMutate.JuliaProxy'>Access or mutate Julia objects via proxy objects</h2><span id='topic+AccessMutate.JuliaProxy'></span><span id='topic++24.JuliaStructProxy'></span><span id='topic++24+3C-.JuliaStructProxy'></span><span id='topic++5B.JuliaProxy'></span><span id='topic++5B+3C-.JuliaProxy'></span><span id='topic++5B.JuliaSimpleArrayProxy'></span><span id='topic++5B+5B.JuliaArrayProxy'></span><span id='topic++5B+5B+3C-.JuliaArrayProxy'></span><span id='topic++5B+5B.JuliaStructProxy'></span><span id='topic++5B+5B+3C-.JuliaStructProxy'></span><span id='topic+length.JuliaArrayProxy'></span><span id='topic+dim.JuliaArrayProxy'></span>
 
@@ -428,290 +712,6 @@ If Julia returns <code>nothing</code>, an invisible <code>NULL</code> is returne
 
 
 </code></pre>
-
-<hr>
-<h2 id='JuliaConnectoR-package'>A Functionally Oriented Interface for Integrating Julia with R</h2><span id='topic+JuliaConnectoR-package'></span>
-
-<h3>Description</h3>
-
-<p>This package provides a functionally oriented interface between R and Julia.
-The goal is to call functions from Julia packages directly as R functions.
-</p>
-
-
-<h3>Details</h3>
-
-<p>This R-package provides a functionally oriented interface between R and Julia.
-The goal is to call functions from Julia packages directly as R functions.
-Julia functions imported via the <span class="pkg">JuliaConnectoR</span> can accept and return R variables.
-It is also possible to pass R functions as arguments in place of Julia functions,
-which allows <em>callbacks</em> from Julia to R.
-</p>
-<p>From a technical perspective, R data structures are serialized with an optimized custom streaming format,
-sent to a (local) Julia TCP server, and translated to Julia data structures by Julia.
-The results are returned back to R.
-Simple objects, which correspond to vectors in R, are directly translated.
-Complex Julia structures are by default transferred to R by reference via proxy objects.
-This enables an effective and intuitive handling of the Julia objects via R.
-It is also possible to fully translate Julia objects to R objects.
-These translated objects are annotated with information
-about the original Julia objects, such that they can be translated back to Julia.
-This makes it also possible to serialize them as R objects.
-</p>
-
-
-<h3>Setup</h3>
-
-<p>The package requires that
-<a href="https://julialang.org/downloads/">Julia (Version <code class="reqn">\geq</code> 1.0) is installed</a>
-and that the Julia executable is in the system search <span class="env">PATH</span> or that the
-<span class="env">JULIA_BINDIR</span> environment variable is set to the <code>bin</code> directory of
-the Julia installation.
-If the <span class="env">JULIA_BINDIR</span> variable is set, it takes precedence over
-looking in the executable path.
-By setting the <span class="env">JULIA_BINDIR</span> variable before starting Julia,
-it is therefore possible to use different installations of Julia on the
-same machine without having to change the executable path.
-</p>
-
-
-<h3>Function overview</h3>
-
-<p>The function <code><a href="#topic+juliaImport">juliaImport</a></code> makes
-functions and data types from Julia packages or modules available as R functions.
-</p>
-<p>If only a single Julia function needs to be imported in R, <code><a href="#topic+juliaFun">juliaFun</a></code>
-can do this. The simplest way to call a Julia function without any importing
-is to use <code><a href="#topic+juliaCall">juliaCall</a></code> with the function name given
-as character string.
-</p>
-<p>For evaluating expressions in Julia, <code><a href="#topic+juliaEval">juliaEval</a></code> and
-<code><a href="#topic+juliaLet">juliaLet</a></code> can be used. With <code><a href="#topic+juliaLet">juliaLet</a></code> one can use
-R variables in a expression.
-</p>
-<p><code><a href="#topic+juliaExpr">juliaExpr</a></code> makes it possible use complex Julia syntax in R via R strings
-that contain Julia expressions.
-</p>
-<p>With <code><a href="#topic+juliaGet">juliaGet</a></code>, a full translation of a Julia proxy object into an R object
-is performed.
-</p>
-<p><code>as.data.frame</code> is overloaded (<code><a href="#topic+as.data.frame.JuliaProxy">as.data.frame.JuliaProxy</a></code>)
-for translating Julia objects that implement the
-<a href="https://github.com/JuliaData/Tables.jl"><code>Tables</code></a> interface
-to R data frames.
-</p>
-
-
-<h3>Translation</h3>
-
-<p>Since Julia is more type-sensitive than R, and many Julia functions expect to be called
-using specific types, it is important to know the translations of the R data structures
-to Julia.
-</p>
-
-
-<h4>Translation from R to Julia</h4>
-
-<p>The type correspondences of the basic R data types in Julia are the following:
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-<strong>R</strong> </td><td style="text-align: center;">  </td><td style="text-align: left;"> <strong>Julia</strong></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code>integer</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Int</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code>double</code>  </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Float64</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code>logical</code>   </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Bool</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code>character</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>String</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code>complex</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Complex{Float64}</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code>raw</code>  </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>UInt8</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code>symbol</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>Symbol</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>R vectors of length 1 of the types in the table above will be translated to the types shown.
-</p>
-<p>R vectors or arrays with more than one element will be translated to Julia <code>Array</code>s
-of the corresponding types. The dimensions of an R array, as returned by <code>dim()</code>,
-will also be respected.
-For example, the R integer vector <code>c(1L, 2L)</code> will be of type <code>Vector{Int}</code>,
-or <code>Array{Int,1}</code>, in Julia.
-A double matrix such as <code>matrix(c(1,2,3,4), nrow = 2)</code>
-will be of type <code>Array{Float64,2}</code>.
-</p>
-<p>Missing values (<code>NA</code>) in R are translated to <code>missing</code> values in Julia.
-R vectors and arrays with missing values are converted to Julia arrays
-of type <code>Array{Union{Missing, T}}</code>, where <code>T</code> stands for the translated
-type in the table above.
-</p>
-<p>R lists are translated as <code>Vector{T}</code> in Julia, with <code>T</code> being
-the most specific supertype of the list elements after translation to Julia.
-</p>
-<p>An R function that is handed to Julia as argument in a function
-call is translated to a Julia callback function that will call the given R function.
-</p>
-<p>Strings with attribute <code>"JLEXPR"</code>
-will be evaluated as Julia expressions,
-and the value is used in their place (see <code><a href="#topic+juliaExpr">juliaExpr</a></code>).
-</p>
-<p>R data frames are translated to objects that implement the Julia
-<a href="https://github.com/JuliaData/Tables.jl"><code>Tables</code></a> interface.
-Such objects can be used by functions of many different
-Julia packages that deal with table-like data structures.
-</p>
-
-
-
-<h4>Translation from Julia to R</h4>
-
-<p>The type system of Julia is richer than that of R. Therefore, to be able to turn
-the Julia data structures that have been translated to R back to the original Julia
-data structures, the original Julia types are added to the translated Julia objects
-in R via the attribute <code>"JLTYPE"</code>.
-When passed to Julia, R variables with this
-attribute will be coerced to the respective type.
-This allows the reconstruction of the objects
-with their original type.
-</p>
-<p>It should not be necessary to worry too much
-about the translations from Julia to R because the resulting R objects should be
-intuitive to handle.
-</p>
-<p>The following table shows how basic R-compatible types of Julia are translated to R:
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-<strong>Julia</strong> </td><td style="text-align: center;">  </td><td style="text-align: left;"> <strong>R</strong> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Float64</code></td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>double</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Float16</code>, <code>Float32</code>, <code>UInt32</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>double</code> with type attribute </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Int64</code> that fits in 32 bits </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>integer</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Int64</code> not fitting in 32 bits </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"> <code>double</code> with type attribute </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Int8</code>, <code>Int16</code>, <code>UInt16</code>, <code>Int32</code>, <code>Char</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>integer</code> with type attribute </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>UInt8</code></td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>raw</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>UInt64</code>, <code>Int128</code>, <code>UInt128</code>, <code>Ptr</code> </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>raw</code> with type attribute </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Complex{Float64}</code></td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>complex</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Complex{Int<var>X</var>}</code> with <var>X</var> <code class="reqn">\leq</code> 64 </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>complex</code> with type attribute </td>
-</tr>
-<tr>
- <td style="text-align: left;">
- <code>Complex{Float<var>X</var>}</code> with <var>X</var> <code class="reqn">\leq</code> 32 </td><td style="text-align: center;"> <code class="reqn">\rightarrow</code> </td><td style="text-align: left;"><code>complex</code> with type attribute </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-<p>Julia <code>Array</code>s of these types are translated to <code>vector</code>s or <code>array</code>s of the corresponding types in R.
-</p>
-<p>Julia functions are translated to R functions that call the Julia function.
-These functions can also be translated back to the
-corresponding Julia functions when used as argument of another function
-(see <code><a href="#topic+juliaFun">juliaFun</a></code>).
-</p>
-<p>Julia object of other types, in particular <code>struct</code>s, <code>Tuple</code>s, <code>NamedTuple</code>s,
-and <code>AbstractArray</code>s of other types are transferred by reference in the form of proxy objects.
-Elements and properties of these proxy objects can be accessed and mutated via the operators <code>`[[`</code>,
-<code>`[`</code>, and <code>`$`</code> (see <a href="#topic+AccessMutate.JuliaProxy">AccessMutate.JuliaProxy</a>).
-</p>
-<p>A full translation of the proxy objects into R objects, which also allows saving these objects in R,
-is possible via <code><a href="#topic+juliaGet">juliaGet</a></code>.
-</p>
-
-
-
-<h3>Limitations</h3>
-
-
-
-<h4>Possible inexactness when dealing with large 64 bit integers</h4>
-
-<p>Numbers of type <code>Int64</code> that are too big to be expressed as 32-bit
-<code>integer</code> values in R will be translated to <code>double</code> numbers.
-This may lead to a inaccurate results for very large numbers,
-when they are translated back to Julia, since, e. g.,
-<code>(2^53 + 1) - 2^53 == 0</code> holds for double-precision
-floating point numbers.
-</p>
-
-
-
-<h4>Non-ASCII characters in variable names</h4>
-
-<p>Julia uses UTF-8 as default string encoding everywhere.
-In particular, Julia permits characters that are not
-expressible in encodings such as &quot;Latin-1&quot; in variable and function names.
-In R, the encoding of names in lists of environments depends on the platform.
-On locales without UTF-8 as native encoding, (i.e., mostly Windows),
-unexpected translations may happen when using UTF-8 characters in strings.
-</p>
-<p>When using <code><a href="#topic+juliaImport">juliaImport</a></code> for importing packages/modules,
-alternative names for variables using non-ASCII characters are added,
-which are compatible across different encodings.
-(For more information, see <code><a href="#topic+juliaImport">juliaImport</a></code>.)
-</p>
-<p>In other places, such as when evaluating code via <code><a href="#topic+juliaEval">juliaEval</a></code> and
-<code><a href="#topic+juliaLet">juliaLet</a></code>, the problem cannot be addressed.
-It should therefore be avoided to use non-ASCII characters
-if code should be portable across different platforms.
-</p>
-
 
 <hr>
 <h2 id='juliaEval'>Evaluate a Julia expression</h2><span id='topic+juliaEval'></span>

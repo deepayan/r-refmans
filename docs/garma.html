@@ -13,18 +13,18 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {garma}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#garma'><p>garma: A package for estimating and foreasting Gegenbauer time series models.</p></a></li>
 <li><a href='#AIC.garma_model'><p>AIC for model</p></a></li>
 <li><a href='#autoplot.garma_model'><p>ggplot of the Forecasts of the model.</p></a></li>
 <li><a href='#coef.garma_model'><p>Model Coefficients</p></a></li>
 <li><a href='#extract_arma'><p>Extract underlying ARMA process.</p></a></li>
 <li><a href='#fitted.garma_model'><p>Fitted values</p></a></li>
 <li><a href='#forecast.garma_model'><p>Forecast future values.</p></a></li>
-<li><a href='#garma'><p>garma: A package for estimating and foreasting Gegenbauer time series models.</p></a></li>
 <li><a href='#garma_ggtsdisplay'><p>ggtsdisplay of underlying ARMA process.</p></a></li>
 <li><a href='#gg_raw_pgram'><p>Display raw periodogram</p></a></li>
 <li><a href='#ggbr_semipara'><p>Extract semiparametric estimates of the Gegenbauer factors.</p></a></li>
@@ -127,6 +127,230 @@ BB, GA, dfoptim, pso, FKF, tswge, hypergeo, ltsa</td>
 <td>2023-08-19 12:52:32 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='garma'>garma: A package for estimating and foreasting Gegenbauer time series models.</h2><span id='topic+garma'></span><span id='topic+_PACKAGE'></span><span id='topic+garma-package'></span>
+
+<h3>Description</h3>
+
+<p>The GARMA package provides the main function &quot;garma&quot; as well as print, summary,
+predict, forecast and plot/ggplot options.
+</p>
+<p>The garma function is the main function for the garma package. Depending on the parameters it will
+calculate the parameter estimates for the GARMA process, and if available the standard errors (se's)
+for those parameters.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>garma(
+  x,
+  order = list(0, 0, 0),
+  k = 1,
+  include.mean = (order[2] == 0),
+  include.drift = FALSE,
+  method = "Whittle",
+  d_lim = c(0, 0.5),
+  freq_lim = c(0, 0.5),
+  opt_method = NULL,
+  m_trunc = 50,
+  fitted = TRUE,
+  control = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="garma_+3A_x">x</code></td>
+<td>
+<p>(num) This should be a numeric vector representing the process to estimate. A minimum length of 96 is required.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_order">order</code></td>
+<td>
+<p>(list) This should be a list (similar to the stats::arima order parameter) which will give the order of the process to fit.
+The format should be list(p,d,q) where p, d, and q are all positive integers. p represents the degree of the
+autoregressive process to fit, q represents the order of the moving average process to fit and d is the (integer)
+differencing to apply prior to any fitting. WARNING: Currently only d==0 or d==1 are allowed.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_k">k</code></td>
+<td>
+<p>(int) This is the number of (multiplicative) Gegenbauer terms to fit. Note the 'QML' method only allows k=1.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_include.mean">include.mean</code></td>
+<td>
+<p>(bool) A boolean value indicating whether a mean should be fit.
+Note that no mean term is fit if the series is integer differenced.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_include.drift">include.drift</code></td>
+<td>
+<p>(bool) A boolean value indicating whether a 'drift' term should be fit to the predictions.
+The default is to fit a drift term to the predictions if the process is integer-differenced.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_method">method</code></td>
+<td>
+<p>(character) This defines the estimation method for the routine. The valid values are 'CSS', 'Whittle', 'QML' and 'WLL'.
+The default (Whittle) will generally return very accurate estimates quite quickly, provided the assumption of a Gaussian
+distribution is even approximately correct, and is probably the method of choice for most users. For the theory behind this, refer Giraitis et. al. (2001)
+'CSS' is a conditional 'sum-of-squares' technique and can be quite slow. Reference: Chung (1996).
+'WLL' is a new technique which appears to work well even if the <code class="reqn">\epsilon_{t}</code> are highly skewed and/or have heavy tails (skewed and/or lepto-kurtic).
+However the asymptotic theory for the WLL method is not complete and so standard errors are not available for most parameters.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_d_lim">d_lim</code></td>
+<td>
+<p>(list) the limits for the d parameter. The default is c(0,0.5), which restricts the model to be stationary.
+However sometimes it is desirable to understand what the unrestricted value might be.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_freq_lim">freq_lim</code></td>
+<td>
+<p>(list) the limits for the frequencies to be searched for Gegenbauer factors.
+When searching for Gegenbauer peaks, when there is an AR(1) component, the peaks corresponding to the AR(1)
+can be higher than the Gegenbauer peaks. Setting these limits to c(0.05,0.45) or similar can help the routine find the correct optima.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_opt_method">opt_method</code></td>
+<td>
+<p>(character) This names the optimisation method used to find the parameter estimates.
+This may be a list of methods, in which case the methods are applied in turn,
+each using the results of the previous one as the starting point for the next. The default is to use c('directL', 'solnp') when k&lt;2 and 'solnp' when k&gt;=2. The
+directL algorithm is used to perform a global search for the minima, and solnp to refine the values.
+For some data or some models, however, other methods may work well.
+Supported algorithms include:
+</p>
+
+<ul>
+<li><p> cobyla algorithm in package nloptr
+</p>
+</li>
+<li><p> directL algorithm in package nloptr
+</p>
+</li>
+<li><p> BBoptim from package BB
+</p>
+</li>
+<li><p> psoptim from package pso - Particle Swarm algorithm
+</p>
+</li>
+<li><p> hjkb from dfoptim package
+</p>
+</li>
+<li><p> nmkb from dfoptim package
+</p>
+</li>
+<li><p> solnp from Rsolnp package
+</p>
+</li>
+<li><p> gosolnp from Rsolnp package
+</p>
+</li>
+<li><p> ga from package GA - a Genetic Algorithm
+</p>
+</li>
+<li><p> best - this option evaluates all the above options in turn and picks the one which finds the lowest value of the objective. This can be quite time consuming to run,
+particularly for the 'CSS' method.
+</p>
+</li></ul>
+
+<p>Note further that if you specify a k&gt;1, then inequality constraints are required, and this will further limit the list of supported routines.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_m_trunc">m_trunc</code></td>
+<td>
+<p>Used for the QML estimation method. This defines the AR-truncation point when evaluating the likelihood function. Refer to Dissanayake et. al. (2016) for details.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_fitted">fitted</code></td>
+<td>
+<p>(bool) indicates whether fitted values should be generated. For longer processes this can take a while and so this option is provided to disable
+that process. In any event if a call is made to the 'fitted' or 'resid' methods, they will then be generated on demand, but if the practitioner is just exploring
+different models then this option can be used to speed up the process. Default: TRUE.</p>
+</td></tr>
+<tr><td><code id="garma_+3A_control">control</code></td>
+<td>
+<p>(list) list of optimisation routine specific values.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The GARMA model is specified as
+</p>
+<p style="text-align: center;"><code class="reqn">\displaystyle{\phi(B)\prod_{i=1}^{k}(1-2u_{i}B+B^{2})^{d_{i}}(1-B)^{id} (X_{t}-\mu)= \theta(B) \epsilon _{t}}</code>
+</p>
+
+<p>where
+</p>
+
+<ul>
+<li> <p><code class="reqn">\phi(B)</code> represents the short-memory Autoregressive component of order p,
+</p>
+</li>
+<li> <p><code class="reqn">\theta(B)</code> represents the short-memory Moving Average component of order q,
+</p>
+</li>
+<li> <p><code class="reqn">(1-2u_{i}B+B^{2})^{d_{i}}</code> represents the long-memory Gegenbauer component (there may in general be k of these),
+</p>
+</li>
+<li> <p><code class="reqn">id</code> represents the degree of integer differencing.
+</p>
+</li>
+<li> <p><code class="reqn">X_{t}</code> represents the observed process,
+</p>
+</li>
+<li> <p><code class="reqn">\epsilon_{t}</code> represents the random component of the model - these are assumed to be uncorrelated but identically distributed variates.
+Generally the routines in this package will work best if these have an approximate Gaussian distribution.
+</p>
+</li>
+<li> <p><code class="reqn">B</code> represents the Backshift operator, defined by <code class="reqn">B X_{t}=X_{t-1}</code>.
+</p>
+</li></ul>
+
+<p>when k=0, then this is just a short memory model as fit by the stats &quot;arima&quot; function.
+</p>
+
+
+<h3>Value</h3>
+
+<p>An S3 object of class &quot;garma_model&quot;.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Richard Hunt
+</p>
+
+
+<h3>References</h3>
+
+<p>R Hunt, S Peiris, N Weber. Estimation methods for stationary Gegenbauer processes.
+Statistical Papers 63:1707-1741 2022
+</p>
+<p>L Giraitis, J Hidalgo, and P Robinson. Gaussian estimation of parametric spectral density with unknown pole.
+The Annals of Statistics, 29(4):987–1023, 2001.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/rlph50/garma">https://github.com/rlph50/garma</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(AirPassengers)
+ap  &lt;- as.numeric(diff(AirPassengers,12))
+print(garma(ap,order=c(9,1,0),k=0,method='CSS',include.mean=FALSE))
+# Compare with the built-in arima function
+print(arima(ap,order=c(9,1,0),include.mean=FALSE))
+</code></pre>
+
 <hr>
 <h2 id='AIC.garma_model'>AIC for model</h2><span id='topic+AIC.garma_model'></span>
 
@@ -381,230 +605,6 @@ data(AirPassengers)
 ap  &lt;- as.numeric(diff(AirPassengers,12))
 mdl &lt;- garma(ap,order=c(9,1,0),k=0,method='CSS',include.mean=FALSE)
 forecast(mdl, h=12)
-</code></pre>
-
-<hr>
-<h2 id='garma'>garma: A package for estimating and foreasting Gegenbauer time series models.</h2><span id='topic+garma'></span><span id='topic+_PACKAGE'></span><span id='topic+garma-package'></span>
-
-<h3>Description</h3>
-
-<p>The GARMA package provides the main function &quot;garma&quot; as well as print, summary,
-predict, forecast and plot/ggplot options.
-</p>
-<p>The garma function is the main function for the garma package. Depending on the parameters it will
-calculate the parameter estimates for the GARMA process, and if available the standard errors (se's)
-for those parameters.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>garma(
-  x,
-  order = list(0, 0, 0),
-  k = 1,
-  include.mean = (order[2] == 0),
-  include.drift = FALSE,
-  method = "Whittle",
-  d_lim = c(0, 0.5),
-  freq_lim = c(0, 0.5),
-  opt_method = NULL,
-  m_trunc = 50,
-  fitted = TRUE,
-  control = NULL
-)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="garma_+3A_x">x</code></td>
-<td>
-<p>(num) This should be a numeric vector representing the process to estimate. A minimum length of 96 is required.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_order">order</code></td>
-<td>
-<p>(list) This should be a list (similar to the stats::arima order parameter) which will give the order of the process to fit.
-The format should be list(p,d,q) where p, d, and q are all positive integers. p represents the degree of the
-autoregressive process to fit, q represents the order of the moving average process to fit and d is the (integer)
-differencing to apply prior to any fitting. WARNING: Currently only d==0 or d==1 are allowed.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_k">k</code></td>
-<td>
-<p>(int) This is the number of (multiplicative) Gegenbauer terms to fit. Note the 'QML' method only allows k=1.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_include.mean">include.mean</code></td>
-<td>
-<p>(bool) A boolean value indicating whether a mean should be fit.
-Note that no mean term is fit if the series is integer differenced.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_include.drift">include.drift</code></td>
-<td>
-<p>(bool) A boolean value indicating whether a 'drift' term should be fit to the predictions.
-The default is to fit a drift term to the predictions if the process is integer-differenced.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_method">method</code></td>
-<td>
-<p>(character) This defines the estimation method for the routine. The valid values are 'CSS', 'Whittle', 'QML' and 'WLL'.
-The default (Whittle) will generally return very accurate estimates quite quickly, provided the assumption of a Gaussian
-distribution is even approximately correct, and is probably the method of choice for most users. For the theory behind this, refer Giraitis et. al. (2001)
-'CSS' is a conditional 'sum-of-squares' technique and can be quite slow. Reference: Chung (1996).
-'WLL' is a new technique which appears to work well even if the <code class="reqn">\epsilon_{t}</code> are highly skewed and/or have heavy tails (skewed and/or lepto-kurtic).
-However the asymptotic theory for the WLL method is not complete and so standard errors are not available for most parameters.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_d_lim">d_lim</code></td>
-<td>
-<p>(list) the limits for the d parameter. The default is c(0,0.5), which restricts the model to be stationary.
-However sometimes it is desirable to understand what the unrestricted value might be.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_freq_lim">freq_lim</code></td>
-<td>
-<p>(list) the limits for the frequencies to be searched for Gegenbauer factors.
-When searching for Gegenbauer peaks, when there is an AR(1) component, the peaks corresponding to the AR(1)
-can be higher than the Gegenbauer peaks. Setting these limits to c(0.05,0.45) or similar can help the routine find the correct optima.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_opt_method">opt_method</code></td>
-<td>
-<p>(character) This names the optimisation method used to find the parameter estimates.
-This may be a list of methods, in which case the methods are applied in turn,
-each using the results of the previous one as the starting point for the next. The default is to use c('directL', 'solnp') when k&lt;2 and 'solnp' when k&gt;=2. The
-directL algorithm is used to perform a global search for the minima, and solnp to refine the values.
-For some data or some models, however, other methods may work well.
-Supported algorithms include:
-</p>
-
-<ul>
-<li><p> cobyla algorithm in package nloptr
-</p>
-</li>
-<li><p> directL algorithm in package nloptr
-</p>
-</li>
-<li><p> BBoptim from package BB
-</p>
-</li>
-<li><p> psoptim from package pso - Particle Swarm algorithm
-</p>
-</li>
-<li><p> hjkb from dfoptim package
-</p>
-</li>
-<li><p> nmkb from dfoptim package
-</p>
-</li>
-<li><p> solnp from Rsolnp package
-</p>
-</li>
-<li><p> gosolnp from Rsolnp package
-</p>
-</li>
-<li><p> ga from package GA - a Genetic Algorithm
-</p>
-</li>
-<li><p> best - this option evaluates all the above options in turn and picks the one which finds the lowest value of the objective. This can be quite time consuming to run,
-particularly for the 'CSS' method.
-</p>
-</li></ul>
-
-<p>Note further that if you specify a k&gt;1, then inequality constraints are required, and this will further limit the list of supported routines.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_m_trunc">m_trunc</code></td>
-<td>
-<p>Used for the QML estimation method. This defines the AR-truncation point when evaluating the likelihood function. Refer to Dissanayake et. al. (2016) for details.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_fitted">fitted</code></td>
-<td>
-<p>(bool) indicates whether fitted values should be generated. For longer processes this can take a while and so this option is provided to disable
-that process. In any event if a call is made to the 'fitted' or 'resid' methods, they will then be generated on demand, but if the practitioner is just exploring
-different models then this option can be used to speed up the process. Default: TRUE.</p>
-</td></tr>
-<tr><td><code id="garma_+3A_control">control</code></td>
-<td>
-<p>(list) list of optimisation routine specific values.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>The GARMA model is specified as
-</p>
-<p style="text-align: center;"><code class="reqn">\displaystyle{\phi(B)\prod_{i=1}^{k}(1-2u_{i}B+B^{2})^{d_{i}}(1-B)^{id} (X_{t}-\mu)= \theta(B) \epsilon _{t}}</code>
-</p>
-
-<p>where
-</p>
-
-<ul>
-<li> <p><code class="reqn">\phi(B)</code> represents the short-memory Autoregressive component of order p,
-</p>
-</li>
-<li> <p><code class="reqn">\theta(B)</code> represents the short-memory Moving Average component of order q,
-</p>
-</li>
-<li> <p><code class="reqn">(1-2u_{i}B+B^{2})^{d_{i}}</code> represents the long-memory Gegenbauer component (there may in general be k of these),
-</p>
-</li>
-<li> <p><code class="reqn">id</code> represents the degree of integer differencing.
-</p>
-</li>
-<li> <p><code class="reqn">X_{t}</code> represents the observed process,
-</p>
-</li>
-<li> <p><code class="reqn">\epsilon_{t}</code> represents the random component of the model - these are assumed to be uncorrelated but identically distributed variates.
-Generally the routines in this package will work best if these have an approximate Gaussian distribution.
-</p>
-</li>
-<li> <p><code class="reqn">B</code> represents the Backshift operator, defined by <code class="reqn">B X_{t}=X_{t-1}</code>.
-</p>
-</li></ul>
-
-<p>when k=0, then this is just a short memory model as fit by the stats &quot;arima&quot; function.
-</p>
-
-
-<h3>Value</h3>
-
-<p>An S3 object of class &quot;garma_model&quot;.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Richard Hunt
-</p>
-
-
-<h3>References</h3>
-
-<p>R Hunt, S Peiris, N Weber. Estimation methods for stationary Gegenbauer processes.
-Statistical Papers 63:1707-1741 2022
-</p>
-<p>L Giraitis, J Hidalgo, and P Robinson. Gaussian estimation of parametric spectral density with unknown pole.
-The Annals of Statistics, 29(4):987–1023, 2001.
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://github.com/rlph50/garma">https://github.com/rlph50/garma</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>data(AirPassengers)
-ap  &lt;- as.numeric(diff(AirPassengers,12))
-print(garma(ap,order=c(9,1,0),k=0,method='CSS',include.mean=FALSE))
-# Compare with the built-in arima function
-print(arima(ap,order=c(9,1,0),include.mean=FALSE))
 </code></pre>
 
 <hr>

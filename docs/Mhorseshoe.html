@@ -13,14 +13,14 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {Mhorseshoe}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#Mhorseshoe'><p>Mhorseshoe: Approximate Algorithm for Horseshoe Prior</p></a></li>
 <li><a href='#approx_horseshoe'><p>Run approximate MCMC algorithm for horseshoe prior</p></a></li>
 <li><a href='#exact_horseshoe'><p>Run exact MCMC algorithm for horseshoe prior</p></a></li>
-<li><a href='#Mhorseshoe'><p>Mhorseshoe: Approximate Algorithm for Horseshoe Prior</p></a></li>
 <li><a href='#rejection_sampler'><p>rejection sampler to update local shrinkage parameters lambda.</p></a></li>
 </ul>
 </div>
@@ -100,6 +100,159 @@ function processMathHTML() {
 <td>2023-11-24 09:20:10 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='Mhorseshoe'>Mhorseshoe: Approximate Algorithm for Horseshoe Prior</h2><span id='topic+Mhorseshoe'></span><span id='topic+Mhorseshoe-package'></span>
+
+<h3>Description</h3>
+
+<p>Mhorseshoe is a package for a high-dimensional Bayesian linear
+modeling algorithm using a horseshoe prior. This package provides two
+different algorithm functions : <code><a href="#topic+exact_horseshoe">exact_horseshoe</a></code>,
+<code><a href="#topic+approx_horseshoe">approx_horseshoe</a></code>. approx_horseshoe is version that can lower
+the computational cost than the existing horseshoe estimator through the
+approximate MCMC algorithm in the case of <code class="reqn">p &gt;&gt; N</code> for <code class="reqn">p</code>
+predictors and <code class="reqn">N</code> observations. You can see examples of the use of the
+two algorithms through the vignette, <code>browseVignettes("Mhorseshoe")</code>.
+</p>
+
+
+<h3>About the horseshoe estimator in this package</h3>
+
+<p>The Bayesian horseshoe estimator(Carvalho et al., 2010) has good properties
+such as being robust to high-dimensional sparse data and outliers, and has
+good computational efficiency, making it suitable for high-dimensional
+Bayesian inference. The likelihood function of the Gaussian linear model to
+be considered in this package is as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">L(y\ |\ x, \beta, \sigma^2) = (\frac{1}{\sqrt{2\pi}\sigma})^{-N/2}exp
+\{ -\frac{1}{2\sigma^2}(y-X\beta)^T(y-X\beta)\}</code>
+</p>
+
+<p>And the form of the hierarchical model applying the horseshoe prior to
+<code class="reqn">\beta</code> is expressed as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">\beta_{j}\ |\ \sigma^{2}, \tau^{2}, \lambda_{j}^{2}
+\overset{i.i.d}{\sim} N\left(0, \sigma^{2}\tau^{2}\lambda_{j}^{2} \right),
+\quad \lambda_{j}\overset{i.i.d}{\sim}C^{+}(0,1),\quad j=1,2,...,p, \\ \tau
+\overset{i.i.d}{\sim}C^{+}(0,1),\quad p(\sigma^2)\propto gamma\left(
+w/2, w/2\right).</code>
+</p>
+
+<p>Where <code class="reqn">C^{+}(0,1)</code> is a half-Cauchy distribution, <code class="reqn">\lambda_{1}, ...,
+\lambda_{p}</code> are local shrinkage parameters, and <code class="reqn">\tau</code> is global
+shrinkage parameter. In general, the disadvantage of the horseshoe estimator
+is that the computational cost is large for high-dimensional data where
+<code class="reqn">p&gt;&gt;n</code>, and the computation of the algorithm is very slow. To overcome
+these limitations, Johndrow et al. (2020) proposed a scalable approximate
+MCMC algorithm that can reduce computational costs by introducing a
+thresholding method while applying the horseshoe prior. This approximate
+algorithm is implemented in <code><a href="#topic+approx_horseshoe">approx_horseshoe</a></code> of this package.
+</p>
+
+
+<h3>Exact algorithm process</h3>
+
+<p>The exact algorithm process is as follows.
+</p>
+<p style="text-align: center;"><code class="reqn">\xi = \tau^{-2},\quad \eta_{j} = \lambda_{j}^{-2},\quad
+j = 1,2,...,p, \\ D = diag\left(\eta_{1}^{-1},..., \eta_{p}^{-1} \right),
+\quad M_{\xi} = I_{N} + \xi^{-1}XDX^{T}, \\ p(\xi | y, X, \eta) \propto
+|M_{\xi}|^{-1/2}\{(w + y^{T}M_{\xi}^{-1}y) / 2 \}^{-(w + N) / 2}/
+\{\sqrt{\xi}(1+\xi)\}.</code>
+</p>
+
+
+<ol>
+<li><p> Sample <code class="reqn">\lambda_{j}^{-2} = \eta_{j},\ j=1,2,...,p</code>, using the
+following posterior of <code class="reqn">\eta_{j}</code> for rejection sampling.
+</p>
+<p style="text-align: center;"><code class="reqn">p(\eta_{j} | \xi, \beta_{j}, \sigma^{2}) \propto \frac{1}{1 +
+\eta_{j}}exp\{-\frac{\beta_{j}^{2}\xi \eta_{j}}{2\sigma^{2}} \}.</code>
+</p>
+
+</li>
+<li><p> Sample <code class="reqn">\tau^{-2} = \xi</code> using the proposed MH algorithm as follows.
+</p>
+<p style="text-align: center;"><code class="reqn">log(\xi^{\star}) \sim N(log(\xi), s), accept\ \xi \ w.p.\
+\{p(\xi^{\star} | y, X, \eta)\xi^{\star}\}/\{p(\xi | y, X, \eta)\xi \}.</code>
+</p>
+
+</li>
+<li><p> Sample <code class="reqn">\sigma^{2}</code>, </p>
+<p style="text-align: center;"><code class="reqn">\sigma^{2} | y, X, \eta, \xi \sim
+InvGamma\{(w + N) / 2, (w + y^{T}M_{\xi}^{-1}y) / 2 \}.</code>
+</p>
+
+</li>
+<li><p> Sample <code class="reqn">\beta</code>, </p>
+<p style="text-align: center;"><code class="reqn">\beta | y, X, \eta, \xi, \sigma \sim
+N\left(\left(X^{T}X + \left(\xi^{-1} D \right)^{-1}\right)^{-1}X^{T}y,
+\ \sigma^{2}\left(X^{T}X + \left(\xi^{-1} D \right)^{-1} \right)^{-1}
+\right).</code>
+</p>
+
+</li></ol>
+
+<p>Since the algorithm of this package considers the case of <code class="reqn">p &gt;&gt; N</code>,
+the computational cost can be lowered by sampling <code class="reqn">\beta</code> using
+fast sampling(Bhattacharya et al.,2016) in the step 4.
+</p>
+<p style="text-align: center;"><code class="reqn">u \sim N_{p}(0, \xi^{-1}D),\quad f \sim N_{N}(0, I_{N}), \\
+v = Xu + f,\quad v^{\star} = M_{\xi}^{-1}(y/\sigma - v), \\
+\beta = \sigma(u + \xi^{-1}DX^{T}v^{\star}).</code>
+</p>
+
+<p>The exact algorithm is implemented in <code><a href="#topic+exact_horseshoe">exact_horseshoe</a></code> of this
+package.
+</p>
+
+
+<h3>About approximate MCMC algorithm</h3>
+
+<p>In order to reduce the computational cost of the exact algorithm, the
+matrix <code class="reqn">D</code> to which the thresholding method is applied is called
+<code class="reqn">D_{\delta}</code> as follows.
+</p>
+<p style="text-align: center;"><code class="reqn">D_{\delta} = diag\left(\eta_{j}^{-1}1\left(\xi^{-1}\eta_{j}^{-1}
+&gt; \delta,\ j=1,2,...,p. \right) \right),</code>
+</p>
+
+<p>If a <code class="reqn">D_{\delta}</code> matrix is used instead of a <code class="reqn">D</code> matrix, rows and
+columns with diagonal components of 0 can be eliminated, thus reducing the
+computational cost for matrix multiplication. This is called the
+approximate MCMC algorithm and is implemented in
+<code><a href="#topic+approx_horseshoe">approx_horseshoe</a></code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Kang Mingi <a href="mailto:leehuimin115@g.skku.edu">leehuimin115@g.skku.edu</a>
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> Lee Kyoungjae <a href="mailto:leekjstat@gmail.com">leekjstat@gmail.com</a>
+</p>
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Bhattacharya, A., Chakraborty, A., &amp; Mallick, B. K. (2016).
+Fast sampling with Gaussian scale mixture priors in high-dimensional
+regression. Biometrika, asw042.
+</p>
+<p>Carvalho, C. M., Polson, N. G., &amp; Scott, J. G. (2010). The
+horseshoe estimator for sparse signals. Biometrika, 97(2), 465–480.
+</p>
+<p>Johndrow, J., Orenstein, P., &amp; Bhattacharya, A. (2020). Scalable Approximate
+MCMC Algorithms for the Horseshoe Prior. In Journal of Machine Learning
+Research (Vol. 21).
+</p>
+
 <hr>
 <h2 id='approx_horseshoe'>Run approximate MCMC algorithm for horseshoe prior</h2><span id='topic+approx_horseshoe'></span>
 
@@ -629,159 +782,6 @@ leftCI &lt;- result$LeftCI
 RightCI &lt;- result$RightCI
 
 </code></pre>
-
-<hr>
-<h2 id='Mhorseshoe'>Mhorseshoe: Approximate Algorithm for Horseshoe Prior</h2><span id='topic+Mhorseshoe'></span><span id='topic+Mhorseshoe-package'></span>
-
-<h3>Description</h3>
-
-<p>Mhorseshoe is a package for a high-dimensional Bayesian linear
-modeling algorithm using a horseshoe prior. This package provides two
-different algorithm functions : <code><a href="#topic+exact_horseshoe">exact_horseshoe</a></code>,
-<code><a href="#topic+approx_horseshoe">approx_horseshoe</a></code>. approx_horseshoe is version that can lower
-the computational cost than the existing horseshoe estimator through the
-approximate MCMC algorithm in the case of <code class="reqn">p &gt;&gt; N</code> for <code class="reqn">p</code>
-predictors and <code class="reqn">N</code> observations. You can see examples of the use of the
-two algorithms through the vignette, <code>browseVignettes("Mhorseshoe")</code>.
-</p>
-
-
-<h3>About the horseshoe estimator in this package</h3>
-
-<p>The Bayesian horseshoe estimator(Carvalho et al., 2010) has good properties
-such as being robust to high-dimensional sparse data and outliers, and has
-good computational efficiency, making it suitable for high-dimensional
-Bayesian inference. The likelihood function of the Gaussian linear model to
-be considered in this package is as follows:
-</p>
-<p style="text-align: center;"><code class="reqn">L(y\ |\ x, \beta, \sigma^2) = (\frac{1}{\sqrt{2\pi}\sigma})^{-N/2}exp
-\{ -\frac{1}{2\sigma^2}(y-X\beta)^T(y-X\beta)\}</code>
-</p>
-
-<p>And the form of the hierarchical model applying the horseshoe prior to
-<code class="reqn">\beta</code> is expressed as follows:
-</p>
-<p style="text-align: center;"><code class="reqn">\beta_{j}\ |\ \sigma^{2}, \tau^{2}, \lambda_{j}^{2}
-\overset{i.i.d}{\sim} N\left(0, \sigma^{2}\tau^{2}\lambda_{j}^{2} \right),
-\quad \lambda_{j}\overset{i.i.d}{\sim}C^{+}(0,1),\quad j=1,2,...,p, \\ \tau
-\overset{i.i.d}{\sim}C^{+}(0,1),\quad p(\sigma^2)\propto gamma\left(
-w/2, w/2\right).</code>
-</p>
-
-<p>Where <code class="reqn">C^{+}(0,1)</code> is a half-Cauchy distribution, <code class="reqn">\lambda_{1}, ...,
-\lambda_{p}</code> are local shrinkage parameters, and <code class="reqn">\tau</code> is global
-shrinkage parameter. In general, the disadvantage of the horseshoe estimator
-is that the computational cost is large for high-dimensional data where
-<code class="reqn">p&gt;&gt;n</code>, and the computation of the algorithm is very slow. To overcome
-these limitations, Johndrow et al. (2020) proposed a scalable approximate
-MCMC algorithm that can reduce computational costs by introducing a
-thresholding method while applying the horseshoe prior. This approximate
-algorithm is implemented in <code><a href="#topic+approx_horseshoe">approx_horseshoe</a></code> of this package.
-</p>
-
-
-<h3>Exact algorithm process</h3>
-
-<p>The exact algorithm process is as follows.
-</p>
-<p style="text-align: center;"><code class="reqn">\xi = \tau^{-2},\quad \eta_{j} = \lambda_{j}^{-2},\quad
-j = 1,2,...,p, \\ D = diag\left(\eta_{1}^{-1},..., \eta_{p}^{-1} \right),
-\quad M_{\xi} = I_{N} + \xi^{-1}XDX^{T}, \\ p(\xi | y, X, \eta) \propto
-|M_{\xi}|^{-1/2}\{(w + y^{T}M_{\xi}^{-1}y) / 2 \}^{-(w + N) / 2}/
-\{\sqrt{\xi}(1+\xi)\}.</code>
-</p>
-
-
-<ol>
-<li><p> Sample <code class="reqn">\lambda_{j}^{-2} = \eta_{j},\ j=1,2,...,p</code>, using the
-following posterior of <code class="reqn">\eta_{j}</code> for rejection sampling.
-</p>
-<p style="text-align: center;"><code class="reqn">p(\eta_{j} | \xi, \beta_{j}, \sigma^{2}) \propto \frac{1}{1 +
-\eta_{j}}exp\{-\frac{\beta_{j}^{2}\xi \eta_{j}}{2\sigma^{2}} \}.</code>
-</p>
-
-</li>
-<li><p> Sample <code class="reqn">\tau^{-2} = \xi</code> using the proposed MH algorithm as follows.
-</p>
-<p style="text-align: center;"><code class="reqn">log(\xi^{\star}) \sim N(log(\xi), s), accept\ \xi \ w.p.\
-\{p(\xi^{\star} | y, X, \eta)\xi^{\star}\}/\{p(\xi | y, X, \eta)\xi \}.</code>
-</p>
-
-</li>
-<li><p> Sample <code class="reqn">\sigma^{2}</code>, </p>
-<p style="text-align: center;"><code class="reqn">\sigma^{2} | y, X, \eta, \xi \sim
-InvGamma\{(w + N) / 2, (w + y^{T}M_{\xi}^{-1}y) / 2 \}.</code>
-</p>
-
-</li>
-<li><p> Sample <code class="reqn">\beta</code>, </p>
-<p style="text-align: center;"><code class="reqn">\beta | y, X, \eta, \xi, \sigma \sim
-N\left(\left(X^{T}X + \left(\xi^{-1} D \right)^{-1}\right)^{-1}X^{T}y,
-\ \sigma^{2}\left(X^{T}X + \left(\xi^{-1} D \right)^{-1} \right)^{-1}
-\right).</code>
-</p>
-
-</li></ol>
-
-<p>Since the algorithm of this package considers the case of <code class="reqn">p &gt;&gt; N</code>,
-the computational cost can be lowered by sampling <code class="reqn">\beta</code> using
-fast sampling(Bhattacharya et al.,2016) in the step 4.
-</p>
-<p style="text-align: center;"><code class="reqn">u \sim N_{p}(0, \xi^{-1}D),\quad f \sim N_{N}(0, I_{N}), \\
-v = Xu + f,\quad v^{\star} = M_{\xi}^{-1}(y/\sigma - v), \\
-\beta = \sigma(u + \xi^{-1}DX^{T}v^{\star}).</code>
-</p>
-
-<p>The exact algorithm is implemented in <code><a href="#topic+exact_horseshoe">exact_horseshoe</a></code> of this
-package.
-</p>
-
-
-<h3>About approximate MCMC algorithm</h3>
-
-<p>In order to reduce the computational cost of the exact algorithm, the
-matrix <code class="reqn">D</code> to which the thresholding method is applied is called
-<code class="reqn">D_{\delta}</code> as follows.
-</p>
-<p style="text-align: center;"><code class="reqn">D_{\delta} = diag\left(\eta_{j}^{-1}1\left(\xi^{-1}\eta_{j}^{-1}
-&gt; \delta,\ j=1,2,...,p. \right) \right),</code>
-</p>
-
-<p>If a <code class="reqn">D_{\delta}</code> matrix is used instead of a <code class="reqn">D</code> matrix, rows and
-columns with diagonal components of 0 can be eliminated, thus reducing the
-computational cost for matrix multiplication. This is called the
-approximate MCMC algorithm and is implemented in
-<code><a href="#topic+approx_horseshoe">approx_horseshoe</a></code>.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Kang Mingi <a href="mailto:leehuimin115@g.skku.edu">leehuimin115@g.skku.edu</a>
-</p>
-<p>Authors:
-</p>
-
-<ul>
-<li><p> Lee Kyoungjae <a href="mailto:leekjstat@gmail.com">leekjstat@gmail.com</a>
-</p>
-</li></ul>
-
-
-
-<h3>References</h3>
-
-<p>Bhattacharya, A., Chakraborty, A., &amp; Mallick, B. K. (2016).
-Fast sampling with Gaussian scale mixture priors in high-dimensional
-regression. Biometrika, asw042.
-</p>
-<p>Carvalho, C. M., Polson, N. G., &amp; Scott, J. G. (2010). The
-horseshoe estimator for sparse signals. Biometrika, 97(2), 465–480.
-</p>
-<p>Johndrow, J., Orenstein, P., &amp; Bhattacharya, A. (2020). Scalable Approximate
-MCMC Algorithms for the Horseshoe Prior. In Journal of Machine Learning
-Research (Vol. 21).
-</p>
 
 <hr>
 <h2 id='rejection_sampler'>rejection sampler to update local shrinkage parameters lambda.</h2><span id='topic+rejection_sampler'></span>

@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {StMoMo}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#StMoMo'><p>Create a new Stochastic Mortality Model</p></a></li>
 <li><a href='#apc'><p>Create an Age-Period-Cohort mortality model</p></a></li>
 <li><a href='#arima.string'><p>Copy of unexported function arima.string from forecast</p></a></li>
 <li><a href='#binomRes2q'><p>Map Binomial deviance residuals into deaths</p></a></li>
@@ -75,7 +76,6 @@ Mortality Model</a></li>
 <li><a href='#simulate.fitStMoMo'><p>Simulate future sample paths from a Stochastic Mortality Model</p></a></li>
 <li><a href='#simulate.iarima'><p>Simulate independent arima series</p></a></li>
 <li><a href='#simulate.mrwd'><p>Simulate a Multivariate Random Walk with Drift</p></a></li>
-<li><a href='#StMoMo'><p>Create a new Stochastic Mortality Model</p></a></li>
 <li><a href='#StMoMoData'><p>Create StMoMoData object from demogdata object</p></a></li>
 </ul>
 </div>
@@ -165,6 +165,247 @@ Mortality Model</a></li>
 <td>2018-04-13 11:12:44 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='StMoMo'>Create a new Stochastic Mortality Model</h2><span id='topic+StMoMo'></span><span id='topic+StMoMo'></span><span id='topic+StMoMo-package'></span>
+
+<h3>Description</h3>
+
+<p>Initialises a StMoMo object which represents a Generalised 
+Age-Period-Cohort Stochastic Mortality Model.
+</p>
+<p>StMoMo.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>StMoMo(link = c("log", "logit"), staticAgeFun = TRUE, periodAgeFun = "NP",
+  cohortAgeFun = NULL, constFun = function(ax, bx, kt, b0x, gc, wxt, ages)
+  list(ax = ax, bx = bx, kt = kt, b0x = b0x, gc = gc))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="StMoMo_+3A_link">link</code></td>
+<td>
+<p>defines the link function and random component associated with 
+the mortality model. <code>"log"</code> would assume that deaths follow a 
+Poisson distribution and use a log link while <code>"logit"</code> would assume 
+that deaths follow a Binomial distribution and a logit link.</p>
+</td></tr>
+<tr><td><code id="StMoMo_+3A_staticagefun">staticAgeFun</code></td>
+<td>
+<p>logical value indicating if a static age function 
+<code class="reqn">\alpha_x</code> is to be included.</p>
+</td></tr>
+<tr><td><code id="StMoMo_+3A_periodagefun">periodAgeFun</code></td>
+<td>
+<p>a list of length <code class="reqn">N</code> with the definitions of the 
+period age modulating parameters <code class="reqn">\beta_x^{(i)}</code>. Each entry can take 
+values: <code>"NP"</code> for non-parametric age terms, <code>"1"</code> for 
+<code class="reqn">\beta_x^{(i)}=1</code> or a predefined parametric function of 
+age (see details). Set this to <code>NULL</code> if there are no period terms 
+in the model.</p>
+</td></tr>
+<tr><td><code id="StMoMo_+3A_cohortagefun">cohortAgeFun</code></td>
+<td>
+<p>defines the cohort age modulating parameter 
+<code class="reqn">\beta_x^{(0)}</code>. It can take values: <code>"NP"</code> for non-parametric 
+age terms, <code>"1"</code> for <code class="reqn">\beta_x^{(0)}=1</code>, a predefined parametric 
+function of age (see details) or <code>NULL</code> if there is no cohort effect.</p>
+</td></tr>
+<tr><td><code id="StMoMo_+3A_constfun">constFun</code></td>
+<td>
+<p>function defining the identifiability constraints of the 
+model. It must be a function of the form 
+<code>constFun &lt;- function(ax, bx, kt, b0x, gc, wxt, ages)</code> taking a set
+of fitted model parameters and returning a list 
+<code>list(ax = ax, bx = bx, kt = kt, b0x = b0x, gc = gc)</code>
+of the model parameters with the identifiability constraints applied. If 
+omitted no identifiability constraints are applied to the model.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>R implementation of the family of Generalised Age-Period-Cohort 
+stochastic mortality models.  This family of models encompasses
+many models proposed in the literature including the well-known
+Lee-Carter model, CBD model and APC model. 
+</p>
+<p><code>StMoMo</code> defines an abstract representation of a Generalised 
+Age-Period-Cohort (GAPC) Stochastic model that fits within the 
+general class of generalised non-linear models defined as follows 
+</p>
+<p style="text-align: center;"><code class="reqn">D_{xt} \sim Poisson(E_{xt}\mu_{xt}), D_{xt} \sim 
+Binomial(E_{xt},q_{xt})</code>
+</p>
+ 
+<p style="text-align: center;"><code class="reqn">\eta_{xt} = \log \mu_{xt}, \eta_{xt} = \mathrm{logit}\,
+q_{xt}</code>
+</p>
+ <p style="text-align: center;"><code class="reqn">\eta_{xt} = \alpha_x + \sum_{i=1}^N \beta_x^{(i)}\kappa_t^{(i)}
++ \beta_x^{(0)}\gamma_{t-x}</code>
+</p>
+ <p style="text-align: center;"><code class="reqn">v: \{\alpha_{x}, \beta_x^{(1)},..., 
+\beta_x^{(N)}, \kappa_t^{(1)},..., \kappa_t^{(N)}, \beta_x^{(0)}, \gamma_{t-x}\} \mapsto 
+\{\alpha_{x}, \beta_x^{(1)},..., \beta_x^{(N)}, \kappa_t^{(1)},..., \kappa_t^{(N)}, 
+\beta_x^{(0)}, \gamma_{t-x}\},</code>
+</p>
+<p> where  
+</p>
+
+<ul>
+<li> <p><code class="reqn">\alpha_x</code> is a static age function; 
+</p>
+</li>
+<li> <p><code class="reqn">\beta_x^{(i)}\kappa_t^{(i)}, i = 1,..N</code>, are age/period terms; 
+</p>
+</li>
+<li> <p><code class="reqn">\beta_x^{(0)}\gamma_{t-x}</code> is the age/cohort term; and 
+</p>
+</li>
+<li> <p><code class="reqn">v</code> is a  function defining the identifiability constraints of 
+the model. 
+</p>
+</li></ul>
+
+<p>Most Stochastic mortality models proposed in the literature can be cast to
+this representation (See Hunt and Blake (2015)).
+</p>
+<p>Parametric age functions should be scalar functions of the form 
+<code>f &lt;- function(x, ages)</code> taking a scalar age <code>x</code> and a vector 
+of model fitting <code>ages</code> (see examples below).
+</p>
+<p>Do to limitation of functions <code><a href="gnm.html#topic+gnm">gnm</a></code> within package 
+<span class="pkg">gnm</span>, which is used for fitting <code>"StMoMo"</code> objects to data 
+(see <code><a href="#topic+fit.StMoMo">fit.StMoMo</a></code>), models combining parametric and 
+non-parametric age-modulating functions are not supported at the moment.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list with class <code>"StMoMo"</code> with components:
+</p>
+<table>
+<tr><td><code>link</code></td>
+<td>
+<p>a character string defining the link function of the model.</p>
+</td></tr>
+<tr><td><code>staticAgeFun</code></td>
+<td>
+<p>a logical value indicating if the model has a static 
+age function.</p>
+</td></tr>
+<tr><td><code>periodAgeFun</code></td>
+<td>
+<p>a list defining the period age modulating parameters.</p>
+</td></tr>
+<tr><td><code>cohortAgeFun</code></td>
+<td>
+<p>an object defining the cohort age modulating 
+parameters.</p>
+</td></tr>
+<tr><td><code>constFun</code></td>
+<td>
+<p>a function defining the identifiability constraints.</p>
+</td></tr>
+<tr><td><code>N</code></td>
+<td>
+<p>an integer specifying The number of age-period terms in the 
+model.</p>
+</td></tr>
+<tr><td><code>textFormula</code></td>
+<td>
+<p>a character string of the model formula.</p>
+</td></tr>
+<tr><td><code>gnmFormula</code></td>
+<td>
+<p>a formula that can be used for fitting the model with 
+package <span class="pkg">gnm</span>.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Plat, R. (2009). On stochastic mortality modeling. Insurance: Mathematics 
+and Economics, 45(3), 393-404. 
+</p>
+<p>Hunt, A., &amp; Blake, D. (2015). On the Structure and Classification of 
+Mortality Models Mortality Models. Pension Institute Working Paper.
+<a href="http://www.pensions-institute.org/workingpapers/wp1506.pdf">http://www.pensions-institute.org/workingpapers/wp1506.pdf</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+fit.StMoMo">fit.StMoMo</a></code>, <code><a href="#topic+lc">lc</a></code>, <code><a href="#topic+cbd">cbd</a></code>, 
+<code><a href="#topic+apc">apc</a></code>, <code><a href="#topic+rh">rh</a></code>, <code><a href="#topic+m6">m6</a></code>, <code><a href="#topic+m7">m7</a></code>, 
+<code><a href="#topic+m8">m8</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#Lee-Carter model
+constLC &lt;- function(ax, bx, kt, b0x, gc, wxt, ages) {
+ c1 &lt;- mean(kt[1, ], na.rm = TRUE)
+ c2 &lt;- sum(bx[, 1], na.rm = TRUE)
+ list(ax = ax + c1 * bx, bx = bx / c2, kt = c2 * (kt - c1))
+}
+LC &lt;- StMoMo(link = "log", staticAgeFun = TRUE, periodAgeFun = "NP",
+             constFun = constLC)
+
+plot(fit(LC, data = EWMaleData, ages.fit = 55:89))
+
+
+#CBD model   
+f2 &lt;- function(x, ages) x - mean(ages)
+CBD &lt;- StMoMo(link = "logit", staticAgeFun = FALSE,
+              periodAgeFun = c("1", f2))
+plot(fit(CBD, data = EWMaleData, ages.fit = 55:89))
+
+#Reduced Plat model (Plat, 2009)
+f2 &lt;- function(x, ages) mean(ages) - x
+constPlat &lt;- function(ax, bx, kt, b0x, gc, wxt, ages) {
+ nYears &lt;- dim(wxt)[2]
+ x &lt;- ages
+ t &lt;- 1:nYears
+ c &lt;- (1 - tail(ages, 1)):(nYears - ages[1])
+ xbar &lt;- mean(x)
+ #nsum g(c)=0, nsum cg(c)=0, nsum c^2g(c)=0
+ phiReg &lt;- lm(gc ~ 1 + c + I(c^2), na.action = na.omit)
+ phi &lt;- coef(phiReg)
+ gc &lt;- gc - phi[1] - phi[2] * c - phi[3] * c^2
+ kt[2, ] &lt;- kt[2, ] + 2 * phi[3] * t
+ kt[1, ] &lt;- kt[1, ] + phi[2] * t + phi[3] * (t^2 - 2 * xbar * t)
+ ax &lt;- ax + phi[1] - phi[2] * x + phi[3] * x^2
+ #nsum kt[i, ] = 0
+ ci &lt;- rowMeans(kt, na.rm = TRUE)
+ ax &lt;- ax + ci[1] + ci[2] * (xbar - x)
+ kt[1, ] &lt;- kt[1, ] - ci[1]
+ kt[2, ] &lt;- kt[2, ] - ci[2]
+ list(ax = ax, bx = bx, kt = kt, b0x = b0x, gc = gc)
+}
+PLAT &lt;- StMoMo(link = "log", staticAgeFun = TRUE,
+               periodAgeFun = c("1", f2), cohortAgeFun = "1",
+               constFun = constPlat)
+
+plot(fit(PLAT, data = EWMaleData, ages.fit = 55:89))
+
+#Models not supported
+## Not run: 
+MnotSup1 &lt;- StMoMo(periodAgeFun = c(f2, "NP"))
+MnotSup1 &lt;- StMoMo(periodAgeFun = f2, cohortAgeFun = "NP")
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='apc'>Create an Age-Period-Cohort mortality model</h2><span id='topic+apc'></span>
 
@@ -4612,247 +4853,6 @@ The default, <code>NULL</code> will not change the random generator state.</p>
 <p>other arguments.</p>
 </td></tr>
 </table>
-
-<hr>
-<h2 id='StMoMo'>Create a new Stochastic Mortality Model</h2><span id='topic+StMoMo'></span><span id='topic+StMoMo'></span><span id='topic+StMoMo-package'></span>
-
-<h3>Description</h3>
-
-<p>Initialises a StMoMo object which represents a Generalised 
-Age-Period-Cohort Stochastic Mortality Model.
-</p>
-<p>StMoMo.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>StMoMo(link = c("log", "logit"), staticAgeFun = TRUE, periodAgeFun = "NP",
-  cohortAgeFun = NULL, constFun = function(ax, bx, kt, b0x, gc, wxt, ages)
-  list(ax = ax, bx = bx, kt = kt, b0x = b0x, gc = gc))
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="StMoMo_+3A_link">link</code></td>
-<td>
-<p>defines the link function and random component associated with 
-the mortality model. <code>"log"</code> would assume that deaths follow a 
-Poisson distribution and use a log link while <code>"logit"</code> would assume 
-that deaths follow a Binomial distribution and a logit link.</p>
-</td></tr>
-<tr><td><code id="StMoMo_+3A_staticagefun">staticAgeFun</code></td>
-<td>
-<p>logical value indicating if a static age function 
-<code class="reqn">\alpha_x</code> is to be included.</p>
-</td></tr>
-<tr><td><code id="StMoMo_+3A_periodagefun">periodAgeFun</code></td>
-<td>
-<p>a list of length <code class="reqn">N</code> with the definitions of the 
-period age modulating parameters <code class="reqn">\beta_x^{(i)}</code>. Each entry can take 
-values: <code>"NP"</code> for non-parametric age terms, <code>"1"</code> for 
-<code class="reqn">\beta_x^{(i)}=1</code> or a predefined parametric function of 
-age (see details). Set this to <code>NULL</code> if there are no period terms 
-in the model.</p>
-</td></tr>
-<tr><td><code id="StMoMo_+3A_cohortagefun">cohortAgeFun</code></td>
-<td>
-<p>defines the cohort age modulating parameter 
-<code class="reqn">\beta_x^{(0)}</code>. It can take values: <code>"NP"</code> for non-parametric 
-age terms, <code>"1"</code> for <code class="reqn">\beta_x^{(0)}=1</code>, a predefined parametric 
-function of age (see details) or <code>NULL</code> if there is no cohort effect.</p>
-</td></tr>
-<tr><td><code id="StMoMo_+3A_constfun">constFun</code></td>
-<td>
-<p>function defining the identifiability constraints of the 
-model. It must be a function of the form 
-<code>constFun &lt;- function(ax, bx, kt, b0x, gc, wxt, ages)</code> taking a set
-of fitted model parameters and returning a list 
-<code>list(ax = ax, bx = bx, kt = kt, b0x = b0x, gc = gc)</code>
-of the model parameters with the identifiability constraints applied. If 
-omitted no identifiability constraints are applied to the model.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>R implementation of the family of Generalised Age-Period-Cohort 
-stochastic mortality models.  This family of models encompasses
-many models proposed in the literature including the well-known
-Lee-Carter model, CBD model and APC model. 
-</p>
-<p><code>StMoMo</code> defines an abstract representation of a Generalised 
-Age-Period-Cohort (GAPC) Stochastic model that fits within the 
-general class of generalised non-linear models defined as follows 
-</p>
-<p style="text-align: center;"><code class="reqn">D_{xt} \sim Poisson(E_{xt}\mu_{xt}), D_{xt} \sim 
-Binomial(E_{xt},q_{xt})</code>
-</p>
- 
-<p style="text-align: center;"><code class="reqn">\eta_{xt} = \log \mu_{xt}, \eta_{xt} = \mathrm{logit}\,
-q_{xt}</code>
-</p>
- <p style="text-align: center;"><code class="reqn">\eta_{xt} = \alpha_x + \sum_{i=1}^N \beta_x^{(i)}\kappa_t^{(i)}
-+ \beta_x^{(0)}\gamma_{t-x}</code>
-</p>
- <p style="text-align: center;"><code class="reqn">v: \{\alpha_{x}, \beta_x^{(1)},..., 
-\beta_x^{(N)}, \kappa_t^{(1)},..., \kappa_t^{(N)}, \beta_x^{(0)}, \gamma_{t-x}\} \mapsto 
-\{\alpha_{x}, \beta_x^{(1)},..., \beta_x^{(N)}, \kappa_t^{(1)},..., \kappa_t^{(N)}, 
-\beta_x^{(0)}, \gamma_{t-x}\},</code>
-</p>
-<p> where  
-</p>
-
-<ul>
-<li> <p><code class="reqn">\alpha_x</code> is a static age function; 
-</p>
-</li>
-<li> <p><code class="reqn">\beta_x^{(i)}\kappa_t^{(i)}, i = 1,..N</code>, are age/period terms; 
-</p>
-</li>
-<li> <p><code class="reqn">\beta_x^{(0)}\gamma_{t-x}</code> is the age/cohort term; and 
-</p>
-</li>
-<li> <p><code class="reqn">v</code> is a  function defining the identifiability constraints of 
-the model. 
-</p>
-</li></ul>
-
-<p>Most Stochastic mortality models proposed in the literature can be cast to
-this representation (See Hunt and Blake (2015)).
-</p>
-<p>Parametric age functions should be scalar functions of the form 
-<code>f &lt;- function(x, ages)</code> taking a scalar age <code>x</code> and a vector 
-of model fitting <code>ages</code> (see examples below).
-</p>
-<p>Do to limitation of functions <code><a href="gnm.html#topic+gnm">gnm</a></code> within package 
-<span class="pkg">gnm</span>, which is used for fitting <code>"StMoMo"</code> objects to data 
-(see <code><a href="#topic+fit.StMoMo">fit.StMoMo</a></code>), models combining parametric and 
-non-parametric age-modulating functions are not supported at the moment.
-</p>
-
-
-<h3>Value</h3>
-
-<p>A list with class <code>"StMoMo"</code> with components:
-</p>
-<table>
-<tr><td><code>link</code></td>
-<td>
-<p>a character string defining the link function of the model.</p>
-</td></tr>
-<tr><td><code>staticAgeFun</code></td>
-<td>
-<p>a logical value indicating if the model has a static 
-age function.</p>
-</td></tr>
-<tr><td><code>periodAgeFun</code></td>
-<td>
-<p>a list defining the period age modulating parameters.</p>
-</td></tr>
-<tr><td><code>cohortAgeFun</code></td>
-<td>
-<p>an object defining the cohort age modulating 
-parameters.</p>
-</td></tr>
-<tr><td><code>constFun</code></td>
-<td>
-<p>a function defining the identifiability constraints.</p>
-</td></tr>
-<tr><td><code>N</code></td>
-<td>
-<p>an integer specifying The number of age-period terms in the 
-model.</p>
-</td></tr>
-<tr><td><code>textFormula</code></td>
-<td>
-<p>a character string of the model formula.</p>
-</td></tr>
-<tr><td><code>gnmFormula</code></td>
-<td>
-<p>a formula that can be used for fitting the model with 
-package <span class="pkg">gnm</span>.</p>
-</td></tr>
-</table>
-
-
-<h3>References</h3>
-
-<p>Plat, R. (2009). On stochastic mortality modeling. Insurance: Mathematics 
-and Economics, 45(3), 393-404. 
-</p>
-<p>Hunt, A., &amp; Blake, D. (2015). On the Structure and Classification of 
-Mortality Models Mortality Models. Pension Institute Working Paper.
-<a href="http://www.pensions-institute.org/workingpapers/wp1506.pdf">http://www.pensions-institute.org/workingpapers/wp1506.pdf</a>.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+fit.StMoMo">fit.StMoMo</a></code>, <code><a href="#topic+lc">lc</a></code>, <code><a href="#topic+cbd">cbd</a></code>, 
-<code><a href="#topic+apc">apc</a></code>, <code><a href="#topic+rh">rh</a></code>, <code><a href="#topic+m6">m6</a></code>, <code><a href="#topic+m7">m7</a></code>, 
-<code><a href="#topic+m8">m8</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>#Lee-Carter model
-constLC &lt;- function(ax, bx, kt, b0x, gc, wxt, ages) {
- c1 &lt;- mean(kt[1, ], na.rm = TRUE)
- c2 &lt;- sum(bx[, 1], na.rm = TRUE)
- list(ax = ax + c1 * bx, bx = bx / c2, kt = c2 * (kt - c1))
-}
-LC &lt;- StMoMo(link = "log", staticAgeFun = TRUE, periodAgeFun = "NP",
-             constFun = constLC)
-
-plot(fit(LC, data = EWMaleData, ages.fit = 55:89))
-
-
-#CBD model   
-f2 &lt;- function(x, ages) x - mean(ages)
-CBD &lt;- StMoMo(link = "logit", staticAgeFun = FALSE,
-              periodAgeFun = c("1", f2))
-plot(fit(CBD, data = EWMaleData, ages.fit = 55:89))
-
-#Reduced Plat model (Plat, 2009)
-f2 &lt;- function(x, ages) mean(ages) - x
-constPlat &lt;- function(ax, bx, kt, b0x, gc, wxt, ages) {
- nYears &lt;- dim(wxt)[2]
- x &lt;- ages
- t &lt;- 1:nYears
- c &lt;- (1 - tail(ages, 1)):(nYears - ages[1])
- xbar &lt;- mean(x)
- #nsum g(c)=0, nsum cg(c)=0, nsum c^2g(c)=0
- phiReg &lt;- lm(gc ~ 1 + c + I(c^2), na.action = na.omit)
- phi &lt;- coef(phiReg)
- gc &lt;- gc - phi[1] - phi[2] * c - phi[3] * c^2
- kt[2, ] &lt;- kt[2, ] + 2 * phi[3] * t
- kt[1, ] &lt;- kt[1, ] + phi[2] * t + phi[3] * (t^2 - 2 * xbar * t)
- ax &lt;- ax + phi[1] - phi[2] * x + phi[3] * x^2
- #nsum kt[i, ] = 0
- ci &lt;- rowMeans(kt, na.rm = TRUE)
- ax &lt;- ax + ci[1] + ci[2] * (xbar - x)
- kt[1, ] &lt;- kt[1, ] - ci[1]
- kt[2, ] &lt;- kt[2, ] - ci[2]
- list(ax = ax, bx = bx, kt = kt, b0x = b0x, gc = gc)
-}
-PLAT &lt;- StMoMo(link = "log", staticAgeFun = TRUE,
-               periodAgeFun = c("1", f2), cohortAgeFun = "1",
-               constFun = constPlat)
-
-plot(fit(PLAT, data = EWMaleData, ages.fit = 55:89))
-
-#Models not supported
-## Not run: 
-MnotSup1 &lt;- StMoMo(periodAgeFun = c(f2, "NP"))
-MnotSup1 &lt;- StMoMo(periodAgeFun = f2, cohortAgeFun = "NP")
-
-## End(Not run)
-</code></pre>
 
 <hr>
 <h2 id='StMoMoData'>Create StMoMoData object from demogdata object</h2><span id='topic+StMoMoData'></span>

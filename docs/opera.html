@@ -13,18 +13,18 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {opera}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#opera-package'><p>Online Prediction by ExpeRt Aggregation</p></a></li>
 <li><a href='#check_loss'><p>Function to check validy of provided loss function</p></a></li>
 <li><a href='#check_matrix'><p>Function to check and modify the input class and type</p></a></li>
 <li><a href='#electric_load'><p>Electricity forecasting data set</p></a></li>
 <li><a href='#FTRL'><p>Implementation of FTRL (Follow The Regularized Leader)</p></a></li>
 <li><a href='#loss'><p>Errors suffered by a sequence of predictions</p></a></li>
 <li><a href='#mixture'><p>Compute an aggregation rule</p></a></li>
-<li><a href='#opera-package'><p>Online Prediction by ExpeRt Aggregation</p></a></li>
 <li><a href='#oracle'><p>Compute oracle predictions</p></a></li>
 <li><a href='#plot_ridge_weights'><p>Functions to render dynamic mixture graphs using rAmCharts</p></a></li>
 <li><a href='#plot.mixture'><p>Plot an object of class mixture</p></a></li>
@@ -139,6 +139,176 @@ mgcv, survival, knitr, gbm, rmarkdown, magrittr</td>
 <td>2021-12-06 18:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='opera-package'>Online Prediction by ExpeRt Aggregation</h2><span id='topic+opera-package'></span><span id='topic+opera'></span>
+
+<h3>Description</h3>
+
+<p>The package <code>opera</code> performs, for regression-oriented time-series,
+predictions by combining a finite set of forecasts provided by the user.
+More formally, it considers a sequence of observations <code>Y</code> (such as
+electricity consumption, or any bounded time series) to be predicted step
+by step. At each time instance <code>t</code>, a finite set of experts
+(basicly some based forecasters) provide predictions <code>x</code> of the next
+observation in <code>y</code>. This package proposes several adaptive and robust
+methods to combine the expert forecasts based on their past performance.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Pierre Gaillard &lt;pierre@gaillard.me&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Prediction, Learning, and Games. N. Cesa-Bianchi and G. Lugosi.
+<br />
+</p>
+<p>Forecasting the electricity consumption by aggregating specialized experts;
+a review of sequential aggregation of specialized experts, with an
+application to Slovakian an French contry-wide one-day-ahead (half-)hourly
+predictions, Machine Learning, in press, 2012. Marie Devaine, Pierre
+Gaillard, Yannig Goude, and Gilles Stoltz
+<br />
+</p>
+<p>Contributions to online robust aggregation: work on the approximation error and on 
+probabilistic forecasting. Pierre Gaillard. PhD Thesis, University Paris-Sud, 2015.
+<br />
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library('opera')  # load the package
+set.seed(1)
+
+# Example: find the best one week ahead forecasting strategy (weekly data)
+# packages
+library(mgcv)
+
+# import data
+data(electric_load)
+idx_data_test &lt;- 620:nrow(electric_load)
+data_train &lt;- electric_load[-idx_data_test, ]
+data_test &lt;- electric_load[idx_data_test, ]
+
+# Build the expert forecasts 
+# ##########################
+
+# 1) A generalized additive model
+gam.fit &lt;- gam(Load ~ s(IPI) + s(Temp) + s(Time, k=3) + 
+                 s(Load1) + as.factor(NumWeek), data = data_train)
+gam.forecast &lt;- predict(gam.fit, newdata = data_test)
+
+# 2) An online autoregressive model on the residuals of a medium term model
+
+# Medium term model to remove trend and seasonality (using generalized additive model)
+detrend.fit &lt;- gam(Load ~ s(Time,k=3) + s(NumWeek) + s(Temp) + s(IPI), data = data_train)
+electric_load$Trend &lt;- c(predict(detrend.fit), predict(detrend.fit,newdata = data_test))
+electric_load$Load.detrend &lt;- electric_load$Load - electric_load$Trend
+
+# Residual analysis
+ar.forecast &lt;- numeric(length(idx_data_test))
+for (i in seq(idx_data_test)) {
+  ar.fit &lt;- ar(electric_load$Load.detrend[1:(idx_data_test[i] - 1)])
+  ar.forecast[i] &lt;- as.numeric(predict(ar.fit)$pred) + electric_load$Trend[idx_data_test[i]]
+}
+
+# Aggregation of experts
+###########################
+
+X &lt;- cbind(gam.forecast, ar.forecast)
+colnames(X) &lt;- c('gam', 'ar')
+Y &lt;- data_test$Load
+
+matplot(cbind(Y, X), type = 'l', col = 1:6, ylab = 'Weekly load', xlab = 'Week')
+
+
+# How good are the expert? Look at the oracles
+oracle.convex &lt;- oracle(Y = Y, experts = X, loss.type = 'square', model = 'convex')
+
+if(interactive()){
+  plot(oracle.convex)
+}
+
+oracle.convex
+
+# Is a single expert the best over time ? Are there breaks ?
+oracle.shift &lt;- oracle(Y = Y, experts = X, loss.type = 'percentage', model = 'shifting')
+if(interactive()){
+  plot(oracle.shift)
+}
+oracle.shift
+
+# Online aggregation of the experts with BOA
+#############################################
+
+# Initialize the aggregation rule
+m0.BOA &lt;- mixture(model = 'BOA', loss.type = 'square')
+
+# Perform online prediction using BOA There are 3 equivalent possibilities 1)
+# start with an empty model and update the model sequentially
+m1.BOA &lt;- m0.BOA
+for (i in 1:length(Y)) {
+  m1.BOA &lt;- predict(m1.BOA, newexperts = X[i, ], newY = Y[i], quiet = TRUE)
+}
+
+# 2) perform online prediction directly from the empty model
+m2.BOA &lt;- predict(m0.BOA, newexpert = X, newY = Y, online = TRUE, quiet = TRUE)
+
+# 3) perform the online aggregation directly
+m3.BOA &lt;- mixture(Y = Y, experts = X, model = 'BOA', loss.type = 'square', quiet = TRUE)
+
+# These predictions are equivalent:
+identical(m1.BOA, m2.BOA)  # TRUE
+identical(m1.BOA, m3.BOA)  # TRUE
+
+# Display the results
+summary(m3.BOA)
+if(interactive()){
+  plot(m1.BOA)
+}
+
+# Using d-dimensional time-series
+##################################
+
+# Consider the above exemple of electricity consumption 
+#  to be predicted every four weeks
+YBlock &lt;- seriesToBlock(X = Y, d = 4)
+XBlock &lt;- seriesToBlock(X = X, d = 4)
+
+# The four-week-by-four-week predictions can then be obtained 
+# by directly using the `mixture` function as we did earlier. 
+
+MLpolBlock &lt;- mixture(Y = YBlock, experts = XBlock, model = "MLpol", loss.type = "square", 
+                      quiet = TRUE)
+
+
+# The predictions can finally be transformed back to a 
+# regular one dimensional time-series by using the function `blockToSeries`.
+
+prediction &lt;- blockToSeries(MLpolBlock$prediction)
+
+#### Using the `online = FALSE` option
+
+# Equivalent solution is to use the `online = FALSE` option in the predict function. 
+# The latter ensures that the model coefficients are not 
+# updated between the next four weeks to forecast.
+MLpolBlock &lt;- mixture(model = "BOA", loss.type = "square")
+d = 4
+n &lt;- length(Y)/d
+for (i in 0:(n-1)) { 
+  idx &lt;- 4*i + 1:4 # next four weeks to be predicted
+  MLpolBlock &lt;- predict(MLpolBlock, newexperts = X[idx, ], newY = Y[idx], online = FALSE, 
+                        quiet = TRUE)
+}
+
+print(head(MLpolBlock$weights))
+
+</code></pre>
+
 <hr>
 <h2 id='check_loss'>Function to check validy of provided loss function</h2><span id='topic+check_loss'></span>
 
@@ -828,176 +998,6 @@ In <em>Proceedings of the 20th international conference on machine learning (icm
 <h3>See Also</h3>
 
 <p>See <code><a href="#topic+opera-package">opera-package</a></code> and opera-vignette for a brief example about how to use the package.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>library('opera')  # load the package
-set.seed(1)
-
-# Example: find the best one week ahead forecasting strategy (weekly data)
-# packages
-library(mgcv)
-
-# import data
-data(electric_load)
-idx_data_test &lt;- 620:nrow(electric_load)
-data_train &lt;- electric_load[-idx_data_test, ]
-data_test &lt;- electric_load[idx_data_test, ]
-
-# Build the expert forecasts 
-# ##########################
-
-# 1) A generalized additive model
-gam.fit &lt;- gam(Load ~ s(IPI) + s(Temp) + s(Time, k=3) + 
-                 s(Load1) + as.factor(NumWeek), data = data_train)
-gam.forecast &lt;- predict(gam.fit, newdata = data_test)
-
-# 2) An online autoregressive model on the residuals of a medium term model
-
-# Medium term model to remove trend and seasonality (using generalized additive model)
-detrend.fit &lt;- gam(Load ~ s(Time,k=3) + s(NumWeek) + s(Temp) + s(IPI), data = data_train)
-electric_load$Trend &lt;- c(predict(detrend.fit), predict(detrend.fit,newdata = data_test))
-electric_load$Load.detrend &lt;- electric_load$Load - electric_load$Trend
-
-# Residual analysis
-ar.forecast &lt;- numeric(length(idx_data_test))
-for (i in seq(idx_data_test)) {
-  ar.fit &lt;- ar(electric_load$Load.detrend[1:(idx_data_test[i] - 1)])
-  ar.forecast[i] &lt;- as.numeric(predict(ar.fit)$pred) + electric_load$Trend[idx_data_test[i]]
-}
-
-# Aggregation of experts
-###########################
-
-X &lt;- cbind(gam.forecast, ar.forecast)
-colnames(X) &lt;- c('gam', 'ar')
-Y &lt;- data_test$Load
-
-matplot(cbind(Y, X), type = 'l', col = 1:6, ylab = 'Weekly load', xlab = 'Week')
-
-
-# How good are the expert? Look at the oracles
-oracle.convex &lt;- oracle(Y = Y, experts = X, loss.type = 'square', model = 'convex')
-
-if(interactive()){
-  plot(oracle.convex)
-}
-
-oracle.convex
-
-# Is a single expert the best over time ? Are there breaks ?
-oracle.shift &lt;- oracle(Y = Y, experts = X, loss.type = 'percentage', model = 'shifting')
-if(interactive()){
-  plot(oracle.shift)
-}
-oracle.shift
-
-# Online aggregation of the experts with BOA
-#############################################
-
-# Initialize the aggregation rule
-m0.BOA &lt;- mixture(model = 'BOA', loss.type = 'square')
-
-# Perform online prediction using BOA There are 3 equivalent possibilities 1)
-# start with an empty model and update the model sequentially
-m1.BOA &lt;- m0.BOA
-for (i in 1:length(Y)) {
-  m1.BOA &lt;- predict(m1.BOA, newexperts = X[i, ], newY = Y[i], quiet = TRUE)
-}
-
-# 2) perform online prediction directly from the empty model
-m2.BOA &lt;- predict(m0.BOA, newexpert = X, newY = Y, online = TRUE, quiet = TRUE)
-
-# 3) perform the online aggregation directly
-m3.BOA &lt;- mixture(Y = Y, experts = X, model = 'BOA', loss.type = 'square', quiet = TRUE)
-
-# These predictions are equivalent:
-identical(m1.BOA, m2.BOA)  # TRUE
-identical(m1.BOA, m3.BOA)  # TRUE
-
-# Display the results
-summary(m3.BOA)
-if(interactive()){
-  plot(m1.BOA)
-}
-
-# Using d-dimensional time-series
-##################################
-
-# Consider the above exemple of electricity consumption 
-#  to be predicted every four weeks
-YBlock &lt;- seriesToBlock(X = Y, d = 4)
-XBlock &lt;- seriesToBlock(X = X, d = 4)
-
-# The four-week-by-four-week predictions can then be obtained 
-# by directly using the `mixture` function as we did earlier. 
-
-MLpolBlock &lt;- mixture(Y = YBlock, experts = XBlock, model = "MLpol", loss.type = "square", 
-                      quiet = TRUE)
-
-
-# The predictions can finally be transformed back to a 
-# regular one dimensional time-series by using the function `blockToSeries`.
-
-prediction &lt;- blockToSeries(MLpolBlock$prediction)
-
-#### Using the `online = FALSE` option
-
-# Equivalent solution is to use the `online = FALSE` option in the predict function. 
-# The latter ensures that the model coefficients are not 
-# updated between the next four weeks to forecast.
-MLpolBlock &lt;- mixture(model = "BOA", loss.type = "square")
-d = 4
-n &lt;- length(Y)/d
-for (i in 0:(n-1)) { 
-  idx &lt;- 4*i + 1:4 # next four weeks to be predicted
-  MLpolBlock &lt;- predict(MLpolBlock, newexperts = X[idx, ], newY = Y[idx], online = FALSE, 
-                        quiet = TRUE)
-}
-
-print(head(MLpolBlock$weights))
-
-</code></pre>
-
-<hr>
-<h2 id='opera-package'>Online Prediction by ExpeRt Aggregation</h2><span id='topic+opera-package'></span><span id='topic+opera'></span>
-
-<h3>Description</h3>
-
-<p>The package <code>opera</code> performs, for regression-oriented time-series,
-predictions by combining a finite set of forecasts provided by the user.
-More formally, it considers a sequence of observations <code>Y</code> (such as
-electricity consumption, or any bounded time series) to be predicted step
-by step. At each time instance <code>t</code>, a finite set of experts
-(basicly some based forecasters) provide predictions <code>x</code> of the next
-observation in <code>y</code>. This package proposes several adaptive and robust
-methods to combine the expert forecasts based on their past performance.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Pierre Gaillard &lt;pierre@gaillard.me&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Prediction, Learning, and Games. N. Cesa-Bianchi and G. Lugosi.
-<br />
-</p>
-<p>Forecasting the electricity consumption by aggregating specialized experts;
-a review of sequential aggregation of specialized experts, with an
-application to Slovakian an French contry-wide one-day-ahead (half-)hourly
-predictions, Machine Learning, in press, 2012. Marie Devaine, Pierre
-Gaillard, Yannig Goude, and Gilles Stoltz
-<br />
-</p>
-<p>Contributions to online robust aggregation: work on the approximation error and on 
-probabilistic forecasting. Pierre Gaillard. PhD Thesis, University Paris-Sud, 2015.
-<br />
 </p>
 
 

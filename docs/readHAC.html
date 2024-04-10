@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {readHAC}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#readHAC-package'><p>Read acoustic HAC raw data</p></a></li>
 <li><a href='#[.HAC'><p>Extract tuples.</p></a></li>
 <li><a href='#parseHAC'><p>Parse binary HAC.</p></a></li>
 <li><a href='#readHAC'><p>Read HAC data into R.</p></a></li>
-<li><a href='#readHAC-package'><p>Read acoustic HAC raw data</p></a></li>
 <li><a href='#writeHAC'><p>Write HAC binary data.</p></a></li>
 </ul>
 </div>
@@ -94,6 +94,70 @@ function processMathHTML() {
 <td>2017-02-02 02:05:07</td>
 </tr>
 </table>
+<hr>
+<h2 id='readHAC-package'>Read acoustic HAC raw data</h2><span id='topic+readHAC-package'></span>
+
+<h3>Description</h3>
+
+<p>The HAC data format is a binary format containing so-called <code>tuples</code>.
+A tuple can hold various sorts of information depending on the tuple type.
+For instance tuples exist to specify positions, echosounder information and
+acoustic signal data etc.
+This R package can read, write and subset the HAC data format.
+</p>
+
+
+<h3>Details</h3>
+
+<p>See the description of the ICES HAC standard data exchange format,
+version 1.60.
+</p>
+
+
+<h3>References</h3>
+
+<p>McQuinn, Ian H., et al. Description of the ICES HAC standard
+data exchange format, version 1.60. Conseil international pour
+l'exploration de la mer, 2005.
+<a href="http://biblio.uqar.ca/archives/30005500.pdf">http://biblio.uqar.ca/archives/30005500.pdf</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>require(readHAC)
+
+######################################################################
+## Example file
+hacfile &lt;- system.file("hac", "Hac-test_000001.hac", package="readHAC")
+
+######################################################################
+## Step 1. Read hac data into R
+hac &lt;- readHAC(hacfile)
+print(hac)
+
+######################################################################
+## Step 2. Select sub-components
+pingdata &lt;- ( subset(hac, softwarechannel==3 &amp; type==10000) )
+channel  &lt;- ( subset(hac, softwarechannel==3 &amp; type==9001 ) )
+echosounder &lt;- ( subset(hac, echosounder==channel$echosounder &amp; type==901) )
+
+######################################################################
+## Step 3. Parse the binary data
+print( parseHAC(pingdata) )
+info &lt;- parseHAC(channel)[5:7]
+s &lt;- ( parseHAC(pingdata)$"Sample value" )
+s[s&gt;0] &lt;- NA  ## discard positive dB values
+sec &lt;- parseHAC(pingdata)$"Time CPU ANSI"; sec &lt;- sec - min(sec)
+flip &lt;- function(x) t( x[nrow(x):1, ] )
+image(sec, 1:nrow(s), flip(s), axes=FALSE, ylab="sample")
+axis(1)
+at &lt;- seq(nrow(s), 1, by=-100)
+axis(2, at=at, labels=nrow(s)-at)
+box()
+legend("topright", legend=paste(names(info), unlist(info)) )
+</code></pre>
+
 <hr>
 <h2 id='+5B.HAC'>Extract tuples.</h2><span id='topic++5B.HAC'></span>
 
@@ -237,70 +301,6 @@ to data values according to the definition document.
 
 <p>HAC object.
 </p>
-
-<hr>
-<h2 id='readHAC-package'>Read acoustic HAC raw data</h2><span id='topic+readHAC-package'></span>
-
-<h3>Description</h3>
-
-<p>The HAC data format is a binary format containing so-called <code>tuples</code>.
-A tuple can hold various sorts of information depending on the tuple type.
-For instance tuples exist to specify positions, echosounder information and
-acoustic signal data etc.
-This R package can read, write and subset the HAC data format.
-</p>
-
-
-<h3>Details</h3>
-
-<p>See the description of the ICES HAC standard data exchange format,
-version 1.60.
-</p>
-
-
-<h3>References</h3>
-
-<p>McQuinn, Ian H., et al. Description of the ICES HAC standard
-data exchange format, version 1.60. Conseil international pour
-l'exploration de la mer, 2005.
-<a href="http://biblio.uqar.ca/archives/30005500.pdf">http://biblio.uqar.ca/archives/30005500.pdf</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>require(readHAC)
-
-######################################################################
-## Example file
-hacfile &lt;- system.file("hac", "Hac-test_000001.hac", package="readHAC")
-
-######################################################################
-## Step 1. Read hac data into R
-hac &lt;- readHAC(hacfile)
-print(hac)
-
-######################################################################
-## Step 2. Select sub-components
-pingdata &lt;- ( subset(hac, softwarechannel==3 &amp; type==10000) )
-channel  &lt;- ( subset(hac, softwarechannel==3 &amp; type==9001 ) )
-echosounder &lt;- ( subset(hac, echosounder==channel$echosounder &amp; type==901) )
-
-######################################################################
-## Step 3. Parse the binary data
-print( parseHAC(pingdata) )
-info &lt;- parseHAC(channel)[5:7]
-s &lt;- ( parseHAC(pingdata)$"Sample value" )
-s[s&gt;0] &lt;- NA  ## discard positive dB values
-sec &lt;- parseHAC(pingdata)$"Time CPU ANSI"; sec &lt;- sec - min(sec)
-flip &lt;- function(x) t( x[nrow(x):1, ] )
-image(sec, 1:nrow(s), flip(s), axes=FALSE, ylab="sample")
-axis(1)
-at &lt;- seq(nrow(s), 1, by=-100)
-axis(2, at=at, labels=nrow(s)-at)
-box()
-legend("topright", legend=paste(names(info), unlist(info)) )
-</code></pre>
 
 <hr>
 <h2 id='writeHAC'>Write HAC binary data.</h2><span id='topic+writeHAC'></span>

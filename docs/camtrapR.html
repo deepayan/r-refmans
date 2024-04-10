@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {camtrapR}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#camtrapR-package'>
+<p>Overview of the functions in the camtrapR package</p></a></li>
 <li><a href='#activityDensity'><p>Plot kernel density estimation of single-species activity</p></a></li>
 <li><a href='#activityHistogram'><p>Plot histogram of single-species activity</p></a></li>
 <li><a href='#activityOverlap'><p>Plot overlapping kernel densities of two-species activities</p></a></li>
@@ -26,8 +28,6 @@ function processMathHTML() {
 <li><a href='#addToPath'><p>Add a directory to PATH temporarily</p></a></li>
 <li><a href='#appendSpeciesNames'><p>Add or remove species names from JPEG image filenames</p></a></li>
 <li><a href='#cameraOperation'><p>Create a camera trap station operation matrix</p></a></li>
-<li><a href='#camtrapR-package'>
-<p>Overview of the functions in the camtrapR package</p></a></li>
 <li><a href='#camtraps'><p>Sample camera trap station information</p></a></li>
 <li><a href='#camtrapsMultiSeason'><p>Sample multi-season camera trap station information</p></a></li>
 <li><a href='#checkSpeciesIdentification'><p>Consistency check on species image identification</p></a></li>
@@ -181,6 +181,356 @@ zip</td>
 <td>2024-02-26 19:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='camtrapR-package'>
+Overview of the functions in the camtrapR package
+</h2><span id='topic+camtrapR-package'></span><span id='topic+camtrapR'></span>
+
+<h3>Description</h3>
+
+<p>This package provides a streamlined workflow for processing data generated in camera trap-based wildlife studies and prepares input for further analyses, particularly in occupancy and spatial capture-recapture frameworks.
+It suggests a simple data structure and provides functions for managing digital camera trap photographs (and videos), generating record tables, maps of species richness and species detections and species activity diagrams. It further helps prepare subsequent analyses by creating detection/non-detection matrices for occupancy analyses, e.g. in the <span class="pkg">unmarked</span> or <span class="pkg">ubms</span> packages, and <code>capthist</code> objects for spatial capture-recapture analyses in the <span class="pkg">secr</span> package. In addition, basic survey statistics are computed. The functions build on one another in a logical sequence.
+The only manual input needed is species (and individual) identification, which is achieved by moving images into species directories or by tagging images in image management software. Besides, a table holding basic information about camera trap station IDs, locations and trapping periods must be created in spreadsheet software.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Image metadata (such as date and time or user-assigned tags) are extracted from the images using Phil Harvey's ExifTool (available from <a href="https://exiftool.org/">https://exiftool.org/</a>) and the information is stored in a record table. An adjustable criterion for temporal independence of records can be applied. Maps of species presence and species richness can be generated. Several functions are available for plotting single- and two-species activity patterns.
+Information about the camera-specific trapping periods (and periods of malfunction) are summarized into a matrix about camera trap operability. These, together with the record table, are used to generate species detection histories for occupancy and spatial capture-recapture analyses. The user has considerable freedom in generating the detection histories; sampling occasion length, beginning date and and occasion start times are adjustable. In addition, trapping effort (i.e. active trap nights per station and occasion) can be computed for use as a covariate / offset on detection probability.
+</p>
+
+
+<h3>User support</h3>
+
+<p>The camtrapR Google group is an online support and help forum for camtrapR users. You can find it here: <a href="https://groups.google.com/forum/#!forum/camtrapr">https://groups.google.com/forum/#!forum/camtrapr</a>.
+</p>
+
+
+<h3>Image organisation and management</h3>
+
+<p>The functions in this section set up a directory structure for storing camera trap images and identifying species and individuals from images. They build on one another and can be run in sequential order as needed.
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+createStationFolders">createStationFolders</a></code> </td><td style="text-align: left;"> Create camera trap station directories for raw images </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+fixDateTimeOriginal">fixDateTimeOriginal</a></code>  </td><td style="text-align: left;"> Fix DateTimeOriginal Exif metadata tag in Reconyx Hyperfire cameras </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+OCRdataFields">OCRdataFields</a></code>        </td><td style="text-align: left;"> Optical character recognition (OCR) from data fields in images </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+writeDateTimeOriginal">writeDateTimeOriginal</a></code> </td><td style="text-align: left;"> Write values to DateTimeOriginal tag in image metadata </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+timeShiftImages">timeShiftImages</a></code>      </td><td style="text-align: left;"> Apply time shifts to JPEG images </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+imageRename">imageRename</a></code>          </td><td style="text-align: left;"> Copy and rename images based on station ID and image creation date </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+addCopyrightTag">addCopyrightTag</a></code>      </td><td style="text-align: left;"> Write a copyright tag into JPEG image metadata </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+appendSpeciesNames">appendSpeciesNames</a></code>   </td><td style="text-align: left;"> Add or remove species names from image filenames </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Species / individual identification</h3>
+
+<p>These functions assist in species identification and prepare individual identification of animals.
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+checkSpeciesNames">checkSpeciesNames</a></code>          </td><td style="text-align: left;"> Check species names against the ITIS taxonomic database </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+createSpeciesFolders">createSpeciesFolders</a></code>       </td><td style="text-align: left;"> Create directories for species identification</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+checkSpeciesIdentification">checkSpeciesIdentification</a></code> </td><td style="text-align: left;"> Consistency check on species image identification </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+getSpeciesImages">getSpeciesImages</a></code>           </td><td style="text-align: left;"> Gather all images of a species in a new directory </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Image data extraction</h3>
+
+<p>These function use the directory structure built above (Section 'Image management workflow') and a table containing basic information about camera traps and/or stations (IDs, location, trapping period).
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+recordTable">recordTable</a></code>           </td><td style="text-align: left;"> Create a species record table from camera trap images and videos </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+recordTableIndividual">recordTableIndividual</a></code> </td><td style="text-align: left;"> Create a single-species record table from camera trap images and videos with individual IDs </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+exifTagNames">exifTagNames</a></code>          </td><td style="text-align: left;"> Return Exif metadata tags and tag names from JPEG images </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+addToPath">addToPath</a></code>             </td><td style="text-align: left;"> Add the directory containing exiftool.exe to PATH temporarily (Windows only) </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+filterRecordTable">filterRecordTable</a></code>     </td><td style="text-align: left;"> Filter existing record table for temporal independence. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> 
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Data exploration and visualisation</h3>
+
+<p>These plots are generated from the record table and the camera trap table.
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+detectionMaps">detectionMaps</a></code>     </td><td style="text-align: left;"> Generate maps of species richness and species presence by station, export shapefiles </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+activityHistogram">activityHistogram</a></code> </td><td style="text-align: left;"> Single-species diel activity histograms </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+activityDensity">activityDensity</a></code>   </td><td style="text-align: left;"> Single-species diel activity kernel density estimation plots </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+activityRadial">activityRadial</a></code>    </td><td style="text-align: left;"> Single-species diel activity radial plot </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+activityOverlap">activityOverlap</a></code>   </td><td style="text-align: left;"> Two-species diel activity overlap plots and estimates </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Prepare occupancy and spatial capture-recapture analyses, and summarise surveys</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+cameraOperation">cameraOperation</a></code>         </td><td style="text-align: left;"> Create a camera operation matrix </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+detectionHistory">detectionHistory</a></code>        </td><td style="text-align: left;"> Species detection histories for occupancy analyses (single and multi-season) </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+spatialDetectionHistory">spatialDetectionHistory</a></code> </td><td style="text-align: left;"> Detection histories of individuals for spatial capture-recapture analyses  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+surveyReport">surveyReport</a></code>            </td><td style="text-align: left;"> Create a report about camera trap surveys and species detections </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+surveyDashboard">surveyDashboard</a></code>         </td><td style="text-align: left;"> Shiny dashboard for summarizing and analyzing camera trap survey data </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Community (multi-species) occupancy models</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+communityModel">communityModel</a></code>        </td><td style="text-align: left;"> Create a community (multi-species) occupancy model for JAGS or Nimble </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+commOccu-class">commOccu-class</a></code>        </td><td style="text-align: left;"> commOccu objects </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+fit+2CcommOccu-method">fit,commOccu-method</a></code>   </td><td style="text-align: left;"> Fit a community (multi-species) occupancy model </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+predict+2CcommOccu-method">predict,commOccu-method</a></code>   </td><td style="text-align: left;"> Predictions from community occupancy models </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+summary+2CcommOccu-method">summary,commOccu-method</a></code>   </td><td style="text-align: left;"> Summarize community occupancy model </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+plot_coef">plot_coef</a></code>             </td><td style="text-align: left;"> Plot effect sizes of covariates in community occupancy model </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+plot_effects">plot_effects</a></code>          </td><td style="text-align: left;"> Plot Marginal Effects of Covariates </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Sample data</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+camtraps">camtraps</a></code>          </td><td style="text-align: left;">  Sample camera trap station information table </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+recordTableSample">recordTableSample</a></code> </td><td style="text-align: left;"> Sample species record table </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+recordTableIndividualSample">recordTableIndividualSample</a></code>  </td><td style="text-align: left;"> Single-species record table with individual IDs</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+camtrapsMultiSeason">camtrapsMultiSeason</a></code>          </td><td style="text-align: left;">  Sample multi season camera trap station information table </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+recordTableSampleMultiSeason">recordTableSampleMultiSeason</a></code> </td><td style="text-align: left;"> Sample  multi season species record table </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+recordTableIndividualSampleMultiSeason">recordTableIndividualSampleMultiSeason</a></code>  </td><td style="text-align: left;"> Single-species multi season record table with individual IDs</td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<code><a href="#topic+timeShiftTable">timeShiftTable</a></code>    </td><td style="text-align: left;"> Sample camera trap time shift information </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Vignettes</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;">
+
+<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr1.pdf">1. Organising raw camera trap images</a>  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr2.pdf">2. Identifying species and individuals</a>  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr3.pdf">3. Extracting Data from Camera Trapping Images and Videos</a>  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr4.pdf">4. Data exploration and visualisation</a>  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr5.html">5. Multi-species occupancy models</a>  </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Juergen Niedballa
+</p>
+<p>Maintainer:Juergen Niedballa &lt;camtrapr@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Niedballa, J., Sollmann, R., Courtiol, A., Wilting, A. (2016): camtrapR: an R package for efficient camera trap data management. Methods in Ecology and Evolution, 7(12). <a href="https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12600">https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12600</a> <br />
+</p>
+<p>camtrapR Google Group <a href="https://groups.google.com/forum/#!forum/camtrapr">https://groups.google.com/forum/#!forum/camtrapr</a> <br />
+</p>
+<p>Phil Harvey's ExifTool <a href="https://exiftool.org/">https://exiftool.org/</a> <br />
+</p>
+
+
+<h3>See Also</h3>
+
+<p><span class="pkg">overlap</span>
+<span class="pkg">unmarked</span>
+<span class="pkg">ubms</span>
+<span class="pkg">secr</span>
+<span class="pkg">wiqid</span>
+</p>
+
 <hr>
 <h2 id='activityDensity'>Plot kernel density estimation of single-species activity</h2><span id='topic+activityDensity'></span>
 
@@ -1506,356 +1856,6 @@ camop_problem
 camop_problem_lubridate
 
 </code></pre>
-
-<hr>
-<h2 id='camtrapR-package'>
-Overview of the functions in the camtrapR package
-</h2><span id='topic+camtrapR-package'></span><span id='topic+camtrapR'></span>
-
-<h3>Description</h3>
-
-<p>This package provides a streamlined workflow for processing data generated in camera trap-based wildlife studies and prepares input for further analyses, particularly in occupancy and spatial capture-recapture frameworks.
-It suggests a simple data structure and provides functions for managing digital camera trap photographs (and videos), generating record tables, maps of species richness and species detections and species activity diagrams. It further helps prepare subsequent analyses by creating detection/non-detection matrices for occupancy analyses, e.g. in the <span class="pkg">unmarked</span> or <span class="pkg">ubms</span> packages, and <code>capthist</code> objects for spatial capture-recapture analyses in the <span class="pkg">secr</span> package. In addition, basic survey statistics are computed. The functions build on one another in a logical sequence.
-The only manual input needed is species (and individual) identification, which is achieved by moving images into species directories or by tagging images in image management software. Besides, a table holding basic information about camera trap station IDs, locations and trapping periods must be created in spreadsheet software.
-</p>
-
-
-<h3>Details</h3>
-
-<p>Image metadata (such as date and time or user-assigned tags) are extracted from the images using Phil Harvey's ExifTool (available from <a href="https://exiftool.org/">https://exiftool.org/</a>) and the information is stored in a record table. An adjustable criterion for temporal independence of records can be applied. Maps of species presence and species richness can be generated. Several functions are available for plotting single- and two-species activity patterns.
-Information about the camera-specific trapping periods (and periods of malfunction) are summarized into a matrix about camera trap operability. These, together with the record table, are used to generate species detection histories for occupancy and spatial capture-recapture analyses. The user has considerable freedom in generating the detection histories; sampling occasion length, beginning date and and occasion start times are adjustable. In addition, trapping effort (i.e. active trap nights per station and occasion) can be computed for use as a covariate / offset on detection probability.
-</p>
-
-
-<h3>User support</h3>
-
-<p>The camtrapR Google group is an online support and help forum for camtrapR users. You can find it here: <a href="https://groups.google.com/forum/#!forum/camtrapr">https://groups.google.com/forum/#!forum/camtrapr</a>.
-</p>
-
-
-<h3>Image organisation and management</h3>
-
-<p>The functions in this section set up a directory structure for storing camera trap images and identifying species and individuals from images. They build on one another and can be run in sequential order as needed.
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+createStationFolders">createStationFolders</a></code> </td><td style="text-align: left;"> Create camera trap station directories for raw images </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+fixDateTimeOriginal">fixDateTimeOriginal</a></code>  </td><td style="text-align: left;"> Fix DateTimeOriginal Exif metadata tag in Reconyx Hyperfire cameras </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+OCRdataFields">OCRdataFields</a></code>        </td><td style="text-align: left;"> Optical character recognition (OCR) from data fields in images </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+writeDateTimeOriginal">writeDateTimeOriginal</a></code> </td><td style="text-align: left;"> Write values to DateTimeOriginal tag in image metadata </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+timeShiftImages">timeShiftImages</a></code>      </td><td style="text-align: left;"> Apply time shifts to JPEG images </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+imageRename">imageRename</a></code>          </td><td style="text-align: left;"> Copy and rename images based on station ID and image creation date </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+addCopyrightTag">addCopyrightTag</a></code>      </td><td style="text-align: left;"> Write a copyright tag into JPEG image metadata </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+appendSpeciesNames">appendSpeciesNames</a></code>   </td><td style="text-align: left;"> Add or remove species names from image filenames </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Species / individual identification</h3>
-
-<p>These functions assist in species identification and prepare individual identification of animals.
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+checkSpeciesNames">checkSpeciesNames</a></code>          </td><td style="text-align: left;"> Check species names against the ITIS taxonomic database </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+createSpeciesFolders">createSpeciesFolders</a></code>       </td><td style="text-align: left;"> Create directories for species identification</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+checkSpeciesIdentification">checkSpeciesIdentification</a></code> </td><td style="text-align: left;"> Consistency check on species image identification </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+getSpeciesImages">getSpeciesImages</a></code>           </td><td style="text-align: left;"> Gather all images of a species in a new directory </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Image data extraction</h3>
-
-<p>These function use the directory structure built above (Section 'Image management workflow') and a table containing basic information about camera traps and/or stations (IDs, location, trapping period).
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+recordTable">recordTable</a></code>           </td><td style="text-align: left;"> Create a species record table from camera trap images and videos </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+recordTableIndividual">recordTableIndividual</a></code> </td><td style="text-align: left;"> Create a single-species record table from camera trap images and videos with individual IDs </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+exifTagNames">exifTagNames</a></code>          </td><td style="text-align: left;"> Return Exif metadata tags and tag names from JPEG images </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+addToPath">addToPath</a></code>             </td><td style="text-align: left;"> Add the directory containing exiftool.exe to PATH temporarily (Windows only) </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+filterRecordTable">filterRecordTable</a></code>     </td><td style="text-align: left;"> Filter existing record table for temporal independence. </td>
-</tr>
-<tr>
- <td style="text-align: left;"> 
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Data exploration and visualisation</h3>
-
-<p>These plots are generated from the record table and the camera trap table.
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+detectionMaps">detectionMaps</a></code>     </td><td style="text-align: left;"> Generate maps of species richness and species presence by station, export shapefiles </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+activityHistogram">activityHistogram</a></code> </td><td style="text-align: left;"> Single-species diel activity histograms </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+activityDensity">activityDensity</a></code>   </td><td style="text-align: left;"> Single-species diel activity kernel density estimation plots </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+activityRadial">activityRadial</a></code>    </td><td style="text-align: left;"> Single-species diel activity radial plot </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+activityOverlap">activityOverlap</a></code>   </td><td style="text-align: left;"> Two-species diel activity overlap plots and estimates </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Prepare occupancy and spatial capture-recapture analyses, and summarise surveys</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+cameraOperation">cameraOperation</a></code>         </td><td style="text-align: left;"> Create a camera operation matrix </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+detectionHistory">detectionHistory</a></code>        </td><td style="text-align: left;"> Species detection histories for occupancy analyses (single and multi-season) </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+spatialDetectionHistory">spatialDetectionHistory</a></code> </td><td style="text-align: left;"> Detection histories of individuals for spatial capture-recapture analyses  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+surveyReport">surveyReport</a></code>            </td><td style="text-align: left;"> Create a report about camera trap surveys and species detections </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+surveyDashboard">surveyDashboard</a></code>         </td><td style="text-align: left;"> Shiny dashboard for summarizing and analyzing camera trap survey data </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Community (multi-species) occupancy models</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+communityModel">communityModel</a></code>        </td><td style="text-align: left;"> Create a community (multi-species) occupancy model for JAGS or Nimble </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+commOccu-class">commOccu-class</a></code>        </td><td style="text-align: left;"> commOccu objects </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+fit+2CcommOccu-method">fit,commOccu-method</a></code>   </td><td style="text-align: left;"> Fit a community (multi-species) occupancy model </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+predict+2CcommOccu-method">predict,commOccu-method</a></code>   </td><td style="text-align: left;"> Predictions from community occupancy models </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+summary+2CcommOccu-method">summary,commOccu-method</a></code>   </td><td style="text-align: left;"> Summarize community occupancy model </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+plot_coef">plot_coef</a></code>             </td><td style="text-align: left;"> Plot effect sizes of covariates in community occupancy model </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+plot_effects">plot_effects</a></code>          </td><td style="text-align: left;"> Plot Marginal Effects of Covariates </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Sample data</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+camtraps">camtraps</a></code>          </td><td style="text-align: left;">  Sample camera trap station information table </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+recordTableSample">recordTableSample</a></code> </td><td style="text-align: left;"> Sample species record table </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+recordTableIndividualSample">recordTableIndividualSample</a></code>  </td><td style="text-align: left;"> Single-species record table with individual IDs</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+camtrapsMultiSeason">camtrapsMultiSeason</a></code>          </td><td style="text-align: left;">  Sample multi season camera trap station information table </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+recordTableSampleMultiSeason">recordTableSampleMultiSeason</a></code> </td><td style="text-align: left;"> Sample  multi season species record table </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+recordTableIndividualSampleMultiSeason">recordTableIndividualSampleMultiSeason</a></code>  </td><td style="text-align: left;"> Single-species multi season record table with individual IDs</td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<code><a href="#topic+timeShiftTable">timeShiftTable</a></code>    </td><td style="text-align: left;"> Sample camera trap time shift information </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Vignettes</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;">
-
-<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr1.pdf">1. Organising raw camera trap images</a>  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr2.pdf">2. Identifying species and individuals</a>  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr3.pdf">3. Extracting Data from Camera Trapping Images and Videos</a>  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr4.pdf">4. Data exploration and visualisation</a>  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-<a href="https://CRAN.R-project.org/package=camtrapR/vignettes/camtrapr5.html">5. Multi-species occupancy models</a>  </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Author(s)</h3>
-
-<p>Juergen Niedballa
-</p>
-<p>Maintainer:Juergen Niedballa &lt;camtrapr@gmail.com&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Niedballa, J., Sollmann, R., Courtiol, A., Wilting, A. (2016): camtrapR: an R package for efficient camera trap data management. Methods in Ecology and Evolution, 7(12). <a href="https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12600">https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12600</a> <br />
-</p>
-<p>camtrapR Google Group <a href="https://groups.google.com/forum/#!forum/camtrapr">https://groups.google.com/forum/#!forum/camtrapr</a> <br />
-</p>
-<p>Phil Harvey's ExifTool <a href="https://exiftool.org/">https://exiftool.org/</a> <br />
-</p>
-
-
-<h3>See Also</h3>
-
-<p><span class="pkg">overlap</span>
-<span class="pkg">unmarked</span>
-<span class="pkg">ubms</span>
-<span class="pkg">secr</span>
-<span class="pkg">wiqid</span>
-</p>
 
 <hr>
 <h2 id='camtraps'>Sample camera trap station information</h2><span id='topic+camtraps'></span>
@@ -3248,7 +3248,6 @@ effect of effort on detection probability.
 <code>occasionLength</code>. <code>occasionStartTime</code> will be removed from the
 function. It has moved to <code><a href="#topic+cameraOperation">cameraOperation</a></code>, to ensure daily
 effort is computed correctly and takes the occasion start time into account.
-
 default). This may be relevant for nocturnal animals, in which 1 whole night
 would be considered an occasion.
 </p>

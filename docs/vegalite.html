@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {vegalite}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#vegalite-package'><p>Create Vega-Lite specs using htmlwidget idioms</p></a></li>
 <li><a href='#add_data'><p>Add data to a Vega-Lite spec</p></a></li>
 <li><a href='#add_filter'><p>Add a filter</p></a></li>
 <li><a href='#axis_facet_col'><p>General axis setttings (column facet)</p></a></li>
@@ -91,7 +92,6 @@ function processMathHTML() {
 <li><a href='#timeunit_y'><p>How to encode y-axis time values</p></a></li>
 <li><a href='#to_spec'><p>Convert a spec created with widget idioms to JSON</p></a></li>
 <li><a href='#vegalite'><p>Create and (optionally) visualize a Vega-Lite spec</p></a></li>
-<li><a href='#vegalite-package'><p>Create Vega-Lite specs using htmlwidget idioms</p></a></li>
 <li><a href='#vegaliteOutput'><p>Widget output function for use in Shiny</p></a></li>
 </ul>
 </div>
@@ -191,6 +191,120 @@ tools, clipr, utils, webshot, base64, stats</td>
 <td>2016-03-22 23:51:16</td>
 </tr>
 </table>
+<hr>
+<h2 id='vegalite-package'>Create Vega-Lite specs using htmlwidget idioms</h2><span id='topic+vegalite-package'></span>
+
+<h3>Description</h3>
+
+<p>Creation of Vega-Lite spec charts is virtually 100% feature complete.
+Some of the parameters to functions are only documented in TypeScript
+source code which will take a bit of time to
+wade through. All the visualizations you find in the
+<a href="http://vega.github.io/vega-lite/gallery.html">Vega-Lite Gallery</a> work.
+<br />
+Functions also exist which enable creation of widgets from a JSON spec and
+turning a <code>vegalite</code> package created object into a JSON spec.
+</p>
+
+
+<h3>Details</h3>
+
+<p>You start by calling <code>vegalite()</code> which allows you to setup core
+configuration options, including whether you want to display links to
+show the source and export the visualization. You can also set the background
+here and the <code>viewport_width</code> and <code>viewport_height</code>. Those are
+very important as they control the height and width of the widget and also
+the overall area for the chart. This does <em>not</em> set the height/width
+of the actual chart. That is done with <code>cell_size()</code>.
+</p>
+<p>Once you instantiate the widget, you need to <code>add_data()</code> which can
+be <code>data.frame</code>, local CSV, TSV or JSON file (that convert to
+<code>data.frame</code>s) or a non-realive URL (wich will not be read and
+converted but will remain a URL in the Vega-Lite spec.
+</p>
+<p>You then need to <code>encode_x()</code> &amp; <code>encode_y()</code> variables that
+map to columns in the data spec and choose one <code>mark_...()</code> to
+represent the encoding.
+</p>
+<p>Here's a sample, basic Vega-Lite widget:
+</p>
+<pre>
+  dat &lt;- jsonlite::fromJSON('[
+      {"a": "A","b": 28}, {"a": "B","b": 55}, {"a": "C","b": 43},
+      {"a": "D","b": 91}, {"a": "E","b": 81}, {"a": "F","b": 53},
+      {"a": "G","b": 19}, {"a": "H","b": 87}, {"a": "I","b": 52}
+    ]')
+
+vegalite() 
+    add_data(dat) 
+    encode_x("a", "ordinal") 
+    encode_y("b", "quantitative") 
+    mark_bar() -&gt; vl
+
+vl
+  </pre>
+<p>That is the minimum set of requirements for a basic Vega-Lite spec and
+will create a basic widget.
+</p>
+<p>You can also convert that R widget object <code>to_spec()</code> which will return
+the JSON for the Vega-Lite spec (allowing you to use it outside of R).
+</p>
+<pre>
+
+to_spec(vl)
+
+{
+  "description": "",
+  "data": {
+    "values": [
+      { "a": "A", "b": 28 }, { "a": "B", "b": 55 }, { "a": "C", "b": 43 },
+      { "a": "D", "b": 91 }, { "a": "E", "b": 81 }, { "a": "F", "b": 53 },
+      { "a": "G", "b": 19 }, { "a": "H", "b": 87 }, { "a": "I", "b": 52 }
+    ]
+  },
+  "mark": "bar",
+  "encoding": {
+    "x": {
+      "field": "a",
+      "type": "nominal"
+    },
+    "y": {
+      "field": "b",
+      "type": "quantitative"
+    }
+  },
+  "config": [],
+  "embed": {
+    "renderer": "svg",
+    "actions": {
+      "export": false,
+      "source": false,
+      "editor": false
+    }
+  }
+}
+
+</pre>
+<p>If you already have a Vega-Lite JSON spec that has embedded data or a
+non-realtive URL, you can create a widget from it via <code>from_spec()</code>
+by passing in the full JSON spec or a URL to a full JSON spec.
+</p>
+<p>If you're good with HTML (etc) and want a more lightweight embedding options, you
+can also use <code><a href="#topic+embed_spec">embed_spec</a></code> which will scaffold a minimum <code>div</code> +
+<code>script</code> source and embed a spec from a <code>vegalite</code> object.
+</p>
+<p>If you like the way Vega-Lite renders charts, you can also use them as static
+images in PDF knitted documents with the new <code>capture_widget</code> function.
+(NOTE that as of this writing, you can just use the development version of
+<code>knitr</code> instead of this function.)
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Bob Rudis (@hrbrmstr)
+</p>
+
 <hr>
 <h2 id='add_data'>Add data to a Vega-Lite spec</h2><span id='topic+add_data'></span>
 
@@ -4668,120 +4782,6 @@ vegalite() %&gt;%
   encode_y("b", "quantitative") %&gt;%
   mark_bar()
 </code></pre>
-
-<hr>
-<h2 id='vegalite-package'>Create Vega-Lite specs using htmlwidget idioms</h2><span id='topic+vegalite-package'></span>
-
-<h3>Description</h3>
-
-<p>Creation of Vega-Lite spec charts is virtually 100% feature complete.
-Some of the parameters to functions are only documented in TypeScript
-source code which will take a bit of time to
-wade through. All the visualizations you find in the
-<a href="http://vega.github.io/vega-lite/gallery.html">Vega-Lite Gallery</a> work.
-<br />
-Functions also exist which enable creation of widgets from a JSON spec and
-turning a <code>vegalite</code> package created object into a JSON spec.
-</p>
-
-
-<h3>Details</h3>
-
-<p>You start by calling <code>vegalite()</code> which allows you to setup core
-configuration options, including whether you want to display links to
-show the source and export the visualization. You can also set the background
-here and the <code>viewport_width</code> and <code>viewport_height</code>. Those are
-very important as they control the height and width of the widget and also
-the overall area for the chart. This does <em>not</em> set the height/width
-of the actual chart. That is done with <code>cell_size()</code>.
-</p>
-<p>Once you instantiate the widget, you need to <code>add_data()</code> which can
-be <code>data.frame</code>, local CSV, TSV or JSON file (that convert to
-<code>data.frame</code>s) or a non-realive URL (wich will not be read and
-converted but will remain a URL in the Vega-Lite spec.
-</p>
-<p>You then need to <code>encode_x()</code> &amp; <code>encode_y()</code> variables that
-map to columns in the data spec and choose one <code>mark_...()</code> to
-represent the encoding.
-</p>
-<p>Here's a sample, basic Vega-Lite widget:
-</p>
-<pre>
-  dat &lt;- jsonlite::fromJSON('[
-      {"a": "A","b": 28}, {"a": "B","b": 55}, {"a": "C","b": 43},
-      {"a": "D","b": 91}, {"a": "E","b": 81}, {"a": "F","b": 53},
-      {"a": "G","b": 19}, {"a": "H","b": 87}, {"a": "I","b": 52}
-    ]')
-
-vegalite() 
-    add_data(dat) 
-    encode_x("a", "ordinal") 
-    encode_y("b", "quantitative") 
-    mark_bar() -&gt; vl
-
-vl
-  </pre>
-<p>That is the minimum set of requirements for a basic Vega-Lite spec and
-will create a basic widget.
-</p>
-<p>You can also convert that R widget object <code>to_spec()</code> which will return
-the JSON for the Vega-Lite spec (allowing you to use it outside of R).
-</p>
-<pre>
-
-to_spec(vl)
-
-{
-  "description": "",
-  "data": {
-    "values": [
-      { "a": "A", "b": 28 }, { "a": "B", "b": 55 }, { "a": "C", "b": 43 },
-      { "a": "D", "b": 91 }, { "a": "E", "b": 81 }, { "a": "F", "b": 53 },
-      { "a": "G", "b": 19 }, { "a": "H", "b": 87 }, { "a": "I", "b": 52 }
-    ]
-  },
-  "mark": "bar",
-  "encoding": {
-    "x": {
-      "field": "a",
-      "type": "nominal"
-    },
-    "y": {
-      "field": "b",
-      "type": "quantitative"
-    }
-  },
-  "config": [],
-  "embed": {
-    "renderer": "svg",
-    "actions": {
-      "export": false,
-      "source": false,
-      "editor": false
-    }
-  }
-}
-
-</pre>
-<p>If you already have a Vega-Lite JSON spec that has embedded data or a
-non-realtive URL, you can create a widget from it via <code>from_spec()</code>
-by passing in the full JSON spec or a URL to a full JSON spec.
-</p>
-<p>If you're good with HTML (etc) and want a more lightweight embedding options, you
-can also use <code><a href="#topic+embed_spec">embed_spec</a></code> which will scaffold a minimum <code>div</code> +
-<code>script</code> source and embed a spec from a <code>vegalite</code> object.
-</p>
-<p>If you like the way Vega-Lite renders charts, you can also use them as static
-images in PDF knitted documents with the new <code>capture_widget</code> function.
-(NOTE that as of this writing, you can just use the development version of
-<code>knitr</code> instead of this function.)
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Bob Rudis (@hrbrmstr)
-</p>
 
 <hr>
 <h2 id='vegaliteOutput'>Widget output function for use in Shiny</h2><span id='topic+vegaliteOutput'></span>

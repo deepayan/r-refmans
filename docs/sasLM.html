@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {sasLM}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#sasLM-package'><p>'SAS' Linear Model</p></a></li>
 <li><a href='#af'><p>Convert some columns of a data.frame to factors</p></a></li>
 <li><a href='#aov1'><p>ANOVA with Type I SS</p></a></li>
 <li><a href='#aov2'><p>ANOVA with Type II SS</p></a></li>
@@ -93,7 +94,6 @@ function processMathHTML() {
 <li><a href='#RRinv'><p>Relative Risk of two groups with strata by inverse variance method</p></a></li>
 <li><a href='#RRmn'><p>Relative Risk and Score CI of two groups with strata by the MN method</p></a></li>
 <li><a href='#RRmn1'><p>Relative Risk and Score CI of two groups without strata by by MN method</p></a></li>
-<li><a href='#sasLM-package'><p>'SAS' Linear Model</p></a></li>
 <li><a href='#satt'><p>Satterthwaite Approximation of Variance and Degree of Freedom</p></a></li>
 <li><a href='#ScoreCI'><p>Score Confidence Interval for a Proportion or a Binomial Distribution</p></a></li>
 <li><a href='#SD'><p>Standard Deviation</p></a></li>
@@ -187,6 +187,63 @@ function processMathHTML() {
 <td>2024-02-22 07:20:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='sasLM-package'>'SAS' Linear Model</h2><span id='topic+sasLM-package'></span><span id='topic+sasLM'></span>
+
+<h3>Description</h3>
+
+<p>This is a core implementation of 'SAS' procedures for linear models - GLM, REG, and ANOVA. Some packages provide type II and type III SS. However, the results of nested and complex designs are often different from those of 'SAS'. A different result does not necessarily mean incorrectness. However, many want the same result with 'SAS'. This package aims to achieve that. 
+Reference: Littell RC, Stroup WW, Freund RJ (2002, ISBN:0-471-22174-0).
+</p>
+
+
+<h3>Details</h3>
+
+<p>This will serve those who want SAS PROC GLM, REG, and ANOVA in R. 
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kyun-Seop Bae k@acr.kr</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## SAS PROC GLM Script for Typical Bioequivalence Data
+# PROC GLM DATA=BEdata;
+#   CLASS SEQ SUBJ PRD TRT;
+#   MODEL LNCMAX = SEQ SUBJ(SEQ) PRD TRT;
+#   RANDOM SUBJ(SEQ)/TEST;
+#   LSMEANS TRT / DIFF=CONTROL("R") CL ALPHA=0.1;
+#   ODS OUTPUT LSMeanDiffCL=LSMD;
+
+# DATA LSMD;  SET LSMD;
+#   PE = EXP(DIFFERENCE);
+#   LL = EXP(LowerCL);
+#   UL = EXP(UpperCL);  
+# PROC PRINT DATA=LSMD; RUN;
+##
+
+## SAS PROC GLM equivalent
+BEdata = af(BEdata, c("SEQ", "SUBJ", "PRD", "TRT")) # Columns as factor
+formula1 = log(CMAX) ~ SEQ/SUBJ + PRD + TRT # Model
+GLM(formula1, BEdata) # ANOVA tables of Type I, II, III SS
+RanTest(formula1, BEdata, Random="SUBJ") # Hypothesis test with SUBJ as random
+ci0 = CIest(formula1, BEdata, "TRT", c(-1, 1), 0.90) # 90$ CI
+exp(ci0[, c("Estimate", "Lower CL", "Upper CL")]) # 90% CI of GMR
+
+## 'nlme' or SAS PROC MIXED is preferred for an unbalanced case
+## SAS PROC MIXED equivalent
+# require(nlme)
+# Result = lme(log(CMAX) ~ SEQ + PRD + TRT, random=~1|SUBJ, data=BEdata)
+# summary(Result)
+# VarCorr(Result)
+# ci = intervals(Result, 0.90) ; ci 
+# exp(ci$fixed["TRTT",])
+##
+</code></pre>
+
 <hr>
 <h2 id='af'>Convert some columns of a data.frame to factors</h2><span id='topic+af'></span>
 
@@ -5407,63 +5464,6 @@ The t values and their p values with HC1 and HC2 are between those of HC0 and H3
 <h3>Examples</h3>
 
 <pre><code class='language-R'>  RRmn1(104, 11037, 189, 11034)
-</code></pre>
-
-<hr>
-<h2 id='sasLM-package'>'SAS' Linear Model</h2><span id='topic+sasLM-package'></span><span id='topic+sasLM'></span>
-
-<h3>Description</h3>
-
-<p>This is a core implementation of 'SAS' procedures for linear models - GLM, REG, and ANOVA. Some packages provide type II and type III SS. However, the results of nested and complex designs are often different from those of 'SAS'. A different result does not necessarily mean incorrectness. However, many want the same result with 'SAS'. This package aims to achieve that. 
-Reference: Littell RC, Stroup WW, Freund RJ (2002, ISBN:0-471-22174-0).
-</p>
-
-
-<h3>Details</h3>
-
-<p>This will serve those who want SAS PROC GLM, REG, and ANOVA in R. 
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Kyun-Seop Bae k@acr.kr</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## SAS PROC GLM Script for Typical Bioequivalence Data
-# PROC GLM DATA=BEdata;
-#   CLASS SEQ SUBJ PRD TRT;
-#   MODEL LNCMAX = SEQ SUBJ(SEQ) PRD TRT;
-#   RANDOM SUBJ(SEQ)/TEST;
-#   LSMEANS TRT / DIFF=CONTROL("R") CL ALPHA=0.1;
-#   ODS OUTPUT LSMeanDiffCL=LSMD;
-
-# DATA LSMD;  SET LSMD;
-#   PE = EXP(DIFFERENCE);
-#   LL = EXP(LowerCL);
-#   UL = EXP(UpperCL);  
-# PROC PRINT DATA=LSMD; RUN;
-##
-
-## SAS PROC GLM equivalent
-BEdata = af(BEdata, c("SEQ", "SUBJ", "PRD", "TRT")) # Columns as factor
-formula1 = log(CMAX) ~ SEQ/SUBJ + PRD + TRT # Model
-GLM(formula1, BEdata) # ANOVA tables of Type I, II, III SS
-RanTest(formula1, BEdata, Random="SUBJ") # Hypothesis test with SUBJ as random
-ci0 = CIest(formula1, BEdata, "TRT", c(-1, 1), 0.90) # 90$ CI
-exp(ci0[, c("Estimate", "Lower CL", "Upper CL")]) # 90% CI of GMR
-
-## 'nlme' or SAS PROC MIXED is preferred for an unbalanced case
-## SAS PROC MIXED equivalent
-# require(nlme)
-# Result = lme(log(CMAX) ~ SEQ + PRD + TRT, random=~1|SUBJ, data=BEdata)
-# summary(Result)
-# VarCorr(Result)
-# ci = intervals(Result, 0.90) ; ci 
-# exp(ci$fixed["TRTT",])
-##
 </code></pre>
 
 <hr>

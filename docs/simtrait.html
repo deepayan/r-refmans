@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {simtrait}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#simtrait'><p>simtrait: simulate complex traits from genotypes</p></a></li>
 <li><a href='#allele_freqs'><p>Compute locus allele frequencies</p></a></li>
 <li><a href='#cov_trait'><p>The model covariance matrix of the trait</p></a></li>
 <li><a href='#herit_loci'><p>Per-locus heritability contribution from allele frequency and causal coefficient</p></a></li>
@@ -29,7 +30,6 @@ function processMathHTML() {
 <li><a href='#rmsd'><p>Root mean square deviation</p></a></li>
 <li><a href='#sim_trait'><p>Simulate a complex trait from genotypes</p></a></li>
 <li><a href='#sim_trait_mvn'><p>Simulate traits from a kinship matrix under the infinitesimal model</p></a></li>
-<li><a href='#simtrait'><p>simtrait: simulate complex traits from genotypes</p></a></li>
 </ul>
 </div>
 <hr>
@@ -106,6 +106,122 @@ function processMathHTML() {
 <td>2023-01-06 21:10:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='simtrait'>simtrait: simulate complex traits from genotypes</h2><span id='topic+simtrait'></span><span id='topic+simtrait-package'></span>
+
+<h3>Description</h3>
+
+<p>This package enables simulation of complex (polygenic and continuous) traits from a simulated or real genotype matrix.
+The focus is on constructing the mean and covariance structure of the data to yield the desired heritability.
+The main function is <code><a href="#topic+sim_trait">sim_trait()</a></code>, which returns the simulated trait and the vector of causal loci (randomly selected) and their coefficients.
+The causal coefficients are constructed under two models: <em>random coefficients</em> (RC) and <em>fixed effect sizes</em> (FES).
+The function <code><a href="#topic+cov_trait">cov_trait()</a></code> computes the expected covariance matrix of the trait given the model parameters (namely the desired heritability and the true kinship matrix).
+Infinitesimal traits (without causal loci) can also be simulated using <code><a href="#topic+sim_trait_mvn">sim_trait_mvn()</a></code>.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Package also provides some functions for evaluating genetic association approaches.
+<code><a href="#topic+pval_srmsd">pval_srmsd()</a></code> and <code><a href="#topic+pval_infl">pval_infl()</a></code> quantify null p-value accuracy, while <code><a href="#topic+pval_aucpr">pval_aucpr()</a></code> quantifies predictive power.
+</p>
+<p>The recommended inputs are simulated genotypes with known ancestral allele frequencies.
+The <code>bnpsd</code> package simulates genotypes for admixed individuals, resulting in a complex population structure.
+</p>
+<p>For real data it is necessary to estimate the kinship matrix.
+<code><a href="popkin.html#topic+popkin">popkin::popkin()</a></code>' provides high-accuracy kinship estimates.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Alejandro Ochoa <a href="mailto:alejandro.ochoa@duke.edu">alejandro.ochoa@duke.edu</a> (<a href="https://orcid.org/0000-0003-4928-3403">ORCID</a>)
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/OchoaLab/simtrait">https://github.com/OchoaLab/simtrait</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/OchoaLab/simtrait/issues">https://github.com/OchoaLab/simtrait/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># construct a dummy genotype matrix
+X &lt;- matrix(
+    data = c(
+        0, 1, 2,
+        1, 2, 1,
+        0, 0, 1
+    ),
+    nrow = 3,
+    byrow = TRUE
+)
+# made up ancestral allele frequency vector for example
+p_anc &lt;- c(0.5, 0.6, 0.2)
+# desired heritability
+herit &lt;- 0.8
+# create a dummy kinship matrix for example
+# make sure it is positive definite!
+kinship &lt;- matrix(
+    data = c(
+        0.6, 0.1, 0.0,
+        0.1, 0.5, 0.0,
+        0.0, 0.0, 0.5
+    ),
+    nrow = 3
+)
+
+# create simulated trait and associated data
+# default is *random coefficients* (RC) model
+obj &lt;- sim_trait(X = X, m_causal = 2, herit = herit, p_anc = p_anc)
+# trait vector
+obj$trait
+# randomly-picked causal locus indeces
+obj$causal_indexes
+# regression coefficient vector
+obj$causal_coeffs
+
+# *fixed effect sizes* (FES) model
+obj &lt;- sim_trait(X = X, m_causal = 2, herit = herit, p_anc = p_anc, fes = TRUE)
+
+# either model, can apply to real data by replacing `p_anc` with `kinship`
+obj &lt;- sim_trait(X = X, m_causal = 2, herit = herit, kinship = kinship)
+
+# covariance of simulated traits
+V &lt;- cov_trait(kinship = kinship, herit = herit)
+
+# draw simulated traits (matrix of replicates) from infinitesimal model
+traits &lt;- sim_trait_mvn( rep = 10, kinship = kinship, herit = herit )
+traits
+
+# Metrics for genetic association approaches
+
+# simulate truly null p-values, which should be uniform
+pvals &lt;- runif(10)
+# for toy example, take these p-value to be truly causal
+causal_indexes &lt;- c(1, 5, 7)
+
+# calculate desired measures
+# this one quantifies p-value uniformity
+pval_srmsd( pvals, causal_indexes )
+# related, calculates inflation factors
+pval_infl( pvals )
+# this one quantifies predictive power
+pval_aucpr( pvals, causal_indexes )
+
+
+</code></pre>
+
 <hr>
 <h2 id='allele_freqs'>Compute locus allele frequencies</h2><span id='topic+allele_freqs'></span>
 
@@ -1022,122 +1138,6 @@ kinship &lt;- matrix(
 # draw simulated traits (matrix)
 traits &lt;- sim_trait_mvn( rep = 10, kinship = kinship, herit = 0.8 )
 traits
-
-</code></pre>
-
-<hr>
-<h2 id='simtrait'>simtrait: simulate complex traits from genotypes</h2><span id='topic+simtrait'></span><span id='topic+simtrait-package'></span>
-
-<h3>Description</h3>
-
-<p>This package enables simulation of complex (polygenic and continuous) traits from a simulated or real genotype matrix.
-The focus is on constructing the mean and covariance structure of the data to yield the desired heritability.
-The main function is <code><a href="#topic+sim_trait">sim_trait()</a></code>, which returns the simulated trait and the vector of causal loci (randomly selected) and their coefficients.
-The causal coefficients are constructed under two models: <em>random coefficients</em> (RC) and <em>fixed effect sizes</em> (FES).
-The function <code><a href="#topic+cov_trait">cov_trait()</a></code> computes the expected covariance matrix of the trait given the model parameters (namely the desired heritability and the true kinship matrix).
-Infinitesimal traits (without causal loci) can also be simulated using <code><a href="#topic+sim_trait_mvn">sim_trait_mvn()</a></code>.
-</p>
-
-
-<h3>Details</h3>
-
-<p>Package also provides some functions for evaluating genetic association approaches.
-<code><a href="#topic+pval_srmsd">pval_srmsd()</a></code> and <code><a href="#topic+pval_infl">pval_infl()</a></code> quantify null p-value accuracy, while <code><a href="#topic+pval_aucpr">pval_aucpr()</a></code> quantifies predictive power.
-</p>
-<p>The recommended inputs are simulated genotypes with known ancestral allele frequencies.
-The <code>bnpsd</code> package simulates genotypes for admixed individuals, resulting in a complex population structure.
-</p>
-<p>For real data it is necessary to estimate the kinship matrix.
-<code><a href="popkin.html#topic+popkin">popkin::popkin()</a></code>' provides high-accuracy kinship estimates.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><strong>Maintainer</strong>: Alejandro Ochoa <a href="mailto:alejandro.ochoa@duke.edu">alejandro.ochoa@duke.edu</a> (<a href="https://orcid.org/0000-0003-4928-3403">ORCID</a>)
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://github.com/OchoaLab/simtrait">https://github.com/OchoaLab/simtrait</a>
-</p>
-</li>
-<li><p> Report bugs at <a href="https://github.com/OchoaLab/simtrait/issues">https://github.com/OchoaLab/simtrait/issues</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># construct a dummy genotype matrix
-X &lt;- matrix(
-    data = c(
-        0, 1, 2,
-        1, 2, 1,
-        0, 0, 1
-    ),
-    nrow = 3,
-    byrow = TRUE
-)
-# made up ancestral allele frequency vector for example
-p_anc &lt;- c(0.5, 0.6, 0.2)
-# desired heritability
-herit &lt;- 0.8
-# create a dummy kinship matrix for example
-# make sure it is positive definite!
-kinship &lt;- matrix(
-    data = c(
-        0.6, 0.1, 0.0,
-        0.1, 0.5, 0.0,
-        0.0, 0.0, 0.5
-    ),
-    nrow = 3
-)
-
-# create simulated trait and associated data
-# default is *random coefficients* (RC) model
-obj &lt;- sim_trait(X = X, m_causal = 2, herit = herit, p_anc = p_anc)
-# trait vector
-obj$trait
-# randomly-picked causal locus indeces
-obj$causal_indexes
-# regression coefficient vector
-obj$causal_coeffs
-
-# *fixed effect sizes* (FES) model
-obj &lt;- sim_trait(X = X, m_causal = 2, herit = herit, p_anc = p_anc, fes = TRUE)
-
-# either model, can apply to real data by replacing `p_anc` with `kinship`
-obj &lt;- sim_trait(X = X, m_causal = 2, herit = herit, kinship = kinship)
-
-# covariance of simulated traits
-V &lt;- cov_trait(kinship = kinship, herit = herit)
-
-# draw simulated traits (matrix of replicates) from infinitesimal model
-traits &lt;- sim_trait_mvn( rep = 10, kinship = kinship, herit = herit )
-traits
-
-# Metrics for genetic association approaches
-
-# simulate truly null p-values, which should be uniform
-pvals &lt;- runif(10)
-# for toy example, take these p-value to be truly causal
-causal_indexes &lt;- c(1, 5, 7)
-
-# calculate desired measures
-# this one quantifies p-value uniformity
-pval_srmsd( pvals, causal_indexes )
-# related, calculates inflation factors
-pval_infl( pvals )
-# this one quantifies predictive power
-pval_aucpr( pvals, causal_indexes )
-
 
 </code></pre>
 

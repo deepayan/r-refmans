@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {envnames}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#envnames-package'><p>Track user-defined environment names</p></a></li>
 <li><a href='#address'><p>Call the C function address() that retrieves the memory address of an R object</p></a></li>
 <li><a href='#check_environment'><p>Check whether a string corresponds to the name of an environment</p></a></li>
 <li><a href='#check_object_exists'><p>Check if an object exists in a given environment</p></a></li>
@@ -28,7 +29,6 @@ function processMathHTML() {
 <li><a href='#crawl_envs_in_env'><p>Crawl an environment in search of user environments</p></a></li>
 <li><a href='#destandardize_env_name'><p>De-standardize the name of an environment</p></a></li>
 <li><a href='#environment_name'><p>Retrieve the name of an environment</p></a></li>
-<li><a href='#envnames-package'><p>Track user-defined environment names</p></a></li>
 <li><a href='#extract_root_and_last_member'><p>Extract the last member in a string representing an object</p></a></li>
 <li><a href='#get_env_names'><p>Create a lookup table with address-name pairs of environments</p></a></li>
 <li><a href='#get_environment_name'><p>Get the name of an environment when the address-name lookup table has not yet been constructed</p></a></li>
@@ -141,6 +141,155 @@ at the moment when the package is loaded, so that we can reset it later.</a></li
 <td>2020-12-08 06:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='envnames-package'>Track user-defined environment names</h2><span id='topic+envnames-package'></span><span id='topic+envnames'></span>
+
+<h3>Description</h3>
+
+<p>The main goal of this package is to overcome the limitation of the built-in <code><a href="base.html#topic+environmentName">environmentName</a></code> function of the base package which cannot retrieve the name of an environment unless it is a package or the global environment. This implies that all user-defined environments don't have a &quot;name assigned&quot; that can be retrieved and refer to the environment.
+</p>
+<p>The envnames package solves this problem by creating a lookup table that maps environment names to their memory addresses. Using this lookup table, it is possible to retrieve the name of any environment where an object resides or, from within a function, to retrieve the calling stack showing the function names and their enclosing environment name, i.e. the environment where the functions have been defined. The latter can be done with just a function call which returns a string that can directly be used inside a <code>cat()</code> call to display the function name (as opposed to using the R function <code><a href="base.html#topic+sys.call">sys.call</a></code> which does not return a string, but a more complicated object, namely a <code>call</code> object from where the string with the function name is still to be extracted to be used inside <code>cat()</code>).
+</p>
+<p>Package conventions: all functions in this package follow the underscore-separated and all-lower-case naming convention (e.g. <code>environment_name()</code>, <code>get_obj_address()</code>, etc.).
+</p>
+
+
+<h3>Details</h3>
+
+<p>The package currently contains 12 visible functions. Following is an overview on how to use the main functions of the package. Please refer to the vignette for further information.
+</p>
+<p>1) Use <code><a href="#topic+get_obj_address">get_obj_address</a></code> to retrieve the memory address of any object, including environments.
+</p>
+<p>2) Use <code><a href="#topic+environment_name">environment_name</a></code> to retrieve the name of an environment created with <code><a href="base.html#topic+new.env">new.env</a></code>. The environment can be given as a string containing its 16-digit memory address.
+</p>
+<p>3) Use <code><a href="#topic+obj_find">obj_find</a></code> to find the environments where a given object is defined.
+</p>
+<p>4) Use <code><a href="#topic+get_fun_calling">get_fun_calling</a>(n)</code> from within a function to retrieve the name of the calling function <code>n</code> levels up in the calling stack together with their enclosing environment name.
+</p>
+<p>5) Use <code><a href="#topic+get_fun_calling_chain">get_fun_calling_chain</a></code> from within a function to get the calling functions stack.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Daniel Mastropietro
+</p>
+<p>Maintainer: Daniel Mastropietro &lt;mastropi@uwalumni.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Motivation for developing this package:  
+</p>
+<p>- A comment by Quantide's instructor Andrea Spano during his &quot;R for developers&quot; course (<a href="http://www.quantide.com/courses-overview/r-for-developers">http://www.quantide.com/courses-overview/r-for-developers</a>) about the impossibility of retrieving the name of user-defined environments.  
+</p>
+<p>- A question posted by Gabor Grothendieck at the R-Help forum (<a href="https://stat.ethz.ch/pipermail/r-help/2010-July/245646.html">https://stat.ethz.ch/pipermail/r-help/2010-July/245646.html</a>)
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="base.html#topic+environmentName">environmentName</a></code> in the base package for the built-in function that retrieves environment names of packages.
+</p>
+<p><code><a href="base.html#topic+exists">exists</a></code> and <code><a href="utils.html#topic+find">find</a></code> for alternatives of looking for objects in the workspace.
+</p>
+<p><code><a href="base.html#topic+sys.call">sys.call</a></code> for other alternatives for retrieving the function calling stack.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(envnames)
+rm(list=ls())
+
+### Example 1: Retrieve the names of user-defined environments (created with new.env())
+# Create new environments
+env1 &lt;- new.env()                      # Environment in .GlobalEnv
+env2 &lt;- new.env()                      # Environment in .GlobalEnv
+env3 &lt;- new.env(parent=baseenv())      # Environment whose enclosure or parent environment
+                                       # is the base environment
+                                       # (as opposed to the global environment)
+env_of_envs &lt;- new.env()               # User-defined environment that contains other environments
+with(env_of_envs, env11 &lt;- new.env()) # Environment defined inside environment env_of_envs
+
+# Retrieve the environment name
+environment_name(env1)                       # named array with value "env1" and name "R_GlobalEnv"
+environment_name(env3)                       # named array with value "env3" and name "R_GlobalEnv"
+environment_name(env9)                       # NULL (env9 does not exist)
+environment_name(env_of_envs)                # named array with value "env_of_envs" and name
+                                             # "R_GlobalEnv"
+# (2018/11/19) THE FOLLOWING IS AN IMPORTANT TEST BECAUSE IT TESTS THE CASE WHERE THE ADDRESS-NAME
+# LOOKUP TABLE CONTAINS ONLY ONE ROW (namely the row for the env11 environment present in
+# env_of_envs), WHICH CANNOT BE TESTED VIA TESTS USING THE testthat PACKAGE BECAUSE IN THAT CONTEXT
+# THE LOOKUP TABLE NEVER HAS ONLY ONE ROW!
+# (for more info about this limitation see the test commented out at the beginning of
+# test-get_env_names.r.
+environment_name(env11, envir=env_of_envs)   # "env11"
+environment_name(env11)                      # named array with value "env11" and name
+                                             # "R_GlobalEnv$env_of_envs"
+
+
+### Example 2: Retrieve calling functions and their environments
+### Note in particular the complicated use of sys.call() to retrieve the call as a string... 
+# Define two environments
+env1 &lt;- new.env()
+env2 &lt;- new.env()
+# Define function g() in environment env2 to be called by function f() below
+# Function g() prints the name of the calling function.
+with(env2,
+     g &lt;- function(x) {
+       # Current function name
+       fun_current_name = get_fun_name()
+
+       # Get the name of the calling environment and function
+			 fun_calling_name = get_fun_calling()
+
+       # Show calling environment using and not using the envnames package
+       cat("Now inside function", fun_current_name, "\n")
+       cat("Calling environment name (using environmentName(parent.frame())):  \"",
+            environmentName(parent.frame()), "\"\n", sep="")
+       cat("Calling environment name (using sys.call(1) inside
+           'as.character( as.list(sys.call(1))[[1]]) ))':", " \"",
+            as.character( as.list(sys.call(1))[[1]]), "\"\n", sep="")
+       cat("Calling environment name (using envnames::get_fun_calling()): \"",
+           fun_calling_name, "\"\n", sep="")
+
+       # Start process
+       x = x + 2;
+       return(invisible(x))
+     }
+)
+
+# Calling function whose name should be printed when g() is run
+with(env1,
+     f &lt;- function(x) {
+       # Start
+       gval = env2$g(x)
+       return(invisible(gval))
+     }
+)
+
+# Run function f to show the difference between using and
+# not using the envnames package to retrieve the function calling stack.
+env1$f(7)
+
+
+### Example 3: find the location of an object
+# This differs from the R function exists() because it also searches
+# in user-defined environments and any environments wihin.
+obj_find(f)                   # "env1"
+obj_find("f")                 # Same thing: "env1"
+obj_find("f", silent=FALSE)   # Same result, but run verbosely
+
+env2$x &lt;- 2
+obj_find(x)                   # "env2"
+
+obj_find(nonexistent)         # NULL
+
+
+</code></pre>
+
 <hr>
 <h2 id='address'>Call the C function address() that retrieves the memory address of an R object</h2><span id='topic+address'></span>
 
@@ -762,155 +911,6 @@ environment_name(env1$envx, matchname=TRUE)
 # Get a function's execution environment name
 with(env1, f &lt;- function() { cat("We are inside function", environment_name()) })  
     ## "We are inside function env1$f"
-</code></pre>
-
-<hr>
-<h2 id='envnames-package'>Track user-defined environment names</h2><span id='topic+envnames-package'></span><span id='topic+envnames'></span>
-
-<h3>Description</h3>
-
-<p>The main goal of this package is to overcome the limitation of the built-in <code><a href="base.html#topic+environmentName">environmentName</a></code> function of the base package which cannot retrieve the name of an environment unless it is a package or the global environment. This implies that all user-defined environments don't have a &quot;name assigned&quot; that can be retrieved and refer to the environment.
-</p>
-<p>The envnames package solves this problem by creating a lookup table that maps environment names to their memory addresses. Using this lookup table, it is possible to retrieve the name of any environment where an object resides or, from within a function, to retrieve the calling stack showing the function names and their enclosing environment name, i.e. the environment where the functions have been defined. The latter can be done with just a function call which returns a string that can directly be used inside a <code>cat()</code> call to display the function name (as opposed to using the R function <code><a href="base.html#topic+sys.call">sys.call</a></code> which does not return a string, but a more complicated object, namely a <code>call</code> object from where the string with the function name is still to be extracted to be used inside <code>cat()</code>).
-</p>
-<p>Package conventions: all functions in this package follow the underscore-separated and all-lower-case naming convention (e.g. <code>environment_name()</code>, <code>get_obj_address()</code>, etc.).
-</p>
-
-
-<h3>Details</h3>
-
-<p>The package currently contains 12 visible functions. Following is an overview on how to use the main functions of the package. Please refer to the vignette for further information.
-</p>
-<p>1) Use <code><a href="#topic+get_obj_address">get_obj_address</a></code> to retrieve the memory address of any object, including environments.
-</p>
-<p>2) Use <code><a href="#topic+environment_name">environment_name</a></code> to retrieve the name of an environment created with <code><a href="base.html#topic+new.env">new.env</a></code>. The environment can be given as a string containing its 16-digit memory address.
-</p>
-<p>3) Use <code><a href="#topic+obj_find">obj_find</a></code> to find the environments where a given object is defined.
-</p>
-<p>4) Use <code><a href="#topic+get_fun_calling">get_fun_calling</a>(n)</code> from within a function to retrieve the name of the calling function <code>n</code> levels up in the calling stack together with their enclosing environment name.
-</p>
-<p>5) Use <code><a href="#topic+get_fun_calling_chain">get_fun_calling_chain</a></code> from within a function to get the calling functions stack.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Daniel Mastropietro
-</p>
-<p>Maintainer: Daniel Mastropietro &lt;mastropi@uwalumni.com&gt;
-</p>
-
-
-<h3>References</h3>
-
-<p>Motivation for developing this package:  
-</p>
-<p>- A comment by Quantide's instructor Andrea Spano during his &quot;R for developers&quot; course (<a href="http://www.quantide.com/courses-overview/r-for-developers">http://www.quantide.com/courses-overview/r-for-developers</a>) about the impossibility of retrieving the name of user-defined environments.  
-</p>
-<p>- A question posted by Gabor Grothendieck at the R-Help forum (<a href="https://stat.ethz.ch/pipermail/r-help/2010-July/245646.html">https://stat.ethz.ch/pipermail/r-help/2010-July/245646.html</a>)
-</p>
-
-
-<h3>See Also</h3>
-
- <p><code><a href="base.html#topic+environmentName">environmentName</a></code> in the base package for the built-in function that retrieves environment names of packages.
-</p>
-<p><code><a href="base.html#topic+exists">exists</a></code> and <code><a href="utils.html#topic+find">find</a></code> for alternatives of looking for objects in the workspace.
-</p>
-<p><code><a href="base.html#topic+sys.call">sys.call</a></code> for other alternatives for retrieving the function calling stack.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>library(envnames)
-rm(list=ls())
-
-### Example 1: Retrieve the names of user-defined environments (created with new.env())
-# Create new environments
-env1 &lt;- new.env()                      # Environment in .GlobalEnv
-env2 &lt;- new.env()                      # Environment in .GlobalEnv
-env3 &lt;- new.env(parent=baseenv())      # Environment whose enclosure or parent environment
-                                       # is the base environment
-                                       # (as opposed to the global environment)
-env_of_envs &lt;- new.env()               # User-defined environment that contains other environments
-with(env_of_envs, env11 &lt;- new.env()) # Environment defined inside environment env_of_envs
-
-# Retrieve the environment name
-environment_name(env1)                       # named array with value "env1" and name "R_GlobalEnv"
-environment_name(env3)                       # named array with value "env3" and name "R_GlobalEnv"
-environment_name(env9)                       # NULL (env9 does not exist)
-environment_name(env_of_envs)                # named array with value "env_of_envs" and name
-                                             # "R_GlobalEnv"
-# (2018/11/19) THE FOLLOWING IS AN IMPORTANT TEST BECAUSE IT TESTS THE CASE WHERE THE ADDRESS-NAME
-# LOOKUP TABLE CONTAINS ONLY ONE ROW (namely the row for the env11 environment present in
-# env_of_envs), WHICH CANNOT BE TESTED VIA TESTS USING THE testthat PACKAGE BECAUSE IN THAT CONTEXT
-# THE LOOKUP TABLE NEVER HAS ONLY ONE ROW!
-# (for more info about this limitation see the test commented out at the beginning of
-# test-get_env_names.r.
-environment_name(env11, envir=env_of_envs)   # "env11"
-environment_name(env11)                      # named array with value "env11" and name
-                                             # "R_GlobalEnv$env_of_envs"
-
-
-### Example 2: Retrieve calling functions and their environments
-### Note in particular the complicated use of sys.call() to retrieve the call as a string... 
-# Define two environments
-env1 &lt;- new.env()
-env2 &lt;- new.env()
-# Define function g() in environment env2 to be called by function f() below
-# Function g() prints the name of the calling function.
-with(env2,
-     g &lt;- function(x) {
-       # Current function name
-       fun_current_name = get_fun_name()
-
-       # Get the name of the calling environment and function
-			 fun_calling_name = get_fun_calling()
-
-       # Show calling environment using and not using the envnames package
-       cat("Now inside function", fun_current_name, "\n")
-       cat("Calling environment name (using environmentName(parent.frame())):  \"",
-            environmentName(parent.frame()), "\"\n", sep="")
-       cat("Calling environment name (using sys.call(1) inside
-           'as.character( as.list(sys.call(1))[[1]]) ))':", " \"",
-            as.character( as.list(sys.call(1))[[1]]), "\"\n", sep="")
-       cat("Calling environment name (using envnames::get_fun_calling()): \"",
-           fun_calling_name, "\"\n", sep="")
-
-       # Start process
-       x = x + 2;
-       return(invisible(x))
-     }
-)
-
-# Calling function whose name should be printed when g() is run
-with(env1,
-     f &lt;- function(x) {
-       # Start
-       gval = env2$g(x)
-       return(invisible(gval))
-     }
-)
-
-# Run function f to show the difference between using and
-# not using the envnames package to retrieve the function calling stack.
-env1$f(7)
-
-
-### Example 3: find the location of an object
-# This differs from the R function exists() because it also searches
-# in user-defined environments and any environments wihin.
-obj_find(f)                   # "env1"
-obj_find("f")                 # Same thing: "env1"
-obj_find("f", silent=FALSE)   # Same result, but run verbosely
-
-env2$x &lt;- 2
-obj_find(x)                   # "env2"
-
-obj_find(nonexistent)         # NULL
-
-
 </code></pre>
 
 <hr>

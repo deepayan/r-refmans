@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {fbroc}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#fbroc'><p>fbroc: A package for fast bootstrap analysis and comparison of ROC curves</p></a></li>
 <li><a href='#boot.paired.roc'><p>Bootstrap paired ROC curves</p></a></li>
 <li><a href='#boot.roc'><p>Bootstrap ROC curve</p></a></li>
 <li><a href='#boot.tpr.at.fpr'><p>Process bootstrapped TPR/FPR at thresholds matrix into TPR at FPR matrix</p></a></li>
@@ -25,7 +26,6 @@ function processMathHTML() {
 <li><a href='#conf.fbroc.paired.roc'><p>Generates confidence intervals for the difference in TPR between two predictors for a range of FPRs or vice versa</p></a></li>
 <li><a href='#conf.fbroc.roc'><p>Generates confidence intervals for the TPR for a range of FPRs or vice versa</p></a></li>
 <li><a href='#extract.roc'><p>Extracts one from two paired ROC curves from a <code>fbroc.paired.roc</code> object</p></a></li>
-<li><a href='#fbroc'><p>fbroc: A package for fast bootstrap analysis and comparison of ROC curves</p></a></li>
 <li><a href='#perf'><p>Generic S3 function to calculate performance estimates for ROC curves</p></a></li>
 <li><a href='#perf.fbroc.paired.roc'><p>Calculate performance for paired bootstrapped ROC curves</p></a></li>
 <li><a href='#perf.fbroc.roc'><p>Calculate performance for bootstrapped ROC curve</p></a></li>
@@ -135,6 +135,108 @@ Curves</td>
 <td>2019-03-24 12:20:03 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='fbroc'>fbroc: A package for fast bootstrap analysis and comparison of ROC curves</h2><span id='topic+fbroc'></span><span id='topic+fbroc-package'></span>
+
+<h3>Description</h3>
+
+<p>Fbroc enables the fast bootstrap analysis and comparison of ROC curves for simulation
+studies and shiny applications by using a fast
+algorithm where the cost of a single bootstrap replicate is <code class="reqn">O(n)</code>, with 
+n denoting the number of observations. The algorithm is implemented in C++ to further
+increase the efficiency. On a typical desktop computer the time needed for the calculation of 
+100000 bootstrap replicates given 500 observations requires time on the order of magnitude 
+of one second. The ROC curve as used shows
+the True Positive Rate (TPR) as a function of the False Positive Rate (FPR). The package also
+support the analysis of paired ROC curves, where we compare two predictions given for the same
+set of samples.
+</p>
+
+
+<h3>Important fbroc functions</h3>
+
+
+<dl>
+<dt><code><a href="#topic+boot.roc">boot.roc</a></code></dt><dd><p>Use <code>boot.roc</code> to bootstrap a ROC curve.</p>
+</dd>
+<dt><code><a href="#topic+boot.paired.roc">boot.paired.roc</a></code></dt><dd><p>Use <code>boot.paired.roc</code> to bootstrap two paired ROC curves.</p>
+</dd>
+<dt><code><a href="#topic+conf">conf</a></code></dt><dd><p>Calculate confidence regions for the ROC curve.</p>
+</dd>
+<dt><code><a href="#topic+perf">perf</a></code></dt><dd><p>Estimate performance and calculate confidence
+intervals.</p>
+</dd>
+</dl>
+
+
+
+<h3>Example Data</h3>
+
+<p>fbroc also contains the example data set <a href="#topic+roc.examples">roc.examples</a>, 
+which you can use to test the functionality of the
+package. This data set contains simulated data and not an real application.
+</p>
+
+
+<h3>Details</h3>
+
+<p>The algorithm works by first determining the critical thresholds of the ROC
+curve - cutoffs at which the curve changes directions. Each observation is then linked
+to the specific thresholds at which they first cause a change in the TPR
+or FPR. Calculating this link and directly bootstrapping that link
+allows us to construct the bootstrapped ROC
+curve very quickly. Since multiple observation can be linked to the same
+threshold, it is difficult to implement the algorithm efficiently in R. 
+This is why <code>fbroc</code> implements it in C++.
+<br /> <br />
+When bootstrapping paired ROC curves, the packages takes care of using the same set of samples
+for both predictors in each iteration of the bootstrap. This preserves the correlation structure
+between both predictors.
+<br /> <br />
+All bootstrap confidence interval are based on the percentile method.
+</p>
+
+
+<h3>Notes</h3>
+
+<p>Package <code>fbroc</code> is still in an early development stage. Currently it supports bootstrapping
+the confidence region of single and paired ROC curves, as well as the AUC, partial AUC, 
+the FPR at a fixed TPR and vice versa.
+More sophisticated bootstrap confidence interval 
+calculation and improved documentation will be added at a later time.
+</p>
+
+
+<h3>References</h3>
+
+<p>Efron, B., &amp; Tibshirani, R. (1998). <em>An introduction to the bootstrap.</em>
+Boca Raton, Fla: Chapman &amp; Hall/CRC.
+</p>
+<p>Donna Katzman McClish. (1989). <em>Analyzing a Portion of the ROC Curve.</em>
+Medical Decision Making, <a href="http://mdm.sagepub.com/content/9/3/190.abstract">http://mdm.sagepub.com/content/9/3/190.abstract</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(roc.examples)
+# work with a single ROC curves
+result.boot &lt;- boot.roc(roc.examples$Cont.Pred, roc.examples$True.Class, n.boot = 100)
+plot(result.boot)
+perf(result.boot, "auc")
+perf(result.boot, "auc", conf.level = 0.99)
+perf(result.boot, "tpr", conf.level = 0.95, fpr = 0.1)
+conf(result.boot, steps = 10)
+# work with paired ROC curves
+result.boot &lt;- boot.paired.roc(roc.examples$Cont.Pred, roc.examples$Cont.Pred.Outlier, 
+                               roc.examples$True.Class, n.boot = 100)
+plot(result.boot)
+perf(result.boot, "auc")
+perf(result.boot, "auc", conf.level = 0.99)
+perf(result.boot, "tpr", conf.level = 0.95, fpr = 0.1)
+conf(result.boot, steps = 10)
+</code></pre>
+
 <hr>
 <h2 id='boot.paired.roc'>Bootstrap paired ROC curves</h2><span id='topic+boot.paired.roc'></span>
 
@@ -757,108 +859,6 @@ roc1.equivalent &lt;- boot.roc(roc.examples$Cont.Pred, roc.examples$True.Class,
                             n.boot = 100)
 print(identical(roc1, roc1.equivalent)) # roc1 and roc1.equivalent will be the same
 # This does not hold when use.cache = TRUE. See the note above.
-</code></pre>
-
-<hr>
-<h2 id='fbroc'>fbroc: A package for fast bootstrap analysis and comparison of ROC curves</h2><span id='topic+fbroc'></span><span id='topic+fbroc-package'></span>
-
-<h3>Description</h3>
-
-<p>Fbroc enables the fast bootstrap analysis and comparison of ROC curves for simulation
-studies and shiny applications by using a fast
-algorithm where the cost of a single bootstrap replicate is <code class="reqn">O(n)</code>, with 
-n denoting the number of observations. The algorithm is implemented in C++ to further
-increase the efficiency. On a typical desktop computer the time needed for the calculation of 
-100000 bootstrap replicates given 500 observations requires time on the order of magnitude 
-of one second. The ROC curve as used shows
-the True Positive Rate (TPR) as a function of the False Positive Rate (FPR). The package also
-support the analysis of paired ROC curves, where we compare two predictions given for the same
-set of samples.
-</p>
-
-
-<h3>Important fbroc functions</h3>
-
-
-<dl>
-<dt><code><a href="#topic+boot.roc">boot.roc</a></code></dt><dd><p>Use <code>boot.roc</code> to bootstrap a ROC curve.</p>
-</dd>
-<dt><code><a href="#topic+boot.paired.roc">boot.paired.roc</a></code></dt><dd><p>Use <code>boot.paired.roc</code> to bootstrap two paired ROC curves.</p>
-</dd>
-<dt><code><a href="#topic+conf">conf</a></code></dt><dd><p>Calculate confidence regions for the ROC curve.</p>
-</dd>
-<dt><code><a href="#topic+perf">perf</a></code></dt><dd><p>Estimate performance and calculate confidence
-intervals.</p>
-</dd>
-</dl>
-
-
-
-<h3>Example Data</h3>
-
-<p>fbroc also contains the example data set <a href="#topic+roc.examples">roc.examples</a>, 
-which you can use to test the functionality of the
-package. This data set contains simulated data and not an real application.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The algorithm works by first determining the critical thresholds of the ROC
-curve - cutoffs at which the curve changes directions. Each observation is then linked
-to the specific thresholds at which they first cause a change in the TPR
-or FPR. Calculating this link and directly bootstrapping that link
-allows us to construct the bootstrapped ROC
-curve very quickly. Since multiple observation can be linked to the same
-threshold, it is difficult to implement the algorithm efficiently in R. 
-This is why <code>fbroc</code> implements it in C++.
-<br /> <br />
-When bootstrapping paired ROC curves, the packages takes care of using the same set of samples
-for both predictors in each iteration of the bootstrap. This preserves the correlation structure
-between both predictors.
-<br /> <br />
-All bootstrap confidence interval are based on the percentile method.
-</p>
-
-
-<h3>Notes</h3>
-
-<p>Package <code>fbroc</code> is still in an early development stage. Currently it supports bootstrapping
-the confidence region of single and paired ROC curves, as well as the AUC, partial AUC, 
-the FPR at a fixed TPR and vice versa.
-More sophisticated bootstrap confidence interval 
-calculation and improved documentation will be added at a later time.
-</p>
-
-
-<h3>References</h3>
-
-<p>Efron, B., &amp; Tibshirani, R. (1998). <em>An introduction to the bootstrap.</em>
-Boca Raton, Fla: Chapman &amp; Hall/CRC.
-</p>
-<p>Donna Katzman McClish. (1989). <em>Analyzing a Portion of the ROC Curve.</em>
-Medical Decision Making, <a href="http://mdm.sagepub.com/content/9/3/190.abstract">http://mdm.sagepub.com/content/9/3/190.abstract</a>.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>data(roc.examples)
-# work with a single ROC curves
-result.boot &lt;- boot.roc(roc.examples$Cont.Pred, roc.examples$True.Class, n.boot = 100)
-plot(result.boot)
-perf(result.boot, "auc")
-perf(result.boot, "auc", conf.level = 0.99)
-perf(result.boot, "tpr", conf.level = 0.95, fpr = 0.1)
-conf(result.boot, steps = 10)
-# work with paired ROC curves
-result.boot &lt;- boot.paired.roc(roc.examples$Cont.Pred, roc.examples$Cont.Pred.Outlier, 
-                               roc.examples$True.Class, n.boot = 100)
-plot(result.boot)
-perf(result.boot, "auc")
-perf(result.boot, "auc", conf.level = 0.99)
-perf(result.boot, "tpr", conf.level = 0.95, fpr = 0.1)
-conf(result.boot, steps = 10)
 </code></pre>
 
 <hr>

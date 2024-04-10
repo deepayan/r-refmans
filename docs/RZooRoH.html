@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {RZooRoH}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#RZooRoH-package'><p>RZooRoH: A package for estimating global and local individual autozygosity.</p></a></li>
 <li><a href='#BBB_NMP_ad_subset'><p>Example for &quot;ad&quot; format specification</p></a></li>
 <li><a href='#BBB_NMP_GP_subset'><p>Example for &quot;gp&quot; format specification</p></a></li>
 <li><a href='#BBB_NMP_pl_subset'><p>Example for &quot;pl&quot; format specification</p></a></li>
@@ -30,7 +31,6 @@ function processMathHTML() {
 <li><a href='#rara_mix10r'><p>The result of an analysis on 22 sheeps from Rasa Aragonesa population.</p></a></li>
 <li><a href='#realized'><p>Extracts the realized autozygosity from the zres object</p></a></li>
 <li><a href='#rohbd'><p>Extracts the HBD segments from the zres object</p></a></li>
-<li><a href='#RZooRoH-package'><p>RZooRoH: A package for estimating global and local individual autozygosity.</p></a></li>
 <li><a href='#soay_mix10r'><p>The result of an analysis on 110 sheeps from the Soay population.</p></a></li>
 <li><a href='#typs'><p>Subset of a dataset with genotypes for 6 individuals from a cattle population.</p></a></li>
 <li><a href='#typsfrq'><p>A file with marker allele frequencies for the cattle population.</p></a></li>
@@ -133,6 +133,118 @@ iterators</td>
 <td>2023-10-27 08:40:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='RZooRoH-package'>RZooRoH: A package for estimating global and local individual autozygosity.</h2><span id='topic+RZooRoH'></span><span id='topic+RZooRoH-package'></span>
+
+<h3>Description</h3>
+
+<p>Functions to identify Homozygous-by-Descent (HBD) segments associated with
+runs of homozygosity (RoH) and to estimate individual autozygosity (or
+inbreeding coefficient). HBD segments and autozygosity are assigned to
+multiple HBD classes with a model-based approach relying on a mixture of
+exponential distributions. The rate of the exponential distribution is
+distinct for each HBD class and defines the expected length of the HBD
+segments. These HBD classes are therefore related to the age of the segments
+(longer segments and smaller rates for recent autozygosity / recent common
+ancestor). The functions allow to estimate the parameters of the model (rates
+of the exponential distributions, mixing proportions), to estimate global and
+local autozygosity probabilities and to identify HBD segments with the Viterbi
+decoding.
+</p>
+
+
+<h3>Data pre-processing</h3>
+
+<p>Note that the model is designed for autosomes.
+Other chromosomes and additional filtering (e.g. call rate, missing, HWE,
+etc.) should be performed prior to run RZooRoH with tools such as plink or
+bcftools. The model works on an ordered map and ignores SNPs with a null
+position.
+</p>
+
+
+<h3>RZooRoH functions</h3>
+
+<p>The main functions included in the package are
+zoodata(), zoomodel() and zoorun(). There are also four function to plot
+the results: zooplot_partitioning(), zooplot_hbdseg(), zooplot_prophbd()
+and zooplot_individuals(). Finally, four accessors functions help to
+extract the results: realized(), cumhbd(), rohbd() and probhbd().
+</p>
+<p>You can obtain individual help for each of the functions. By typing for
+instance: help(zoomodel) or ? zoomodel.
+</p>
+<p>To run RZooRoH, you must first load your data with the zoodata() function.
+It will create a zooin object required for further analysis. Next, you need
+to define the model you want to run. You can define
+a default model by typing for instance, my.mod &lt;- zoomodel(). Finally, you
+can run the model with the zoorun function. You can choose to estimate
+parameters with different procedures, estimate global and local
+homozygous-by-descent (HBD) probabilities with the Forward-Backward
+procedure or identify HBD segments with the Viterbi algorithm. The results
+are saved in a zres object.
+</p>
+<p>The four plot functions zooplot_partitioning(), zooplot_hbdseg(),
+zooplot_prophbd() and zooplot_individuals() use zres objects to make different
+graphics. Similarly, the accessor functions help to extract information
+from the zres objects (see vignette for more details).
+</p>
+<p>To get the list of data sets (for examples):
+</p>
+<p>data(package=&quot;RZooRoH&quot;)
+</p>
+<p>And to get the description of one data set, type ? name_data (with name_data
+being the name of the data set). For instance:
+</p>
+<p>? genosim
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# Start with a small data set with six individuals and external frequencies.
+freqfile &lt;- (system.file("exdata","typsfrq.txt",package="RZooRoH"))
+typfile &lt;- (system.file("exdata","typs.txt",package="RZooRoH"))
+frq &lt;- read.table(freqfile,header=FALSE)
+typdata &lt;- zoodata(typfile,supcol=4,chrcol=1,poscol=2,allelefreq=frq$V1)
+# Define a model with two HBD classes with rates equal to 10 and 100.
+Mod3R &lt;- zoomodel(K=3,base_rate=10)
+# Run the model on all individuals.
+typ.res &lt;- zoorun(Mod3R,typdata)
+# Observe some results: likelihood, realized autozygosity in different
+# HBD classes and identified HBD segments.
+typ.res@modlik
+typ.res@realized
+typ.res@hbdseg
+# Define a model with one HBD and one non-HBD class and run it.
+Mod1R &lt;- zoomodel(K=2,predefined=FALSE)
+typ2.res &lt;- zoorun(Mod1R,typdata)
+# Print the estimated rates and mixing coefficients.
+typ2.res@krates
+typ2.res@mixc
+
+# Get the name and location of a second example file.
+myfile &lt;- (system.file("exdata","genoex.txt",package="RZooRoH"))
+# Load your data with default format:
+example2 &lt;- zoodata(myfile)
+# Define the default model:
+my.model &lt;- zoomodel()
+# Run RZooRoH on your data with the model (parameter estimation with optim). This can
+# take a few minutes because it is a large model for 20 individuals:
+my.res &lt;- zoorun(my.model,example2)
+# To estimate the parameters with the EM-algorithm, run the Forward-Backward
+# algorithm to estimate realized autozygosity and the Viterbi algorithm to
+# identify HBD segments (a few mintues too, see above).
+my.res2 &lt;- zoorun(my.model, example2, fb=TRUE, vit=TRUE, method = "estem")
+# To run the model on a subset of individuals with 1 thread:
+my.res3 &lt;- zoorun(my.model, example2, ids=c(7,12,16,18), nT = 1)
+# Define a smaller model and run it on two individuals.
+my.mod2 &lt;- zoomodel(K=4,base_rate=10)
+my.res4 &lt;- zoorun(my.mod2, example2, ids=c(9,18))
+
+</code></pre>
+
 <hr>
 <h2 id='BBB_NMP_ad_subset'>Example for &quot;ad&quot; format specification</h2><span id='topic+BBB_NMP_ad_subset'></span>
 
@@ -676,118 +788,6 @@ segment starts (within the chromosome), start_end is the position at which the H
 chromosome), number_snp is the number of consecutive SNPs in the HBD segment, length is the length of the HBD
 segment (for instance in bp or in cM/1000000) and HBDclass is the HBD class associated with the HBD segment.
 </p>
-
-<hr>
-<h2 id='RZooRoH-package'>RZooRoH: A package for estimating global and local individual autozygosity.</h2><span id='topic+RZooRoH'></span><span id='topic+RZooRoH-package'></span>
-
-<h3>Description</h3>
-
-<p>Functions to identify Homozygous-by-Descent (HBD) segments associated with
-runs of homozygosity (RoH) and to estimate individual autozygosity (or
-inbreeding coefficient). HBD segments and autozygosity are assigned to
-multiple HBD classes with a model-based approach relying on a mixture of
-exponential distributions. The rate of the exponential distribution is
-distinct for each HBD class and defines the expected length of the HBD
-segments. These HBD classes are therefore related to the age of the segments
-(longer segments and smaller rates for recent autozygosity / recent common
-ancestor). The functions allow to estimate the parameters of the model (rates
-of the exponential distributions, mixing proportions), to estimate global and
-local autozygosity probabilities and to identify HBD segments with the Viterbi
-decoding.
-</p>
-
-
-<h3>Data pre-processing</h3>
-
-<p>Note that the model is designed for autosomes.
-Other chromosomes and additional filtering (e.g. call rate, missing, HWE,
-etc.) should be performed prior to run RZooRoH with tools such as plink or
-bcftools. The model works on an ordered map and ignores SNPs with a null
-position.
-</p>
-
-
-<h3>RZooRoH functions</h3>
-
-<p>The main functions included in the package are
-zoodata(), zoomodel() and zoorun(). There are also four function to plot
-the results: zooplot_partitioning(), zooplot_hbdseg(), zooplot_prophbd()
-and zooplot_individuals(). Finally, four accessors functions help to
-extract the results: realized(), cumhbd(), rohbd() and probhbd().
-</p>
-<p>You can obtain individual help for each of the functions. By typing for
-instance: help(zoomodel) or ? zoomodel.
-</p>
-<p>To run RZooRoH, you must first load your data with the zoodata() function.
-It will create a zooin object required for further analysis. Next, you need
-to define the model you want to run. You can define
-a default model by typing for instance, my.mod &lt;- zoomodel(). Finally, you
-can run the model with the zoorun function. You can choose to estimate
-parameters with different procedures, estimate global and local
-homozygous-by-descent (HBD) probabilities with the Forward-Backward
-procedure or identify HBD segments with the Viterbi algorithm. The results
-are saved in a zres object.
-</p>
-<p>The four plot functions zooplot_partitioning(), zooplot_hbdseg(),
-zooplot_prophbd() and zooplot_individuals() use zres objects to make different
-graphics. Similarly, the accessor functions help to extract information
-from the zres objects (see vignette for more details).
-</p>
-<p>To get the list of data sets (for examples):
-</p>
-<p>data(package=&quot;RZooRoH&quot;)
-</p>
-<p>And to get the description of one data set, type ? name_data (with name_data
-being the name of the data set). For instance:
-</p>
-<p>? genosim
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# Start with a small data set with six individuals and external frequencies.
-freqfile &lt;- (system.file("exdata","typsfrq.txt",package="RZooRoH"))
-typfile &lt;- (system.file("exdata","typs.txt",package="RZooRoH"))
-frq &lt;- read.table(freqfile,header=FALSE)
-typdata &lt;- zoodata(typfile,supcol=4,chrcol=1,poscol=2,allelefreq=frq$V1)
-# Define a model with two HBD classes with rates equal to 10 and 100.
-Mod3R &lt;- zoomodel(K=3,base_rate=10)
-# Run the model on all individuals.
-typ.res &lt;- zoorun(Mod3R,typdata)
-# Observe some results: likelihood, realized autozygosity in different
-# HBD classes and identified HBD segments.
-typ.res@modlik
-typ.res@realized
-typ.res@hbdseg
-# Define a model with one HBD and one non-HBD class and run it.
-Mod1R &lt;- zoomodel(K=2,predefined=FALSE)
-typ2.res &lt;- zoorun(Mod1R,typdata)
-# Print the estimated rates and mixing coefficients.
-typ2.res@krates
-typ2.res@mixc
-
-# Get the name and location of a second example file.
-myfile &lt;- (system.file("exdata","genoex.txt",package="RZooRoH"))
-# Load your data with default format:
-example2 &lt;- zoodata(myfile)
-# Define the default model:
-my.model &lt;- zoomodel()
-# Run RZooRoH on your data with the model (parameter estimation with optim). This can
-# take a few minutes because it is a large model for 20 individuals:
-my.res &lt;- zoorun(my.model,example2)
-# To estimate the parameters with the EM-algorithm, run the Forward-Backward
-# algorithm to estimate realized autozygosity and the Viterbi algorithm to
-# identify HBD segments (a few mintues too, see above).
-my.res2 &lt;- zoorun(my.model, example2, fb=TRUE, vit=TRUE, method = "estem")
-# To run the model on a subset of individuals with 1 thread:
-my.res3 &lt;- zoorun(my.model, example2, ids=c(7,12,16,18), nT = 1)
-# Define a smaller model and run it on two individuals.
-my.mod2 &lt;- zoomodel(K=4,base_rate=10)
-my.res4 &lt;- zoorun(my.mod2, example2, ids=c(9,18))
-
-</code></pre>
 
 <hr>
 <h2 id='soay_mix10r'>The result of an analysis on 110 sheeps from the Soay population.</h2><span id='topic+soay_mix10r'></span>

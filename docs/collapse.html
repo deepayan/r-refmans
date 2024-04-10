@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {collapse}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#collapse-package'>
+<p>Advanced and Fast Data Transformation</p></a></li>
 <li><a href='#across'>
 <p>Apply Functions Across Multiple Columns</p></a></li>
 <li><a href='#arithmetic'>
@@ -28,8 +30,6 @@ function processMathHTML() {
 <p>Advanced Data Aggregation</p></a></li>
 <li><a href='#collapse-documentation'><p>Collapse Documentation &amp; Overview</p></a></li>
 <li><a href='#collapse-options'><p><em>collapse</em> Package Options</p></a></li>
-<li><a href='#collapse-package'>
-<p>Advanced and Fast Data Transformation</p></a></li>
 <li><a href='#collapse-renamed'>
 <p>Renamed Functions</p></a></li>
 <li><a href='#colorder'>
@@ -268,1289 +268,6 @@ microbenchmark, testthat, covr, knitr, rmarkdown</td>
 </tr>
 </table>
 <hr>
-<h2 id='across'>
-Apply Functions Across Multiple Columns
-</h2><span id='topic+across'></span>
-
-<h3>Description</h3>
-
-<p><code>across()</code> can be used inside <code><a href="#topic+fmutate">fmutate</a></code> and <code><a href="#topic+fsummarise">fsummarise</a></code> to apply one or more functions to a selection of columns. It is overall very similar to <code>dplyr::across</code>, but does not support some <code>rlang</code> features, has some additional features (arguments), and is optimized to work with <em>collapse</em>'s, <code><a href="#topic+.FAST_FUN">.FAST_FUN</a></code>, yielding much faster computations.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>across(.cols = NULL, .fns, ..., .names = NULL,
-       .apply = "auto", .transpose = "auto")
-
-# acr(...) can be used to abbreviate across(...)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="across_+3A_.cols">.cols</code></td>
-<td>
-<p>select columns using column names and expressions (e.g. <code>a:b</code> or <code>c(a, b, c:f)</code>), column indices, logical vectors, or functions yielding a logical value e.g. <code>is.numeric</code>. <code>NULL</code> applies functions to all columns except for grouping columns.</p>
-</td></tr>
-<tr><td><code id="across_+3A_.fns">.fns</code></td>
-<td>
-<p>A function, character vector of functions or list of functions. Vectors / lists can be named to yield alternative names in the result (see <code>.names</code>). This argument is evaluated inside <code>substitute()</code>, and the content (not the names of vectors/lists) is checked against <code>.FAST_FUN</code> and <code>.OPERATOR_FUN</code>. Matching functions receive vectorized execution, other functions are applied to the data in a standard way.</p>
-</td></tr>
-<tr><td><code id="across_+3A_...">...</code></td>
-<td>
-<p>further arguments to <code>.fns</code>. Arguments are evaluated in the data environment and split by groups as well (for non-vectorized functions, if of the same length as the data).</p>
-</td></tr>
-<tr><td><code id="across_+3A_.names">.names</code></td>
-<td>
-<p>controls the naming of computed columns. <code>NULL</code> generates names of the form <code>coli_funj</code> if multiple functions are used. <code>.names = TRUE</code> enables this for a single function, <code>.names = FALSE</code> disables it for multiple functions (sensible for functions such as <code>.OPERATOR_FUN</code> that rename columns (if <code>.apply = FALSE</code>)). Setting <code>.names = "flip"</code> generates names of the form <code>funj_coli</code>. It is also possible to supply a function with two arguments for column and function names e.g. <code>function(c, f) paste0(f, "_", c)</code>. Finally, you can supply a custom vector of names which must match <code>length(.cols) * length(.fns)</code>.</p>
-</td></tr>
-<tr><td><code id="across_+3A_.apply">.apply</code></td>
-<td>
-<p>controls whether functions are applied column-by-column (<code>TRUE</code>) or to multiple columns at once (<code>FALSE</code>). The default, <code>"auto"</code>, does the latter for vectorized functions, which have an efficient data frame method. It can also be sensible to use <code>.apply = FALSE</code> for non-vectorized functions, especially multivariate functions like <code><a href="stats.html#topic+lm">lm</a></code> or <code><a href="#topic+pwcor">pwcor</a></code>, or functions renaming the data. See Examples.  </p>
-</td></tr>
-<tr><td><code id="across_+3A_.transpose">.transpose</code></td>
-<td>
-<p>with multiple <code>.fns</code>, <code>.transpose</code> controls whether the result is ordered first by column, then by function (<code>TRUE</code>), or vice-versa (<code>FALSE</code>). <code>"auto"</code> does the former if all functions yield results of the same dimensions (dimensions may differ if <code>.apply = FALSE</code>). See Examples.</p>
-</td></tr>
-</table>
-
-
-<h3>Note</h3>
-
-<p><code>across</code> does not support <em>purr</em>-style lambdas, and does not support <code>dplyr</code>-style predicate functions e.g. <code>across(where(is.numeric), sum)</code>, simply use <code>across(is.numeric, sum)</code>. In contrast to <code>dplyr</code>, you can also compute on grouping columns.
-</p>
-
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+fsummarise">fsummarise</a></code>, <code><a href="#topic+fmutate">fmutate</a></code>, <a href="#topic+fast-data-manipulation">Fast Data Manipulation</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># Basic (Weighted) Summaries
-fsummarise(wlddev, across(PCGDP:GINI, fmean, w = POP))
-
-wlddev |&gt; fgroup_by(region, income) |&gt;
-    fsummarise(across(PCGDP:GINI, fmean, w = POP))
-
-# Note that for these we don't actually need across...
-fselect(wlddev, PCGDP:GINI) |&gt; fmean(w = wlddev$POP, drop = FALSE)
-wlddev |&gt; fgroup_by(region, income) |&gt;
-    fselect(PCGDP:GINI, POP) |&gt; fmean(POP, keep.w = FALSE)
-collap(wlddev, PCGDP + LIFEEX + GINI ~ region + income, w = ~ POP, keep.w = FALSE)
-
-# But if we want to use some base R function that reguires argument splitting...
-wlddev |&gt; na_omit(cols = "POP") |&gt; fgroup_by(region, income) |&gt;
-    fsummarise(across(PCGDP:GINI, weighted.mean, w = POP, na.rm = TRUE))
-
-# Or if we want to apply different functions...
-wlddev |&gt; fgroup_by(region, income) |&gt;
-    fsummarise(across(PCGDP:GINI, list(mu = fmean, sd = fsd), w = POP),
-               POP_sum = fsum(POP), OECD = fmean(OECD))
-# Note that the above still detects fmean as a fast function, the names of the list
-# are irrelevant, but the function name must be typed or passed as a character vector,
-# Otherwise functions will be executed by groups e.g. function(x) fmean(x) won't vectorize
-
-# Same, naming in a different way
-wlddev |&gt; fgroup_by(region, income) |&gt;
-    fsummarise(across(PCGDP:GINI, list(mu = fmean, sd = fsd), w = POP, .names = "flip"),
-               sum_POP = fsum(POP), OECD = fmean(OECD))
-
-# Or we want to do more advanced things..
-# Such as nesting data frames..
-qTBL(wlddev) |&gt; fgroup_by(region, income) |&gt;
-    fsummarise(across(c(PCGDP, LIFEEX, ODA),
-               function(x) list(Nest = list(x)),
-               .apply = FALSE))
-# Or linear models..
-qTBL(wlddev) |&gt; fgroup_by(region, income) |&gt;
-    fsummarise(across(c(PCGDP, LIFEEX, ODA),
-               function(x) list(Mods = list(lm(PCGDP ~., x))),
-               .apply = FALSE))
-# Or cumputing grouped correlation matrices
-qTBL(wlddev) |&gt; fgroup_by(region, income) |&gt;
-    fsummarise(across(c(PCGDP, LIFEEX, ODA),
-      function(x) qDF(pwcor(x), "Variable"), .apply = FALSE))
-
-# Here calculating 1- and 10-year lags and growth rates of these variables
-qTBL(wlddev) |&gt; fgroup_by(country) |&gt;
-    fmutate(across(c(PCGDP, LIFEEX, ODA), list(L, G),
-                   n = c(1, 10), t = year, .names = FALSE))
-
-# Same but variables in different order
-qTBL(wlddev) |&gt; fgroup_by(country) |&gt;
-    fmutate(across(c(PCGDP, LIFEEX, ODA), list(L, G), n = c(1, 10),
-                   t = year, .names = FALSE, .transpose = FALSE))
-
-</code></pre>
-
-<hr>
-<h2 id='arithmetic'>
-Fast Row/Column Arithmetic for Matrix-Like Objects
-</h2><span id='topic+arithmetic'></span><span id='topic++25rr+25'></span><span id='topic++25r+2B+25'></span><span id='topic++25r-+25'></span><span id='topic++25r+2A+25'></span><span id='topic++25r+2F+25'></span><span id='topic++25cr+25'></span><span id='topic++25c+2B+25'></span><span id='topic++25c-+25'></span><span id='topic++25c+2A+25'></span><span id='topic++25c+2F+25'></span>
-
-<h3>Description</h3>
-
-<p>Fast operators to perform row- or column-wise replacing and sweeping operations of vectors on matrices, data frames, lists. See also <code><a href="#topic+setop">setop</a></code> for math by reference and <code><a href="#topic+setTRA">setTRA</a></code> for sweeping by reference.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>## Perform the operation with v and each row of X
-
-X %rr% v    # Replace rows of X with v
-X %r+% v    # Add v to each row of X
-X %r-% v    # Subtract v from each row of X
-X %r*% v    # Multiply each row of X with v
-X %r/% v    # Divide each row of X by v
-
-## Perform a column-wise operation between V and X
-
-X %cr% V    # Replace columns of X with V
-X %c+% V    # Add V to columns of X
-X %c-% V    # Subtract V from columns of X
-X %c*% V    # Multiply columns of X with V
-X %c/% V    # Divide columns of X by V
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="arithmetic_+3A_x">X</code></td>
-<td>
-<p>a vector, matrix, data frame or list like object (with rows (r) columns (c) matching <code>v</code> / <code>V</code>).</p>
-</td></tr>
-<tr><td><code id="arithmetic_+3A_v">v</code></td>
-<td>
-<p>for row operations: an atomic vector of matching <code>NCOL(X)</code>. If <code>X</code> is a data frame, <code>v</code> can also be a list of scalar atomic elements. It is also possible to sweep lists of vectors <code>v</code> out of lists of matrices or data frames <code>X</code>.</p>
-</td></tr>
-<tr><td><code id="arithmetic_+3A_v">V</code></td>
-<td>
-<p>for column operations: a suitable scalar, vector, or matrix / data frame matching <code>NROW(X)</code>. <code>X</code> can also be a list of vectors / matrices in which case <code>V</code> can be a scalar / vector / matrix or matching list of scalars / vectors / matrices.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>With a matrix or data frame <code>X</code>, the default behavior of R when calling <code>X op v</code> (such as multiplication <code>X * v</code>) is to perform the operation of <code>v</code> with each column of <code>X</code>. The equivalent operation is performed by <code>X %cop% V</code>, with the difference that it computes significantly faster if <code>X</code>/<code>V</code> is a data frame / list. A more complex but frequently required task is to perform an operation with <code>v</code> on each row of <code>X</code>. This is provided based on efficient C++ code by the <code>%rop%</code> set of functions, e.g. <code>X %r*% v</code> efficiently multiplies <code>v</code> to each row of <code>X</code>.
-</p>
-
-
-<h3>Value</h3>
-
-<p><code>X</code> where the operation with <code>v</code> / <code>V</code> was performed on each row or column. All attributes of <code>X</code> are preserved.
-</p>
-
-
-<h3>Note</h3>
-
-<p><em>Computations and Output:</em> These functions are all quite simple, they only work with <code>X</code> on the LHS i.e. <code>v %op% X</code> will likely fail. The row operations are simple wrappers around <code><a href="#topic+TRA">TRA</a></code> which provides more operations including grouped replacing and sweeping (where <code>v</code> would be a matrix or data frame with less rows than <code>X</code> being mapped to the rows of <code>X</code> by grouping vectors). One consequence is that just like <code><a href="#topic+TRA">TRA</a></code>, row-wise mathematical operations (+, -, *, /) always yield numeric output, even if both <code>X</code> and <code>v</code> may be integer. This is different for column- operations which depend on base R and may also preserve integer data.
-</p>
-<p><em>Rules of Arithmetic:</em> Since these operators are defined as simple infix functions, the normal rules of arithmetic are not respected. So <code>a %c+% b %c*% c</code> evaluates as <code>(a %c+% b) %c*% c</code>. As with all chained infix operations, they are just evaluated sequentially from left to right.
-</p>
-<p><em>Performance Notes:</em> The function <code><a href="#topic+setop">setop</a></code> and a related set of <code>%op=%</code> operators as well as the <code><a href="#topic+setTRA">setTRA</a></code> function can be used to perform these operations by reference, and are faster if copies of the output are not required!! Furthermore, for Fast Statistical Functions, using <code>fmedian(X, TRA = "-")</code> will be a tiny bit faster than <code>X %r-% fmedian(X)</code>. Also use <code>fwithin(X)</code> for fast centering using the mean, and <code>fscale(X)</code> for fast scaling and centering or mean-preserving scaling.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+setop">setop</a></code>, <code><a href="#topic+TRA">TRA</a></code>, <code><a href="#topic+dapply">dapply</a></code>, <a href="#topic+efficient-programming">Efficient Programming</a>, <a href="#topic+data-transformations">Data Transformations</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Using data frame's / lists
-v &lt;- mtcars$cyl
-mtcars %cr% v
-mtcars %c-% v
-mtcars %r-% seq_col(mtcars)
-mtcars %r-% lapply(mtcars, quantile, 0.28)
-
-mtcars %c*% 5       # Significantly faster than mtcars * 5
-mtcars %c*% mtcars  # Significantly faster than mtcars * mtcars
-
-## Using matrices
-X &lt;- qM(mtcars)
-X %cr% v
-X %c-% v
-X %r-% dapply(X, quantile, 0.28)
-
-## Chained Operations
-library(magrittr) # Needed here to evaluate infix operators in sequence
-mtcars %&gt;% fwithin() %r-% rnorm(11) %c*% 5 %&gt;%
-    tfm(mpg = fsum(mpg)) %&gt;% qsu()
-
-</code></pre>
-
-<hr>
-<h2 id='BY'>
-Split-Apply-Combine Computing 
-</h2><span id='topic+BY'></span><span id='topic+BY.default'></span><span id='topic+BY.matrix'></span><span id='topic+BY.data.frame'></span><span id='topic+BY.grouped_df'></span>
-
-<h3>Description</h3>
-
-<p><code>BY</code> is an S3 generic that efficiently applies functions over vectors or matrix- and data frame columns by groups. Similar to <code><a href="#topic+dapply">dapply</a></code> it seeks to retain the structure and attributes of the data, but can also output to various standard formats. A simple parallelism is also available.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>BY(x, ...)
-
-## Default S3 method:
-BY(x, g, FUN, ..., use.g.names = TRUE, sort = .op[["sort"]], reorder = TRUE,
-   expand.wide = FALSE, parallel = FALSE, mc.cores = 1L,
-   return = c("same", "vector", "list"))
-
-## S3 method for class 'matrix'
-BY(x, g, FUN, ..., use.g.names = TRUE, sort = .op[["sort"]], reorder = TRUE,
-   expand.wide = FALSE, parallel = FALSE, mc.cores = 1L,
-   return = c("same", "matrix", "data.frame", "list"))
-
-## S3 method for class 'data.frame'
-BY(x, g, FUN, ..., use.g.names = TRUE, sort = .op[["sort"]], reorder = TRUE,
-   expand.wide = FALSE, parallel = FALSE, mc.cores = 1L,
-   return = c("same", "matrix", "data.frame", "list"))
-
-## S3 method for class 'grouped_df'
-BY(x, FUN, ..., reorder = TRUE, keep.group_vars = TRUE, use.g.names = FALSE)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="BY_+3A_x">x</code></td>
-<td>
-<p>a vector, matrix, data frame or alike object.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_g">g</code></td>
-<td>
-<p>a <code><a href="#topic+GRP">GRP</a></code> object, or a factor / atomic vector / list of atomic vectors (internally converted to a <code><a href="#topic+GRP">GRP</a></code> object) used to group <code>x</code>.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_fun">FUN</code></td>
-<td>
-<p>a function, can be scalar- or vector-valued. For vector valued functions see also <code>reorder</code> and <code>expand.wide</code>.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_...">...</code></td>
-<td>
-<p>further arguments to <code>FUN</code>, or to <code>BY.data.frame</code> for the 'grouped_df' method. Since v1.9.0 data length arguments are also split by groups.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_use.g.names">use.g.names</code></td>
-<td>
-<p>logical. Make group-names and add to the result as names (default method) or row-names (matrix and data frame methods). For vector-valued functions (row-)names are only generated if the function itself creates names for the statistics e.g. <code>quantile()</code> adds names, <code>range()</code> or <code>log()</code> don't. No row-names are generated on <em>data.table</em>'s.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_sort">sort</code></td>
-<td>
-<p>logical. Sort the groups? Internally passed to <code><a href="#topic+GRP">GRP</a></code>, and only effective if <code>g</code> is not already a factor or <code><a href="#topic+GRP">GRP</a></code> object.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_reorder">reorder</code></td>
-<td>
-<p>logical. If a vector-valued function is passed that preserves the data length, <code>TRUE</code> will reorder the result such that the elements/rows match the original data. <code>FALSE</code> just combines the data in order of the groups (i.e. all elements of the first group in first-appearance order followed by all elements in the second group etc..). <em>Note</em> that if <code>reorder = FALSE</code>, grouping variables, names or rownames are only retained if the grouping is on sorted data, see <code><a href="#topic+GRP">GRP</a></code>. </p>
-</td></tr>
-<tr><td><code id="BY_+3A_expand.wide">expand.wide</code></td>
-<td>
-<p>logical. If <code>FUN</code> is a vector-valued function returning a vector of fixed length &gt; 1 (such as the <code><a href="stats.html#topic+quantile">quantile</a></code> function), <code>expand.wide</code> can be used to return the result in a wider format (instead of stacking the resulting vectors of fixed length above each other in each output column).</p>
-</td></tr>
-<tr><td><code id="BY_+3A_parallel">parallel</code></td>
-<td>
-<p>logical. <code>TRUE</code> implements simple parallel execution by internally calling <code><a href="parallel.html#topic+mclapply">mclapply</a></code> instead of <code><a href="base.html#topic+lapply">lapply</a></code>. Parallelism is across columns, except for the default method.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_mc.cores">mc.cores</code></td>
-<td>
-<p>integer. Argument to <code><a href="parallel.html#topic+mclapply">mclapply</a></code> indicating the number of cores to use for parallel execution. Can use <code><a href="parallel.html#topic+detectCores">detectCores()</a></code> to select all available cores.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_return">return</code></td>
-<td>
-<p>an integer or string indicating the type of object to return. The default <code>1 - "same"</code> returns the same object type (i.e. class and other attributes are retained if the underlying data type is the same, just the names for the dimensions are adjusted). <code>2 - "matrix"</code> always returns the output as matrix, <code>3 - "data.frame"</code> always returns a data frame and <code>4 - "list"</code> returns the raw (uncombined) output. <em>Note</em>: <code>4 - "list"</code> works together with <code>expand.wide</code> to return a list of matrices.</p>
-</td></tr>
-<tr><td><code id="BY_+3A_keep.group_vars">keep.group_vars</code></td>
-<td>
-<p><em>grouped_df method:</em> Logical. <code>FALSE</code> removes grouping variables after computation. See also the Note. </p>
-</td></tr>
-
-</table>
-
-
-<h3>Details</h3>
-
-<p><code>BY</code> is a re-implementation of the Split-Apply-Combine computing paradigm. It is faster than <code><a href="base.html#topic+tapply">tapply</a></code>, <code><a href="base.html#topic+by">by</a></code>, <code><a href="stats.html#topic+aggregate">aggregate</a></code> and <em>(d)plyr</em>, and preserves data attributes just like <code><a href="#topic+dapply">dapply</a></code>.  
-</p>
-
-<p>It is principally a wrapper around <code>lapply(gsplit(x, g), FUN, ...)</code>, that uses <code><a href="#topic+gsplit">gsplit</a></code> for optimized splitting and also strongly optimizes on the internal code compared to <em>base</em> R functions. For more details look at the documentation for <code><a href="#topic+dapply">dapply</a></code> which works very similar (apart from the splitting performed in <code>BY</code>). The function is intended for simple cases involving flexible computation of statistics across groups using a single function e.g. <code>iris |&gt; gby(Species) |&gt; BY(IQR)</code> is simpler than <code>iris |&gt; gby(Species) |&gt; smr(acr(.fns = IQR))</code> etc..
-</p>
-
-
-
-<h3>Value</h3>
-
-<p><code>X</code> where <code>FUN</code> was applied to every column split by <code>g</code>.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+dapply">dapply</a></code>, <code><a href="#topic+collap">collap</a></code>, <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>, <a href="#topic+data-transformations">Data Transformations</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>v &lt;- iris$Sepal.Length   # A numeric vector
-g &lt;- GRP(iris$Species)   # A grouping
-
-## default vector method
-BY(v, g, sum)                                # Sum by species
-head(BY(v, g, scale))                        # Scale by species (please use fscale instead)
-BY(v, g, fquantile)                          # Species quantiles: by default stacked
-BY(v, g, fquantile, expand.wide = TRUE)      # Wide format
-
-## matrix method
-m &lt;- qM(num_vars(iris))
-BY(m, g, sum)                          # Also return as matrix
-BY(m, g, sum, return = "data.frame")   # Return as data.frame.. also works for computations below
-head(BY(m, g, scale))
-BY(m, g, fquantile)
-BY(m, g, fquantile, expand.wide = TRUE)
-ml &lt;- BY(m, g, fquantile, expand.wide = TRUE, # Return as list of matrices
-         return = "list")
-ml
-# Unlisting to Data Frame
-unlist2d(ml, idcols = "Variable", row.names = "Species")
-
-## data.frame method
-BY(num_vars(iris), g, sum)             # Also returns a data.fram
-BY(num_vars(iris), g, sum, return = 2) # Return as matrix.. also works for computations below
-head(BY(num_vars(iris), g, scale))
-BY(num_vars(iris), g, fquantile)
-BY(num_vars(iris), g, fquantile, expand.wide = TRUE)
-BY(num_vars(iris), g, fquantile,       # Return as list of matrices
-   expand.wide = TRUE, return = "list")
-
-## grouped data frame method
-giris &lt;- fgroup_by(iris, Species)
-giris |&gt; BY(sum)                      # Compute sum
-giris |&gt; BY(sum, use.g.names = TRUE,  # Use row.names and
-             keep.group_vars = FALSE)  # remove 'Species' and groups attribute
-giris |&gt; BY(sum, return = "matrix")   # Return matrix
-giris |&gt; BY(sum, return = "matrix",   # Matrix with row.names
-             use.g.names = TRUE)
-giris |&gt; BY(.quantile)                # Compute quantiles (output is stacked)
-giris |&gt; BY(.quantile, names = TRUE,  # Wide output
-               expand.wide = TRUE)
-</code></pre>
-
-<hr>
-<h2 id='collap'>
-Advanced Data Aggregation
-</h2><span id='topic+advanced-aggregation'></span><span id='topic+A5-advanced-aggregation'></span><span id='topic+collap'></span><span id='topic+collapv'></span><span id='topic+collapg'></span>
-
-<h3>Description</h3>
-
-<p><code>collap</code> is a fast and versatile multi-purpose data aggregation command.
-</p>
-<p>It performs simple and weighted aggregations, multi-type aggregations automatically applying different functions to numeric and categorical columns, multi-function aggregations applying multiple functions to each column, and fully custom aggregations where the user passes a list mapping functions to columns.
-</p>
-
-
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'># Main function: allows formula and data input to `by` and `w` arguments
-collap(X, by, FUN = fmean, catFUN = fmode, cols = NULL, w = NULL, wFUN = fsum,
-       custom = NULL, ..., keep.by = TRUE, keep.w = TRUE, keep.col.order = TRUE,
-       sort = .op[["sort"]], decreasing = FALSE, na.last = TRUE, return.order = sort,
-       method = "auto", parallel = FALSE, mc.cores = 2L,
-       return = c("wide","list","long","long_dupl"), give.names = "auto")
-
-# Programmer function: allows column names and indices input to `by` and `w` arguments
-collapv(X, by, FUN = fmean, catFUN = fmode, cols = NULL, w = NULL, wFUN = fsum,
-        custom = NULL, ..., keep.by = TRUE, keep.w = TRUE, keep.col.order = TRUE,
-        sort = .op[["sort"]], decreasing = FALSE, na.last = TRUE, return.order = sort,
-        method = "auto", parallel = FALSE, mc.cores = 2L,
-        return = c("wide","list","long","long_dupl"), give.names = "auto")
-
-# Auxiliary function: for grouped data ('grouped_df') input + non-standard evaluation
-collapg(X, FUN = fmean, catFUN = fmode, cols = NULL, w = NULL, wFUN = fsum,
-        custom = NULL, keep.group_vars = TRUE, ...)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="collap_+3A_x">X</code></td>
-<td>
-<p>a data frame, or an object coercible to data frame using <code><a href="#topic+qDF">qDF</a></code>.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_by">by</code></td>
-<td>
-<p>for <code>collap</code>: a one-or two sided formula, i.e. <code>~ group1</code> or <code>var1 + var2 ~ group1 + group2</code>, or a atomic vector, list of vectors or <code><a href="#topic+GRP">GRP</a></code> object used to group <code>X</code>. For <code>collapv</code>: names or indices of grouping columns, or a logical vector or selector function such as <code><a href="#topic+is_categorical">is_categorical</a></code> selecting grouping columns.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_fun">FUN</code></td>
-<td>
-<p>a function, list of functions (i.e. <code>list(fsum, fmean, fsd)</code> or <code>list(sd = fsd, myfun1 = function(x)..)</code>), or a character vector of function names, which are automatically applied only to numeric variables.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_catfun">catFUN</code></td>
-<td>
-<p>same as <code>FUN</code>, but applied only to categorical (non-numeric) typed columns (<code><a href="#topic+is_categorical">is_categorical</a></code>).</p>
-</td></tr>
-<tr><td><code id="collap_+3A_cols">cols</code></td>
-<td>
-<p>select columns to aggregate using a function, column names, indices or logical vector. <em>Note</em>: <code>cols</code> is ignored if a two-sided formula is passed to <code>by</code>.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_w">w</code></td>
-<td>
-<p>weights. Can be passed as numeric vector or alternatively as formula i.e. <code>~ weightvar</code> in <code>collap</code> or column name / index etc. i.e. <code>"weightvar"</code> in <code>collapv</code>. <code>collapg</code> supports non-standard evaluations so <code>weightvar</code> can be indicated without quotes. </p>
-</td></tr>
-<tr><td><code id="collap_+3A_wfun">wFUN</code></td>
-<td>
-<p>same as <code>FUN</code>: Function(s) to aggregate weight variable if <code>keep.w = TRUE</code>. By default the sum of the weights is computed in each group.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_custom">custom</code></td>
-<td>
-<p>a named list specifying a fully customized aggregation task. The names of the list are function names and the content columns to aggregate using this function (same input as <code>cols</code>). For example <code>custom = list(fmean = 1:6, fsd = 7:9, fmode = 10:11)</code> tells <code>collap</code> to aggregate columns 1-6 of <code>X</code> using the mean, columns 7-9 using the standard deviation etc. <em>Notes</em>: <code>custom</code> lets <code>collap</code> ignore any inputs passed to <code>FUN</code>, <code>catFUN</code> or <code>cols</code>. Since v1.6.0 you can also rename columns e.g. <code>custom = list(fmean = c(newname = "col1", "col2"), fmode = c(newname = 3))</code>.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_keep.by">keep.by</code>, <code id="collap_+3A_keep.group_vars">keep.group_vars</code></td>
-<td>
-<p>logical. <code>FALSE</code> will omit grouping variables from the output. <code>TRUE</code> keeps the variables, even if passed externally in a list or vector (unlike other <em>collapse</em> functions).</p>
-</td></tr>
-<tr><td><code id="collap_+3A_keep.w">keep.w</code></td>
-<td>
-<p>logical. <code>FALSE</code> will omit weight variable from the output i.e. no aggregation of the weights. <code>TRUE</code> aggregates and adds weights, even if passed externally as a vector (unlike other <em>collapse</em> functions).</p>
-</td></tr>
-<tr><td><code id="collap_+3A_keep.col.order">keep.col.order</code></td>
-<td>
-<p>logical. Retain original column order post-aggregation.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_sort">sort</code>, <code id="collap_+3A_decreasing">decreasing</code>, <code id="collap_+3A_na.last">na.last</code>, <code id="collap_+3A_return.order">return.order</code>, <code id="collap_+3A_method">method</code></td>
-<td>
-<p>logical / character. Arguments passed to <code><a href="#topic+GRP.default">GRP.default</a></code> and affecting the row-order in the aggregated data frame and the grouping algorithm.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_parallel">parallel</code></td>
-<td>
-<p>logical. Use <code><a href="parallel.html#topic+mclapply">mclapply</a></code> instead of <code>lapply</code> to parallelize the computation at the column level. Not available for Windows.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_mc.cores">mc.cores</code></td>
-<td>
-<p>integer. Argument to <code><a href="parallel.html#topic+mclapply">mclapply</a></code> setting the number of cores to use, default is 2.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_return">return</code></td>
-<td>
-<p>character. Control the output format when aggregating with multiple functions or performing custom aggregation. &quot;wide&quot; (default) returns a wider data frame with added columns for each additional function. &quot;list&quot; returns a list of data frames - one for each function. &quot;long&quot; adds a column &quot;Function&quot; and row-binds the results from different functions using <code>data.table::rbindlist</code>. &quot;long.dupl&quot; is a special option for aggregating multi-type data using multiple <code>FUN</code> but only one <code>catFUN</code> or vice-versa. In that case the format is long and data aggregated using only one function is duplicated. See Examples.</p>
-</td></tr>
-<tr><td><code id="collap_+3A_give.names">give.names</code></td>
-<td>
-<p>logical. Create unique names of aggregated columns by adding a prefix 'FUN.var'. <code>'auto'</code> will automatically create such prefixes whenever multiple functions are applied to a column. 
-</p>
-</td></tr>
-<tr><td><code id="collap_+3A_...">...</code></td>
-<td>
-<p>additional arguments passed to all functions supplied to <code>FUN</code>, <code>catFUN</code>, <code>wFUN</code> or <code>custom</code>. Since v1.9.0 these are also split by groups for non-<a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>. The behavior of <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> with unused arguments is regulated by <code>option("collapse_unused_arg_action")</code> and defaults to <code>"warning"</code>. <code>collapg</code> also allows other arguments to <code>collap</code> except for <code>sort, decreasing, na.last, return.order, method</code> and <code>keep.by</code>.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p><code>collap</code> automatically checks each function passed to it whether it is a <a href="#topic+fast-statistical-functions">Fast Statistical Function</a> (i.e. whether the function name is contained in <code>.FAST_STAT_FUN</code>). If the function is a fast statistical function, <code>collap</code> only does the grouping and then calls the function to carry out the grouped computations (vectorized in C/C++), resulting in high aggregation speeds, even with weights. If the function is not one of <code>.FAST_STAT_FUN</code>, <code><a href="#topic+BY">BY</a></code> is called internally to perform the computation. The resulting computations from each function are put into a list and recombined to produce the desired output format as controlled by the <code>return</code> argument. This is substantially slower, particularly with many groups.
-</p>
-<p>When setting <code>parallel = TRUE</code> on a non-windows computer, aggregations will efficiently be parallelized at the column level using <code><a href="parallel.html#topic+mclapply">mclapply</a></code> utilizing <code>mc.cores</code> cores. Some <a href="#topic+fast-statistical-functions">Fast Statistical Function</a> support multithreading i.e. have an <code>nthreads</code> argument that can be passed to <code>collap</code>. Using C-level multithreading is much more effective than R-level parallelism, and also works on Windows, but the two should never be combined.
-</p>
-<p>When the <code>w</code> argument is used, the weights are passed to all functions except for <code>wFUN</code>. This may be undesirable in settings like <code>collap(data, ~ id, custom = list(fsum = ..., fmean = ...), w = ~ weights)</code> where we wish to aggregate some columns using the weighted mean, and others using a simple sum or another unweighted statistic. 
-Therefore it is possible to append <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> by <code>_uw</code> to yield an unweighted computation. So for the above example one can specify: <code>collap(data, ~ id, custom = list(fsum_uw = ..., fmean = ...), w = ~ weights)</code> to get the weighted mean and the simple sum. <em>Note</em> that the <code>_uw</code> functions are not available for use outside collap. Thus one also needs to quote them when passing to the <code>FUN</code> or <code>catFUN</code> arguments, e.g. use <code>collap(data, ~ id, fmean, "fmode_uw", w = ~ weights)</code>. 
-</p>
-
-
-<h3>Value</h3>
-
-<p><code>X</code> aggregated. If <code>X</code> is not a data frame it is coerced to one using <code><a href="#topic+qDF">qDF</a></code> and then aggregated.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+fsummarise">fsummarise</a></code>, <code><a href="#topic+BY">BY</a></code>, <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## A Simple Introduction --------------------------------------
-head(iris)
-collap(iris, ~ Species)                                        # Default: FUN = fmean for numeric
-collapv(iris, 5)                                               # Same using collapv
-collap(iris, ~ Species, fmedian)                               # Using the median
-collap(iris, ~ Species, fmedian, keep.col.order = FALSE)       # Groups in-front
-collap(iris, Sepal.Width + Petal.Width ~ Species, fmedian)     # Only '.Width' columns
-collapv(iris, 5, cols = c(2, 4))                               # Same using collapv
-collap(iris, ~ Species, list(fmean, fmedian))                  # Two functions
-collap(iris, ~ Species, list(fmean, fmedian), return = "long") # Long format
-collapv(iris, 5, custom = list(fmean = 1:2, fmedian = 3:4))    # Custom aggregation
-collapv(iris, 5, custom = list(fmean = 1:2, fmedian = 3:4),    # Raw output, no column reordering
-        return = "list")
-collapv(iris, 5, custom = list(fmean = 1:2, fmedian = 3:4),    # A strange choice..
-        return = "long")
-collap(iris, ~ Species, w = ~ Sepal.Length)                    # Using Sepal.Length as weights, ..
-weights &lt;- abs(rnorm(fnrow(iris)))
-collap(iris, ~ Species, w = weights)                           # Some random weights..
-collap(iris, iris$Species, w = weights)                        # Note this behavior..
-collap(iris, iris$Species, w = weights,
-       keep.by = FALSE, keep.w = FALSE)
-
-
-
-## Multi-Type Aggregation --------------------------------------
-head(wlddev)                                                    # World Development Panel Data
-head(collap(wlddev, ~ country + decade))                        # Aggregate by country and decade
-head(collap(wlddev, ~ country + decade, fmedian, ffirst))       # Different functions
-head(collap(wlddev, ~ country + decade, cols = is.numeric))     # Aggregate only numeric columns
-head(collap(wlddev, ~ country + decade, cols = 9:13))           # Only the 5 series
-head(collap(wlddev, PCGDP + LIFEEX ~ country + decade))         # Only GDP and life-expactancy
-head(collap(wlddev, PCGDP + LIFEEX ~ country + decade, fsum))   # Using the sum instead
-head(collap(wlddev, PCGDP + LIFEEX ~ country + decade, sum,     # Same using base::sum -&gt; slower!
-            na.rm = TRUE))
-head(collap(wlddev, wlddev[c("country","decade")], fsum,        # Same, exploring different inputs
-            cols = 9:10))
-head(collap(wlddev[9:10], wlddev[c("country","decade")], fsum))
-head(collapv(wlddev, c("country","decade"), fsum))              # ..names/indices with collapv
-head(collapv(wlddev, c(1,5), fsum))
-
-g &lt;- GRP(wlddev, ~ country + decade)                            # Precomputing the grouping
-head(collap(wlddev, g, keep.by = FALSE))                        # This is slightly faster now
-# Aggregate categorical data using not the mode but the last element
-head(collap(wlddev, ~ country + decade, fmean, flast))
-head(collap(wlddev, ~ country + decade, catFUN = flast,         # Aggregate only categorical data
-            cols = is_categorical))
-
-
-## Weighted Aggregation ----------------------------------------
-# We aggregate to region level using population weights
-head(collap(wlddev, ~ region + year, w = ~ POP))                # Takes weighted mean for numeric..
-# ..and weighted mode for categorical data. The weight vector is aggregated using fsum
-
-head(collap(wlddev, ~ region + year, w = ~ POP,                 # Aggregating weights using sum
-            wFUN = list(sum = fsum, max = fmax)))               # and max (corresponding to mode)
-
-
-## Multi-Function Aggregation ----------------------------------
-head(collap(wlddev, ~ country + decade, list(mean = fmean, N = fnobs),  # Saving mean and Nobs
-            cols = 9:13))
-
-head(collap(wlddev, ~ country + decade,                         # Same using base R -&gt; slower
-            list(mean = mean,
-                 N = function(x, ...) sum(!is.na(x))),
-            cols = 9:13, na.rm = TRUE))
-
-lapply(collap(wlddev, ~ country + decade,                       # List output format
-       list(mean = fmean, N = fnobs), cols = 9:13, return = "list"), head)
-
-head(collap(wlddev, ~ country + decade,                         # Long output format
-     list(mean = fmean, N = fnobs), cols = 9:13, return = "long"))
-
-head(collap(wlddev, ~ country + decade,                         # Also aggregating categorical data,
-     list(mean = fmean, N = fnobs), return = "long_dupl"))      # and duplicating it 2 times
-
-head(collap(wlddev, ~ country + decade,                         # Now also using 2 functions on
-     list(mean = fmean, N = fnobs), list(mode = fmode, last = flast),   # categorical data
-            keep.col.order = FALSE))
-
-head(collap(wlddev, ~ country + decade,                         # More functions, string input,
-            c("fmean","fsum","fnobs","fsd","fvar"),             # parallelized execution
-            c("fmode","ffirst","flast","fndistinct"),           # (choose more than 1 cores,
-            parallel = TRUE, mc.cores = 1L,                     # depending on your machine)
-            keep.col.order = FALSE))
-
-
-## Custom Aggregation ------------------------------------------
-head(collap(wlddev, ~ country + decade,                         # Custom aggregation
-            custom = list(fmean = 11:13, fsd = 9:10, fmode = 7:8)))
-
-head(collap(wlddev, ~ country + decade,                         # Using column names
-            custom = list(fmean = "PCGDP", fsd = c("LIFEEX","GINI"),
-                          flast = "date")))
-
-head(collap(wlddev, ~ country + decade,                         # Weighted parallelized custom
-            custom = list(fmean = 9:12, fsd = 9:10,             # aggregation
-                          fmode = 7:8), w = ~ POP,
-            wFUN = list(fsum, fmax),
-            parallel = TRUE, mc.cores = 1L))
-
-head(collap(wlddev, ~ country + decade,                         # No column reordering
-            custom = list(fmean = 9:12, fsd = 9:10,
-                          fmode = 7:8), w = ~ POP,
-            wFUN = list(fsum, fmax),
-            parallel = TRUE, mc.cores = 1L, keep.col.order = FALSE))
-
-## Piped Use --------------------------------------------------
-iris |&gt; fgroup_by(Species) |&gt; collapg()
-wlddev |&gt; fgroup_by(country, decade) |&gt; collapg() |&gt; head()
-wlddev |&gt; fgroup_by(region, year) |&gt; collapg(w = POP) |&gt; head()
-wlddev |&gt; fgroup_by(country, decade) |&gt; collapg(fmedian, flast) |&gt; head()
-wlddev |&gt; fgroup_by(country, decade) |&gt;
-  collapg(custom = list(fmean = 9:12, fmode = 5:7, flast = 3)) |&gt; head()
-</code></pre>
-
-<hr>
-<h2 id='collapse-documentation'>Collapse Documentation &amp; Overview</h2><span id='topic+A0-collapse-documentation'></span><span id='topic+collapse-documentation'></span><span id='topic+.COLLAPSE_TOPICS'></span><span id='topic+.COLLAPSE_ALL'></span><span id='topic+.COLLAPSE_GENERIC'></span><span id='topic+.COLLAPSE_DATA'></span>
-
-<h3>Description</h3>
-
-<p>The following table fully summarizes the contents of <em><a href="#topic+collapse">collapse</a></em>. The documentation is structured hierarchically: This is the main overview page, linking to topical overview pages and associated function pages (unless functions are documented on the topic page). 
-</p>
-
-
-<h3>Topics and Functions</h3>
-
-
-<table>
-<tr>
- <td style="text-align: left;"> <em> Topic </em>  </td><td style="text-align: left;"></td><td style="text-align: left;"> <em> Main Features / Keywords</em> </td><td style="text-align: left;"></td><td style="text-align: left;"> <em> Functions </em>  </td>
-</tr>
-<tr>
- <td style="text-align: left;"> 
-
-  <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (grouped and weighted) statistical functions for vector, matrix, data frame and grouped data frames (class 'grouped_df', <em>dplyr</em> compatible).  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+fsum">fsum</a></code>, <code><a href="#topic+fprod">fprod</a></code>, <code><a href="#topic+fmean">fmean</a></code>, <code><a href="#topic+fmedian">fmedian</a></code>, <code><a href="#topic+fmode">fmode</a></code>, <code><a href="#topic+fvar">fvar</a></code>, <code><a href="#topic+fsd">fsd</a></code>, <code><a href="#topic+fmin">fmin</a></code>, <code><a href="#topic+fmax">fmax</a></code>, <code><a href="#topic+fnth">fnth</a></code>, <code><a href="#topic+ffirst">ffirst</a></code>, <code><a href="#topic+flast">flast</a></code>, <code><a href="#topic+fnobs">fnobs</a></code>, <code><a href="#topic+fndistinct">fndistinct</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+fast-grouping-ordering">Fast Grouping and Ordering</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (ordered) groupings from vectors, data frames, lists. 'GRP' objects are efficient inputs for programming with <em>collapse</em>'s fast functions. <code>fgroup_by</code> can attach them to a data frame, for fast dplyr-style grouped computations. Fast splitting of vectors based on 'GRP' objects. Fast radix-based ordering and hash-based grouping (the workhorses behind <code>GRP</code>). Fast matching (rows) and unique values/rows, group counts, factor generation, vector grouping, interactions, dropping unused factor levels, generalized run-length type grouping and grouping of integer sequences and time vectors.   
-</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+GRP">GRP</a></code>, <code><a href="#topic+as_factor_GRP">as_factor_GRP</a></code>, <code><a href="#topic+GRPN">GRPN</a></code>, <code><a href="#topic+GRPid">GRPid</a></code>, <code><a href="#topic+GRPnames">GRPnames</a></code>, <code><a href="#topic+is_GRP">is_GRP</a></code>, <code><a href="#topic+fgroup_by">fgroup_by</a></code>, <code><a href="#topic+fgroup_vars">fgroup_vars</a></code>, <code><a href="#topic+fungroup">fungroup</a></code>, <code><a href="#topic+gsplit">gsplit</a></code>, <code><a href="#topic+greorder">greorder</a></code>, <code><a href="#topic+radixorder">radixorder(v)</a></code>, <code><a href="#topic+group">group</a></code>, <code><a href="#topic+fmatch">fmatch</a></code>, <code><a href="#topic+ckmatch">ckmatch</a></code>, <code><a href="#topic+fmatch">%!in%</a></code>, <code><a href="#topic+fmatch">%[!]iin%</a></code>, <code><a href="#topic+funique">funique</a></code>,  <code><a href="#topic+fnunique">fnunique</a></code>, <code><a href="#topic+fduplicated">fduplicated</a></code>, <code><a href="#topic+any_duplicated">any_duplicated</a></code>, <code><a href="#topic+fcount">fcount(v)</a></code>, <code><a href="#topic+qF">qF</a></code>, <code><a href="#topic+qG">qG</a></code>, <code><a href="#topic+is_qG">is_qG</a></code>, <code><a href="#topic+finteraction">finteraction</a></code>, <code><a href="#topic+fdroplevels">fdroplevels</a></code>, <code><a href="#topic+groupid">groupid</a></code>, <code><a href="#topic+seqid">seqid</a></code>, <code><a href="#topic+timeid">timeid</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-
-
-
-<a href="#topic+fast-data-manipulation">Fast Data Manipulation</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast and flexible select, subset, summarise, mutate/transform, sort/reorder, combine, join, reshape, rename and relabel data. Some functions modify by reference and/or allow assignment. In addition a set of (standard evaluation) functions for fast selecting, replacing or adding data frame columns, including shortcuts to select and replace variables by data type.
-</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+fselect">fselect(&lt;-)</a></code>, <code><a href="#topic+fsubset">fsubset/ss</a></code>, <code><a href="#topic+fsummarise">fsummarise</a></code>, <code><a href="#topic+fmutate">fmutate</a></code>, <code><a href="#topic+across">across</a></code>, <code><a href="#topic+ftransform">(f/set)transform(v)(&lt;-)</a></code>, <code><a href="#topic+fcompute">fcompute(v)</a></code>, <code><a href="#topic+roworder">roworder(v)</a></code>, <code><a href="#topic+colorder">colorder(v)</a></code>, <code><a href="#topic+rowbind">rowbind</a></code>, <code><a href="#topic+join">join</a></code>, <code><a href="#topic+pivot">pivot</a></code>, <code><a href="#topic+frename">(f/set)rename</a></code>, <code><a href="#topic+relabel">(set)relabel</a></code>, <code><a href="#topic+get_vars">get_vars(&lt;-)</a></code>, <code><a href="#topic+add_vars">add_vars(&lt;-)</a></code>, <code><a href="#topic+num_vars">num_vars(&lt;-)</a></code>, <code><a href="#topic+cat_vars">cat_vars(&lt;-)</a></code>, <code><a href="#topic+char_vars">char_vars(&lt;-)</a></code>, <code><a href="#topic+fact_vars">fact_vars(&lt;-)</a></code>, <code><a href="#topic+logi_vars">logi_vars(&lt;-)</a></code>, <code><a href="#topic+date_vars">date_vars(&lt;-)</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+quick-conversion">Quick Data Conversion</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Quick conversions: data.frame &lt;&gt; data.table &lt;&gt; tibble &lt;&gt; matrix (row- or column-wise) &lt;&gt; list | array &gt; matrix, data.frame, data.table, tibble | vector &gt; factor, matrix, data.frame, data.table, tibble; and converting factors / all factor columns. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>qDF</code>, <code>qDT</code>, <code>qTBL</code>, <code>qM</code>, <code>qF</code>, <code>mrtl</code>, <code>mctl</code>, <code>as_numeric_factor</code>, <code>as_character_factor</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+advanced-aggregation">Advanced Data Aggregation</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast and easy (weighted and parallelized) aggregation of multi-type data, with different functions applied to numeric and categorical variables. Custom specifications allow mappings of functions to variables + renaming. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>collap(v/g)</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+data-transformations">Data Transformations</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast row- and column- arithmetic and (object preserving) apply functionality for vectors, matrices and data frames. Fast (grouped) replacing and sweeping of statistics (by reference) and (grouped and weighted) scaling / standardizing, (higher-dimensional) between- and within-transformations (i.e. averaging and centering), linear prediction and partialling out. 
-</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+arithmetic">%(r/c)r%</a></code>, <code><a href="#topic+arithmetic">%(r/c)(+/-/*//)%</a></code>, <code><a href="#topic+dapply">dapply</a></code>, <code><a href="#topic+BY">BY</a></code>, <code><a href="#topic+TRA">(set)TRA</a></code>, <code><a href="#topic+fscale">fscale/STD</a></code>, <code><a href="#topic+fbetween">fbetween/B</a></code>, <code><a href="#topic+fwithin">fwithin/W</a></code>, <code><a href="#topic+HDB">fhdbetween/HDB</a></code>, <code><a href="#topic+HDW">fhdwithin/HDW</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-Linear Models </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (weighted) linear model fitting with 6 different solvers and a fast F-test to test exclusion restrictions on linear models with (large) factors. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+flm">flm</a></code>, <code><a href="#topic+fFtest">fFtest</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+time-series-panel-series">Time Series and Panel Series</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast and class-agnostic indexed time series and panel data objects, check for irregularity in time series and panels, and efficient time-sequence to integer/factor conversion. Fast (sequences of) lags / leads and (lagged / leaded and iterated, quasi-, log-) differences, and (compounded) growth rates on (irregular) time series and panel data. Flexible cumulative sums. Panel data to array conversions. Multivariate panel- auto-, partial- and cross-correlation functions. 
-</td><td style="text-align: left;"></td><td style="text-align: left;">
-<code><a href="#topic+findex_by">findex_by</a></code>, <code><a href="#topic+findex">findex</a></code>, <code><a href="#topic+unindex">unindex</a></code>, <code><a href="#topic+reindex">reindex</a></code>, <code><a href="#topic+is_irregular">is_irregular</a></code>, <code><a href="#topic+to_plm">to_plm</a></code>, <code><a href="#topic+timeid">timeid</a></code>,
-<code><a href="#topic+flag">flag/L/F</a></code>, <code><a href="#topic+fdiff">fdiff/D/Dlog</a></code>, <code><a href="#topic+fgrowth">fgrowth/G</a></code>, <code><a href="#topic+fcumsum">fcumsum</a></code>, <code><a href="#topic+psmat">psmat</a></code>, <code><a href="#topic+psacf">psacf</a></code>, <code><a href="#topic+pspacf">pspacf</a></code>, <code><a href="#topic+psccf">psccf</a></code>  </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+summary-statistics">Summary Statistics</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (grouped and weighted) summary statistics for cross-sectional and panel data. Fast (weighted) cross tabulation. Efficient detailed description of data frame. Fast check of variation in data (within groups / dimensions). (Weighted) pairwise correlations and covariances (with obs. and p-value), pairwise observation count. 
-</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+qsu">qsu</a></code>, <code><a href="#topic+qtab">qtab</a></code>, <code><a href="#topic+descr">descr</a></code>, <code><a href="#topic+varying">varying</a></code>, <code><a href="#topic+pwcor">pwcor</a></code>, <code><a href="#topic+pwcov">pwcov</a></code>, <code><a href="#topic+pwnobs">pwnobs</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-Other Statistical </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast euclidean distance computations, (weighted) sample quantiles, and range of vector. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+fdist">fdist</a></code>, <code><a href="#topic+fquantile">fquantile</a></code>, <code><a href="#topic+frange">frange</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+list-processing">List Processing</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> (Recursive) list search and checks, extraction of list-elements / list-subsetting, fast (recursive) splitting, list-transpose, apply functions to lists of data frames / data objects, and generalized recursive row-binding / unlisting in 2-dimensions / to data frame.  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+is_unlistable">is_unlistable</a></code>, <code><a href="#topic+ldepth">ldepth</a></code>, <code><a href="#topic+has_elem">has_elem</a></code>, <code><a href="#topic+get_elem">get_elem</a></code>, <code><a href="#topic+atomic_elem">atomic_elem(&lt;-)</a></code>, <code><a href="#topic+list_elem">list_elem(&lt;-)</a></code>, <code><a href="#topic+reg_elem">reg_elem</a></code>, <code><a href="#topic+irreg_elem">irreg_elem</a></code>, <code><a href="#topic+rsplit">rsplit</a></code>, <code><a href="#topic+t_list">t_list</a></code>, <code><a href="#topic+rapply2d">rapply2d</a></code>, <code><a href="#topic+unlist2d">unlist2d</a></code>, <code><a href="#topic+rowbind">rowbind</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-
-
-
-
-<a href="#topic+recode-replace">Recode and Replace Values</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Recode multiple values (exact or regex matching) and replace <code>NaN/Inf/-Inf</code> and outliers (according to 1- or 2-sided threshold or standard-deviations) in vectors, matrices or data frames. Insert a value at arbitrary positions into vectors, matrices or data frames. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>recode_num</code>, <code>recode_char</code>, <code>replace_na</code>, <code>replace_inf</code>, <code>replace_outliers</code>, <code><a href="#topic+pad">pad</a></code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-
-<a href="#topic+efficient-programming">(Memory) Efficient Programming</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Efficient comparisons of a vector/matrix with a value, and replacing values/rows in vector/matrix/DF (avoiding logical vectors or subsets), faster generation of initialized vectors, and fast mathematical operations on vectors/matrices/DF's with no copies at all. Fast missing value detection, (random) insertion and removal/replacement, lengths and C storage types, greatest common divisor of vector, <code>nlevels</code> for factors, <code>nrow</code>, <code>ncol</code>, <code>dim</code> (for data frames) and <code>seq_along</code> rows or columns. Fast vectorization of matrices and lists, and choleski inverse of symmetric PD matrix. </td><td style="text-align: left;"></td><td style="text-align: left;">
-<code>anyv</code>, <code>allv</code>, <code>allNA</code>, <code>whichv</code>, <code>whichNA</code>, <code>%==%</code>,
-<code>%!=%</code>, <code>copyv</code>, <code>setv</code>, <code>alloc</code>, <code>setop</code>, <code>%+=%</code>, <code>%-=%</code>, <code>%*=%</code>, <code>%/=%</code>, <code>missing_cases</code>, <code>na_insert</code>, <code>na_rm</code>, <code>na_locf</code>, <code>na_focb</code>, <code>na_omit</code>, <code>vlengths</code>, <code>vtypes</code>, <code>vgcd</code>, <code>fnlevels</code>, <code>fnrow</code>, <code>fncol</code>, <code>fdim</code>, <code>seq_row</code>, <code>seq_col</code>, <code>vec</code>, <code>cinv</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-<a href="#topic+small-helpers">Small (Helper) Functions</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Multiple-assignment, non-standard concatenation, set and extract variable labels and classes, display variable names and labels together, add / remove prefix or postfix to / from column names, check exact or near / numeric equality of multiple objects or of all elements in a list, get names of functions called in an expression, return object with dimnames, row- or colnames efficiently set, or with all attributes removed, C-level functions to set and shallow-copy attributes, identify categorical (non-numeric) and date(-time) objects. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>massign</code>, <code>%=%</code>, <code>.c</code>, <code>vlabels(&lt;-)</code>, <code>setLabels</code>, <code>vclasses</code>, <code>namlab</code>, <code>add_stub</code>, <code>rm_stub</code>, <code>all_identical</code>, <code>all_obj_equal</code>, <code>all_funs</code>, <code>setDimnames</code>, <code>setRownames</code>, <code>setColnames</code>, <code>unattrib</code>, <code>setAttrib</code>, <code>setattrib</code>, <code>copyAttrib</code>, <code>copyMostAttrib</code>, <code>is_categorical</code>, <code>is_date</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;"> </td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-
-Data and Global Macros </td><td style="text-align: left;"></td><td style="text-align: left;"> Groningen Growth and Development Centre 10-Sector Database, World Bank World Development dataset, and some global macros containing links to the topical documentation pages (including this page), all exported objects (excluding exported S3 methods and depreciated functions), all generic functions (excluding depreciated), the 2 datasets, depreciated functions, all fast functions, all fast statistical (scalar-valued) functions, and all transformation operators (these are not infix functions but function shortcuts resembling operators in a statistical sense, such as the lag/lead operators <code>L</code>/<code>F</code>, both wrapping <code>flag</code>, see <code><a href="#topic+.OPERATOR_FUN">.OPERATOR_FUN</a></code>).  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+GGDC10S">GGDC10S</a>, <a href="#topic+wlddev">wlddev</a>, .COLLAPSE_TOPICS, .COLLAPSE_ALL, .COLLAPSE_GENERIC, .COLLAPSE_DATA, .COLLAPSE_OLD, .FAST_FUN, .FAST_STAT_FUN, .OPERATOR_FUN</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-
-<a href="#topic+collapse-options">Package Options</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>set_collapse</code>/<code>get_collapse</code> can be used to globally set/get the defaults for <code>na.rm</code>, <code>nthreads</code> and <code>sort</code>, etc., arguments found in many functions, and to globally control the namespace with options 'mask' and 'remove': 'mask' can be used to mask base R/dplyr functions by export copies of equivalent <em>collapse</em> functions starting with <code>"f"</code>, removing the leading <code>"f"</code> (e.g. exporting <code>subset &lt;- fsubset</code>). 'remove' allows removing arbitrary functions from the exported namespace. <code>options("collapse_unused_arg_action")</code> sets the action taken by generic statistical functions when unknown arguments are passed to a method. The default is <code>"warning"</code>.  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>set_collapse</code>, <code>get_collapse</code> </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-</td>
-</tr>
-
-</table>
-
-
-
-<h3>Details</h3>
-
-<p>The added top-level documentation infrastructure in <em>collapse</em> allows you to effectively navigate the package. 
-Calling <code>?FUN</code> brings up the documentation page documenting the function, which contains links to associated topic pages and closely related functions. You can also call topical documentation pages directly from the console. The links to these pages are contained in the global macro <code>.COLLAPSE_TOPICS</code> (e.g. calling <code>help(.COLLAPSE_TOPICS[1])</code> brings up this page).
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p><b>Maintainer</b>: Sebastian Krantz <a href="mailto:sebastian.krantz@graduateinstitute.ch">sebastian.krantz@graduateinstitute.ch</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p><a href="#topic+collapse-package">collapse-package</a>
-</p>
-
-<hr>
-<h2 id='collapse-options'><em>collapse</em> Package Options</h2><span id='topic+collapse-options'></span><span id='topic+AA4-collapse-options'></span><span id='topic+set_collapse'></span><span id='topic+get_collapse'></span><span id='topic+.op'></span>
-
-<h3>Description</h3>
-
-<p><em>collapse</em> is globally configurable to an extent few packages are: the default value of key function arguments governing the behavior of its algorithms, and the exported namespace, can be adjusted interactively through the <code>set_collapse()</code> function.
-</p>
-<p>These options are saved in an internal environment called <code>.op</code> (for safety and performance reasons) visible in the documentation of some functions such as <code><a href="#topic+fmean">fmean</a></code>. The contents of this environment can be accessed using <code>get_collapse()</code>.
-</p>
-<p>There are also a few options that can be set using <code><a href="base.html#topic+options">options</a></code> (retrievable using <code><a href="base.html#topic+getOption">getOption</a></code>). These options mainly affect package startup behavior.
-</p>
-
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>set_collapse(...)
-get_collapse(opts = NULL)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="collapse-options_+3A_...">...</code></td>
-<td>
-<p>either comma separated options, or a single list of options. The available options are:
-</p>
-
-<table>
-<tr>
- <td style="text-align: left;">
-    <code>na.rm</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Sets the default for statistical algorithms such as the <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> to skip missing values. If your data does not have missing values, or only in rare cases, it is recommended to change this to <code>FALSE</code> for performance gains. <em>Note</em> that this does not affect other (non-statistical) uses of <code>na.rm</code> arguments, such as in <code><a href="#topic+pivot">pivot</a></code>. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    <code>sort</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Sets the default for grouping operations to be sorted. This also applies to factor generation using <code><a href="#topic+qF">qF</a></code> and tabulation with <code><a href="#topic+qtab">qtab</a></code>, but excludes other uses of <code>sort</code> arguments where grouping is not the objective (such as in <code><a href="#topic+funique">funique</a></code> or <code><a href="#topic+pivot">pivot</a></code>). In general, sorted grouping (internally using <code><a href="#topic+radixorder">radixorder</a></code>) is slower than hash-based direct grouping (internally using <code><a href="#topic+group">group</a></code>). However, if data is pre-sorted, sorted grouping is slightly faster. In general, if records don't need to be sorted or you want to maintain their first-appearance order, changing this to <code>FALSE</code> is recommended and often brings substantial performance gains. <em>Note</em> that this also affects internal grouping applied when atomic vectors (except for factors) or lists are passed to <code>g</code> arguments in <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    <code>nthreads</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> integer, default 1. Sets the default for OpenMP multithreading, available in certain statistical and data manipulation functions. Setting values greater than 1 is strongly recommended with larger datasets. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    <code>stable.algo</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Option passed to <code><a href="#topic+fvar">fvar()/fsd()</a></code> and <code><a href="#topic+qsu">qsu()</a></code>. <code>FALSE</code> enables one-pass standard deviation calculation, which is very fast, but might incur catastrophic cancellation if numbers are large and the variance is small. see <code><a href="#topic+fvar">fvar</a></code> for details. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    <code>stub</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Controls whether <a href="#topic+.OPERATOR_FUN">transformation operators</a> (<code>.OPERATOR_FUN</code>) such as <code><a href="#topic+W">W</a></code>, <code><a href="#topic+L">L</a></code>, <code><a href="#topic+STD">STD</a></code> etc. add prefixes to transformed columns of matrix and data.frame-like objects. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    <code>verbose</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> integer, default <code>1</code>. Print additional (diagnostic) information or messages when executing code. Currently only used in <code><a href="#topic+join">join</a></code> and <code><a href="#topic+roworder">roworder</a></code>. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    <code>digits</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> integer, default <code>2</code>. Number of digits to print, e.g. in <code><a href="#topic+descr">descr</a></code> or <code><a href="#topic+pwcor">pwcor</a></code>. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    <code>mask</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> character, default <code>NULL</code>. Allows masking existing base R/dplyr functions with faster <em>collapse</em> versions, by creating additional functions in the namespace and instantly exporting them: </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-    </td><td style="text-align: left;"></td><td style="text-align: left;"> For example <code>set_collapse(mask = "unique")</code> (or, equivalently, <code>set_collapse(mask = "funique")</code>) will create <code>unique &lt;- funique</code> in the <em>collapse</em> namespace, export <code>unique()</code>, and silently detach and attach the namespace again so R can find it - all in millisecond. Thus calling <code>unique()</code> afterwards uses the <em>collapse</em> version - which is many times faster. <code>funique</code> remains available and you can still call <code>base::unique</code> explicitly. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-  </td><td style="text-align: left;"></td><td style="text-align: left;"> All <em>collapse</em> functions starting with 'f' can be passed to the option (with or without the 'f') e.g. <code>set_collapse(mask = c("subset", "transform", "droplevels"))</code> creates <code>subset &lt;- fsubset</code>, <code>transform &lt;- ftransform</code> etc. Special functions are <code>"n"</code> and <code>"table"/"qtab"</code>, and <code>"%in%"</code>, which create <code>n &lt;- GRPN</code> (for use in <code>(f)summarise</code>/<code>(f)mutate</code>), <code>table &lt;- qtab</code>, and replace <code>%in%</code> with a fast version using <code><a href="#topic+fmatch">fmatch</a></code>, respectively. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-  </td><td style="text-align: left;"></td><td style="text-align: left;"> There are also a couple of convenience keywords that you can use to mask groups of functions: </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"manip"</code> adds data manipulation functions: <code>fsubset, ftransform, ftransform&lt;-, ftransformv, fcompute, fcomputev, fselect, fselect&lt;-, fgroup_by, fgroup_vars, fungroup, fsummarise, fsummarize, fmutate, frename, findex_by, findex</code>. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"helper"</code> adds the functions: <code>fdroplevels</code>, <code>finteraction</code>, <code>fmatch</code>, <code>funique</code>, <code>fnunique</code>, <code>fduplicated</code>, <code>fcount</code>, <code>fcountv</code>, <code>fquantile</code>, <code>frange</code>, <code>fdist</code>, <code>fnlevels</code>, <code>fnrow</code> and <code>fncol</code>. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"> 
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"special"</code> exports <code>n()</code>, <code>table()</code> and <code>%in%</code>. See above. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"fast-fun"</code> adds the functions contained in the macro: <code>.FAST_FUN</code>. See also Note. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"fast-stat-fun"</code> adds the functions contained in the macro: <code>.FAST_STAT_FUN</code>. See also Note. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"fast-trfm-fun"</code> adds the functions contained in: <code>setdiff(.FAST_FUN, .FAST_STAT_FUN)</code>. See also Note. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"all"</code> turns on all of the above.</td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-
-</td><td style="text-align: left;"></td><td style="text-align: left;"> The re-attaching of the namespace places <em>collapse</em> at the top of the search path (after the global environment), implying that all its exported functions will take priority over other libraries. Users can use <code>fastverse::fastverse_conflicts()</code> to check which functions are masked following <code>set_collapse(mask = ...)</code>. The option can be changed at any time with immediate effect. Using <code>set_collapse(mask = NULL)</code> removes all masked functions from the namespace, and can also be called simply to place <em>collapse</em> at the top of the search path. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
- <code>remove</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> character, default <code>NULL</code>. Similar to 'mask': allows removing functions from the exported namespace (they are still in the namespace, just no longer exported). All <em>collapse</em> functions can be passed here. This argument is always evaluated after 'mask', thus you can also remove masked functions again i.e. after setting a keyword which masks a bunch of functions. There are also a couple of convenience keywords you can specify to bulk-remove certain functions:
-</td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"shorthand"</code> removes function shorthands: <code>gv, gv&lt;-, av, av&lt;-, nv, nv&lt;-, gvr, gvr&lt;-, itn, ix, slt, slt&lt;-, sbt, gby, iby, mtt, smr, tfm, tfmv, tfm&lt;-, settfm, settfmv, rnm</code>. </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"infix"</code> removes infix functions: <code>%!=%, %[!]in%, %[!]iin%, %*=%, %+=%, %-=%, %/=%, %=%, %==%, %c*%, %c+%, %c-%, %c/%, %cr%, %r*%, %r+%, %r-%, %r/%, %rr%</code>.</td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"operator"</code> removes functions contained in the macro: <code>.OPERATOR_FUN</code>.</td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"old"</code> removes depreciated functions contained in the macro: <code>.COLLAPSE_OLD</code>.</td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-
-
-</td><td style="text-align: left;"></td><td style="text-align: left;"> Like 'mask', the option is alterable and reversible. Specifying <code>set_collapse(remove = NULL)</code> restores the exported namespace. Also like 'mask', this option silently detaches and attaches <em>collapse</em> again, ensuring that it is at the top of the search path.
-
- </td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;"></td>
-</tr>
-<tr>
- <td style="text-align: left;">
-  </td>
-</tr>
-
-</table>
-
-</td></tr>
-<tr><td><code id="collapse-options_+3A_opts">opts</code></td>
-<td>
-<p>character. A vector of options to receive from <code>.op</code>, or <code>NULL</code> for a list of all options.</p>
-</td></tr>
-</table>
-
-
-<h3>Value</h3>
-
-<p><code>set_collapse()</code> returns the old content of <code>.op</code> invisibly as a list. <code>get_collapse()</code>, if called with only one option, returns the value of the option, and otherwise a list.
-</p>
-
-
-<h3>Options Set Using <code>options()</code></h3>
-
-
-<ul>
-<li> <p><code>"collapse_unused_arg_action"</code> regulates how generic functions (such as the <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>) in the package react when an unknown argument is passed to a method. The default action is <code>"warning"</code> which issues a warning. Other options are <code>"error"</code>, <code>"message"</code> or <code>"none"</code>, whereby the latter enables silent swallowing of such arguments.
-</p>
-
-
-
-
-
-
-</li>
-<li> <p><code>"collapse_export_F"</code>, if set to <code>TRUE</code>, exports the lead operator <code>F</code> in the package namespace when loading the package. The operator was exported by default until v1.9.0, but is now hidden inside the package due to too many problems with <code>base::F</code>. Alternatively, the operator can be accessed using <code>collapse:::F</code>.
-</p>
-
-</li>
-<li> <p><code>"collapse_nthreads"</code>, <code>"collapse_na_rm"</code>, <code>"collapse_sort"</code>, <code>"collapse_stable_algo"</code>, <code>"collapse_verbose"</code>, <code>"collapse_digits"</code>, <code>"collapse_mask"</code> and <code>"collapse_remove"</code> can be set before loading the package to initialize <code>.op</code> with different defaults (e.g. using an <code><a href="base.html#topic+.Rprofile">.Rprofile</a></code> file). Once loaded, these options have no effect, and users need to use <code>set_collapse()</code> to change them. See also the Note.
-</p>
-</li></ul>
-
-
-
-<h3>Note</h3>
-
-<p>Setting keywords &quot;fast-fun&quot;, &quot;fast-stat-fun&quot;, &quot;fast-trfm-fun&quot; or &quot;all&quot; with <code>set_collapse(mask = ...)</code> will also adjust internal optimization flags, e.g. in <code><a href="#topic+fsummarise">(f)summarise</a></code> and <code><a href="#topic+fmutate">(f)mutate</a></code>, so that these functions - and all expressions containing them - receive vectorized execution (see examples of <code><a href="#topic+fsummarise">(f)summarise</a></code> and <code><a href="#topic+fmutate">(f)mutate</a></code>). Users should be aware of expressions like <code>fmutate(mu = sum(var) / lenth(var))</code>: this usually gets executed by groups, but with these keywords set,this will be vectorized (like <code>fmutate(mu = fsum(var) / lenth(var))</code>) implying grouped sum divided by overall length. In this case <code>fmutate(mu = base::sum(var) / lenth(var))</code> needs to be specified to retain the original result.
-</p>
-<p><em>Note</em> that passing individual functions like <code>set_collapse(mask = "(f)sum")</code> will <b>not</b> change internal optimization flags for these functions. This is to ensure consistency i.e. you can be either all in (by setting appropriate keywords) or all out when it comes to vectorized stats with basic R names.
-</p>
-<p><em>Note</em> also that masking does not change documentation links, so you need to look up the f- version of a function to get the right documentation.
-</p>
-<p>A safe way to set options affecting startup behavior is by using a <code><a href="base.html#topic+.Rprofile">.Rprofile</a></code> file in your user or project directory (see also <a href="https://www.statmethods.net/interface/customizing.html">here</a>, the user-level file is located at <code>file.path(Sys.getenv("HOME"), ".Rprofile")</code> and can be edited using <code>file.edit(Sys.getenv("HOME"), ".Rprofile")</code>), or by using a <a href="https://fastverse.github.io/fastverse/articles/fastverse_intro.html#custom-fastverse-configurations-for-projects"><code>.fastverse</code></a> configuration file in the project directory.
-</p>
-<p><code>options("collapse_remove")</code> does in fact remove functions from the namespace and cannot be reversed by <code>set_collapse(remove = NULL)</code> once the package is loaded. It is only reversed by re-loading <em>collapse</em>.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><a href="#topic+collapse-documentation">Collapse Overview</a>, <a href="#topic+collapse-package">collapse-package</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># Setting new values
-oldopts &lt;- set_collapse(nthreads = 2, na.rm = FALSE)
-
-# Getting the values
-get_collapse()
-get_collapse("nthreads")
-
-# Resetting
-set_collapse(oldopts)
-rm(oldopts)
-
-## Not run: 
-## This is a typical working setup I use:
-library(fastverse)
-# Loading other stats packages with fastverse_extend():
-# displays versions, checks conflicts, and installs if unavailable
-fastverse_extend(qs, fixest, grf, glmnet, install = TRUE)
-# Now setting collapse options with some namespace modification
-set_collapse(
-  nthreads = 4,
-  sort = FALSE,
-  mask = c("manip", "helper", "special", "mean", "scale"),
-  remove = "old"
-)
-# Final conflicts check (optional)
-fastverse_conflicts()
-
-# For some simpler scripts I also use
-set_collapse(
-  nthreads = 4,
-  sort = FALSE,
-  mask = "all",
-  remove = c("old", "between") # I use data.table::between &gt; fbetween
-)
-
-# This is now collapse code
-mtcars |&gt;
-  subset(mpg &gt; 12) |&gt;
-  group_by(cyl) |&gt;
-  sum()
-
-## End(Not run)
-
-## Changing what happens with unused arguments
-oldopts &lt;- options(collapse_unused_arg_action = "message") # default: "warning"
-fmean(mtcars$mpg, bla = 1)
-
-# Now nothing happens, same as base R
-options(collapse_unused_arg_action = "none")
-fmean(mtcars$mpg, bla = 1)
-mean(mtcars$mpg, bla = 1)
-
-options(oldopts)
-rm(oldopts)
-</code></pre>
-
-<hr>
 <h2 id='collapse-package'> 
 Advanced and Fast Data Transformation
 </h2><span id='topic+collapse-package'></span><span id='topic+collapse'></span>
@@ -1565,7 +282,6 @@ Advanced and Fast Data Transformation
 </p>
 </li>
 <li><p> To help make R code fast, flexible, parsimonious and programmer friendly. 
-
 </p>
 </li></ul>
 
@@ -1576,12 +292,10 @@ Advanced and Fast Data Transformation
 <h3>Getting Started</h3>
 
 <p>Read the short <a href="https://sebkrantz.github.io/collapse/articles/collapse_documentation.html">vignette</a> on documentation resources, and check out the built in <a href="#topic+collapse-documentation">documentation</a>.  
-
 </p>
 
 
 <h3>Details</h3>
-
 
 <p><em>collapse</em> provides an integrated suite of statistical and data manipulation functions that greatly extend and enhance the capabilities of base R. In a nutshell, <em>collapse</em> provides:
 </p>
@@ -1600,17 +314,8 @@ Advanced and Fast Data Transformation
 </p>
 </li></ul>
 
-
 <p>The statistical functions in <em>collapse</em> are S3 generic with core methods for vectors, matrices and data frames, and internally support grouped and weighted computations carried out in C/C++. 
-
-
 </p>
-
-
-
-
-
-
 
 <p>Additional methods and C-level features enable broad based compatibility with <em>dplyr</em> (grouped tibble), <em>data.table</em>, <em>sf</em> and <em>plm</em> panel data classes. Functions and core methods seek to preserve object attributes (including column attributes such as variable labels), ensuring flexibility and effective workflows with a very broad range of R objects (including most time-series classes). See also the <a href="https://sebkrantz.github.io/collapse/articles/collapse_object_handling.html">vignette</a> on <em>collapse</em>'s handling of R objects.
 </p>
@@ -1620,12 +325,7 @@ Advanced and Fast Data Transformation
 
 <p><em>collapse</em> installs with a built-in hierarchical <a href="#topic+collapse-documentation">documentation</a> facilitating the use of the package. 
 </p>
-
-
-
-
 <p>The package is coded both in C and C++ and built with <em>Rcpp</em>, but also uses C/C++ functions from <em>data.table</em>, <em>kit</em>, <em>fixest</em>, <em>weights</em>, <em>stats</em> and <em>RcppArmadillo / RcppEigen</em>. 
-
 </p>
 
 
@@ -2013,6 +713,1270 @@ rm(v, d, w, f, f1, f2, g, mtcarsM, sds, series, wlddev)
 </code></pre>
 
 <hr>
+<h2 id='across'>
+Apply Functions Across Multiple Columns
+</h2><span id='topic+across'></span>
+
+<h3>Description</h3>
+
+<p><code>across()</code> can be used inside <code><a href="#topic+fmutate">fmutate</a></code> and <code><a href="#topic+fsummarise">fsummarise</a></code> to apply one or more functions to a selection of columns. It is overall very similar to <code>dplyr::across</code>, but does not support some <code>rlang</code> features, has some additional features (arguments), and is optimized to work with <em>collapse</em>'s, <code><a href="#topic+.FAST_FUN">.FAST_FUN</a></code>, yielding much faster computations.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>across(.cols = NULL, .fns, ..., .names = NULL,
+       .apply = "auto", .transpose = "auto")
+
+# acr(...) can be used to abbreviate across(...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="across_+3A_.cols">.cols</code></td>
+<td>
+<p>select columns using column names and expressions (e.g. <code>a:b</code> or <code>c(a, b, c:f)</code>), column indices, logical vectors, or functions yielding a logical value e.g. <code>is.numeric</code>. <code>NULL</code> applies functions to all columns except for grouping columns.</p>
+</td></tr>
+<tr><td><code id="across_+3A_.fns">.fns</code></td>
+<td>
+<p>A function, character vector of functions or list of functions. Vectors / lists can be named to yield alternative names in the result (see <code>.names</code>). This argument is evaluated inside <code>substitute()</code>, and the content (not the names of vectors/lists) is checked against <code>.FAST_FUN</code> and <code>.OPERATOR_FUN</code>. Matching functions receive vectorized execution, other functions are applied to the data in a standard way.</p>
+</td></tr>
+<tr><td><code id="across_+3A_...">...</code></td>
+<td>
+<p>further arguments to <code>.fns</code>. Arguments are evaluated in the data environment and split by groups as well (for non-vectorized functions, if of the same length as the data).</p>
+</td></tr>
+<tr><td><code id="across_+3A_.names">.names</code></td>
+<td>
+<p>controls the naming of computed columns. <code>NULL</code> generates names of the form <code>coli_funj</code> if multiple functions are used. <code>.names = TRUE</code> enables this for a single function, <code>.names = FALSE</code> disables it for multiple functions (sensible for functions such as <code>.OPERATOR_FUN</code> that rename columns (if <code>.apply = FALSE</code>)). Setting <code>.names = "flip"</code> generates names of the form <code>funj_coli</code>. It is also possible to supply a function with two arguments for column and function names e.g. <code>function(c, f) paste0(f, "_", c)</code>. Finally, you can supply a custom vector of names which must match <code>length(.cols) * length(.fns)</code>.</p>
+</td></tr>
+<tr><td><code id="across_+3A_.apply">.apply</code></td>
+<td>
+<p>controls whether functions are applied column-by-column (<code>TRUE</code>) or to multiple columns at once (<code>FALSE</code>). The default, <code>"auto"</code>, does the latter for vectorized functions, which have an efficient data frame method. It can also be sensible to use <code>.apply = FALSE</code> for non-vectorized functions, especially multivariate functions like <code><a href="stats.html#topic+lm">lm</a></code> or <code><a href="#topic+pwcor">pwcor</a></code>, or functions renaming the data. See Examples.  </p>
+</td></tr>
+<tr><td><code id="across_+3A_.transpose">.transpose</code></td>
+<td>
+<p>with multiple <code>.fns</code>, <code>.transpose</code> controls whether the result is ordered first by column, then by function (<code>TRUE</code>), or vice-versa (<code>FALSE</code>). <code>"auto"</code> does the former if all functions yield results of the same dimensions (dimensions may differ if <code>.apply = FALSE</code>). See Examples.</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p><code>across</code> does not support <em>purr</em>-style lambdas, and does not support <code>dplyr</code>-style predicate functions e.g. <code>across(where(is.numeric), sum)</code>, simply use <code>across(is.numeric, sum)</code>. In contrast to <code>dplyr</code>, you can also compute on grouping columns.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+fsummarise">fsummarise</a></code>, <code><a href="#topic+fmutate">fmutate</a></code>, <a href="#topic+fast-data-manipulation">Fast Data Manipulation</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Basic (Weighted) Summaries
+fsummarise(wlddev, across(PCGDP:GINI, fmean, w = POP))
+
+wlddev |&gt; fgroup_by(region, income) |&gt;
+    fsummarise(across(PCGDP:GINI, fmean, w = POP))
+
+# Note that for these we don't actually need across...
+fselect(wlddev, PCGDP:GINI) |&gt; fmean(w = wlddev$POP, drop = FALSE)
+wlddev |&gt; fgroup_by(region, income) |&gt;
+    fselect(PCGDP:GINI, POP) |&gt; fmean(POP, keep.w = FALSE)
+collap(wlddev, PCGDP + LIFEEX + GINI ~ region + income, w = ~ POP, keep.w = FALSE)
+
+# But if we want to use some base R function that reguires argument splitting...
+wlddev |&gt; na_omit(cols = "POP") |&gt; fgroup_by(region, income) |&gt;
+    fsummarise(across(PCGDP:GINI, weighted.mean, w = POP, na.rm = TRUE))
+
+# Or if we want to apply different functions...
+wlddev |&gt; fgroup_by(region, income) |&gt;
+    fsummarise(across(PCGDP:GINI, list(mu = fmean, sd = fsd), w = POP),
+               POP_sum = fsum(POP), OECD = fmean(OECD))
+# Note that the above still detects fmean as a fast function, the names of the list
+# are irrelevant, but the function name must be typed or passed as a character vector,
+# Otherwise functions will be executed by groups e.g. function(x) fmean(x) won't vectorize
+
+# Same, naming in a different way
+wlddev |&gt; fgroup_by(region, income) |&gt;
+    fsummarise(across(PCGDP:GINI, list(mu = fmean, sd = fsd), w = POP, .names = "flip"),
+               sum_POP = fsum(POP), OECD = fmean(OECD))
+
+# Or we want to do more advanced things..
+# Such as nesting data frames..
+qTBL(wlddev) |&gt; fgroup_by(region, income) |&gt;
+    fsummarise(across(c(PCGDP, LIFEEX, ODA),
+               function(x) list(Nest = list(x)),
+               .apply = FALSE))
+# Or linear models..
+qTBL(wlddev) |&gt; fgroup_by(region, income) |&gt;
+    fsummarise(across(c(PCGDP, LIFEEX, ODA),
+               function(x) list(Mods = list(lm(PCGDP ~., x))),
+               .apply = FALSE))
+# Or cumputing grouped correlation matrices
+qTBL(wlddev) |&gt; fgroup_by(region, income) |&gt;
+    fsummarise(across(c(PCGDP, LIFEEX, ODA),
+      function(x) qDF(pwcor(x), "Variable"), .apply = FALSE))
+
+# Here calculating 1- and 10-year lags and growth rates of these variables
+qTBL(wlddev) |&gt; fgroup_by(country) |&gt;
+    fmutate(across(c(PCGDP, LIFEEX, ODA), list(L, G),
+                   n = c(1, 10), t = year, .names = FALSE))
+
+# Same but variables in different order
+qTBL(wlddev) |&gt; fgroup_by(country) |&gt;
+    fmutate(across(c(PCGDP, LIFEEX, ODA), list(L, G), n = c(1, 10),
+                   t = year, .names = FALSE, .transpose = FALSE))
+
+</code></pre>
+
+<hr>
+<h2 id='arithmetic'>
+Fast Row/Column Arithmetic for Matrix-Like Objects
+</h2><span id='topic+arithmetic'></span><span id='topic++25rr+25'></span><span id='topic++25r+2B+25'></span><span id='topic++25r-+25'></span><span id='topic++25r+2A+25'></span><span id='topic++25r+2F+25'></span><span id='topic++25cr+25'></span><span id='topic++25c+2B+25'></span><span id='topic++25c-+25'></span><span id='topic++25c+2A+25'></span><span id='topic++25c+2F+25'></span>
+
+<h3>Description</h3>
+
+<p>Fast operators to perform row- or column-wise replacing and sweeping operations of vectors on matrices, data frames, lists. See also <code><a href="#topic+setop">setop</a></code> for math by reference and <code><a href="#topic+setTRA">setTRA</a></code> for sweeping by reference.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## Perform the operation with v and each row of X
+
+X %rr% v    # Replace rows of X with v
+X %r+% v    # Add v to each row of X
+X %r-% v    # Subtract v from each row of X
+X %r*% v    # Multiply each row of X with v
+X %r/% v    # Divide each row of X by v
+
+## Perform a column-wise operation between V and X
+
+X %cr% V    # Replace columns of X with V
+X %c+% V    # Add V to columns of X
+X %c-% V    # Subtract V from columns of X
+X %c*% V    # Multiply columns of X with V
+X %c/% V    # Divide columns of X by V
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="arithmetic_+3A_x">X</code></td>
+<td>
+<p>a vector, matrix, data frame or list like object (with rows (r) columns (c) matching <code>v</code> / <code>V</code>).</p>
+</td></tr>
+<tr><td><code id="arithmetic_+3A_v">v</code></td>
+<td>
+<p>for row operations: an atomic vector of matching <code>NCOL(X)</code>. If <code>X</code> is a data frame, <code>v</code> can also be a list of scalar atomic elements. It is also possible to sweep lists of vectors <code>v</code> out of lists of matrices or data frames <code>X</code>.</p>
+</td></tr>
+<tr><td><code id="arithmetic_+3A_v">V</code></td>
+<td>
+<p>for column operations: a suitable scalar, vector, or matrix / data frame matching <code>NROW(X)</code>. <code>X</code> can also be a list of vectors / matrices in which case <code>V</code> can be a scalar / vector / matrix or matching list of scalars / vectors / matrices.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>With a matrix or data frame <code>X</code>, the default behavior of R when calling <code>X op v</code> (such as multiplication <code>X * v</code>) is to perform the operation of <code>v</code> with each column of <code>X</code>. The equivalent operation is performed by <code>X %cop% V</code>, with the difference that it computes significantly faster if <code>X</code>/<code>V</code> is a data frame / list. A more complex but frequently required task is to perform an operation with <code>v</code> on each row of <code>X</code>. This is provided based on efficient C++ code by the <code>%rop%</code> set of functions, e.g. <code>X %r*% v</code> efficiently multiplies <code>v</code> to each row of <code>X</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>X</code> where the operation with <code>v</code> / <code>V</code> was performed on each row or column. All attributes of <code>X</code> are preserved.
+</p>
+
+
+<h3>Note</h3>
+
+<p><em>Computations and Output:</em> These functions are all quite simple, they only work with <code>X</code> on the LHS i.e. <code>v %op% X</code> will likely fail. The row operations are simple wrappers around <code><a href="#topic+TRA">TRA</a></code> which provides more operations including grouped replacing and sweeping (where <code>v</code> would be a matrix or data frame with less rows than <code>X</code> being mapped to the rows of <code>X</code> by grouping vectors). One consequence is that just like <code><a href="#topic+TRA">TRA</a></code>, row-wise mathematical operations (+, -, *, /) always yield numeric output, even if both <code>X</code> and <code>v</code> may be integer. This is different for column- operations which depend on base R and may also preserve integer data.
+</p>
+<p><em>Rules of Arithmetic:</em> Since these operators are defined as simple infix functions, the normal rules of arithmetic are not respected. So <code>a %c+% b %c*% c</code> evaluates as <code>(a %c+% b) %c*% c</code>. As with all chained infix operations, they are just evaluated sequentially from left to right.
+</p>
+<p><em>Performance Notes:</em> The function <code><a href="#topic+setop">setop</a></code> and a related set of <code>%op=%</code> operators as well as the <code><a href="#topic+setTRA">setTRA</a></code> function can be used to perform these operations by reference, and are faster if copies of the output are not required!! Furthermore, for Fast Statistical Functions, using <code>fmedian(X, TRA = "-")</code> will be a tiny bit faster than <code>X %r-% fmedian(X)</code>. Also use <code>fwithin(X)</code> for fast centering using the mean, and <code>fscale(X)</code> for fast scaling and centering or mean-preserving scaling.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+setop">setop</a></code>, <code><a href="#topic+TRA">TRA</a></code>, <code><a href="#topic+dapply">dapply</a></code>, <a href="#topic+efficient-programming">Efficient Programming</a>, <a href="#topic+data-transformations">Data Transformations</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Using data frame's / lists
+v &lt;- mtcars$cyl
+mtcars %cr% v
+mtcars %c-% v
+mtcars %r-% seq_col(mtcars)
+mtcars %r-% lapply(mtcars, quantile, 0.28)
+
+mtcars %c*% 5       # Significantly faster than mtcars * 5
+mtcars %c*% mtcars  # Significantly faster than mtcars * mtcars
+
+## Using matrices
+X &lt;- qM(mtcars)
+X %cr% v
+X %c-% v
+X %r-% dapply(X, quantile, 0.28)
+
+## Chained Operations
+library(magrittr) # Needed here to evaluate infix operators in sequence
+mtcars %&gt;% fwithin() %r-% rnorm(11) %c*% 5 %&gt;%
+    tfm(mpg = fsum(mpg)) %&gt;% qsu()
+
+</code></pre>
+
+<hr>
+<h2 id='BY'>
+Split-Apply-Combine Computing 
+</h2><span id='topic+BY'></span><span id='topic+BY.default'></span><span id='topic+BY.matrix'></span><span id='topic+BY.data.frame'></span><span id='topic+BY.grouped_df'></span>
+
+<h3>Description</h3>
+
+<p><code>BY</code> is an S3 generic that efficiently applies functions over vectors or matrix- and data frame columns by groups. Similar to <code><a href="#topic+dapply">dapply</a></code> it seeks to retain the structure and attributes of the data, but can also output to various standard formats. A simple parallelism is also available.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>BY(x, ...)
+
+## Default S3 method:
+BY(x, g, FUN, ..., use.g.names = TRUE, sort = .op[["sort"]], reorder = TRUE,
+   expand.wide = FALSE, parallel = FALSE, mc.cores = 1L,
+   return = c("same", "vector", "list"))
+
+## S3 method for class 'matrix'
+BY(x, g, FUN, ..., use.g.names = TRUE, sort = .op[["sort"]], reorder = TRUE,
+   expand.wide = FALSE, parallel = FALSE, mc.cores = 1L,
+   return = c("same", "matrix", "data.frame", "list"))
+
+## S3 method for class 'data.frame'
+BY(x, g, FUN, ..., use.g.names = TRUE, sort = .op[["sort"]], reorder = TRUE,
+   expand.wide = FALSE, parallel = FALSE, mc.cores = 1L,
+   return = c("same", "matrix", "data.frame", "list"))
+
+## S3 method for class 'grouped_df'
+BY(x, FUN, ..., reorder = TRUE, keep.group_vars = TRUE, use.g.names = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="BY_+3A_x">x</code></td>
+<td>
+<p>a vector, matrix, data frame or alike object.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_g">g</code></td>
+<td>
+<p>a <code><a href="#topic+GRP">GRP</a></code> object, or a factor / atomic vector / list of atomic vectors (internally converted to a <code><a href="#topic+GRP">GRP</a></code> object) used to group <code>x</code>.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_fun">FUN</code></td>
+<td>
+<p>a function, can be scalar- or vector-valued. For vector valued functions see also <code>reorder</code> and <code>expand.wide</code>.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_...">...</code></td>
+<td>
+<p>further arguments to <code>FUN</code>, or to <code>BY.data.frame</code> for the 'grouped_df' method. Since v1.9.0 data length arguments are also split by groups.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_use.g.names">use.g.names</code></td>
+<td>
+<p>logical. Make group-names and add to the result as names (default method) or row-names (matrix and data frame methods). For vector-valued functions (row-)names are only generated if the function itself creates names for the statistics e.g. <code>quantile()</code> adds names, <code>range()</code> or <code>log()</code> don't. No row-names are generated on <em>data.table</em>'s.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_sort">sort</code></td>
+<td>
+<p>logical. Sort the groups? Internally passed to <code><a href="#topic+GRP">GRP</a></code>, and only effective if <code>g</code> is not already a factor or <code><a href="#topic+GRP">GRP</a></code> object.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_reorder">reorder</code></td>
+<td>
+<p>logical. If a vector-valued function is passed that preserves the data length, <code>TRUE</code> will reorder the result such that the elements/rows match the original data. <code>FALSE</code> just combines the data in order of the groups (i.e. all elements of the first group in first-appearance order followed by all elements in the second group etc..). <em>Note</em> that if <code>reorder = FALSE</code>, grouping variables, names or rownames are only retained if the grouping is on sorted data, see <code><a href="#topic+GRP">GRP</a></code>. </p>
+</td></tr>
+<tr><td><code id="BY_+3A_expand.wide">expand.wide</code></td>
+<td>
+<p>logical. If <code>FUN</code> is a vector-valued function returning a vector of fixed length &gt; 1 (such as the <code><a href="stats.html#topic+quantile">quantile</a></code> function), <code>expand.wide</code> can be used to return the result in a wider format (instead of stacking the resulting vectors of fixed length above each other in each output column).</p>
+</td></tr>
+<tr><td><code id="BY_+3A_parallel">parallel</code></td>
+<td>
+<p>logical. <code>TRUE</code> implements simple parallel execution by internally calling <code><a href="parallel.html#topic+mclapply">mclapply</a></code> instead of <code><a href="base.html#topic+lapply">lapply</a></code>. Parallelism is across columns, except for the default method.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_mc.cores">mc.cores</code></td>
+<td>
+<p>integer. Argument to <code><a href="parallel.html#topic+mclapply">mclapply</a></code> indicating the number of cores to use for parallel execution. Can use <code><a href="parallel.html#topic+detectCores">detectCores()</a></code> to select all available cores.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_return">return</code></td>
+<td>
+<p>an integer or string indicating the type of object to return. The default <code>1 - "same"</code> returns the same object type (i.e. class and other attributes are retained if the underlying data type is the same, just the names for the dimensions are adjusted). <code>2 - "matrix"</code> always returns the output as matrix, <code>3 - "data.frame"</code> always returns a data frame and <code>4 - "list"</code> returns the raw (uncombined) output. <em>Note</em>: <code>4 - "list"</code> works together with <code>expand.wide</code> to return a list of matrices.</p>
+</td></tr>
+<tr><td><code id="BY_+3A_keep.group_vars">keep.group_vars</code></td>
+<td>
+<p><em>grouped_df method:</em> Logical. <code>FALSE</code> removes grouping variables after computation. See also the Note. </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>BY</code> is a re-implementation of the Split-Apply-Combine computing paradigm. It is faster than <code><a href="base.html#topic+tapply">tapply</a></code>, <code><a href="base.html#topic+by">by</a></code>, <code><a href="stats.html#topic+aggregate">aggregate</a></code> and <em>(d)plyr</em>, and preserves data attributes just like <code><a href="#topic+dapply">dapply</a></code>.  
+</p>
+<p>It is principally a wrapper around <code>lapply(gsplit(x, g), FUN, ...)</code>, that uses <code><a href="#topic+gsplit">gsplit</a></code> for optimized splitting and also strongly optimizes on the internal code compared to <em>base</em> R functions. For more details look at the documentation for <code><a href="#topic+dapply">dapply</a></code> which works very similar (apart from the splitting performed in <code>BY</code>). The function is intended for simple cases involving flexible computation of statistics across groups using a single function e.g. <code>iris |&gt; gby(Species) |&gt; BY(IQR)</code> is simpler than <code>iris |&gt; gby(Species) |&gt; smr(acr(.fns = IQR))</code> etc..
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>X</code> where <code>FUN</code> was applied to every column split by <code>g</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+dapply">dapply</a></code>, <code><a href="#topic+collap">collap</a></code>, <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>, <a href="#topic+data-transformations">Data Transformations</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>v &lt;- iris$Sepal.Length   # A numeric vector
+g &lt;- GRP(iris$Species)   # A grouping
+
+## default vector method
+BY(v, g, sum)                                # Sum by species
+head(BY(v, g, scale))                        # Scale by species (please use fscale instead)
+BY(v, g, fquantile)                          # Species quantiles: by default stacked
+BY(v, g, fquantile, expand.wide = TRUE)      # Wide format
+
+## matrix method
+m &lt;- qM(num_vars(iris))
+BY(m, g, sum)                          # Also return as matrix
+BY(m, g, sum, return = "data.frame")   # Return as data.frame.. also works for computations below
+head(BY(m, g, scale))
+BY(m, g, fquantile)
+BY(m, g, fquantile, expand.wide = TRUE)
+ml &lt;- BY(m, g, fquantile, expand.wide = TRUE, # Return as list of matrices
+         return = "list")
+ml
+# Unlisting to Data Frame
+unlist2d(ml, idcols = "Variable", row.names = "Species")
+
+## data.frame method
+BY(num_vars(iris), g, sum)             # Also returns a data.fram
+BY(num_vars(iris), g, sum, return = 2) # Return as matrix.. also works for computations below
+head(BY(num_vars(iris), g, scale))
+BY(num_vars(iris), g, fquantile)
+BY(num_vars(iris), g, fquantile, expand.wide = TRUE)
+BY(num_vars(iris), g, fquantile,       # Return as list of matrices
+   expand.wide = TRUE, return = "list")
+
+## grouped data frame method
+giris &lt;- fgroup_by(iris, Species)
+giris |&gt; BY(sum)                      # Compute sum
+giris |&gt; BY(sum, use.g.names = TRUE,  # Use row.names and
+             keep.group_vars = FALSE)  # remove 'Species' and groups attribute
+giris |&gt; BY(sum, return = "matrix")   # Return matrix
+giris |&gt; BY(sum, return = "matrix",   # Matrix with row.names
+             use.g.names = TRUE)
+giris |&gt; BY(.quantile)                # Compute quantiles (output is stacked)
+giris |&gt; BY(.quantile, names = TRUE,  # Wide output
+               expand.wide = TRUE)
+</code></pre>
+
+<hr>
+<h2 id='collap'>
+Advanced Data Aggregation
+</h2><span id='topic+advanced-aggregation'></span><span id='topic+A5-advanced-aggregation'></span><span id='topic+collap'></span><span id='topic+collapv'></span><span id='topic+collapg'></span>
+
+<h3>Description</h3>
+
+<p><code>collap</code> is a fast and versatile multi-purpose data aggregation command.
+</p>
+<p>It performs simple and weighted aggregations, multi-type aggregations automatically applying different functions to numeric and categorical columns, multi-function aggregations applying multiple functions to each column, and fully custom aggregations where the user passes a list mapping functions to columns.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'># Main function: allows formula and data input to `by` and `w` arguments
+collap(X, by, FUN = fmean, catFUN = fmode, cols = NULL, w = NULL, wFUN = fsum,
+       custom = NULL, ..., keep.by = TRUE, keep.w = TRUE, keep.col.order = TRUE,
+       sort = .op[["sort"]], decreasing = FALSE, na.last = TRUE, return.order = sort,
+       method = "auto", parallel = FALSE, mc.cores = 2L,
+       return = c("wide","list","long","long_dupl"), give.names = "auto")
+
+# Programmer function: allows column names and indices input to `by` and `w` arguments
+collapv(X, by, FUN = fmean, catFUN = fmode, cols = NULL, w = NULL, wFUN = fsum,
+        custom = NULL, ..., keep.by = TRUE, keep.w = TRUE, keep.col.order = TRUE,
+        sort = .op[["sort"]], decreasing = FALSE, na.last = TRUE, return.order = sort,
+        method = "auto", parallel = FALSE, mc.cores = 2L,
+        return = c("wide","list","long","long_dupl"), give.names = "auto")
+
+# Auxiliary function: for grouped data ('grouped_df') input + non-standard evaluation
+collapg(X, FUN = fmean, catFUN = fmode, cols = NULL, w = NULL, wFUN = fsum,
+        custom = NULL, keep.group_vars = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="collap_+3A_x">X</code></td>
+<td>
+<p>a data frame, or an object coercible to data frame using <code><a href="#topic+qDF">qDF</a></code>.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_by">by</code></td>
+<td>
+<p>for <code>collap</code>: a one-or two sided formula, i.e. <code>~ group1</code> or <code>var1 + var2 ~ group1 + group2</code>, or a atomic vector, list of vectors or <code><a href="#topic+GRP">GRP</a></code> object used to group <code>X</code>. For <code>collapv</code>: names or indices of grouping columns, or a logical vector or selector function such as <code><a href="#topic+is_categorical">is_categorical</a></code> selecting grouping columns.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_fun">FUN</code></td>
+<td>
+<p>a function, list of functions (i.e. <code>list(fsum, fmean, fsd)</code> or <code>list(sd = fsd, myfun1 = function(x)..)</code>), or a character vector of function names, which are automatically applied only to numeric variables.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_catfun">catFUN</code></td>
+<td>
+<p>same as <code>FUN</code>, but applied only to categorical (non-numeric) typed columns (<code><a href="#topic+is_categorical">is_categorical</a></code>).</p>
+</td></tr>
+<tr><td><code id="collap_+3A_cols">cols</code></td>
+<td>
+<p>select columns to aggregate using a function, column names, indices or logical vector. <em>Note</em>: <code>cols</code> is ignored if a two-sided formula is passed to <code>by</code>.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_w">w</code></td>
+<td>
+<p>weights. Can be passed as numeric vector or alternatively as formula i.e. <code>~ weightvar</code> in <code>collap</code> or column name / index etc. i.e. <code>"weightvar"</code> in <code>collapv</code>. <code>collapg</code> supports non-standard evaluations so <code>weightvar</code> can be indicated without quotes. </p>
+</td></tr>
+<tr><td><code id="collap_+3A_wfun">wFUN</code></td>
+<td>
+<p>same as <code>FUN</code>: Function(s) to aggregate weight variable if <code>keep.w = TRUE</code>. By default the sum of the weights is computed in each group.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_custom">custom</code></td>
+<td>
+<p>a named list specifying a fully customized aggregation task. The names of the list are function names and the content columns to aggregate using this function (same input as <code>cols</code>). For example <code>custom = list(fmean = 1:6, fsd = 7:9, fmode = 10:11)</code> tells <code>collap</code> to aggregate columns 1-6 of <code>X</code> using the mean, columns 7-9 using the standard deviation etc. <em>Notes</em>: <code>custom</code> lets <code>collap</code> ignore any inputs passed to <code>FUN</code>, <code>catFUN</code> or <code>cols</code>. Since v1.6.0 you can also rename columns e.g. <code>custom = list(fmean = c(newname = "col1", "col2"), fmode = c(newname = 3))</code>.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_keep.by">keep.by</code>, <code id="collap_+3A_keep.group_vars">keep.group_vars</code></td>
+<td>
+<p>logical. <code>FALSE</code> will omit grouping variables from the output. <code>TRUE</code> keeps the variables, even if passed externally in a list or vector (unlike other <em>collapse</em> functions).</p>
+</td></tr>
+<tr><td><code id="collap_+3A_keep.w">keep.w</code></td>
+<td>
+<p>logical. <code>FALSE</code> will omit weight variable from the output i.e. no aggregation of the weights. <code>TRUE</code> aggregates and adds weights, even if passed externally as a vector (unlike other <em>collapse</em> functions).</p>
+</td></tr>
+<tr><td><code id="collap_+3A_keep.col.order">keep.col.order</code></td>
+<td>
+<p>logical. Retain original column order post-aggregation.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_sort">sort</code>, <code id="collap_+3A_decreasing">decreasing</code>, <code id="collap_+3A_na.last">na.last</code>, <code id="collap_+3A_return.order">return.order</code>, <code id="collap_+3A_method">method</code></td>
+<td>
+<p>logical / character. Arguments passed to <code><a href="#topic+GRP.default">GRP.default</a></code> and affecting the row-order in the aggregated data frame and the grouping algorithm.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_parallel">parallel</code></td>
+<td>
+<p>logical. Use <code><a href="parallel.html#topic+mclapply">mclapply</a></code> instead of <code>lapply</code> to parallelize the computation at the column level. Not available for Windows.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_mc.cores">mc.cores</code></td>
+<td>
+<p>integer. Argument to <code><a href="parallel.html#topic+mclapply">mclapply</a></code> setting the number of cores to use, default is 2.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_return">return</code></td>
+<td>
+<p>character. Control the output format when aggregating with multiple functions or performing custom aggregation. &quot;wide&quot; (default) returns a wider data frame with added columns for each additional function. &quot;list&quot; returns a list of data frames - one for each function. &quot;long&quot; adds a column &quot;Function&quot; and row-binds the results from different functions using <code>data.table::rbindlist</code>. &quot;long.dupl&quot; is a special option for aggregating multi-type data using multiple <code>FUN</code> but only one <code>catFUN</code> or vice-versa. In that case the format is long and data aggregated using only one function is duplicated. See Examples.</p>
+</td></tr>
+<tr><td><code id="collap_+3A_give.names">give.names</code></td>
+<td>
+<p>logical. Create unique names of aggregated columns by adding a prefix 'FUN.var'. <code>'auto'</code> will automatically create such prefixes whenever multiple functions are applied to a column. 
+</p>
+</td></tr>
+<tr><td><code id="collap_+3A_...">...</code></td>
+<td>
+<p>additional arguments passed to all functions supplied to <code>FUN</code>, <code>catFUN</code>, <code>wFUN</code> or <code>custom</code>. Since v1.9.0 these are also split by groups for non-<a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>. The behavior of <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> with unused arguments is regulated by <code>option("collapse_unused_arg_action")</code> and defaults to <code>"warning"</code>. <code>collapg</code> also allows other arguments to <code>collap</code> except for <code>sort, decreasing, na.last, return.order, method</code> and <code>keep.by</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p><code>collap</code> automatically checks each function passed to it whether it is a <a href="#topic+fast-statistical-functions">Fast Statistical Function</a> (i.e. whether the function name is contained in <code>.FAST_STAT_FUN</code>). If the function is a fast statistical function, <code>collap</code> only does the grouping and then calls the function to carry out the grouped computations (vectorized in C/C++), resulting in high aggregation speeds, even with weights. If the function is not one of <code>.FAST_STAT_FUN</code>, <code><a href="#topic+BY">BY</a></code> is called internally to perform the computation. The resulting computations from each function are put into a list and recombined to produce the desired output format as controlled by the <code>return</code> argument. This is substantially slower, particularly with many groups.
+</p>
+<p>When setting <code>parallel = TRUE</code> on a non-windows computer, aggregations will efficiently be parallelized at the column level using <code><a href="parallel.html#topic+mclapply">mclapply</a></code> utilizing <code>mc.cores</code> cores. Some <a href="#topic+fast-statistical-functions">Fast Statistical Function</a> support multithreading i.e. have an <code>nthreads</code> argument that can be passed to <code>collap</code>. Using C-level multithreading is much more effective than R-level parallelism, and also works on Windows, but the two should never be combined.
+</p>
+<p>When the <code>w</code> argument is used, the weights are passed to all functions except for <code>wFUN</code>. This may be undesirable in settings like <code>collap(data, ~ id, custom = list(fsum = ..., fmean = ...), w = ~ weights)</code> where we wish to aggregate some columns using the weighted mean, and others using a simple sum or another unweighted statistic. 
+Therefore it is possible to append <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> by <code>_uw</code> to yield an unweighted computation. So for the above example one can specify: <code>collap(data, ~ id, custom = list(fsum_uw = ..., fmean = ...), w = ~ weights)</code> to get the weighted mean and the simple sum. <em>Note</em> that the <code>_uw</code> functions are not available for use outside collap. Thus one also needs to quote them when passing to the <code>FUN</code> or <code>catFUN</code> arguments, e.g. use <code>collap(data, ~ id, fmean, "fmode_uw", w = ~ weights)</code>. 
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>X</code> aggregated. If <code>X</code> is not a data frame it is coerced to one using <code><a href="#topic+qDF">qDF</a></code> and then aggregated.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+fsummarise">fsummarise</a></code>, <code><a href="#topic+BY">BY</a></code>, <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## A Simple Introduction --------------------------------------
+head(iris)
+collap(iris, ~ Species)                                        # Default: FUN = fmean for numeric
+collapv(iris, 5)                                               # Same using collapv
+collap(iris, ~ Species, fmedian)                               # Using the median
+collap(iris, ~ Species, fmedian, keep.col.order = FALSE)       # Groups in-front
+collap(iris, Sepal.Width + Petal.Width ~ Species, fmedian)     # Only '.Width' columns
+collapv(iris, 5, cols = c(2, 4))                               # Same using collapv
+collap(iris, ~ Species, list(fmean, fmedian))                  # Two functions
+collap(iris, ~ Species, list(fmean, fmedian), return = "long") # Long format
+collapv(iris, 5, custom = list(fmean = 1:2, fmedian = 3:4))    # Custom aggregation
+collapv(iris, 5, custom = list(fmean = 1:2, fmedian = 3:4),    # Raw output, no column reordering
+        return = "list")
+collapv(iris, 5, custom = list(fmean = 1:2, fmedian = 3:4),    # A strange choice..
+        return = "long")
+collap(iris, ~ Species, w = ~ Sepal.Length)                    # Using Sepal.Length as weights, ..
+weights &lt;- abs(rnorm(fnrow(iris)))
+collap(iris, ~ Species, w = weights)                           # Some random weights..
+collap(iris, iris$Species, w = weights)                        # Note this behavior..
+collap(iris, iris$Species, w = weights,
+       keep.by = FALSE, keep.w = FALSE)
+
+
+## Multi-Type Aggregation --------------------------------------
+head(wlddev)                                                    # World Development Panel Data
+head(collap(wlddev, ~ country + decade))                        # Aggregate by country and decade
+head(collap(wlddev, ~ country + decade, fmedian, ffirst))       # Different functions
+head(collap(wlddev, ~ country + decade, cols = is.numeric))     # Aggregate only numeric columns
+head(collap(wlddev, ~ country + decade, cols = 9:13))           # Only the 5 series
+head(collap(wlddev, PCGDP + LIFEEX ~ country + decade))         # Only GDP and life-expactancy
+head(collap(wlddev, PCGDP + LIFEEX ~ country + decade, fsum))   # Using the sum instead
+head(collap(wlddev, PCGDP + LIFEEX ~ country + decade, sum,     # Same using base::sum -&gt; slower!
+            na.rm = TRUE))
+head(collap(wlddev, wlddev[c("country","decade")], fsum,        # Same, exploring different inputs
+            cols = 9:10))
+head(collap(wlddev[9:10], wlddev[c("country","decade")], fsum))
+head(collapv(wlddev, c("country","decade"), fsum))              # ..names/indices with collapv
+head(collapv(wlddev, c(1,5), fsum))
+
+g &lt;- GRP(wlddev, ~ country + decade)                            # Precomputing the grouping
+head(collap(wlddev, g, keep.by = FALSE))                        # This is slightly faster now
+# Aggregate categorical data using not the mode but the last element
+head(collap(wlddev, ~ country + decade, fmean, flast))
+head(collap(wlddev, ~ country + decade, catFUN = flast,         # Aggregate only categorical data
+            cols = is_categorical))
+
+
+## Weighted Aggregation ----------------------------------------
+# We aggregate to region level using population weights
+head(collap(wlddev, ~ region + year, w = ~ POP))                # Takes weighted mean for numeric..
+# ..and weighted mode for categorical data. The weight vector is aggregated using fsum
+
+head(collap(wlddev, ~ region + year, w = ~ POP,                 # Aggregating weights using sum
+            wFUN = list(sum = fsum, max = fmax)))               # and max (corresponding to mode)
+
+
+## Multi-Function Aggregation ----------------------------------
+head(collap(wlddev, ~ country + decade, list(mean = fmean, N = fnobs),  # Saving mean and Nobs
+            cols = 9:13))
+
+head(collap(wlddev, ~ country + decade,                         # Same using base R -&gt; slower
+            list(mean = mean,
+                 N = function(x, ...) sum(!is.na(x))),
+            cols = 9:13, na.rm = TRUE))
+
+lapply(collap(wlddev, ~ country + decade,                       # List output format
+       list(mean = fmean, N = fnobs), cols = 9:13, return = "list"), head)
+
+head(collap(wlddev, ~ country + decade,                         # Long output format
+     list(mean = fmean, N = fnobs), cols = 9:13, return = "long"))
+
+head(collap(wlddev, ~ country + decade,                         # Also aggregating categorical data,
+     list(mean = fmean, N = fnobs), return = "long_dupl"))      # and duplicating it 2 times
+
+head(collap(wlddev, ~ country + decade,                         # Now also using 2 functions on
+     list(mean = fmean, N = fnobs), list(mode = fmode, last = flast),   # categorical data
+            keep.col.order = FALSE))
+
+head(collap(wlddev, ~ country + decade,                         # More functions, string input,
+            c("fmean","fsum","fnobs","fsd","fvar"),             # parallelized execution
+            c("fmode","ffirst","flast","fndistinct"),           # (choose more than 1 cores,
+            parallel = TRUE, mc.cores = 1L,                     # depending on your machine)
+            keep.col.order = FALSE))
+
+
+## Custom Aggregation ------------------------------------------
+head(collap(wlddev, ~ country + decade,                         # Custom aggregation
+            custom = list(fmean = 11:13, fsd = 9:10, fmode = 7:8)))
+
+head(collap(wlddev, ~ country + decade,                         # Using column names
+            custom = list(fmean = "PCGDP", fsd = c("LIFEEX","GINI"),
+                          flast = "date")))
+
+head(collap(wlddev, ~ country + decade,                         # Weighted parallelized custom
+            custom = list(fmean = 9:12, fsd = 9:10,             # aggregation
+                          fmode = 7:8), w = ~ POP,
+            wFUN = list(fsum, fmax),
+            parallel = TRUE, mc.cores = 1L))
+
+head(collap(wlddev, ~ country + decade,                         # No column reordering
+            custom = list(fmean = 9:12, fsd = 9:10,
+                          fmode = 7:8), w = ~ POP,
+            wFUN = list(fsum, fmax),
+            parallel = TRUE, mc.cores = 1L, keep.col.order = FALSE))
+
+## Piped Use --------------------------------------------------
+iris |&gt; fgroup_by(Species) |&gt; collapg()
+wlddev |&gt; fgroup_by(country, decade) |&gt; collapg() |&gt; head()
+wlddev |&gt; fgroup_by(region, year) |&gt; collapg(w = POP) |&gt; head()
+wlddev |&gt; fgroup_by(country, decade) |&gt; collapg(fmedian, flast) |&gt; head()
+wlddev |&gt; fgroup_by(country, decade) |&gt;
+  collapg(custom = list(fmean = 9:12, fmode = 5:7, flast = 3)) |&gt; head()
+</code></pre>
+
+<hr>
+<h2 id='collapse-documentation'>Collapse Documentation &amp; Overview</h2><span id='topic+A0-collapse-documentation'></span><span id='topic+collapse-documentation'></span><span id='topic+.COLLAPSE_TOPICS'></span><span id='topic+.COLLAPSE_ALL'></span><span id='topic+.COLLAPSE_GENERIC'></span><span id='topic+.COLLAPSE_DATA'></span>
+
+<h3>Description</h3>
+
+<p>The following table fully summarizes the contents of <em><a href="#topic+collapse">collapse</a></em>. The documentation is structured hierarchically: This is the main overview page, linking to topical overview pages and associated function pages (unless functions are documented on the topic page). 
+</p>
+
+
+<h3>Topics and Functions</h3>
+
+
+<table>
+<tr>
+ <td style="text-align: left;"> <em> Topic </em>  </td><td style="text-align: left;"></td><td style="text-align: left;"> <em> Main Features / Keywords</em> </td><td style="text-align: left;"></td><td style="text-align: left;"> <em> Functions </em>  </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> 
+
+  <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (grouped and weighted) statistical functions for vector, matrix, data frame and grouped data frames (class 'grouped_df', <em>dplyr</em> compatible).  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+fsum">fsum</a></code>, <code><a href="#topic+fprod">fprod</a></code>, <code><a href="#topic+fmean">fmean</a></code>, <code><a href="#topic+fmedian">fmedian</a></code>, <code><a href="#topic+fmode">fmode</a></code>, <code><a href="#topic+fvar">fvar</a></code>, <code><a href="#topic+fsd">fsd</a></code>, <code><a href="#topic+fmin">fmin</a></code>, <code><a href="#topic+fmax">fmax</a></code>, <code><a href="#topic+fnth">fnth</a></code>, <code><a href="#topic+ffirst">ffirst</a></code>, <code><a href="#topic+flast">flast</a></code>, <code><a href="#topic+fnobs">fnobs</a></code>, <code><a href="#topic+fndistinct">fndistinct</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+fast-grouping-ordering">Fast Grouping and Ordering</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (ordered) groupings from vectors, data frames, lists. 'GRP' objects are efficient inputs for programming with <em>collapse</em>'s fast functions. <code>fgroup_by</code> can attach them to a data frame, for fast dplyr-style grouped computations. Fast splitting of vectors based on 'GRP' objects. Fast radix-based ordering and hash-based grouping (the workhorses behind <code>GRP</code>). Fast matching (rows) and unique values/rows, group counts, factor generation, vector grouping, interactions, dropping unused factor levels, generalized run-length type grouping and grouping of integer sequences and time vectors.   
+</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+GRP">GRP</a></code>, <code><a href="#topic+as_factor_GRP">as_factor_GRP</a></code>, <code><a href="#topic+GRPN">GRPN</a></code>, <code><a href="#topic+GRPid">GRPid</a></code>, <code><a href="#topic+GRPnames">GRPnames</a></code>, <code><a href="#topic+is_GRP">is_GRP</a></code>, <code><a href="#topic+fgroup_by">fgroup_by</a></code>, <code><a href="#topic+fgroup_vars">fgroup_vars</a></code>, <code><a href="#topic+fungroup">fungroup</a></code>, <code><a href="#topic+gsplit">gsplit</a></code>, <code><a href="#topic+greorder">greorder</a></code>, <code><a href="#topic+radixorder">radixorder(v)</a></code>, <code><a href="#topic+group">group</a></code>, <code><a href="#topic+fmatch">fmatch</a></code>, <code><a href="#topic+ckmatch">ckmatch</a></code>, <code><a href="#topic+fmatch">%!in%</a></code>, <code><a href="#topic+fmatch">%[!]iin%</a></code>, <code><a href="#topic+funique">funique</a></code>,  <code><a href="#topic+fnunique">fnunique</a></code>, <code><a href="#topic+fduplicated">fduplicated</a></code>, <code><a href="#topic+any_duplicated">any_duplicated</a></code>, <code><a href="#topic+fcount">fcount(v)</a></code>, <code><a href="#topic+qF">qF</a></code>, <code><a href="#topic+qG">qG</a></code>, <code><a href="#topic+is_qG">is_qG</a></code>, <code><a href="#topic+finteraction">finteraction</a></code>, <code><a href="#topic+fdroplevels">fdroplevels</a></code>, <code><a href="#topic+groupid">groupid</a></code>, <code><a href="#topic+seqid">seqid</a></code>, <code><a href="#topic+timeid">timeid</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+
+<a href="#topic+fast-data-manipulation">Fast Data Manipulation</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast and flexible select, subset, summarise, mutate/transform, sort/reorder, combine, join, reshape, rename and relabel data. Some functions modify by reference and/or allow assignment. In addition a set of (standard evaluation) functions for fast selecting, replacing or adding data frame columns, including shortcuts to select and replace variables by data type.
+</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+fselect">fselect(&lt;-)</a></code>, <code><a href="#topic+fsubset">fsubset/ss</a></code>, <code><a href="#topic+fsummarise">fsummarise</a></code>, <code><a href="#topic+fmutate">fmutate</a></code>, <code><a href="#topic+across">across</a></code>, <code><a href="#topic+ftransform">(f/set)transform(v)(&lt;-)</a></code>, <code><a href="#topic+fcompute">fcompute(v)</a></code>, <code><a href="#topic+roworder">roworder(v)</a></code>, <code><a href="#topic+colorder">colorder(v)</a></code>, <code><a href="#topic+rowbind">rowbind</a></code>, <code><a href="#topic+join">join</a></code>, <code><a href="#topic+pivot">pivot</a></code>, <code><a href="#topic+frename">(f/set)rename</a></code>, <code><a href="#topic+relabel">(set)relabel</a></code>, <code><a href="#topic+get_vars">get_vars(&lt;-)</a></code>, <code><a href="#topic+add_vars">add_vars(&lt;-)</a></code>, <code><a href="#topic+num_vars">num_vars(&lt;-)</a></code>, <code><a href="#topic+cat_vars">cat_vars(&lt;-)</a></code>, <code><a href="#topic+char_vars">char_vars(&lt;-)</a></code>, <code><a href="#topic+fact_vars">fact_vars(&lt;-)</a></code>, <code><a href="#topic+logi_vars">logi_vars(&lt;-)</a></code>, <code><a href="#topic+date_vars">date_vars(&lt;-)</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+quick-conversion">Quick Data Conversion</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Quick conversions: data.frame &lt;&gt; data.table &lt;&gt; tibble &lt;&gt; matrix (row- or column-wise) &lt;&gt; list | array &gt; matrix, data.frame, data.table, tibble | vector &gt; factor, matrix, data.frame, data.table, tibble; and converting factors / all factor columns. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>qDF</code>, <code>qDT</code>, <code>qTBL</code>, <code>qM</code>, <code>qF</code>, <code>mrtl</code>, <code>mctl</code>, <code>as_numeric_factor</code>, <code>as_character_factor</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+advanced-aggregation">Advanced Data Aggregation</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast and easy (weighted and parallelized) aggregation of multi-type data, with different functions applied to numeric and categorical variables. Custom specifications allow mappings of functions to variables + renaming. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>collap(v/g)</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+data-transformations">Data Transformations</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast row- and column- arithmetic and (object preserving) apply functionality for vectors, matrices and data frames. Fast (grouped) replacing and sweeping of statistics (by reference) and (grouped and weighted) scaling / standardizing, (higher-dimensional) between- and within-transformations (i.e. averaging and centering), linear prediction and partialling out. 
+</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+arithmetic">%(r/c)r%</a></code>, <code><a href="#topic+arithmetic">%(r/c)(+/-/*//)%</a></code>, <code><a href="#topic+dapply">dapply</a></code>, <code><a href="#topic+BY">BY</a></code>, <code><a href="#topic+TRA">(set)TRA</a></code>, <code><a href="#topic+fscale">fscale/STD</a></code>, <code><a href="#topic+fbetween">fbetween/B</a></code>, <code><a href="#topic+fwithin">fwithin/W</a></code>, <code><a href="#topic+HDB">fhdbetween/HDB</a></code>, <code><a href="#topic+HDW">fhdwithin/HDW</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+Linear Models </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (weighted) linear model fitting with 6 different solvers and a fast F-test to test exclusion restrictions on linear models with (large) factors. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+flm">flm</a></code>, <code><a href="#topic+fFtest">fFtest</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+time-series-panel-series">Time Series and Panel Series</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast and class-agnostic indexed time series and panel data objects, check for irregularity in time series and panels, and efficient time-sequence to integer/factor conversion. Fast (sequences of) lags / leads and (lagged / leaded and iterated, quasi-, log-) differences, and (compounded) growth rates on (irregular) time series and panel data. Flexible cumulative sums. Panel data to array conversions. Multivariate panel- auto-, partial- and cross-correlation functions. 
+</td><td style="text-align: left;"></td><td style="text-align: left;">
+<code><a href="#topic+findex_by">findex_by</a></code>, <code><a href="#topic+findex">findex</a></code>, <code><a href="#topic+unindex">unindex</a></code>, <code><a href="#topic+reindex">reindex</a></code>, <code><a href="#topic+is_irregular">is_irregular</a></code>, <code><a href="#topic+to_plm">to_plm</a></code>, <code><a href="#topic+timeid">timeid</a></code>,
+<code><a href="#topic+flag">flag/L/F</a></code>, <code><a href="#topic+fdiff">fdiff/D/Dlog</a></code>, <code><a href="#topic+fgrowth">fgrowth/G</a></code>, <code><a href="#topic+fcumsum">fcumsum</a></code>, <code><a href="#topic+psmat">psmat</a></code>, <code><a href="#topic+psacf">psacf</a></code>, <code><a href="#topic+pspacf">pspacf</a></code>, <code><a href="#topic+psccf">psccf</a></code>  </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+summary-statistics">Summary Statistics</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast (grouped and weighted) summary statistics for cross-sectional and panel data. Fast (weighted) cross tabulation. Efficient detailed description of data frame. Fast check of variation in data (within groups / dimensions). (Weighted) pairwise correlations and covariances (with obs. and p-value), pairwise observation count. 
+</td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+qsu">qsu</a></code>, <code><a href="#topic+qtab">qtab</a></code>, <code><a href="#topic+descr">descr</a></code>, <code><a href="#topic+varying">varying</a></code>, <code><a href="#topic+pwcor">pwcor</a></code>, <code><a href="#topic+pwcov">pwcov</a></code>, <code><a href="#topic+pwnobs">pwnobs</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+Other Statistical </td><td style="text-align: left;"></td><td style="text-align: left;"> Fast euclidean distance computations, (weighted) sample quantiles, and range of vector. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+fdist">fdist</a></code>, <code><a href="#topic+fquantile">fquantile</a></code>, <code><a href="#topic+frange">frange</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+list-processing">List Processing</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> (Recursive) list search and checks, extraction of list-elements / list-subsetting, fast (recursive) splitting, list-transpose, apply functions to lists of data frames / data objects, and generalized recursive row-binding / unlisting in 2-dimensions / to data frame.  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+is_unlistable">is_unlistable</a></code>, <code><a href="#topic+ldepth">ldepth</a></code>, <code><a href="#topic+has_elem">has_elem</a></code>, <code><a href="#topic+get_elem">get_elem</a></code>, <code><a href="#topic+atomic_elem">atomic_elem(&lt;-)</a></code>, <code><a href="#topic+list_elem">list_elem(&lt;-)</a></code>, <code><a href="#topic+reg_elem">reg_elem</a></code>, <code><a href="#topic+irreg_elem">irreg_elem</a></code>, <code><a href="#topic+rsplit">rsplit</a></code>, <code><a href="#topic+t_list">t_list</a></code>, <code><a href="#topic+rapply2d">rapply2d</a></code>, <code><a href="#topic+unlist2d">unlist2d</a></code>, <code><a href="#topic+rowbind">rowbind</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+
+
+<a href="#topic+recode-replace">Recode and Replace Values</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Recode multiple values (exact or regex matching) and replace <code>NaN/Inf/-Inf</code> and outliers (according to 1- or 2-sided threshold or standard-deviations) in vectors, matrices or data frames. Insert a value at arbitrary positions into vectors, matrices or data frames. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>recode_num</code>, <code>recode_char</code>, <code>replace_na</code>, <code>replace_inf</code>, <code>replace_outliers</code>, <code><a href="#topic+pad">pad</a></code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+
+<a href="#topic+efficient-programming">(Memory) Efficient Programming</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Efficient comparisons of a vector/matrix with a value, and replacing values/rows in vector/matrix/DF (avoiding logical vectors or subsets), faster generation of initialized vectors, and fast mathematical operations on vectors/matrices/DF's with no copies at all. Fast missing value detection, (random) insertion and removal/replacement, lengths and C storage types, greatest common divisor of vector, <code>nlevels</code> for factors, <code>nrow</code>, <code>ncol</code>, <code>dim</code> (for data frames) and <code>seq_along</code> rows or columns. Fast vectorization of matrices and lists, and choleski inverse of symmetric PD matrix. </td><td style="text-align: left;"></td><td style="text-align: left;">
+<code>anyv</code>, <code>allv</code>, <code>allNA</code>, <code>whichv</code>, <code>whichNA</code>, <code>%==%</code>,
+<code>%!=%</code>, <code>copyv</code>, <code>setv</code>, <code>alloc</code>, <code>setop</code>, <code>%+=%</code>, <code>%-=%</code>, <code>%*=%</code>, <code>%/=%</code>, <code>missing_cases</code>, <code>na_insert</code>, <code>na_rm</code>, <code>na_locf</code>, <code>na_focb</code>, <code>na_omit</code>, <code>vlengths</code>, <code>vtypes</code>, <code>vgcd</code>, <code>fnlevels</code>, <code>fnrow</code>, <code>fncol</code>, <code>fdim</code>, <code>seq_row</code>, <code>seq_col</code>, <code>vec</code>, <code>cinv</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+<a href="#topic+small-helpers">Small (Helper) Functions</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> Multiple-assignment, non-standard concatenation, set and extract variable labels and classes, display variable names and labels together, add / remove prefix or postfix to / from column names, check exact or near / numeric equality of multiple objects or of all elements in a list, get names of functions called in an expression, return object with dimnames, row- or colnames efficiently set, or with all attributes removed, C-level functions to set and shallow-copy attributes, identify categorical (non-numeric) and date(-time) objects. </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>massign</code>, <code>%=%</code>, <code>.c</code>, <code>vlabels(&lt;-)</code>, <code>setLabels</code>, <code>vclasses</code>, <code>namlab</code>, <code>add_stub</code>, <code>rm_stub</code>, <code>all_identical</code>, <code>all_obj_equal</code>, <code>all_funs</code>, <code>setDimnames</code>, <code>setRownames</code>, <code>setColnames</code>, <code>unattrib</code>, <code>setAttrib</code>, <code>setattrib</code>, <code>copyAttrib</code>, <code>copyMostAttrib</code>, <code>is_categorical</code>, <code>is_date</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"> </td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+
+Data and Global Macros </td><td style="text-align: left;"></td><td style="text-align: left;"> Groningen Growth and Development Centre 10-Sector Database, World Bank World Development dataset, and some global macros containing links to the topical documentation pages (including this page), all exported objects (excluding exported S3 methods and depreciated functions), all generic functions (excluding depreciated), the 2 datasets, depreciated functions, all fast functions, all fast statistical (scalar-valued) functions, and all transformation operators (these are not infix functions but function shortcuts resembling operators in a statistical sense, such as the lag/lead operators <code>L</code>/<code>F</code>, both wrapping <code>flag</code>, see <code><a href="#topic+.OPERATOR_FUN">.OPERATOR_FUN</a></code>).  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code><a href="#topic+GGDC10S">GGDC10S</a>, <a href="#topic+wlddev">wlddev</a>, .COLLAPSE_TOPICS, .COLLAPSE_ALL, .COLLAPSE_GENERIC, .COLLAPSE_DATA, .COLLAPSE_OLD, .FAST_FUN, .FAST_STAT_FUN, .OPERATOR_FUN</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+
+<a href="#topic+collapse-options">Package Options</a> </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>set_collapse</code>/<code>get_collapse</code> can be used to globally set/get the defaults for <code>na.rm</code>, <code>nthreads</code> and <code>sort</code>, etc., arguments found in many functions, and to globally control the namespace with options 'mask' and 'remove': 'mask' can be used to mask base R/dplyr functions by export copies of equivalent <em>collapse</em> functions starting with <code>"f"</code>, removing the leading <code>"f"</code> (e.g. exporting <code>subset &lt;- fsubset</code>). 'remove' allows removing arbitrary functions from the exported namespace. <code>options("collapse_unused_arg_action")</code> sets the action taken by generic statistical functions when unknown arguments are passed to a method. The default is <code>"warning"</code>.  </td><td style="text-align: left;"></td><td style="text-align: left;"> <code>set_collapse</code>, <code>get_collapse</code> </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+</td>
+</tr>
+
+</table>
+
+
+
+<h3>Details</h3>
+
+<p>The added top-level documentation infrastructure in <em>collapse</em> allows you to effectively navigate the package. 
+Calling <code>?FUN</code> brings up the documentation page documenting the function, which contains links to associated topic pages and closely related functions. You can also call topical documentation pages directly from the console. The links to these pages are contained in the global macro <code>.COLLAPSE_TOPICS</code> (e.g. calling <code>help(.COLLAPSE_TOPICS[1])</code> brings up this page).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><b>Maintainer</b>: Sebastian Krantz <a href="mailto:sebastian.krantz@graduateinstitute.ch">sebastian.krantz@graduateinstitute.ch</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="#topic+collapse-package">collapse-package</a>
+</p>
+
+<hr>
+<h2 id='collapse-options'><em>collapse</em> Package Options</h2><span id='topic+collapse-options'></span><span id='topic+AA4-collapse-options'></span><span id='topic+set_collapse'></span><span id='topic+get_collapse'></span><span id='topic+.op'></span>
+
+<h3>Description</h3>
+
+<p><em>collapse</em> is globally configurable to an extent few packages are: the default value of key function arguments governing the behavior of its algorithms, and the exported namespace, can be adjusted interactively through the <code>set_collapse()</code> function.
+</p>
+<p>These options are saved in an internal environment called <code>.op</code> (for safety and performance reasons) visible in the documentation of some functions such as <code><a href="#topic+fmean">fmean</a></code>. The contents of this environment can be accessed using <code>get_collapse()</code>.
+</p>
+<p>There are also a few options that can be set using <code><a href="base.html#topic+options">options</a></code> (retrievable using <code><a href="base.html#topic+getOption">getOption</a></code>). These options mainly affect package startup behavior.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_collapse(...)
+get_collapse(opts = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="collapse-options_+3A_...">...</code></td>
+<td>
+<p>either comma separated options, or a single list of options. The available options are:
+</p>
+
+<table>
+<tr>
+ <td style="text-align: left;">
+    <code>na.rm</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Sets the default for statistical algorithms such as the <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> to skip missing values. If your data does not have missing values, or only in rare cases, it is recommended to change this to <code>FALSE</code> for performance gains. <em>Note</em> that this does not affect other (non-statistical) uses of <code>na.rm</code> arguments, such as in <code><a href="#topic+pivot">pivot</a></code>. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    <code>sort</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Sets the default for grouping operations to be sorted. This also applies to factor generation using <code><a href="#topic+qF">qF</a></code> and tabulation with <code><a href="#topic+qtab">qtab</a></code>, but excludes other uses of <code>sort</code> arguments where grouping is not the objective (such as in <code><a href="#topic+funique">funique</a></code> or <code><a href="#topic+pivot">pivot</a></code>). In general, sorted grouping (internally using <code><a href="#topic+radixorder">radixorder</a></code>) is slower than hash-based direct grouping (internally using <code><a href="#topic+group">group</a></code>). However, if data is pre-sorted, sorted grouping is slightly faster. In general, if records don't need to be sorted or you want to maintain their first-appearance order, changing this to <code>FALSE</code> is recommended and often brings substantial performance gains. <em>Note</em> that this also affects internal grouping applied when atomic vectors (except for factors) or lists are passed to <code>g</code> arguments in <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    <code>nthreads</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> integer, default 1. Sets the default for OpenMP multithreading, available in certain statistical and data manipulation functions. Setting values greater than 1 is strongly recommended with larger datasets. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    <code>stable.algo</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Option passed to <code><a href="#topic+fvar">fvar()/fsd()</a></code> and <code><a href="#topic+qsu">qsu()</a></code>. <code>FALSE</code> enables one-pass standard deviation calculation, which is very fast, but might incur catastrophic cancellation if numbers are large and the variance is small. see <code><a href="#topic+fvar">fvar</a></code> for details. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    <code>stub</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> logical, default <code>TRUE</code>. Controls whether <a href="#topic+.OPERATOR_FUN">transformation operators</a> (<code>.OPERATOR_FUN</code>) such as <code><a href="#topic+W">W</a></code>, <code><a href="#topic+L">L</a></code>, <code><a href="#topic+STD">STD</a></code> etc. add prefixes to transformed columns of matrix and data.frame-like objects. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    <code>verbose</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> integer, default <code>1</code>. Print additional (diagnostic) information or messages when executing code. Currently only used in <code><a href="#topic+join">join</a></code> and <code><a href="#topic+roworder">roworder</a></code>. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    <code>digits</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> integer, default <code>2</code>. Number of digits to print, e.g. in <code><a href="#topic+descr">descr</a></code> or <code><a href="#topic+pwcor">pwcor</a></code>. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    <code>mask</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> character, default <code>NULL</code>. Allows masking existing base R/dplyr functions with faster <em>collapse</em> versions, by creating additional functions in the namespace and instantly exporting them: </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+    </td><td style="text-align: left;"></td><td style="text-align: left;"> For example <code>set_collapse(mask = "unique")</code> (or, equivalently, <code>set_collapse(mask = "funique")</code>) will create <code>unique &lt;- funique</code> in the <em>collapse</em> namespace, export <code>unique()</code>, and silently detach and attach the namespace again so R can find it - all in millisecond. Thus calling <code>unique()</code> afterwards uses the <em>collapse</em> version - which is many times faster. <code>funique</code> remains available and you can still call <code>base::unique</code> explicitly. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+  </td><td style="text-align: left;"></td><td style="text-align: left;"> All <em>collapse</em> functions starting with 'f' can be passed to the option (with or without the 'f') e.g. <code>set_collapse(mask = c("subset", "transform", "droplevels"))</code> creates <code>subset &lt;- fsubset</code>, <code>transform &lt;- ftransform</code> etc. Special functions are <code>"n"</code> and <code>"table"/"qtab"</code>, and <code>"%in%"</code>, which create <code>n &lt;- GRPN</code> (for use in <code>(f)summarise</code>/<code>(f)mutate</code>), <code>table &lt;- qtab</code>, and replace <code>%in%</code> with a fast version using <code><a href="#topic+fmatch">fmatch</a></code>, respectively. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+  </td><td style="text-align: left;"></td><td style="text-align: left;"> There are also a couple of convenience keywords that you can use to mask groups of functions: </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"manip"</code> adds data manipulation functions: <code>fsubset, ftransform, ftransform&lt;-, ftransformv, fcompute, fcomputev, fselect, fselect&lt;-, fgroup_by, fgroup_vars, fungroup, fsummarise, fsummarize, fmutate, frename, findex_by, findex</code>. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"helper"</code> adds the functions: <code>fdroplevels</code>, <code>finteraction</code>, <code>fmatch</code>, <code>funique</code>, <code>fnunique</code>, <code>fduplicated</code>, <code>fcount</code>, <code>fcountv</code>, <code>fquantile</code>, <code>frange</code>, <code>fdist</code>, <code>fnlevels</code>, <code>fnrow</code> and <code>fncol</code>. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"> 
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"special"</code> exports <code>n()</code>, <code>table()</code> and <code>%in%</code>. See above. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"fast-fun"</code> adds the functions contained in the macro: <code>.FAST_FUN</code>. See also Note. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"fast-stat-fun"</code> adds the functions contained in the macro: <code>.FAST_STAT_FUN</code>. See also Note. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"fast-trfm-fun"</code> adds the functions contained in: <code>setdiff(.FAST_FUN, .FAST_STAT_FUN)</code>. See also Note. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"all"</code> turns on all of the above.</td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+
+</td><td style="text-align: left;"></td><td style="text-align: left;"> The re-attaching of the namespace places <em>collapse</em> at the top of the search path (after the global environment), implying that all its exported functions will take priority over other libraries. Users can use <code>fastverse::fastverse_conflicts()</code> to check which functions are masked following <code>set_collapse(mask = ...)</code>. The option can be changed at any time with immediate effect. Using <code>set_collapse(mask = NULL)</code> removes all masked functions from the namespace, and can also be called simply to place <em>collapse</em> at the top of the search path. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+ <code>remove</code> </td><td style="text-align: left;"></td><td style="text-align: left;"> character, default <code>NULL</code>. Similar to 'mask': allows removing functions from the exported namespace (they are still in the namespace, just no longer exported). All <em>collapse</em> functions can be passed here. This argument is always evaluated after 'mask', thus you can also remove masked functions again i.e. after setting a keyword which masks a bunch of functions. There are also a couple of convenience keywords you can specify to bulk-remove certain functions:
+</td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"shorthand"</code> removes function shorthands: <code>gv, gv&lt;-, av, av&lt;-, nv, nv&lt;-, gvr, gvr&lt;-, itn, ix, slt, slt&lt;-, sbt, gby, iby, mtt, smr, tfm, tfmv, tfm&lt;-, settfm, settfmv, rnm</code>. </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"infix"</code> removes infix functions: <code>%!=%, %[!]in%, %[!]iin%, %*=%, %+=%, %-=%, %/=%, %=%, %==%, %c*%, %c+%, %c-%, %c/%, %cr%, %r*%, %r+%, %r-%, %r/%, %rr%</code>.</td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"operator"</code> removes functions contained in the macro: <code>.OPERATOR_FUN</code>.</td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+</td><td style="text-align: left;"></td><td style="text-align: left;"> - <code>"old"</code> removes depreciated functions contained in the macro: <code>.COLLAPSE_OLD</code>.</td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+
+
+</td><td style="text-align: left;"></td><td style="text-align: left;"> Like 'mask', the option is alterable and reversible. Specifying <code>set_collapse(remove = NULL)</code> restores the exported namespace. Also like 'mask', this option silently detaches and attaches <em>collapse</em> again, ensuring that it is at the top of the search path.
+
+ </td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;"></td>
+</tr>
+<tr>
+ <td style="text-align: left;">
+  </td>
+</tr>
+
+</table>
+
+</td></tr>
+<tr><td><code id="collapse-options_+3A_opts">opts</code></td>
+<td>
+<p>character. A vector of options to receive from <code>.op</code>, or <code>NULL</code> for a list of all options.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>set_collapse()</code> returns the old content of <code>.op</code> invisibly as a list. <code>get_collapse()</code>, if called with only one option, returns the value of the option, and otherwise a list.
+</p>
+
+
+<h3>Options Set Using <code>options()</code></h3>
+
+
+<ul>
+<li> <p><code>"collapse_unused_arg_action"</code> regulates how generic functions (such as the <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a>) in the package react when an unknown argument is passed to a method. The default action is <code>"warning"</code> which issues a warning. Other options are <code>"error"</code>, <code>"message"</code> or <code>"none"</code>, whereby the latter enables silent swallowing of such arguments.
+</p>
+</li>
+<li> <p><code>"collapse_export_F"</code>, if set to <code>TRUE</code>, exports the lead operator <code>F</code> in the package namespace when loading the package. The operator was exported by default until v1.9.0, but is now hidden inside the package due to too many problems with <code>base::F</code>. Alternatively, the operator can be accessed using <code>collapse:::F</code>.
+</p>
+</li>
+<li> <p><code>"collapse_nthreads"</code>, <code>"collapse_na_rm"</code>, <code>"collapse_sort"</code>, <code>"collapse_stable_algo"</code>, <code>"collapse_verbose"</code>, <code>"collapse_digits"</code>, <code>"collapse_mask"</code> and <code>"collapse_remove"</code> can be set before loading the package to initialize <code>.op</code> with different defaults (e.g. using an <code><a href="base.html#topic+.Rprofile">.Rprofile</a></code> file). Once loaded, these options have no effect, and users need to use <code>set_collapse()</code> to change them. See also the Note.
+</p>
+</li></ul>
+
+
+
+<h3>Note</h3>
+
+<p>Setting keywords &quot;fast-fun&quot;, &quot;fast-stat-fun&quot;, &quot;fast-trfm-fun&quot; or &quot;all&quot; with <code>set_collapse(mask = ...)</code> will also adjust internal optimization flags, e.g. in <code><a href="#topic+fsummarise">(f)summarise</a></code> and <code><a href="#topic+fmutate">(f)mutate</a></code>, so that these functions - and all expressions containing them - receive vectorized execution (see examples of <code><a href="#topic+fsummarise">(f)summarise</a></code> and <code><a href="#topic+fmutate">(f)mutate</a></code>). Users should be aware of expressions like <code>fmutate(mu = sum(var) / lenth(var))</code>: this usually gets executed by groups, but with these keywords set,this will be vectorized (like <code>fmutate(mu = fsum(var) / lenth(var))</code>) implying grouped sum divided by overall length. In this case <code>fmutate(mu = base::sum(var) / lenth(var))</code> needs to be specified to retain the original result.
+</p>
+<p><em>Note</em> that passing individual functions like <code>set_collapse(mask = "(f)sum")</code> will <b>not</b> change internal optimization flags for these functions. This is to ensure consistency i.e. you can be either all in (by setting appropriate keywords) or all out when it comes to vectorized stats with basic R names.
+</p>
+<p><em>Note</em> also that masking does not change documentation links, so you need to look up the f- version of a function to get the right documentation.
+</p>
+<p>A safe way to set options affecting startup behavior is by using a <code><a href="base.html#topic+.Rprofile">.Rprofile</a></code> file in your user or project directory (see also <a href="https://www.statmethods.net/interface/customizing.html">here</a>, the user-level file is located at <code>file.path(Sys.getenv("HOME"), ".Rprofile")</code> and can be edited using <code>file.edit(Sys.getenv("HOME"), ".Rprofile")</code>), or by using a <a href="https://fastverse.github.io/fastverse/articles/fastverse_intro.html#custom-fastverse-configurations-for-projects"><code>.fastverse</code></a> configuration file in the project directory.
+</p>
+<p><code>options("collapse_remove")</code> does in fact remove functions from the namespace and cannot be reversed by <code>set_collapse(remove = NULL)</code> once the package is loaded. It is only reversed by re-loading <em>collapse</em>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="#topic+collapse-documentation">Collapse Overview</a>, <a href="#topic+collapse-package">collapse-package</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Setting new values
+oldopts &lt;- set_collapse(nthreads = 2, na.rm = FALSE)
+
+# Getting the values
+get_collapse()
+get_collapse("nthreads")
+
+# Resetting
+set_collapse(oldopts)
+rm(oldopts)
+
+## Not run: 
+## This is a typical working setup I use:
+library(fastverse)
+# Loading other stats packages with fastverse_extend():
+# displays versions, checks conflicts, and installs if unavailable
+fastverse_extend(qs, fixest, grf, glmnet, install = TRUE)
+# Now setting collapse options with some namespace modification
+set_collapse(
+  nthreads = 4,
+  sort = FALSE,
+  mask = c("manip", "helper", "special", "mean", "scale"),
+  remove = "old"
+)
+# Final conflicts check (optional)
+fastverse_conflicts()
+
+# For some simpler scripts I also use
+set_collapse(
+  nthreads = 4,
+  sort = FALSE,
+  mask = "all",
+  remove = c("old", "between") # I use data.table::between &gt; fbetween
+)
+
+# This is now collapse code
+mtcars |&gt;
+  subset(mpg &gt; 12) |&gt;
+  group_by(cyl) |&gt;
+  sum()
+
+## End(Not run)
+
+## Changing what happens with unused arguments
+oldopts &lt;- options(collapse_unused_arg_action = "message") # default: "warning"
+fmean(mtcars$mpg, bla = 1)
+
+# Now nothing happens, same as base R
+options(collapse_unused_arg_action = "none")
+fmean(mtcars$mpg, bla = 1)
+mean(mtcars$mpg, bla = 1)
+
+options(oldopts)
+rm(oldopts)
+</code></pre>
+
+<hr>
 <h2 id='collapse-renamed'>
 Renamed Functions
 </h2><span id='topic+collapse-renamed'></span><span id='topic+.COLLAPSE_OLD'></span><span id='topic+fNobs'></span><span id='topic+fNobs.default'></span><span id='topic+fNobs.matrix'></span><span id='topic+fNobs.data.frame'></span><span id='topic+fNobs.grouped_df'></span><span id='topic+fNdistinct'></span><span id='topic+fNdistinct.default'></span><span id='topic+fNdistinct.matrix'></span><span id='topic+fNdistinct.data.frame'></span><span id='topic+fNdistinct.grouped_df'></span><span id='topic+pwNobs'></span><span id='topic+fHDwithin'></span><span id='topic+fHDwithin.default'></span><span id='topic+fHDwithin.matrix'></span><span id='topic+fHDwithin.data.frame'></span><span id='topic+fHDwithin.pseries'></span><span id='topic+fHDwithin.pdata.frame'></span><span id='topic+fHDwithin.grouped_df'></span><span id='topic+fHDbetween'></span><span id='topic+fHDbetween.default'></span><span id='topic+fHDbetween.matrix'></span><span id='topic+fHDbetween.data.frame'></span><span id='topic+fHDbetween.pseries'></span><span id='topic+fHDbetween.pdata.frame'></span><span id='topic+fHDbetween.grouped_df'></span><span id='topic+as.factor_GRP'></span><span id='topic+as.factor_qG'></span><span id='topic+is.GRP'></span><span id='topic+is.qG'></span><span id='topic+is.unlistable'></span><span id='topic+is.categorical'></span><span id='topic+is.Date'></span><span id='topic+as.character_factor'></span><span id='topic+as.numeric_factor'></span><span id='topic+Date_vars'></span><span id='topic+Date_vars+3C-'></span><span id='topic+replace_NA'></span><span id='topic+replace_Inf'></span>
@@ -2368,7 +2332,6 @@ Supported operations are:
 </li>
 <li> <p><code><a href="#topic+HDW">fhdwithin/HDW</a></code>, shorthand for 'higher-dimensional within transform', is an S3 generic to efficiently <b>center data on multiple groups and partial-out linear models</b> (possibly involving many levels of fixed effects and interactions). In other words, <code><a href="#topic+HDW">fhdwithin/HDW</a></code> efficiently computes <b>residuals</b> from linear models. Similarly <code><a href="#topic+HDB">fhdbetween/HDB</a></code>, shorthand for 'higher-dimensional between transformation', computes the corresponding means or <b>fitted values</b>.
 </p>
-
 </li>
 <li> <p><code><a href="#topic+flag">flag/L/F</a></code>, <code><a href="#topic+fdiff">fdiff/D/Dlog</a></code> and <code><a href="#topic+fgrowth">fgrowth/G</a></code> are S3 generics to compute sequences of <b>lags / leads</b> and suitably lagged and iterated (quasi-, log-) <b>differences</b> and <b>growth rates</b> on time series and panel data. <code><a href="#topic+fcumsum">fcumsum</a></code> flexibly computes (grouped, ordered) cumulative sums. More in <a href="#topic+time-series-panel-series">Time Series and Panel Series</a>.
 </p>
@@ -2608,8 +2571,6 @@ print(x, n = 14, perc = TRUE, digits = .op[["digits"]], t.table = TRUE, total = 
 <td>
 <p>character. Name assigned to the group-id column, when describing data by groups.</p>
 </td></tr>
-
-
 </table>
 
 
@@ -2620,7 +2581,6 @@ print(x, n = 14, perc = TRUE, digits = .op[["digits"]], t.table = TRUE, total = 
 <p>Since v1.9.0 grouped and weighted computations are fully supported. The use of sampling weights will produce a weighted mean, sd, skewness and kurtosis, and weighted quantiles for numeric data. For categorical data, tables will display the sum of weights instead of the frequencies, and percentage tables as well as the percentage of missing values indicated next to 'Statistics' in print, be relative to the total sum of weights. All this can be done by groups. Grouped (weighted) quantiles are computed using <code><a href="#topic+BY">BY</a></code>.
 </p>
 <p>For larger datasets, calling the <code>stepwise</code> option directly from <code>descr()</code> is recommended, as precomputing the statistics for all variables before digesting the results can be time consuming.
-
 </p>
 <p>The list-object returned from <code>descr</code> can efficiently be converted to a tidy data frame using the <code>as.data.frame</code> method. This representation will not include frequency tables computed for categorical variables. 
 </p>
@@ -2854,9 +2814,7 @@ cinv(x)                     # Choleski (fast) inverse of symmetric PD matrix, e.
 <p>Both <code>X</code> and <code>R</code> can be atomic or data frames / lists. If <code>X</code> is a list, the default behavior is to interpret it like a data frame, and apply <code>setv/copyv</code> to each element/column of <code>X</code>. If <code>R</code> is also a list, this is done using <code><a href="base.html#topic+mapply">mapply</a></code>. Thus <code>setv/copyv</code> can also be used to replace elements or rows in data frames, or copy rows from equally sized frames. Note that for replacing subsets in data frames <code><a href="data.table.html#topic+set">set</a></code> from <code>data.table</code> provides a more convenient interface (and there is also <code><a href="data.table.html#topic+copy">copy</a></code> if you just want to deep-copy an object without any modifications to it).
 </p>
 <p>If <code>X</code> should not be interpreted like a data frame, setting <code>xlist = TRUE</code> will interpret it like a 1D list-vector analogous to atomic vectors, except that use case (1) is not permitted i.e. no value comparisons on list elements.
-
 </p>
-
 
 
 <h3>Note</h3>
@@ -3106,7 +3064,6 @@ options(oldopts)
 
 <ul>
 <li> <p><code><a href="#topic+radixorder">radixorder</a></code>, provides fast radix-ordering through direct access to the method <code><a href="base.html#topic+order">order(..., method = &quot;radix&quot;)</a></code>, as well as the possibility to return some attributes very useful for grouping data and finding unique elements. <code><a href="#topic+radixorderv">radixorderv</a></code> exists as a programmers alternative. The function <code><a href="#topic+roworder">roworder(v)</a></code> efficiently reorders a data frame based on an ordering computed by <code><a href="#topic+radixorderv">radixorderv</a></code>. 
-
 </p>
 </li>
 <li> <p><code><a href="#topic+group">group</a></code> provides fast grouping in first-appearance order of rows, based on a hashing algorithm in C. Objects have class 'qG', see below.
@@ -3461,7 +3418,6 @@ Fast Between (Averaging) and (Quasi-)Within (Centering) Transformations
 </p>
 <p>(<code>B</code> / <code>W</code> provide more flexibility than <code>fbetween</code> / <code>fwithin</code> when applied to data frames (i.e.  column subsetting, formula input, auto-renaming and id-variable-preservation capabilities...), but are otherwise identical.)
 </p>
-
 
 
 <h3>Usage</h3>
@@ -4053,13 +4009,8 @@ It is also possible to compute forward differences by passing negative <code>n</
 </p>
 <p>If more than one value is passed to <code>n</code> and/or <code>diff</code>, the data is expanded-wide as follows: If <code>x</code> is an atomic vector or time series, a (time series) matrix is returned with columns ordered first by lag, then by difference. If <code>x</code> is a matrix or data frame, each column is expanded in like manor such that the output has <code>ncol(x)*length(n)*length(diff)</code> columns ordered first by column name, then by lag, then by difference.
 </p>
-
-
-
 <p>For further computational details and efficiency considerations see the help page of <code><a href="#topic+flag">flag</a></code>. 
 </p>
-
-
 
 
 <h3>Value</h3>
@@ -4575,11 +4526,6 @@ fFtest(formula, data = NULL, weights = NULL, ...)
 </p>
 
 
-
-
-
-
-
 <h3>See Also</h3>
 
 <p><code><a href="#topic+flm">flm</a></code>, <code><a href="#topic+fhdwithin">fhdwithin</a></code>, <a href="#topic+data-transformations">Data Transformations</a>, <a href="#topic+collapse-documentation">Collapse Overview</a>
@@ -4960,9 +4906,6 @@ HDW(x, effect = "all", w = NULL, cols = is.numeric, na.rm = .op[["na.rm"]],
 
 
 
-
-
-
 <h4>On the differences between <code>fhdwithin/HDW</code>... and <code>fwithin/W</code>...:</h4>
 
 
@@ -5032,7 +4975,6 @@ Fast Lags and Leads for Time Series and Panel Data
 </p>
 <p><em>Note:</em> Since v1.9.0, <code>F</code> is no longer exported, but can be accessed using <code>collapse:::F</code>, or through setting <code>options(collapse_export_F = TRUE)</code> before loading the package. The syntax is the same as <code>L</code>.
 </p>
-
 
 
 <h3>Usage</h3>
@@ -5134,20 +5076,12 @@ L(x, n = 1, t = NULL, fill = NA, stubs = .op[["stub"]], keep.ids = TRUE, ...)
 </p>
 <p>With groups/panel-identifiers supplied to <code>g/by</code>, <code>flag/L/F</code> efficiently computes a panel-lag/lead by shifting the entire vector(s) but inserting <code>fill</code> elements in the right places. If <code>t</code> is left empty, the data needs to be ordered such that all values belonging to a group are consecutive and in the right order. It is not necessary that the groups themselves are alphabetically ordered. If a time-variable is supplied to <code>t</code> (or a list of time-variables uniquely identifying the time-dimension), the series / panel is fully identified and lags / leads can be securely computed even if the data is unordered / irregular.
 </p>
-
-
-
-
-
 <p><b>Note</b> that the <code>t</code> argument is processed as follows: If <code>is.factor(t) || (is.numeric(t) &amp;&amp; !is.object(t))</code> (i.e. <code>t</code> is a factor or plain numeric vector), it is assumed to represent unit timesteps (e.g. a 'year' variable in a typical dataset), and thus coerced to integer using <code>as.integer(t)</code> and directly passed to C++ without further checks or transformations at the R-level. Otherwise, if <code>is.object(t) &amp;&amp; is.numeric(unclass(t))</code> (i.e. <code>t</code> is a numeric time object, most likely 'Date' or 'POSIXct'), this object is passed through <code><a href="#topic+timeid">timeid</a></code> before going to C++. Else (e.g. <code>t</code> is character), it is passed through <code><a href="#topic+qG">qG</a></code> which performs ordered grouping. If <code>t</code> is a list of multiple variables, it is passed through <code><a href="#topic+finteraction">finteraction</a></code>. You can customize this behavior by calling any of these functions (including <code>unclass/as.integer</code>) on your time variable beforehand.
 </p>
 <p>At the C++ level, if both <code>g/by</code> and <code>t</code> are supplied, <code>flag</code> works as follows: Use two initial passes to create an ordering through which the data are accessed. First-pass: Calculate minimum and maximum time-value for each individual. Second-pass: Generate an internal ordering vector (<code>o</code>) by placing the current element index into the vector slot obtained by adding the cumulative group size and the current time-value subtracted its individual-minimum together. This method of computation is faster than any sort-based method and delivers optimal performance if the panel-id supplied to <code>g/by</code> is already a factor variable, and if <code>t</code> is an integer/factor variable. For irregular time/panel series, <code>length(o) &gt; length(x)</code>, and <code>o</code> represents the unobserved 'complete series'. If <code>length(o) &gt; 1e7 &amp;&amp; length(o) &gt; 3*length(x)</code>, a warning is issued to make you aware of potential performance implications of the oversized ordering vector.
 </p>
-
-
 <p>The 'indexed_series' ('pseries') and 'indexed_frame' ('pdata.frame')  methods automatically utilize the identifiers attached to these objects, which are already factors, thus lagging is quite efficient. However, the internal ordering vector still needs to be computed, thus if data are known to be ordered and regularly spaced, using <code>shift = "row"</code> to toggle a simple group-lag (same as utilizing <code>g</code> but not <code>t</code> in other methods) can yield a significant performance gain.
 </p>
-
 
 
 <h3>Value</h3>
@@ -5635,12 +5569,8 @@ fmean(x, w = NULL, TRA = NULL, na.rm = .op[["na.rm"]],
 
 <h3>Details</h3>
 
-
-
 <p>The weighted mean is computed as <code>sum(x * w) / sum(w)</code>, using a single pass in C. If <code>na.rm = TRUE</code>, missing values will be removed from both <code>x</code> and <code>w</code> i.e. utilizing only <code>x[complete.cases(x,w)]</code> and <code>w[complete.cases(x,w)]</code>.
 </p>
-
-
 <p>For further computational details see <code><a href="#topic+fsum">fsum</a></code>, which works equivalently.
 </p>
 
@@ -5780,8 +5710,6 @@ fmin(x, TRA = NULL, na.rm = .op[["na.rm"]],
 
 <p>Missing-value removal as controlled by the <code>na.rm</code> argument is done at no extra cost since in C++ any logical comparison involving <code>NA</code> or <code>NaN</code> evaluates to <code>FALSE</code>. Large performance gains can nevertheless be achieved in the presence of missing values if <code>na.rm = FALSE</code>, since then the corresponding computation is terminated once a <code>NA</code> is encountered and <code>NA</code> is returned (unlike <code><a href="base.html#topic+max">max</a></code> and <code><a href="base.html#topic+min">min</a></code> which just run through without any checks).
 </p>
-
-
 <p>For further computational details see <code><a href="#topic+fsum">fsum</a></code>.
 </p>
 
@@ -5958,14 +5886,12 @@ See also Details.
 
 <p><code>fmode</code> implements a pretty fast C-level hashing algorithm inspired by the <em>kit</em> package to find the statistical mode. 
 </p>
-
 <p>If <code>na.rm = FALSE</code>, <code>NA</code> is not removed but treated as any other value (i.e. its frequency is counted). If all values are <code>NA</code>, <code>NA</code> is always returned.
 </p>
 <p>The weighted mode is computed by summing up the weights for all distinct values and choosing the value with the largest sum. If <code>na.rm = TRUE</code>, missing values will be removed from both <code>x</code> and <code>w</code> i.e. utilizing only <code>x[complete.cases(x,w)]</code> and <code>w[complete.cases(x,w)]</code>.
 </p>
 <p>It is possible that multiple values have the same mode (the maximum frequency or sum of weights). Typical cases are simply when all values are either all the same or all distinct. In such cases, the default option <code>ties = "first"</code> returns the first occurring value in the data reaching the maximum frequency count or sum of weights. For example in a sample <code>x = c(1, 3, 2, 2, 4, 4, 1, 7)</code>, the first mode is 2 as <code>fmode</code> goes through the data from left to right. <code>ties = "last"</code> on the other hand gives 1. It is also possible to take the minimum or maximum mode, i.e. <code>fmode(x, ties = "min")</code> returns 1, and <code>fmode(x, ties = "max")</code> returns 4. It should be noted that options <code>ties = "min"</code> and <code>ties = "max"</code> give unintuitive results for character data (no strict alphabetic sorting, similar to using <code>&lt;</code> and <code>&gt;</code> to compare character values in R). These options are also best avoided if missing values are counted (<code>na.rm = FALSE</code>) since no proper logical comparison with missing values is possible: With numeric data it depends, since in C++ any comparison with <code>NA_real_</code> evaluates to <code>FALSE</code>, <code>NA_real_</code> is chosen as the min or max mode only if it is also the first mode, and never otherwise. For integer data, <code>NA_integer_</code> is stored as the smallest integer in C++, so it will always be chosen as the min mode and never as the max mode. For character data, <code>NA_character_</code> is stored as the string <code>"NA"</code> in C++ and thus the behavior depends on the other character content. 
 </p>
-
 <p><code>fmode</code> preserves all the attributes of the objects it is applied to (apart from names or row-names which are adjusted as necessary in grouped operations). If a data frame is passed to <code>fmode</code> and <code>drop = TRUE</code> (the default), <code><a href="base.html#topic+unlist">unlist</a></code> will be called on the result, which might not be sensible depending on the data at hand.
 </p>
 
@@ -6097,11 +6023,9 @@ fndistinct(x, TRA = NULL, na.rm = .op[["na.rm"]],
 <h3>Details</h3>
 
 <p><code>fndistinct</code> implements a pretty fast C-level hashing algorithm inspired by the <em>kit</em> package to find the number of distinct values.
-
 </p>
 <p>If <code>na.rm = TRUE</code> (the default), missing values will be skipped yielding substantial performance gains in data with many missing values. If <code>na.rm = FALSE</code>, missing values will simply be treated as any other value and read into the hash-map. Thus with the former, a numeric vector <code>c(1.25,NaN,3.56,NA)</code> will have a distinct value count of 2, whereas the latter will return a distinct value count of 4.
 </p>
-
 <p><code>fndistinct</code> preserves all attributes of non-classed vectors / columns, and only the 'label' attribute (if available) of classed vectors / columns (i.e. dates or factors). When applied to data frames and matrices, the row-names are adjusted as necessary.
 </p>
 
@@ -6412,8 +6336,6 @@ fmedian(x, w = NULL, TRA = NULL, na.rm = .op[["na.rm"]],
 </p>
 </li></ul>
 
-
-
 <p>If <code>n &gt; 1</code>, the result is equivalent to (column-wise) <code>sort(x, partial = n)[n]</code>. Internally, <code>n</code> is converted to a probability using <code>p = (n-1)/(NROW(x)-1)</code>, and that probability is applied to the set of non-missing elements to find the <code>as.integer(p*(fnobs(x)-1))+1L</code>'th element (which corresponds to option <code>ties = "min"</code>). 
 When using grouped computations with <code>n &gt; 1</code>, <code>n</code> is transformed to a probability <code>p = (n-1)/(NROW(x)/ng-1)</code> (where <code>ng</code> contains the number of unique groups in <code>g</code>).
 </p>
@@ -6603,11 +6525,8 @@ fprod(x, w = NULL, TRA = NULL, na.rm = .op[["na.rm"]],
 
 <p>Non-grouped product computations internally utilize long-doubles in C, for additional numeric precision.
 </p>
-
-
 <p>The weighted product is computed as <code>prod(x * w)</code>, using a single pass in C. If <code>na.rm = TRUE</code>, missing values will be removed from both <code>x</code> and <code>w</code> i.e. utilizing only <code>x[complete.cases(x,w)]</code> and <code>w[complete.cases(x,w)]</code>.
 </p>
-
 <p>For further computational details see <code><a href="#topic+fsum">fsum</a></code>, which works equivalently.
 </p>
 
@@ -7251,7 +7170,6 @@ Thus they can freely be applied to data.table's, grouped tibbles, panel data fra
 </p>
 
 
-
 <h3>Note</h3>
 
 <p>In many cases functions here only check the length of the first column, which is one of the reasons why they are so fast. When lists of unequal-length columns are offered as replacements this yields a malformed data frame (which will also print a warning in the console i.e. you will notice that).
@@ -7539,8 +7457,6 @@ fsum(x, w = NULL, TRA = NULL, na.rm = .op[["na.rm"]],
 
 
 <h3>Details</h3>
-
-
 
 <p>The weighted sum (e.g. survey total) is computed as <code>sum(x * w)</code>, but in one pass and about twice as efficient. If <code>na.rm = TRUE</code>, missing values will be removed from both <code>x</code> and <code>w</code> i.e. utilizing only <code>x[complete.cases(x,w)]</code> and <code>w[complete.cases(x,w)]</code>.
 </p>
@@ -8320,9 +8236,6 @@ fsd(x, w = NULL, TRA = NULL, na.rm = .op[["na.rm"]],
 </p>
 <p>The weighted variance is computed with frequency weights as <code>(sum(x^2*w)-sum(w)*weighted.mean(x,w)^2)/(sum(w)-1)</code>. If <code>na.rm = TRUE</code>, missing values will be removed from both <code>x</code> and <code>w</code> i.e. utilizing only <code>x[complete.cases(x,w)]</code> and <code>w[complete.cases(x,w)]</code>.
 </p>
-
-
-
 <p>For further computational detail see <code><a href="#topic+fsum">fsum</a></code>.
 </p>
 
@@ -9057,15 +8970,12 @@ plot(x, breaks = "auto", type = "l", horizontal = FALSE, ...)
 </p>
 <p>The sorting functionality of <code>GRP.default</code> lets groups receive different integer-id's depending on whether the groups are sorted <code>sort = TRUE</code> (<code>FALSE</code> gives first-appearance order), and in which order (argument <code>decreasing</code>). This affects the order of values/rows in the output whenever an aggregation is performed. 
 </p>
-
 <p>Other elements in the object provide information about whether the data was sorted by the variables defining the grouping (6) and the ordering vector (7). These also feed into optimizations in <code>gsplit/greorder</code> that benefit the execution of base R functions across groups.
 </p>
 <p>Complimentary to <code>GRP</code>, the function <code>fgroup_by</code> is a significantly faster and class-agnostic alternative to <code>dplyr::group_by</code> for programming with <em>collapse</em>. It creates a grouped data frame with a 'GRP' object attached in a <code>"groups"</code> attribute. This data frame has classes 'GRP_df', ..., 'grouped_df' and 'data.frame', where ... stands for any other classes the input frame inherits such as 'data.table', 'sf', 'tbl_df', 'indexed_frame' etc.. <em>collapse</em> functions with a 'grouped_df' method respond to 'grouped_df' objects created with either <code>fgroup_by</code> or <code>dplyr::group_by</code>. The method <code>GRP.grouped_df</code> takes the <code>"groups"</code> attribute from a 'grouped_df' and converts it to a 'GRP' object if created with <code>dplyr::group_by</code>. 
 </p>
 <p>The 'GRP_df' class in front responds to <code>print.GRP_df</code> which first calls <code>print(fungroup(x), ...)</code> and prints one line below the object indicating the grouping variables, followed, in square brackets, by some statistics on the group sizes: <code>[N | Mean (SD) Min-Max]</code>. The mean is rounded to a full number and the standard deviation (SD) to one digit. Minimum and maximum are only displayed if the SD is non-zero. There also exist a method <code>[.GRP_df</code> which calls <code><a href="base.html#topic+NextMethod">NextMethod</a></code> but makes sure that the grouping information is preserved or dropped depending on the dimensions of the result (subsetting rows or aggregation with <em>data.table</em> drops the grouping object).
 </p>
-
-
 <p><code>GRP.default</code> supports vector and list input and will also return 'GRP' objects if passed. There is also a hidden method <code>GRP.GRP</code> which simply returns grouping objects (no re-grouping functionality is offered).
 </p>
 <p>Apart from <code>GRP.grouped_df</code> there are several further conversion methods:
@@ -9074,7 +8984,6 @@ plot(x, breaks = "auto", type = "l", horizontal = FALSE, ...)
 </p>
 <p>Creating a factor from a 'GRP' object using <code>as_factor_GRP</code> does not involve any computations, but may involve interacting multiple grouping columns using the <code>paste</code> function to produce unique factor levels. 
 </p>
-
 
 
 <h3>Value</h3>
@@ -9499,7 +9408,6 @@ wldidt[, PCGDP_gr_5Y := G(PCGDP, 5, power = 1/5)]  # Can add Variables by refere
 wldidt[, .c(PCGDP_gr_5Y, LIFEEX_gr_5Y) := G(slt(.SD, PCGDP, LIFEEX), 5, power = 1/5)]
 # This gives the correct outcome
 wldidt[, .c(PCGDP_gr_5Y, LIFEEX_gr_5Y) := lapply(slt(.SD, PCGDP, LIFEEX), G, 5, power = 1/5)]
-
 ## Not run: 
 library(sf)
 nc &lt;- st_read(system.file("shape/nc.shp", package = "sf"), quiet = TRUE)
@@ -11649,8 +11557,6 @@ cylF
 
 # Factor to numeric conversions
 identical(mtcars,  as_numeric_factor(dapply(mtcars, qF)))
-
-
 </code></pre>
 
 <hr>
@@ -11702,7 +11608,6 @@ radixorderv(x, na.last = TRUE, decreasing = FALSE, starts = FALSE,
 <tr><td><code id="radixorder_+3A_starts">starts</code></td>
 <td>
 <p>logical. <code>TRUE</code> returns an attribute 'starts' containing the first element of each new group i.e. the row denoting the start of each new group if the data were sorted using the computed ordering vector. See Examples.
-
 </p>
 </td></tr>
 <tr><td><code id="radixorder_+3A_group.sizes">group.sizes</code></td>
@@ -11713,7 +11618,6 @@ radixorderv(x, na.last = TRUE, decreasing = FALSE, starts = FALSE,
 <tr><td><code id="radixorder_+3A_sort">sort</code></td>
 <td>
 <p>logical. This argument only affects character vectors / columns passed. If <code>FALSE</code>, these are not ordered but simply grouped in the order of first appearance of unique elements. This provides a slight performance gain if only grouping but not alphabetic ordering is required. See also <code><a href="#topic+group">group</a></code>.
-
 </p>
 </td></tr>
 </table>
@@ -12375,20 +12279,10 @@ Generate Group-Id from Integer Sequences
 
 <p><code>seqid</code> was created primarily as a workaround to deal with problems of computing lagged values, differences and growth rates on irregularly spaced time series and panels before <em>collapse</em> version 1.5.0 (<a href="https://github.com/SebKrantz/collapse/issues/26">#26</a>). Now <code>flag</code>, <code>fdiff</code> and <code>fgrowth</code> natively support irregular data so this workaround is superfluous, except for iterated differencing which is not yet supported with irregular data.
 </p>
-
 <p>The theory of the workaround was to express an irregular time series or panel series as a regular panel series with a group-id created such that the time-periods within each group are consecutive. <code>seqid</code> makes this very easy: For an irregular panel with some gaps or repeated values in the time variable, an appropriate id variable can be generated using <code>settransform(data, newid = seqid(time, radixorder(id, time)))</code>. Lags can then be computed using <code>L(data, 1, ~newid, ~time)</code> etc.
 </p>
-
-
 <p>In general, for any regularly spaced panel the identity given by <code>identical(groupid(id, order(id, time)), seqid(time, order(id, time)))</code> should hold.
 </p>
-
-
-
-
-
-
-
 <p>For the opposite operation of creating a new time-variable that is consecutive in each group, see <code>data.table::rowid</code>.
 </p>
 
@@ -12659,7 +12553,6 @@ rm(ex)
 </li>
 <li> <p><code><a href="#topic+varying">varying</a></code> very efficiently checks for the presence of any variation in data (optionally) within groups (such as panel-identifiers). A variable is variant if it has at least 2 distinct non-missing data points.
 </p>
-
 </li></ul>
 
 
@@ -12701,7 +12594,6 @@ rm(ex)
 </tr>
 <tr>
  <td style="text-align: left;">
-
 </td>
 </tr>
 
@@ -13099,7 +12991,6 @@ TRA(x, STATS, FUN = "-", keep.group_vars = TRUE, set = FALSE, ...)
 </p>
 <p>Correct computation requires that <code>g</code> as used in <code>fmean</code> and <code>g</code> passed to <code>TRA</code> are exactly the same vector. Using <code>g = c(1,3,3,2,1,2)</code> for <code>fmean</code> and <code>g = c(3,1,1,2,3,2)</code> for <code>TRA</code> will not give the right result. The safest way of programming with <code>TRA</code> is thus to repeatedly employ the same factor or <code><a href="#topic+GRP">GRP</a></code> object for all grouped computations. Atomic vectors passed to <code>g</code> will be converted to factors (see <code><a href="#topic+qF">qF</a></code>) and lists will be converted to <code><a href="#topic+GRP">GRP</a></code> objects. This is also done by all <a href="#topic+fast-statistical-functions">Fast Statistical Functions</a> and <code><a href="#topic+BY">BY</a></code>, thus together with these functions, <code>TRA</code> can also safely be used with atomic- or list-groups (as long as all functions apply sorted grouping, which is the default in <em>collapse</em>). 
 </p>
-
 <p>If <code>x</code> is a grouped data frame ('grouped_df'), <code>TRA</code> matches the columns of <code>x</code> and <code>STATS</code> and also checks for grouping columns in <code>x</code> and <code>STATS</code>. <code>TRA.grouped_df</code> will then only transform those columns in <code>x</code> for which matching counterparts were found in <code>STATS</code> (exempting grouping columns) and return <code>x</code> again (with columns in the same order). If <code>keep.group_vars = FALSE</code>, the grouping columns are dropped after computation, however the &quot;groups&quot; attribute is not dropped (it can be removed using <code><a href="#topic+fungroup">fungroup()</a></code> or <code>dplyr::ungroup()</code>).
 </p>
 

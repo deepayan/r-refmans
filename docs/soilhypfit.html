@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {soilhypfit}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#soilhypfit-package'><p>The soilhypfit Package</p></a></li>
 <li><a href='#control_fit_wrc_hcc'><p>Controlling fit_wrc_hcc</p></a></li>
 <li><a href='#evaporative-length'><p>Evaporative Characteristic Length</p></a></li>
 <li><a href='#fit_wrc_hcc'>
@@ -30,7 +31,6 @@ function processMathHTML() {
 Parametric Modelling of Soil Hydraulic Properties</a></li>
 <li><a href='#sim_wrc_hcc'>
 <p>Simulated Soil Water Retention and Hydraulic Conductivity Data</p></a></li>
-<li><a href='#soilhypfit-package'><p>The soilhypfit Package</p></a></li>
 <li><a href='#soilhypfitS3methods'><p>Common S3 Methods for Class <code>fit_wrc_hcc</code></p></a></li>
 <li><a href='#swissforestsoils'>
 <p>Physical properties of Swiss forest soils</p></a></li>
@@ -117,6 +117,674 @@ http://gmplib.org/) are required for Rmpfr</td>
 <td>2022-08-31 12:30:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='soilhypfit-package'>The soilhypfit Package</h2><span id='topic+soilhypfit-package'></span><span id='topic+soilhypfit'></span><span id='topic+soilhypfitIntro'></span>
+
+<h3>Description</h3>
+
+<p>This is a summary of the features and functionality of
+<span class="pkg">soilhypfit</span>, a package in <span class="rlang"><b>R</b></span> for parameteric modelling of soil water
+retention and hydraulic conductivity data.</p>
+
+
+<h3>Details</h3>
+
+
+
+
+<h4>Estimation approach</h4>
+
+<p>The main function, <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code>, estimates parameters of
+models for soil water retention and hydraulic conductivity by
+<em>maximum likelihood</em> (ml, default), <em>maximum posterior
+density</em> (mpd) <em>estimation</em> (<cite>Stewart et al., 1992</cite>) or
+nonlinear <em>weighted least squares</em> (wls) from data on volumetric
+<em>soil water content</em>, <code class="reqn">\boldsymbol{\theta}^\mathrm{T} =(\theta_1, \theta_2,
+    ..., \theta_{n_\theta})</code>, and/or <em>soil hydraulic conductivity</em>,
+<code class="reqn">\boldsymbol{K}^\mathrm{T} =(K_1, K_2, ..., K_{n_K})</code>, both measured at given
+capillary pressure head, <code class="reqn">\boldsymbol{h}^\mathrm{T} =(h_1, h_2, ...)</code>.
+</p>
+<p>For mpd and ml estimation, the models for the measurements are
+</p>
+<p style="text-align: center;"><code class="reqn">
+      \theta_i = \theta(h_i;\boldsymbol{\mu}, \boldsymbol{\nu})
+      + \varepsilon_{\theta,i}, \ \ i=1, 2, ..., n_\theta,
+    </code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+      \log(K_j) = \log(K(h_j;\boldsymbol{\mu}, \boldsymbol{\nu}))
+      + \varepsilon_{K,j}, \ \ j=1, 2, ..., n_K,
+    </code>
+</p>
+
+<p>where
+<code class="reqn">
+      \theta(h_i; \boldsymbol{\mu}, \boldsymbol{\nu})
+    </code> and
+<code class="reqn">
+      K(h_j; \boldsymbol{\mu}, \boldsymbol{\nu})
+    </code>
+denote modelled water content and conductivity,
+<code class="reqn">\boldsymbol{\mu}^\mathrm{} </code> and <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code> are the
+<em>conditionally linear</em> and <em>nonlinear</em>
+model parameters (see below and <cite>Bates and Watts, 1988, sec. 3.3.5</cite>),
+and
+<code class="reqn">\varepsilon_{\theta,i}</code> and
+<code class="reqn">\varepsilon_{K,j}</code> are independent,
+normally distributed errors
+with zero means and variances <code class="reqn">\sigma^2_\theta</code>
+and <code class="reqn">\sigma^2_K</code>, respectively.
+</p>
+
+<p>Let
+</p>
+<p style="text-align: center;"><code class="reqn">
+      Q_{\theta}(\boldsymbol{\mu}, \boldsymbol{\nu};
+      \boldsymbol{\theta},
+      \boldsymbol{h}) =\left(
+        \boldsymbol{\theta} -
+        \boldsymbol{\theta}(
+          \boldsymbol{h};
+          \boldsymbol{\mu}, \boldsymbol{\nu}
+        )
+      \right)^\mathrm{T}
+      \boldsymbol{W}_\theta
+      \left(
+        \boldsymbol{\theta} -
+        \boldsymbol{\theta}(
+          \boldsymbol{h};
+          \boldsymbol{\mu}, \boldsymbol{\nu}
+        )
+      \right),
+    </code>
+</p>
+
+<p>and
+</p>
+<p style="text-align: center;"><code class="reqn">
+      Q_{K}(\boldsymbol{\mu}, \boldsymbol{\nu};
+       \boldsymbol{K}, \boldsymbol{h}) = \left(
+        \log(\boldsymbol{K}) -
+        \log(\boldsymbol{K}(
+          \boldsymbol{h};
+          \boldsymbol{\mu}, \boldsymbol{\nu}
+        ))
+      \right)^\mathrm{T}
+      \boldsymbol{W}_K
+      \left(
+        \log(\boldsymbol{K}) -
+        \log(\boldsymbol{K}(
+          \boldsymbol{h};
+          \boldsymbol{\mu}, \boldsymbol{\nu}
+        ))
+      \right),
+    </code>
+</p>
+
+<p>denote the (possibly weighted) residual sums of squares between
+measurements and modelled values.
+<code class="reqn">\boldsymbol{\theta}(
+        \boldsymbol{h};
+        \boldsymbol{\mu}, \boldsymbol{\nu}
+      ) )
+    </code> and
+<code class="reqn">\boldsymbol{K}(
+        \boldsymbol{h};
+        \boldsymbol{\mu}, \boldsymbol{\nu}
+      )
+    </code>
+are vectors with modelled values of water content and hydraulic
+conductivity, and
+<code class="reqn">\boldsymbol{W}_\theta</code> and
+<code class="reqn">\boldsymbol{W}_K</code> are optional diagonal matrices
+with weights <code class="reqn">w_{\theta,i}</code> and <code class="reqn">w_{K,j}</code>, respectively.
+The weights are products of <em>case weights</em> <code class="reqn">w^\prime_{\theta,i}</code>
+and <code class="reqn">w^\prime_{K,j}</code> and <em>variable weights</em> <code class="reqn">w_\theta</code>, <code class="reqn">w_K</code>, hence
+<code class="reqn">
+      w_{\theta,i} = w_\theta\, w^\prime_{\theta,i}
+    </code> and
+<code class="reqn">
+      w_{K,j} = w_K\, w^\prime_{K,j}
+    </code>.
+</p>
+<p>The objective function for ml and mpd estimation
+is equal to (<cite>Stewart et al., 1992</cite>,
+eqs 14 and 15, respectively)
+</p>
+<p style="text-align: center;"><code class="reqn">
+      Q(\boldsymbol{\mu}, \boldsymbol{\nu};
+        \boldsymbol{\theta}, \boldsymbol{K},
+        \boldsymbol{h}
+        ) = \frac{\kappa_\theta}{2}
+        \log( Q_{\theta}(\boldsymbol{\mu}, \boldsymbol{\nu};
+        \boldsymbol{\theta}, \boldsymbol{h})) +
+        \frac{\kappa_K}{2}
+        \log( Q_{K}(\boldsymbol{\mu}, \boldsymbol{\nu};
+        \boldsymbol{K}, \boldsymbol{h})),
+    </code>
+</p>
+
+<p>where <code class="reqn">\kappa_v = n_v + 2</code> for mpd and <code class="reqn">\kappa_v = n_v</code> for ml
+estimation, <code class="reqn">v \in (\theta, K)</code>,
+and weights <code class="reqn">w_{\theta,i} = w_{K,j} = 1</code>.
+Note that
+<code class="reqn">
+      Q(\boldsymbol{\mu},
+      \boldsymbol{\nu}; \boldsymbol{\theta},
+      \boldsymbol{K}, \boldsymbol{h})
+    </code> is equal to the negative logarithm of the
+concentrated loglikelihood or the concentrated posterior density,
+obtained by replacing
+<code class="reqn">\sigma^2_\theta</code> and <code class="reqn">\sigma^2_K</code> by their conditional maximum
+likelihood or maximum density estimates
+<code class="reqn">
+      \widehat{\sigma}^2_\theta(\boldsymbol{\mu}),
+      \boldsymbol{\nu})
+    </code> and
+<code class="reqn">
+      \widehat{\sigma}^2_K(\boldsymbol{\mu})
+    </code>
+respectively (<cite>Stewart et al., 1992</cite>, p. 642).
+</p>
+<p>For wls the objective function is equal to
+</p>
+<p style="text-align: center;"><code class="reqn">
+      Q(\boldsymbol{\mu}, \boldsymbol{\nu};
+        \boldsymbol{\theta}, \boldsymbol{K},
+        \boldsymbol{h}
+        ) = Q_{\theta}(\boldsymbol{\mu}, \boldsymbol{\nu};
+        \boldsymbol{\theta}, \boldsymbol{h}) +
+        Q_{K}(\boldsymbol{\mu}, \boldsymbol{\nu};
+        \boldsymbol{K}, \boldsymbol{h}).
+    </code>
+</p>
+
+<p>If either water content or conductivity data are not available, then the respective
+terms are omitted from
+<code class="reqn">Q(\boldsymbol{\mu}, \boldsymbol{\nu};
+        \boldsymbol{\theta}, \boldsymbol{K},
+        \boldsymbol{h}
+        )
+    </code>.
+</p>
+
+<p>The function <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> does not attempt to estimate the parameters
+by minimising <br />
+<code class="reqn">
+      Q(\boldsymbol{\mu}, \boldsymbol{\nu};
+      \boldsymbol{\theta}, \boldsymbol{K},
+      \boldsymbol{h})
+    </code> directly with respect to
+<code class="reqn">\boldsymbol{\mu}^\mathrm{} </code> and <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>.
+Rather, it exploits the fact that for <em>given nonlinear parameters</em>
+<code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>, the <em>conditionally linear parameters</em>
+<code class="reqn">
+      \boldsymbol{\mu}^T = (\theta_r, \theta_s, \log(K_0))
+    </code>
+can be estimated straightforwardly
+by minimising the <em>conditional residual sums of squares</em>
+</p>
+<p style="text-align: center;"><code class="reqn">
+      Q_\theta^*(\theta_r, \theta_s;
+      \boldsymbol{\theta},
+      \boldsymbol{h}, \boldsymbol{\nu})
+      =\left(
+        \boldsymbol{\theta} - [
+          \boldsymbol{1},
+          \boldsymbol{S}(
+            \boldsymbol{h};
+            \boldsymbol{\nu}
+          )] \, \left[
+            \begin{array}{c} \theta_r \\ \theta_s - \theta_r \end{array}
+          \right]
+      \right)^\mathrm{T}
+      \boldsymbol{W}_\theta
+      \left(
+        \boldsymbol{\theta} - [
+          \boldsymbol{1},
+          \boldsymbol{S}(
+            \boldsymbol{h};
+            \boldsymbol{\nu}
+          )] \, \left[
+            \begin{array}{c} \theta_r \\ \theta_s - \theta_r \end{array}
+          \right]
+      \right)
+    </code>
+</p>
+
+<p>with respect to <code class="reqn">\theta_r</code> and  <code class="reqn">\theta_s-\theta_r</code> and/or
+</p>
+<p style="text-align: center;"><code class="reqn">
+      Q_K^*(K_0; \boldsymbol{K},
+        \boldsymbol{h}, \boldsymbol{\nu})=
+      \left(
+        \log(\boldsymbol{K}) - \log(K_0  \,
+          \boldsymbol{k}(
+            \boldsymbol{h};
+            \boldsymbol{\nu}
+          ))
+      \right)^\mathrm{T}
+      \boldsymbol{W}_K
+      \left(
+        \log(\boldsymbol{K}) - \log(K_0  \,
+          \boldsymbol{k}(
+            \boldsymbol{h};
+            \boldsymbol{\nu}
+          ))
+      \right),
+    </code>
+</p>
+
+<p>with respect to <code class="reqn">\log(K_0)</code>, where
+<code class="reqn">\boldsymbol{1}^\mathrm{} </code> is a vector of ones,
+<code class="reqn">\boldsymbol{S}(
+            \boldsymbol{h};
+            \boldsymbol{\nu}
+          )^\mathrm{T} = (
+            S(h_1; \boldsymbol{\nu}),
+            ...,
+            S(h_{n_\theta}; \boldsymbol{\nu})
+          )
+    </code> and
+<code class="reqn">\boldsymbol{k}(
+            \boldsymbol{h};
+            \boldsymbol{\nu}
+          )^\mathrm{T} = (
+            k(h_1; \boldsymbol{\nu}),
+            ...,
+            k(h_{n_K}; \boldsymbol{\nu})
+          )
+    </code>
+are vectors of modelled <em>water saturation</em>
+and modelled <em>relative conductivity</em> values,
+<code class="reqn">\theta_r</code> and <code class="reqn">\theta_s</code> are the <em>residual</em>
+and <em>saturated water content</em>, and
+<code class="reqn">K_0</code> is the <em>saturated hydraulic conductivity</em>.
+</p>
+<p>Unconstrained conditional estimates, say <code class="reqn">
+    \widehat{\theta}_r(\boldsymbol{\nu})
+    </code>, <code class="reqn">
+    \widehat{\theta}_s(\boldsymbol{\nu}) -
+    \widehat{\theta}_r(\boldsymbol{\nu}) </code> and <code class="reqn">
+    \widehat{\log(K_0)}(\boldsymbol{\nu}) </code> can be
+easily obtained from the normal equations of the respective (weighted)
+least squares problems, and quadratic programming yields conditional (weighted)
+least squares estimates that honour the inequality constraints <code class="reqn">0
+    \le \theta_r \le \theta_s \le 1</code>.
+</p>
+
+<p>Let <code class="reqn">
+     \widehat{\boldsymbol{\mu}}(\boldsymbol{\nu})^\mathrm{T} =
+     (
+     \widehat{\theta}_r(\boldsymbol{\nu}),
+     \widehat{\theta}_s(\boldsymbol{\nu}),
+     \widehat{\log(K_0)}(\boldsymbol{\nu})
+     )
+    </code>
+be the conditional estimates of the linear parameters
+obtained by minimising
+<code class="reqn">
+      Q_\theta^*(\theta_r, \theta_s;
+      \boldsymbol{\theta},
+      \boldsymbol{h}, \boldsymbol{\nu})
+    </code>,
+and
+<code class="reqn">
+      Q_K^*(K_0;
+      \boldsymbol{K},
+      \boldsymbol{h}, \boldsymbol{\nu})
+    </code>, respectively.
+<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> then estimates the
+nonlinear parameters by minimising
+<code class="reqn">
+      Q(
+      \widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
+      \boldsymbol{\nu};
+      \boldsymbol{\theta}, \boldsymbol{K},
+      \boldsymbol{h})
+    </code> with respect to <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>
+by a nonlinear optimisation algorithm.
+</p>
+
+<p>For mpd and ml estimation the variances of the model errors are estimated by
+(<cite>Stewart et al., 1992</cite>, eq. 16)
+</p>
+<p style="text-align: center;"><code class="reqn">
+      \widehat{\sigma}_\theta^2 = \frac{Q_{\theta}(
+        \widehat{\boldsymbol{\mu}}(\widehat{\boldsymbol{\nu}}),
+        \widehat{\boldsymbol{\nu}};
+      \boldsymbol{\theta},
+      \boldsymbol{h})}{\kappa_\theta},
+    </code>
+</p>
+
+<p>and
+</p>
+<p style="text-align: center;"><code class="reqn">
+      \widehat{\sigma}_K^2 = \frac{Q_{K}(
+        \widehat{\boldsymbol{\mu}}(\widehat{\boldsymbol{\nu}}),
+        \widehat{\boldsymbol{\nu}};
+      \boldsymbol{K},
+      \boldsymbol{h})}{\kappa_K}.
+    </code>
+</p>
+
+
+<p>Furthermore, for mpd and ml estimation, the covariance matrix of the estimated
+nonlinear parameters may be approximated by the inverse Hessian matrix
+of <code class="reqn">
+      Q(\widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
+      \boldsymbol{\nu};
+      \boldsymbol{\theta}, \boldsymbol{K},
+      \boldsymbol{h})
+    </code> at the solution
+<code class="reqn">
+      \widehat{\boldsymbol{\nu}}
+    </code>
+(<cite>Stewart and Sørensen, 1981</cite>), i.e.
+</p>
+<p style="text-align: center;"><code class="reqn">
+      \mathrm{Cov}[
+        \widehat{\boldsymbol{\nu}},
+        \widehat{\boldsymbol{\nu}}^T] \approx
+        \boldsymbol{A}^{-1},
+    </code>
+</p>
+
+<p>where
+</p>
+<p style="text-align: center;"><code class="reqn">
+      [\boldsymbol{A}]_{kl} =
+      \frac{\partial^2}{\partial\nu_k\, \partial\nu_l} \left.
+      Q(\widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
+      \boldsymbol{\nu};
+      \boldsymbol{\theta}, \boldsymbol{K},
+      \boldsymbol{h})\right|_{\nu=\hat{\nu}}.
+    </code>
+</p>
+
+
+
+
+
+<h4>Details on parameter estimation</h4>
+
+
+
+
+<h5>Models for water retention curves and hydraulic conductivity functions</h5>
+
+<p>Currently, <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> allows to estimate the parameters of the
+simplified form of the <em>Van Genuchten-Mualem</em> (VGM) model (Van
+Genuchten, 1980) with the restriction <code class="reqn">m = 1 - \frac{1}{n}</code>, see <code><a href="#topic+wc_model">wc_model</a></code> and <code><a href="#topic+hc_model">hc_model</a></code>.
+This model has the following parameters:
+</p>
+
+<ul>
+<li> <p><code class="reqn">\boldsymbol{\mu}^\mathrm{T} = (\theta_r, \theta_s, K_0)</code> (see above) and
+</p>
+</li>
+<li> <p><code class="reqn">\boldsymbol{\nu}^\mathrm{T} = (\alpha, n, \tau)</code> where <code class="reqn">\alpha</code> is
+the inverse air entry pressure, <code class="reqn">n</code> the shape and <code class="reqn">\tau</code>
+the tortuosity parameter.
+</p>
+</li></ul>
+
+<p>Any of these parameters can be either estimated from data or kept
+fixed at the specified initial values (see arguments <code>param</code> and
+<code>fit_param</code> of <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code>).
+</p>
+
+
+
+
+<h5>Imposing physical constraints on the estimated parameters</h5>
+
+<p>Parameters of models for the water retention curve and the hydraulic
+conductivity function may vary only within certain bounds (see
+<code><a href="#topic+wc_model">wc_model</a></code>, <code><a href="#topic+hc_model">hc_model</a></code> and
+<code><a href="#topic+param_boundf">param_boundf</a></code> for allowed ranges).
+<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> either estimates <em>transformed
+parameters</em> that vary over the whole real line and can therefore be
+estimated without constraints (see <code><a href="#topic+param_transf">param_transf</a></code>), or it
+uses algorithms (quadratic programming for estimating
+<code class="reqn">\boldsymbol{\mu}^\mathrm{} </code>, nonlinear optimisation algorithms with box
+constraints for estimating <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>) that restrict estimates
+to permissible ranges, see <em>Details</em> section of
+<code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>.
+</p>
+<p>In addition, for natural soils, the parameters of the VGM model
+cannot vary independently from each other over the allowed ranges.
+Sets of fitted parameters should always result in soil hydraulic
+quantities that are physically meaningful.  One of these quantities
+is the <em>characteristic length</em> <code class="reqn">L_\mathrm{c}</code> of
+<em>stage-I</em> evaporation from a soil (Lehmann et al., 2008).
+<code class="reqn">L_\mathrm{c}</code> can be related to the parameters of the VGM
+model, see Lehmann et al.  (2008, 2020) and
+<code><a href="#topic+evaporative-length">evaporative-length</a></code>.
+</p>
+<p>Using several soil hydrological databases, Lehmann et al.  (2020)
+analysed the mutual dependence of VGM parameters and proposed
+regression equations to relate the inverse air entry pressure
+<code class="reqn">\alpha</code> and the saturated hydraulic <code class="reqn">K_0</code> to the shape
+parameter <code class="reqn">n</code>, which characterises the width of the pore size
+distribution of a soil.  Using these relations, Lehmann et al.
+(2020) then computed the expected value (&ldquo;target&rdquo;)
+<code class="reqn">L_\mathrm{t}</code> of <code class="reqn">L_\mathrm{c}</code> for given <code class="reqn">n</code>
+and tortuosity parameter <code class="reqn">\tau</code>, see
+<code><a href="#topic+evaporative-length">evaporative-length</a></code>.  <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> allows
+to constrain estimates of the nonlinear parameters <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>
+by defining permissible lower and upper bounds for the ratio
+<code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code>, see arguments
+<code>ratio_lc_lt_bound</code> of <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> and
+<code>settings</code> of <code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>.
+</p>
+
+
+
+
+<h5>Choice of optimisation algorithm for estimating the nonlinear parameters</h5>
+
+<p>To estimate <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>, <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> minimises
+<code class="reqn"> Q(
+      \widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
+      \boldsymbol{\nu};
+      \boldsymbol{\theta}, \boldsymbol{K},
+      \boldsymbol{h}) </code>
+either by a nonlinear optimisation algorithm available in the library
+<em>NLopt</em> (Johnson, see <code><a href="nloptr.html#topic+nloptr">nloptr</a></code>) or by the Shuffled
+Complex Evolution (SCE) optimisation algorithm (Duan et al., 1994,
+see <code><a href="SoilHyP.html#topic+SCEoptim">SCEoptim</a></code>).  The choice of the algorithm
+is controlled by the argument <code>settings</code> of the function
+<code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>:
+</p>
+
+<ol>
+<li><p> global optimisation without constraints for the
+ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code> <br />(<code>settings =
+        "uglobal"</code> or <code>settings = "sce"</code>),
+</p>
+</li>
+<li><p> global optimisation with inequality constraints
+for the ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code><br />
+(<code>settings = "cglobal"</code>),
+</p>
+</li>
+<li><p> local optimisation without constraints for the
+ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code><br /> (<code>settings =
+        "ulocal"</code>),
+</p>
+</li>
+<li><p> local optimisation with inequality constraints
+for the ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code><br />
+(<code>settings = "clocal"</code>).
+</p>
+</li></ol>
+
+<p>The <code>settings</code> argument also sets reasonable default values
+for the termination (= convergence) criteria for the various
+algorithms, see
+<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#termination-conditions">NLopt
+documentation, section Termination conditions</a>.  The NLopt
+documentation contains a very useful discussion of
+<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#optimisation-problems">(constrained)
+optimisation problems</a> in general,
+<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#global-versus-local-optimisation">global
+vs.  local optimisation</a> and
+<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#gradient-based-versus-derivative-free-algorithms">gradient-based
+vs.  derivative-free algorithms</a>.
+</p>
+<p>Note that besides the <code>settings</code> argument of
+<code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>, the arguments <code>nloptr</code> and
+<code>sce</code> along with the functions <code><a href="#topic+control_nloptr">control_nloptr</a></code> and
+<code><a href="#topic+control_sce">control_sce</a></code> allow to fully control the nonlinear
+optimisation algorithms, see <code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code> for
+details.
+</p>
+
+
+
+
+<h5>Computing initial values of parameters</h5>
+
+<p>For local optimisation algorithms &ldquo;good&rdquo; initial values of
+<code class="reqn">\boldsymbol{\nu}^\mathrm{} </code> are indispensable for successful estimation.
+<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> allows to compute initial values of
+<code class="reqn">\alpha</code> and <code class="reqn">n</code> for the Van Genuchten model from water
+retention data by the following procedure:
+</p>
+
+<ol>
+<li><p> Smooth the water retention data,
+<code class="reqn">
+           (\theta_i, y_i= \log(h_i)), i=1,2, ... n_\theta,
+          </code> by an additive model.
+</p>
+</li>
+<li><p> Determine the saturation, <code class="reqn">S^*</code>, and the logarithm of
+capillary pressure head, <code class="reqn">y^* = \log(h^*)</code>, at
+the inflection point of the additive model fit.
+</p>
+</li>
+<li><p> Find the root, say <code class="reqn">\widehat{m}</code>, of
+<code class="reqn">S^* = (1 + 1/m)^{-m}</code>.
+One obtains the right-hand side of this equation by solving
+<code class="reqn">\frac{\partial^2}{\partial y^2}
+           \left[
+             S_\mathrm{VG}(\exp(y); \boldsymbol{\nu})
+           \right] = 0
+         </code>
+for <code class="reqn">y</code> and plugging the result into the expression for
+<code class="reqn">
+           S_\mathrm{VG}(\exp(y); \boldsymbol{\nu}),
+         </code>
+see <code><a href="#topic+wc_model">wc_model</a></code>.
+</p>
+</li>
+<li><p> Compute
+<code class="reqn">
+           \widehat{n} = 1 / (1 - \widehat{m})
+         </code>
+and
+<code class="reqn">
+           \widehat{\alpha} = 1 / \exp(y^*) \,(1/\widehat{m})^{1-\widehat{m}}.
+         </code>
+The second expression is again a result of solving
+<code class="reqn">\frac{\partial^2}{\partial y^2}
+           \left[
+             S_\mathrm{VG}(\exp(y); \boldsymbol{\nu})
+           \right] = 0.
+         </code>
+</p>
+</li></ol>
+
+<p>Initial values for local optimisation algorithms can of course also
+be obtained by first estimating the parameters by a global
+algorithm.  These estimates can be &ldquo;refined&rdquo; in a second
+step by a local unconstrained algorithm, possibly
+followed by a third call of <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> to constrain
+the estimated parameters by the ratio
+<code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code>.  The method
+<code><a href="#topic+coef.fit_wrc_hcc">coef.fit_wrc_hcc</a></code> can be used to extract the estimated
+parameters from an object of class <code>fit_wrc_hcc</code> and to pass
+them as initial values to <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code>, see
+<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> for examples.
+</p>
+
+
+
+
+<h3>Author(s)</h3>
+
+<p>Andreas Papritz <a href="mailto:papritz@retired.ethz.ch">papritz@retired.ethz.ch</a>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Bates, D. M., and Watts, D. G. (1988) Nonlinear Regression Analysis and its
+Applications. John Wiley &amp; Sons, New York <a href="https://doi.org/10.1002/9780470316757">doi:10.1002/9780470316757</a>.
+</p>
+<p>Duan, Q., Sorooshian, S., and Gupta, V. K. (1994) Optimal use of the
+SCE-UA global optimisation method for calibrating watershed models,
+<em>Journal of Hydrology</em> <b>158</b>, 265&ndash;284,
+<a href="https://doi.org/10.1016/0022-1694%2894%2990057-4">doi:10.1016/0022-1694(94)90057-4</a>.
+</p>
+<p>Johnson, S.G. The NLopt nonlinear-optimisation package.
+<a href="https://github.com/stevengj/nlopt">https://github.com/stevengj/nlopt</a>.
+</p>
+<p>Lehmann, P., Assouline, S., Or, D. (2008) Characteristic lengths
+affecting evaporative drying of porous media.  <em>Physical Review E</em>,
+<b>77</b>, 056309, <a href="https://doi.org/10.1103/PhysRevE.77.056309">doi:10.1103/PhysRevE.77.056309</a>.
+</p>
+<p>Lehmann, P., Bickel, S., Wei, Z., Or, D. (2020) Physical Constraints for
+Improved Soil Hydraulic Parameter Estimation by Pedotransfer Functions.
+<em>Water Resources Research</em> <b>56</b>, e2019WR025963,
+<a href="https://doi.org/10.1029/2019WR025963">doi:10.1029/2019WR025963</a>.
+</p>
+<p>Stewart, W.E., Caracotsios, M. Sørensen, J.P. 1992.  Parameter
+estimation from multiresponse data.  <em>AIChE Journal</em>, <b>38</b>,
+641&ndash;650, <a href="https://doi.org/10.1002/aic.690380502">doi:10.1002/aic.690380502</a>.
+</p>
+<p>Stewart, W.E. and Sørensen, J.P. (1981)
+Bayesian estimation of common
+parameters from multiresponse data with missing observations.
+<em>Technometrics</em>, <b>23</b>, 131&ndash;141, <br />
+<a href="https://doi.org/10.1080/00401706.1981.10486255">doi:10.1080/00401706.1981.10486255</a>.
+</p>
+<p>Van Genuchten, M. Th. (1980) A closed-form equation for predicting the
+hydraulic conductivity of unsaturated soils. <em>Soil Science Society of
+America Journal</em>, <b>44</b>, 892&ndash;898,
+<a href="https://doi.org/10.2136/sssaj1980.03615995004400050002x">doi:10.2136/sssaj1980.03615995004400050002x</a>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> for (constrained) estimation of parameters of
+models for soil water retention and hydraulic conductivity data;
+</p>
+<p><code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code> for options to control
+<code>fit_wrc_hcc</code>;
+</p>
+<p><code><a href="#topic+soilhypfitmethods">soilhypfitmethods</a></code> for common S3 methods for class
+<code>fit_wrc_hcc</code>;
+</p>
+<p><code><a href="#topic+vcov">vcov</a></code> for computing (co-)variances of the estimated
+nonlinear parameters;
+</p>
+<p><code><a href="#topic+prfloglik_sample">prfloglik_sample</a></code> for profile loglikelihood
+computations;
+</p>
+<p><code><a href="#topic+wc_model">wc_model</a></code> and <code><a href="#topic+hc_model">hc_model</a></code> for currently
+implemented models for soil water retention curves and hydraulic
+conductivity functions;
+</p>
+<p><code><a href="#topic+evaporative-length">evaporative-length</a></code> for physically constraining parameter
+estimates of soil hydraulic material functions.
+</p>
+
 <hr>
 <h2 id='control_fit_wrc_hcc'>Controlling fit_wrc_hcc</h2><span id='topic+control_soilhypfit'></span><span id='topic+bwd_transf'></span><span id='topic+control_fit_wrc_hcc'></span><span id='topic+control_nloptr'></span><span id='topic+control_pcmp'></span><span id='topic+control_sce'></span><span id='topic+dfwd_transf'></span><span id='topic+fwd_transf'></span><span id='topic+param_boundf'></span><span id='topic+param_transf'></span>
 
@@ -429,11 +1097,6 @@ transformations (<code>fwd_transf</code>, <code>dfwd_transf</code>,
 optimisers <code><a href="nloptr.html#topic+nloptr">nloptr</a></code> and
 <code><a href="SoilHyP.html#topic+SCEoptim">SCEoptim</a></code>, see <em>Details</em>.</p>
 </td></tr>
-
-
-
-
-
 </table>
 
 
@@ -797,9 +1460,6 @@ summary of the parameter estimation approach;
 <p><code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> for (constrained) estimation of parameters of
 models for soil water retention and hydraulic conductivity data;
 </p>
-
-
-
 <p><code><a href="#topic+soilhypfitmethods">soilhypfitmethods</a></code> for common S3 methods for class
 <code>fit_wrc_hcc</code>;
 </p>
@@ -965,7 +1625,6 @@ dimensionless.
 
 <p>The <em>characteristic length</em> of <em>stage-I evaporation</em>
 <code class="reqn">L_\mathrm{c}</code> (<cite>Lehmann et al., 2008, 2020</cite>) is defined by
-
 </p>
 <p style="text-align: center;"><code class="reqn">
   L_\mathrm{c}(\boldsymbol{\nu}, K_0, E_0) = \frac{
@@ -973,7 +1632,6 @@ dimensionless.
   }{1 + \frac{E_0}{K_\mathrm{eff}}}
 </code>
 </p>
-
 
 <p>where <code class="reqn">\boldsymbol{\nu}^\mathrm{T} = (\alpha, n, \tau)</code> are the nonlinear parameters of
 the VGM model, <code class="reqn">K_0</code> is the saturated hydraulic conductivity,
@@ -988,7 +1646,6 @@ effective hydraulic conductivity at the critical pressure
   </code>
 </p>
 
-
 <p>see <code>hc_model</code> for the definition of
 <code class="reqn">K_\mathrm{VGM}(h; K_0,
 \boldsymbol{\nu})</code>.
@@ -998,7 +1655,6 @@ effective hydraulic conductivity at the critical pressure
 (<code class="reqn">\tau</code>) parameters.  To evaluate <code class="reqn">L_\mathrm{t}</code>, the
 parameters <code class="reqn">\alpha</code> and <code class="reqn">K_0</code> are approximated by the following
 relations
-
 </p>
 <p style="text-align: center;"><code class="reqn">
  \widehat{\alpha} = g_\alpha(n; c_0, c_1, c_2) =
@@ -1006,13 +1662,11 @@ relations
 </code>
 </p>
 
-
 <p style="text-align: center;"><code class="reqn">
  \widehat{K}_0 = g_{K_0}(n; c_0, c_3, c_4) =
     c_3 \, (n - c_0)^{c_4}.
 </code>
 </p>
-
 
 <p>The default values for <code class="reqn">c_0</code> to <code class="reqn">c_4</code> (see argument
 <code>approximation_alpha_k0</code> of
@@ -1075,9 +1729,6 @@ computations;
 <p><code><a href="#topic+wc_model">wc_model</a></code> and <code><a href="#topic+hc_model">hc_model</a></code> for currently
 implemented models for soil water retention curves and hydraulic
 conductivity functions;
-
-
-
 </p>
 
 
@@ -1727,9 +2378,6 @@ Improved Soil Hydraulic Parameter Estimation by Pedotransfer Functions.
 <p><code><a href="#topic+soilhypfitIntro">soilhypfitIntro</a></code> for a description of the models and a brief
 summary of the parameter estimation approach;
 </p>
-
-
-
 <p><code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code> for options to control
 <code>fit_wrc_hcc</code>;
 </p>
@@ -1959,7 +2607,6 @@ Genuchten-Mualem</em> model (<code>wrc_model = "vgm"</code>) is implemented, see
 hydraulic conductivity functions only by the simplified form of the Van
 Genuchten-Mualem model (<cite>Van Genuchten, 1980</cite>) with the restriction
 <code class="reqn">m = 1 - \frac{1}{n}</code>, i.e. by
-
 </p>
 <p style="text-align: center;"><code class="reqn">
   k_\mathrm{VGM}(h; \boldsymbol{\nu}) =
@@ -1972,13 +2619,11 @@ Genuchten-Mualem model (<cite>Van Genuchten, 1980</cite>) with the restriction
 </code>
 </p>
 
-
 <p style="text-align: center;"><code class="reqn">
   K_\mathrm{VGM}(h; \mbox{$\mu$}, \boldsymbol{\nu}) =
   K_0 \, k_\mathrm{VGM}(h; \boldsymbol{\nu}),
 </code>
 </p>
-
 
 <p>where <code class="reqn">\mu = K_0</code> is the saturated hydraulic conductivity (<code class="reqn">K_0 &gt;
 0</code>),
@@ -2030,10 +2675,6 @@ models for soil water retention and hydraulic conductivity data;
 <p><code><a href="#topic+vcov">vcov</a></code> for computing (co-)variances of the estimated
 nonlinear parameters;
 </p>
-
-
-
-
 <p><code><a href="#topic+evaporative-length">evaporative-length</a></code> for physically constraining parameter
 estimates of soil hydraulic material functions.
 </p>
@@ -2535,9 +3176,6 @@ models for soil water retention and hydraulic conductivity data;
 <p><code><a href="#topic+vcov">vcov</a></code> for computing (co-)variances of the estimated
 nonlinear parameters;
 </p>
-
-
-
 <p><code><a href="#topic+wc_model">wc_model</a></code> and <code><a href="#topic+hc_model">hc_model</a></code> for currently
 implemented models for soil water retention curves and hydraulic
 conductivity functions;
@@ -2730,7 +3368,6 @@ conductivity (unit <code class="reqn">\mathrm{m} \, \mathrm{d}^{-1}</code>).</p>
 <em>Van Genuchten Mualem</em> (Van Genuchten, 1980, see
 <code><a href="#topic+wc_model">wc_model</a></code> and <code><a href="#topic+hc_model">hc_model</a></code>) with the following
 parameters:
-
 </p>
 
 <table>
@@ -2758,7 +3395,6 @@ parameters:
 
 </table>
 
-
 <p>Normally distributed errors were added to the model values (<code>wc</code>:
 sd: 0.05; <code>log(hc)</code>: sd 0.5).
 </p>
@@ -2783,677 +3419,6 @@ xyplot(wc ~ head|id, type = "l", sim_wrc_hcc, scales = list( x = list(log=TRUE))
 xyplot(hc ~ head|id, type = "l", sim_wrc_hcc, scales = list( log = TRUE))
 
 </code></pre>
-
-<hr>
-<h2 id='soilhypfit-package'>The soilhypfit Package</h2><span id='topic+soilhypfit-package'></span><span id='topic+soilhypfit'></span><span id='topic+soilhypfitIntro'></span>
-
-<h3>Description</h3>
-
-<p>This is a summary of the features and functionality of
-<span class="pkg">soilhypfit</span>, a package in <span class="rlang"><b>R</b></span> for parameteric modelling of soil water
-retention and hydraulic conductivity data.</p>
-
-
-<h3>Details</h3>
-
-
-
-
-<h4>Estimation approach</h4>
-
-<p>The main function, <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code>, estimates parameters of
-models for soil water retention and hydraulic conductivity by
-<em>maximum likelihood</em> (ml, default), <em>maximum posterior
-density</em> (mpd) <em>estimation</em> (<cite>Stewart et al., 1992</cite>) or
-nonlinear <em>weighted least squares</em> (wls) from data on volumetric
-<em>soil water content</em>, <code class="reqn">\boldsymbol{\theta}^\mathrm{T} =(\theta_1, \theta_2,
-    ..., \theta_{n_\theta})</code>, and/or <em>soil hydraulic conductivity</em>,
-<code class="reqn">\boldsymbol{K}^\mathrm{T} =(K_1, K_2, ..., K_{n_K})</code>, both measured at given
-capillary pressure head, <code class="reqn">\boldsymbol{h}^\mathrm{T} =(h_1, h_2, ...)</code>.
-</p>
-<p>For mpd and ml estimation, the models for the measurements are
-</p>
-<p style="text-align: center;"><code class="reqn">
-      \theta_i = \theta(h_i;\boldsymbol{\mu}, \boldsymbol{\nu})
-      + \varepsilon_{\theta,i}, \ \ i=1, 2, ..., n_\theta,
-    </code>
-</p>
-
-<p style="text-align: center;"><code class="reqn">
-      \log(K_j) = \log(K(h_j;\boldsymbol{\mu}, \boldsymbol{\nu}))
-      + \varepsilon_{K,j}, \ \ j=1, 2, ..., n_K,
-    </code>
-</p>
-
-<p>where
-<code class="reqn">
-      \theta(h_i; \boldsymbol{\mu}, \boldsymbol{\nu})
-    </code> and
-<code class="reqn">
-      K(h_j; \boldsymbol{\mu}, \boldsymbol{\nu})
-    </code>
-denote modelled water content and conductivity,
-<code class="reqn">\boldsymbol{\mu}^\mathrm{} </code> and <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code> are the
-<em>conditionally linear</em> and <em>nonlinear</em>
-model parameters (see below and <cite>Bates and Watts, 1988, sec. 3.3.5</cite>),
-and
-<code class="reqn">\varepsilon_{\theta,i}</code> and
-<code class="reqn">\varepsilon_{K,j}</code> are independent,
-normally distributed errors
-with zero means and variances <code class="reqn">\sigma^2_\theta</code>
-and <code class="reqn">\sigma^2_K</code>, respectively.
-</p>
-
-<p>Let
-</p>
-<p style="text-align: center;"><code class="reqn">
-      Q_{\theta}(\boldsymbol{\mu}, \boldsymbol{\nu};
-      \boldsymbol{\theta},
-      \boldsymbol{h}) =\left(
-        \boldsymbol{\theta} -
-        \boldsymbol{\theta}(
-          \boldsymbol{h};
-          \boldsymbol{\mu}, \boldsymbol{\nu}
-        )
-      \right)^\mathrm{T}
-      \boldsymbol{W}_\theta
-      \left(
-        \boldsymbol{\theta} -
-        \boldsymbol{\theta}(
-          \boldsymbol{h};
-          \boldsymbol{\mu}, \boldsymbol{\nu}
-        )
-      \right),
-    </code>
-</p>
-
-<p>and
-</p>
-<p style="text-align: center;"><code class="reqn">
-      Q_{K}(\boldsymbol{\mu}, \boldsymbol{\nu};
-       \boldsymbol{K}, \boldsymbol{h}) = \left(
-        \log(\boldsymbol{K}) -
-        \log(\boldsymbol{K}(
-          \boldsymbol{h};
-          \boldsymbol{\mu}, \boldsymbol{\nu}
-        ))
-      \right)^\mathrm{T}
-      \boldsymbol{W}_K
-      \left(
-        \log(\boldsymbol{K}) -
-        \log(\boldsymbol{K}(
-          \boldsymbol{h};
-          \boldsymbol{\mu}, \boldsymbol{\nu}
-        ))
-      \right),
-    </code>
-</p>
-
-<p>denote the (possibly weighted) residual sums of squares between
-measurements and modelled values.
-<code class="reqn">\boldsymbol{\theta}(
-        \boldsymbol{h};
-        \boldsymbol{\mu}, \boldsymbol{\nu}
-      ) )
-    </code> and
-<code class="reqn">\boldsymbol{K}(
-        \boldsymbol{h};
-        \boldsymbol{\mu}, \boldsymbol{\nu}
-      )
-    </code>
-are vectors with modelled values of water content and hydraulic
-conductivity, and
-<code class="reqn">\boldsymbol{W}_\theta</code> and
-<code class="reqn">\boldsymbol{W}_K</code> are optional diagonal matrices
-with weights <code class="reqn">w_{\theta,i}</code> and <code class="reqn">w_{K,j}</code>, respectively.
-The weights are products of <em>case weights</em> <code class="reqn">w^\prime_{\theta,i}</code>
-and <code class="reqn">w^\prime_{K,j}</code> and <em>variable weights</em> <code class="reqn">w_\theta</code>, <code class="reqn">w_K</code>, hence
-<code class="reqn">
-      w_{\theta,i} = w_\theta\, w^\prime_{\theta,i}
-    </code> and
-<code class="reqn">
-      w_{K,j} = w_K\, w^\prime_{K,j}
-    </code>.
-</p>
-<p>The objective function for ml and mpd estimation
-is equal to (<cite>Stewart et al., 1992</cite>,
-eqs 14 and 15, respectively)
-</p>
-<p style="text-align: center;"><code class="reqn">
-      Q(\boldsymbol{\mu}, \boldsymbol{\nu};
-        \boldsymbol{\theta}, \boldsymbol{K},
-        \boldsymbol{h}
-        ) = \frac{\kappa_\theta}{2}
-        \log( Q_{\theta}(\boldsymbol{\mu}, \boldsymbol{\nu};
-        \boldsymbol{\theta}, \boldsymbol{h})) +
-        \frac{\kappa_K}{2}
-        \log( Q_{K}(\boldsymbol{\mu}, \boldsymbol{\nu};
-        \boldsymbol{K}, \boldsymbol{h})),
-    </code>
-</p>
-
-<p>where <code class="reqn">\kappa_v = n_v + 2</code> for mpd and <code class="reqn">\kappa_v = n_v</code> for ml
-estimation, <code class="reqn">v \in (\theta, K)</code>,
-and weights <code class="reqn">w_{\theta,i} = w_{K,j} = 1</code>.
-Note that
-<code class="reqn">
-      Q(\boldsymbol{\mu},
-      \boldsymbol{\nu}; \boldsymbol{\theta},
-      \boldsymbol{K}, \boldsymbol{h})
-    </code> is equal to the negative logarithm of the
-concentrated loglikelihood or the concentrated posterior density,
-obtained by replacing
-<code class="reqn">\sigma^2_\theta</code> and <code class="reqn">\sigma^2_K</code> by their conditional maximum
-likelihood or maximum density estimates
-<code class="reqn">
-      \widehat{\sigma}^2_\theta(\boldsymbol{\mu}),
-      \boldsymbol{\nu})
-    </code> and
-<code class="reqn">
-      \widehat{\sigma}^2_K(\boldsymbol{\mu})
-    </code>
-respectively (<cite>Stewart et al., 1992</cite>, p. 642).
-</p>
-<p>For wls the objective function is equal to
-</p>
-<p style="text-align: center;"><code class="reqn">
-      Q(\boldsymbol{\mu}, \boldsymbol{\nu};
-        \boldsymbol{\theta}, \boldsymbol{K},
-        \boldsymbol{h}
-        ) = Q_{\theta}(\boldsymbol{\mu}, \boldsymbol{\nu};
-        \boldsymbol{\theta}, \boldsymbol{h}) +
-        Q_{K}(\boldsymbol{\mu}, \boldsymbol{\nu};
-        \boldsymbol{K}, \boldsymbol{h}).
-    </code>
-</p>
-
-<p>If either water content or conductivity data are not available, then the respective
-terms are omitted from
-<code class="reqn">Q(\boldsymbol{\mu}, \boldsymbol{\nu};
-        \boldsymbol{\theta}, \boldsymbol{K},
-        \boldsymbol{h}
-        )
-    </code>.
-</p>
-
-<p>The function <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> does not attempt to estimate the parameters
-by minimising <br />
-<code class="reqn">
-      Q(\boldsymbol{\mu}, \boldsymbol{\nu};
-      \boldsymbol{\theta}, \boldsymbol{K},
-      \boldsymbol{h})
-    </code> directly with respect to
-<code class="reqn">\boldsymbol{\mu}^\mathrm{} </code> and <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>.
-Rather, it exploits the fact that for <em>given nonlinear parameters</em>
-<code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>, the <em>conditionally linear parameters</em>
-<code class="reqn">
-      \boldsymbol{\mu}^T = (\theta_r, \theta_s, \log(K_0))
-    </code>
-can be estimated straightforwardly
-by minimising the <em>conditional residual sums of squares</em>
-</p>
-<p style="text-align: center;"><code class="reqn">
-      Q_\theta^*(\theta_r, \theta_s;
-      \boldsymbol{\theta},
-      \boldsymbol{h}, \boldsymbol{\nu})
-      =\left(
-        \boldsymbol{\theta} - [
-          \boldsymbol{1},
-          \boldsymbol{S}(
-            \boldsymbol{h};
-            \boldsymbol{\nu}
-          )] \, \left[
-            \begin{array}{c} \theta_r \\ \theta_s - \theta_r \end{array}
-          \right]
-      \right)^\mathrm{T}
-      \boldsymbol{W}_\theta
-      \left(
-        \boldsymbol{\theta} - [
-          \boldsymbol{1},
-          \boldsymbol{S}(
-            \boldsymbol{h};
-            \boldsymbol{\nu}
-          )] \, \left[
-            \begin{array}{c} \theta_r \\ \theta_s - \theta_r \end{array}
-          \right]
-      \right)
-    </code>
-</p>
-
-<p>with respect to <code class="reqn">\theta_r</code> and  <code class="reqn">\theta_s-\theta_r</code> and/or
-</p>
-<p style="text-align: center;"><code class="reqn">
-      Q_K^*(K_0; \boldsymbol{K},
-        \boldsymbol{h}, \boldsymbol{\nu})=
-      \left(
-        \log(\boldsymbol{K}) - \log(K_0  \,
-          \boldsymbol{k}(
-            \boldsymbol{h};
-            \boldsymbol{\nu}
-          ))
-      \right)^\mathrm{T}
-      \boldsymbol{W}_K
-      \left(
-        \log(\boldsymbol{K}) - \log(K_0  \,
-          \boldsymbol{k}(
-            \boldsymbol{h};
-            \boldsymbol{\nu}
-          ))
-      \right),
-    </code>
-</p>
-
-<p>with respect to <code class="reqn">\log(K_0)</code>, where
-<code class="reqn">\boldsymbol{1}^\mathrm{} </code> is a vector of ones,
-<code class="reqn">\boldsymbol{S}(
-            \boldsymbol{h};
-            \boldsymbol{\nu}
-          )^\mathrm{T} = (
-            S(h_1; \boldsymbol{\nu}),
-            ...,
-            S(h_{n_\theta}; \boldsymbol{\nu})
-          )
-    </code> and
-<code class="reqn">\boldsymbol{k}(
-            \boldsymbol{h};
-            \boldsymbol{\nu}
-          )^\mathrm{T} = (
-            k(h_1; \boldsymbol{\nu}),
-            ...,
-            k(h_{n_K}; \boldsymbol{\nu})
-          )
-    </code>
-are vectors of modelled <em>water saturation</em>
-and modelled <em>relative conductivity</em> values,
-<code class="reqn">\theta_r</code> and <code class="reqn">\theta_s</code> are the <em>residual</em>
-and <em>saturated water content</em>, and
-<code class="reqn">K_0</code> is the <em>saturated hydraulic conductivity</em>.
-</p>
-<p>Unconstrained conditional estimates, say <code class="reqn">
-    \widehat{\theta}_r(\boldsymbol{\nu})
-    </code>, <code class="reqn">
-    \widehat{\theta}_s(\boldsymbol{\nu}) -
-    \widehat{\theta}_r(\boldsymbol{\nu}) </code> and <code class="reqn">
-    \widehat{\log(K_0)}(\boldsymbol{\nu}) </code> can be
-easily obtained from the normal equations of the respective (weighted)
-least squares problems, and quadratic programming yields conditional (weighted)
-least squares estimates that honour the inequality constraints <code class="reqn">0
-    \le \theta_r \le \theta_s \le 1</code>.
-</p>
-
-<p>Let <code class="reqn">
-     \widehat{\boldsymbol{\mu}}(\boldsymbol{\nu})^\mathrm{T} =
-     (
-     \widehat{\theta}_r(\boldsymbol{\nu}),
-     \widehat{\theta}_s(\boldsymbol{\nu}),
-     \widehat{\log(K_0)}(\boldsymbol{\nu})
-     )
-    </code>
-be the conditional estimates of the linear parameters
-obtained by minimising
-<code class="reqn">
-      Q_\theta^*(\theta_r, \theta_s;
-      \boldsymbol{\theta},
-      \boldsymbol{h}, \boldsymbol{\nu})
-    </code>,
-and
-<code class="reqn">
-      Q_K^*(K_0;
-      \boldsymbol{K},
-      \boldsymbol{h}, \boldsymbol{\nu})
-    </code>, respectively.
-<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> then estimates the
-nonlinear parameters by minimising
-<code class="reqn">
-      Q(
-      \widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
-      \boldsymbol{\nu};
-      \boldsymbol{\theta}, \boldsymbol{K},
-      \boldsymbol{h})
-    </code> with respect to <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>
-by a nonlinear optimisation algorithm.
-</p>
-
-<p>For mpd and ml estimation the variances of the model errors are estimated by
-(<cite>Stewart et al., 1992</cite>, eq. 16)
-</p>
-<p style="text-align: center;"><code class="reqn">
-      \widehat{\sigma}_\theta^2 = \frac{Q_{\theta}(
-        \widehat{\boldsymbol{\mu}}(\widehat{\boldsymbol{\nu}}),
-        \widehat{\boldsymbol{\nu}};
-      \boldsymbol{\theta},
-      \boldsymbol{h})}{\kappa_\theta},
-    </code>
-</p>
-
-<p>and
-</p>
-<p style="text-align: center;"><code class="reqn">
-      \widehat{\sigma}_K^2 = \frac{Q_{K}(
-        \widehat{\boldsymbol{\mu}}(\widehat{\boldsymbol{\nu}}),
-        \widehat{\boldsymbol{\nu}};
-      \boldsymbol{K},
-      \boldsymbol{h})}{\kappa_K}.
-    </code>
-</p>
-
-
-<p>Furthermore, for mpd and ml estimation, the covariance matrix of the estimated
-nonlinear parameters may be approximated by the inverse Hessian matrix
-of <code class="reqn">
-      Q(\widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
-      \boldsymbol{\nu};
-      \boldsymbol{\theta}, \boldsymbol{K},
-      \boldsymbol{h})
-    </code> at the solution
-<code class="reqn">
-      \widehat{\boldsymbol{\nu}}
-    </code>
-(<cite>Stewart and Sørensen, 1981</cite>), i.e.
-</p>
-<p style="text-align: center;"><code class="reqn">
-      \mathrm{Cov}[
-        \widehat{\boldsymbol{\nu}},
-        \widehat{\boldsymbol{\nu}}^T] \approx
-        \boldsymbol{A}^{-1},
-    </code>
-</p>
-
-<p>where
-</p>
-<p style="text-align: center;"><code class="reqn">
-      [\boldsymbol{A}]_{kl} =
-      \frac{\partial^2}{\partial\nu_k\, \partial\nu_l} \left.
-      Q(\widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
-      \boldsymbol{\nu};
-      \boldsymbol{\theta}, \boldsymbol{K},
-      \boldsymbol{h})\right|_{\nu=\hat{\nu}}.
-    </code>
-</p>
-
-
-
-
-
-<h4>Details on parameter estimation</h4>
-
-
-
-
-<h5>Models for water retention curves and hydraulic conductivity functions</h5>
-
-<p>Currently, <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> allows to estimate the parameters of the
-simplified form of the <em>Van Genuchten-Mualem</em> (VGM) model (Van
-Genuchten, 1980) with the restriction <code class="reqn">m = 1 - \frac{1}{n}</code>, see <code><a href="#topic+wc_model">wc_model</a></code> and <code><a href="#topic+hc_model">hc_model</a></code>.
-This model has the following parameters:
-</p>
-
-<ul>
-<li> <p><code class="reqn">\boldsymbol{\mu}^\mathrm{T} = (\theta_r, \theta_s, K_0)</code> (see above) and
-</p>
-</li>
-<li> <p><code class="reqn">\boldsymbol{\nu}^\mathrm{T} = (\alpha, n, \tau)</code> where <code class="reqn">\alpha</code> is
-the inverse air entry pressure, <code class="reqn">n</code> the shape and <code class="reqn">\tau</code>
-the tortuosity parameter.
-</p>
-</li></ul>
-
-<p>Any of these parameters can be either estimated from data or kept
-fixed at the specified initial values (see arguments <code>param</code> and
-<code>fit_param</code> of <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code>).
-</p>
-
-
-
-
-<h5>Imposing physical constraints on the estimated parameters</h5>
-
-<p>Parameters of models for the water retention curve and the hydraulic
-conductivity function may vary only within certain bounds (see
-<code><a href="#topic+wc_model">wc_model</a></code>, <code><a href="#topic+hc_model">hc_model</a></code> and
-<code><a href="#topic+param_boundf">param_boundf</a></code> for allowed ranges).
-<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> either estimates <em>transformed
-parameters</em> that vary over the whole real line and can therefore be
-estimated without constraints (see <code><a href="#topic+param_transf">param_transf</a></code>), or it
-uses algorithms (quadratic programming for estimating
-<code class="reqn">\boldsymbol{\mu}^\mathrm{} </code>, nonlinear optimisation algorithms with box
-constraints for estimating <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>) that restrict estimates
-to permissible ranges, see <em>Details</em> section of
-<code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>.
-</p>
-<p>In addition, for natural soils, the parameters of the VGM model
-cannot vary independently from each other over the allowed ranges.
-Sets of fitted parameters should always result in soil hydraulic
-quantities that are physically meaningful.  One of these quantities
-is the <em>characteristic length</em> <code class="reqn">L_\mathrm{c}</code> of
-<em>stage-I</em> evaporation from a soil (Lehmann et al., 2008).
-<code class="reqn">L_\mathrm{c}</code> can be related to the parameters of the VGM
-model, see Lehmann et al.  (2008, 2020) and
-<code><a href="#topic+evaporative-length">evaporative-length</a></code>.
-</p>
-<p>Using several soil hydrological databases, Lehmann et al.  (2020)
-analysed the mutual dependence of VGM parameters and proposed
-regression equations to relate the inverse air entry pressure
-<code class="reqn">\alpha</code> and the saturated hydraulic <code class="reqn">K_0</code> to the shape
-parameter <code class="reqn">n</code>, which characterises the width of the pore size
-distribution of a soil.  Using these relations, Lehmann et al.
-(2020) then computed the expected value (&ldquo;target&rdquo;)
-<code class="reqn">L_\mathrm{t}</code> of <code class="reqn">L_\mathrm{c}</code> for given <code class="reqn">n</code>
-and tortuosity parameter <code class="reqn">\tau</code>, see
-<code><a href="#topic+evaporative-length">evaporative-length</a></code>.  <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> allows
-to constrain estimates of the nonlinear parameters <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>
-by defining permissible lower and upper bounds for the ratio
-<code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code>, see arguments
-<code>ratio_lc_lt_bound</code> of <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> and
-<code>settings</code> of <code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>.
-</p>
-
-
-
-
-<h5>Choice of optimisation algorithm for estimating the nonlinear parameters</h5>
-
-<p>To estimate <code class="reqn">\boldsymbol{\nu}^\mathrm{} </code>, <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> minimises
-<code class="reqn"> Q(
-      \widehat{\boldsymbol{\mu}}(\boldsymbol{\nu}),
-      \boldsymbol{\nu};
-      \boldsymbol{\theta}, \boldsymbol{K},
-      \boldsymbol{h}) </code>
-either by a nonlinear optimisation algorithm available in the library
-<em>NLopt</em> (Johnson, see <code><a href="nloptr.html#topic+nloptr">nloptr</a></code>) or by the Shuffled
-Complex Evolution (SCE) optimisation algorithm (Duan et al., 1994,
-see <code><a href="SoilHyP.html#topic+SCEoptim">SCEoptim</a></code>).  The choice of the algorithm
-is controlled by the argument <code>settings</code> of the function
-<code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>:
-</p>
-
-<ol>
-<li><p> global optimisation without constraints for the
-ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code> <br />(<code>settings =
-        "uglobal"</code> or <code>settings = "sce"</code>),
-</p>
-</li>
-<li><p> global optimisation with inequality constraints
-for the ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code><br />
-(<code>settings = "cglobal"</code>),
-</p>
-</li>
-<li><p> local optimisation without constraints for the
-ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code><br /> (<code>settings =
-        "ulocal"</code>),
-</p>
-</li>
-<li><p> local optimisation with inequality constraints
-for the ratio <code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code><br />
-(<code>settings = "clocal"</code>).
-</p>
-</li></ol>
-
-<p>The <code>settings</code> argument also sets reasonable default values
-for the termination (= convergence) criteria for the various
-algorithms, see
-<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#termination-conditions">NLopt
-documentation, section Termination conditions</a>.  The NLopt
-documentation contains a very useful discussion of
-<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#optimisation-problems">(constrained)
-optimisation problems</a> in general,
-<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#global-versus-local-optimisation">global
-vs.  local optimisation</a> and
-<a href="https://nlopt.readthedocs.io/en/latest/NLopt_Introduction/#gradient-based-versus-derivative-free-algorithms">gradient-based
-vs.  derivative-free algorithms</a>.
-</p>
-<p>Note that besides the <code>settings</code> argument of
-<code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code>, the arguments <code>nloptr</code> and
-<code>sce</code> along with the functions <code><a href="#topic+control_nloptr">control_nloptr</a></code> and
-<code><a href="#topic+control_sce">control_sce</a></code> allow to fully control the nonlinear
-optimisation algorithms, see <code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code> for
-details.
-</p>
-
-
-
-
-<h5>Computing initial values of parameters</h5>
-
-<p>For local optimisation algorithms &ldquo;good&rdquo; initial values of
-<code class="reqn">\boldsymbol{\nu}^\mathrm{} </code> are indispensable for successful estimation.
-<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> allows to compute initial values of
-<code class="reqn">\alpha</code> and <code class="reqn">n</code> for the Van Genuchten model from water
-retention data by the following procedure:
-</p>
-
-<ol>
-<li><p> Smooth the water retention data,
-<code class="reqn">
-           (\theta_i, y_i= \log(h_i)), i=1,2, ... n_\theta,
-          </code> by an additive model.
-</p>
-</li>
-<li><p> Determine the saturation, <code class="reqn">S^*</code>, and the logarithm of
-capillary pressure head, <code class="reqn">y^* = \log(h^*)</code>, at
-the inflection point of the additive model fit.
-</p>
-</li>
-<li><p> Find the root, say <code class="reqn">\widehat{m}</code>, of
-<code class="reqn">S^* = (1 + 1/m)^{-m}</code>.
-One obtains the right-hand side of this equation by solving
-<code class="reqn">\frac{\partial^2}{\partial y^2}
-           \left[
-             S_\mathrm{VG}(\exp(y); \boldsymbol{\nu})
-           \right] = 0
-         </code>
-for <code class="reqn">y</code> and plugging the result into the expression for
-<code class="reqn">
-           S_\mathrm{VG}(\exp(y); \boldsymbol{\nu}),
-         </code>
-see <code><a href="#topic+wc_model">wc_model</a></code>.
-</p>
-</li>
-<li><p> Compute
-<code class="reqn">
-           \widehat{n} = 1 / (1 - \widehat{m})
-         </code>
-and
-<code class="reqn">
-           \widehat{\alpha} = 1 / \exp(y^*) \,(1/\widehat{m})^{1-\widehat{m}}.
-         </code>
-The second expression is again a result of solving
-<code class="reqn">\frac{\partial^2}{\partial y^2}
-           \left[
-             S_\mathrm{VG}(\exp(y); \boldsymbol{\nu})
-           \right] = 0.
-         </code>
-</p>
-</li></ol>
-
-<p>Initial values for local optimisation algorithms can of course also
-be obtained by first estimating the parameters by a global
-algorithm.  These estimates can be &ldquo;refined&rdquo; in a second
-step by a local unconstrained algorithm, possibly
-followed by a third call of <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> to constrain
-the estimated parameters by the ratio
-<code class="reqn">L_\mathrm{c}/L_\mathrm{t}</code>.  The method
-<code><a href="#topic+coef.fit_wrc_hcc">coef.fit_wrc_hcc</a></code> can be used to extract the estimated
-parameters from an object of class <code>fit_wrc_hcc</code> and to pass
-them as initial values to <code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code>, see
-<code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> for examples.
-</p>
-
-
-
-
-<h3>Author(s)</h3>
-
-<p>Andreas Papritz <a href="mailto:papritz@retired.ethz.ch">papritz@retired.ethz.ch</a>.
-</p>
-
-
-<h3>References</h3>
-
-<p>Bates, D. M., and Watts, D. G. (1988) Nonlinear Regression Analysis and its
-Applications. John Wiley &amp; Sons, New York <a href="https://doi.org/10.1002/9780470316757">doi:10.1002/9780470316757</a>.
-</p>
-<p>Duan, Q., Sorooshian, S., and Gupta, V. K. (1994) Optimal use of the
-SCE-UA global optimisation method for calibrating watershed models,
-<em>Journal of Hydrology</em> <b>158</b>, 265&ndash;284,
-<a href="https://doi.org/10.1016/0022-1694%2894%2990057-4">doi:10.1016/0022-1694(94)90057-4</a>.
-</p>
-<p>Johnson, S.G. The NLopt nonlinear-optimisation package.
-<a href="https://github.com/stevengj/nlopt">https://github.com/stevengj/nlopt</a>.
-</p>
-<p>Lehmann, P., Assouline, S., Or, D. (2008) Characteristic lengths
-affecting evaporative drying of porous media.  <em>Physical Review E</em>,
-<b>77</b>, 056309, <a href="https://doi.org/10.1103/PhysRevE.77.056309">doi:10.1103/PhysRevE.77.056309</a>.
-</p>
-<p>Lehmann, P., Bickel, S., Wei, Z., Or, D. (2020) Physical Constraints for
-Improved Soil Hydraulic Parameter Estimation by Pedotransfer Functions.
-<em>Water Resources Research</em> <b>56</b>, e2019WR025963,
-<a href="https://doi.org/10.1029/2019WR025963">doi:10.1029/2019WR025963</a>.
-</p>
-<p>Stewart, W.E., Caracotsios, M. Sørensen, J.P. 1992.  Parameter
-estimation from multiresponse data.  <em>AIChE Journal</em>, <b>38</b>,
-641&ndash;650, <a href="https://doi.org/10.1002/aic.690380502">doi:10.1002/aic.690380502</a>.
-</p>
-<p>Stewart, W.E. and Sørensen, J.P. (1981)
-Bayesian estimation of common
-parameters from multiresponse data with missing observations.
-<em>Technometrics</em>, <b>23</b>, 131&ndash;141, <br />
-<a href="https://doi.org/10.1080/00401706.1981.10486255">doi:10.1080/00401706.1981.10486255</a>.
-</p>
-<p>Van Genuchten, M. Th. (1980) A closed-form equation for predicting the
-hydraulic conductivity of unsaturated soils. <em>Soil Science Society of
-America Journal</em>, <b>44</b>, 892&ndash;898,
-<a href="https://doi.org/10.2136/sssaj1980.03615995004400050002x">doi:10.2136/sssaj1980.03615995004400050002x</a>.
-</p>
-
-
-<h3>See Also</h3>
-
-
-
-
-<p><code><a href="#topic+fit_wrc_hcc">fit_wrc_hcc</a></code> for (constrained) estimation of parameters of
-models for soil water retention and hydraulic conductivity data;
-</p>
-<p><code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code> for options to control
-<code>fit_wrc_hcc</code>;
-</p>
-<p><code><a href="#topic+soilhypfitmethods">soilhypfitmethods</a></code> for common S3 methods for class
-<code>fit_wrc_hcc</code>;
-</p>
-<p><code><a href="#topic+vcov">vcov</a></code> for computing (co-)variances of the estimated
-nonlinear parameters;
-</p>
-<p><code><a href="#topic+prfloglik_sample">prfloglik_sample</a></code> for profile loglikelihood
-computations;
-</p>
-<p><code><a href="#topic+wc_model">wc_model</a></code> and <code><a href="#topic+hc_model">hc_model</a></code> for currently
-implemented models for soil water retention curves and hydraulic
-conductivity functions;
-</p>
-<p><code><a href="#topic+evaporative-length">evaporative-length</a></code> for physically constraining parameter
-estimates of soil hydraulic material functions.
-</p>
 
 <hr>
 <h2 id='soilhypfitS3methods'>Common S3 Methods for Class <code>fit_wrc_hcc</code></h2><span id='topic+soilhypfitS3methods'></span><span id='topic+soilhypfitmethods'></span><span id='topic+coef.fit_wrc_hcc'></span><span id='topic+lines.fit_wrc_hcc'></span><span id='topic+plot.fit_wrc_hcc'></span><span id='topic+print.fit_wrc_hcc'></span><span id='topic+print.summary_fit_wrc_hcc'></span><span id='topic+summary.fit_wrc_hcc'></span>
@@ -3727,9 +3692,6 @@ models for soil water retention and hydraulic conductivity data;
 <p><code><a href="#topic+control_fit_wrc_hcc">control_fit_wrc_hcc</a></code> for options to control
 <code>fit_wrc_hcc</code>;
 </p>
-
-
-
 <p><code><a href="#topic+vcov">vcov</a></code> for computing (co-)variances of the estimated
 nonlinear parameters;
 </p>
@@ -4192,8 +4154,6 @@ models for soil water retention and hydraulic conductivity data;
 <p><code><a href="#topic+soilhypfitmethods">soilhypfitmethods</a></code> for common S3 methods for class
 <code>fit_wrc_hcc</code>;
 </p>
-
-
 <p><code><a href="#topic+prfloglik_sample">prfloglik_sample</a></code> for profile loglikelihood
 computations;
 </p>
@@ -4309,7 +4269,6 @@ water retention curve.  Currently, only the <em>Van Genuchten model</em>
 <p>The functions <code>sat_model</code> and <code>wc_model</code> currently model soil
 water retention curves only by the simplified form of the model by
 <cite>Van Genuchten (1980)</cite> with the restriction <code class="reqn">m = 1 - \frac{1}{n}</code>, i.e.
-
 </p>
 <p style="text-align: center;"><code class="reqn">
   S_\mathrm{VG}(h; \boldsymbol{\nu}) = (
@@ -4317,13 +4276,11 @@ water retention curves only by the simplified form of the model by
 </code>
 </p>
 
-
 <p style="text-align: center;"><code class="reqn">
   \theta_\mathrm{VG}(h; \boldsymbol{\mu}, \boldsymbol{\nu}) =
 	\theta_r + (\theta_s - \theta_r) \, S_\mathrm{VG}(h; \boldsymbol{\nu})
 </code>
 </p>
-
 
 <p>where <code class="reqn">\boldsymbol{\mu}^\mathrm{T} = (\theta_r, \theta_s)</code> are the residual and
 saturated water content (<code class="reqn">0 \le \theta_r \le \theta_s \le 1</code>),
@@ -4377,10 +4334,6 @@ nonlinear parameters;
 <p><code><a href="#topic+prfloglik_sample">prfloglik_sample</a></code> for profile loglikelihood
 computations;
 </p>
-
-
-
-
 <p><code><a href="#topic+evaporative-length">evaporative-length</a></code> for physically constraining parameter
 estimates of soil hydraulic material functions.
 </p>

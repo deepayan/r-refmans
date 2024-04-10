@@ -13,16 +13,16 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {DNAmixturesLite}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#DNAmixturesLite-package'><p>Statistical Inference for Mixed Samples of DNA (Lite-Version)</p></a></li>
 <li><a href='#boxplot.DNAmixture'><p>Plot simulated peak heights for multiple DNA mixtures.</p></a></li>
 <li><a href='#buildMixtureDomains'><p>Create RHugin domains for computation.</p></a></li>
 <li><a href='#DNAmixture'><p>Create a DNA mixture model</p></a></li>
 <li><a href='#DNAmixtureData'><p>Create a data set for a DNA mixture model</p></a></li>
-<li><a href='#DNAmixturesLite-package'><p>Statistical Inference for Mixed Samples of DNA (Lite-Version)</p></a></li>
 <li><a href='#dyes'><p>Dyes for a DNA mixture</p></a></li>
 <li><a href='#getShapes'><p>Shape parameters for a mixture with known contributors only</p></a></li>
 <li><a href='#logL'><p>Loglikelihood function for DNA mixture analysis.</p></a></li>
@@ -128,6 +128,263 @@ function processMathHTML() {
 <td>2023-03-16 11:30:08 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='DNAmixturesLite-package'>Statistical Inference for Mixed Samples of DNA (Lite-Version)</h2><span id='topic+DNAmixturesLite-package'></span><span id='topic+DNAmixturesLite'></span><span id='topic+DNAmixtures'></span>
+
+<h3>Description</h3>
+
+<p>Tools for statistical inference for one or multiple DNA mixtures.
+</p>
+<p><em>IMPORTANT: This is the <span class="pkg">DNAmixturesLite</span> package, which is intended as a service to enable users to try <span class="pkg">DNAmixtures</span> without purchasing a commercial licence for Hugin. When at all possible, we strongly recommend the use of <span class="pkg">DNAmixtures</span> rather than this lite-version. See <a href="https://dnamixtures.r-forge.r-project.org/">https://dnamixtures.r-forge.r-project.org/</a> for details on both packages.</em>
+</p>
+<p><em>While the lite-version seeks to provide the full functionality of <span class="pkg">DNAmixtures</span>, note that computations are much less efficient and that there are some differences in available functionality. Be aware that the present documentation is copied from <span class="pkg">DNAmixtures</span> and thus may not accurately describe the implementation of this lite-version.</em>
+</p>
+
+
+<h3>Details</h3>
+
+<p>The package implements a statistical model for analysis
+of one or more mixed samples of DNA in the possible presence of
+dropout and stutter. Details of the model can be found in Cowell
+et. al (2013), and details on the model checking tools and
+Bayesian network structure can be found in Graversen and Lauritzen
+(2014).
+</p>
+<p>Any hypothesis involving unknown contributors relies on
+computations in a Bayesian network. For performing such
+computations, <span class="pkg">DNAmixtures</span> package relies on Hugin
+(<a href="https://www.hugin.com">https://www.hugin.com</a>) through the <span class="rlang"><b>R</b></span>-package <span class="pkg">RHugin</span>. For an
+installation guide, see the package webpage
+<a href="https://dnamixtures.r-forge.r-project.org">https://dnamixtures.r-forge.r-project.org</a>.
+</p>
+<p>Although <span class="pkg">DNAmixtures</span> can be installed with only the free
+version of Hugin, the size of the networks will in practice
+require the full licence. In theory, the implementation allows
+analysis with an arbitrary number of unknown
+contributors. However, in practice, depending on hardware and
+time-constraints working with up to 5 or 6 unknown contributors
+seems realistic.
+</p>
+
+
+<h3>Summary of the statistical model</h3>
+
+<p>The statistical model jointly models the observed peak heights and
+the set of contributors to the DNA sample(s). In the event of
+analysing multiple DNA mixtures, the union of the contributors is
+used as the contributor set for each mixture. By allowing a
+contribution of zero, we cover the case of a contributor not
+having contributed to a particular mixture.
+</p>
+<p>Genotypes for unknown contributors are modelled using
+allele-frequencies from a database specified by the user. The
+database is also used to define the range of alleles at each
+marker. A genotype for an unknown contributor is represented by a
+vector of allele counts <code class="reqn">n_{ia}</code>, counting for each allele
+<code class="reqn">a</code> the number of alleles <code class="reqn">i</code> that a person possesses; in
+the network for a marker, the allele count <code class="reqn">n_{ia}</code> is
+represented by a variable <code>n_i_a</code>. The vector of allele
+counts follows a multinomial distribution with <code class="reqn">\sum_i n_{ia}
+= 2</code> and the specified allele frequencies. It is assumed that
+genotypes are independent across markers and between
+contributors. If desired, the database of allele frequencies may
+be corrected for F_st or sampling adjustment before use.
+</p>
+<p>Peak heights are assumed mutually independent and their
+distributions for a fixed set of DNA profiles are modelled using
+gamma distributions.  The peak height for allele <code class="reqn">a</code> in EPG <code class="reqn">r</code>
+is assumed to follow a gamma distribution with scale parameter
+<code class="reqn">\eta_r</code> and shape parameter
+</p>
+<p style="text-align: center;"><code class="reqn">\rho_r \sum_a ((1-\xi_{ra})n_{ia} + \xi_{r,a+1} n_{i,a+1})\phi_{ri}.</code>
+</p>
+
+<p>Applying a detection threshold <code class="reqn">C_r\ge 0</code>, any peak height
+falling below the threshold is considered to be 0.  The peak
+heights are denoted by <code>height1, ..., heightR</code>.
+</p>
+<p>The model parameters are for each DNA mixture
+</p>
+
+<dl>
+<dt><code class="reqn">\phi</code></dt><dd><p>The proportions of DNA from each contributor.</p>
+</dd>
+<dt><code class="reqn">\rho</code></dt><dd><p>Amplification parameter, which will be larger for larger amounts of DNA amplified.</p>
+</dd>
+<dt><code class="reqn">\eta</code></dt><dd><p>Scale parameter for the gamma distribution.</p>
+</dd>
+<dt><code class="reqn">\xi</code></dt><dd><p>Mean stutter percentage. Allele <code class="reqn">a</code> uses stutter parameter <code class="reqn">\xi_a = \xi</code> if the allele <code class="reqn">a-1</code> is included in the model, and <code class="reqn">\xi_a = 0</code> otherwise</p>
+</dd>
+</dl>
+
+<p>An alternative parametrisation uses <code class="reqn">\mu = \rho \eta</code> and
+<code class="reqn">\sigma = 1/\sqrt{\rho}</code>, which can be interpreted as the mean
+peak height and the coefficient of variation respectively. Besides
+being interpretable, an advantage of this reparametrisation is
+that the parameters are fairly orthogonal.
+</p>
+<p>The model assumes the model parameters to be the same across
+markers.  Relaxations of these assumptions are not implemented
+here.
+</p>
+
+
+<h3>Computation by auxiliary variables</h3>
+
+<p>The computational approach of the implementation of this package
+is discussed in Graversen and Lauritzen (2014).
+</p>
+<p>The Bayesian networks include three types of auxiliary variables
+<code>O</code>, <code>D</code>, and <code>Q</code>; these can be thought of as
+representing the observed peak heights, the absence/presence of
+peaks, and the peak height distribution function. Note that if
+invalid tables are set &ndash; for instance if very extreme parameter
+values are used, or if the vector of mixture proportions is
+mis-labeled &ndash; then any subsequent propagation will fail. No
+roll-back functionality has so far been implemented to fix this,
+and the easiest solution is to re-fit the mixture model.
+</p>
+<p>The workhorses of this package are the functions
+<code><a href="#topic+setCPT.O">setCPT.O</a></code>, <code><a href="#topic+setCPT.D">setCPT.D</a></code> and
+<code><a href="#topic+setCPT.Q">setCPT.Q</a></code> for setting the conditional probability
+tables for the three types of auxiliary variables according to
+specified peak heights and model parameters.
+</p>
+
+
+<h3>Amelogenin</h3>
+
+<p>As an experiment, it is possible to add the
+marker Amelogenin, provided that the marker is named &quot;AMEL&quot; and
+that the coding of alleles X and Y is of a particular form. One
+example of a suitable form is the coding X = 0 and Y = 1. The
+allele frequencies used should then also contain a marker &quot;AMEL&quot;,
+and here frequencies have a slightly different interpretation than
+for the rest of the markers; as all people possess one X, the
+frequencies of X and Y denote the presence of an additional X or Y
+respectively, and thus the frequencies correspond directly to the
+proportions of the two genders.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Therese Graversen <a href="mailto:theg@itu.dk">theg@itu.dk</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Details on the implemented model may be found in
+</p>
+<p>Cowell, R. G., Graversen, T., Lauritzen, S., and Mortera, J. (2015).
+<em>Analysis of Forensic DNA Mixtures with Artefacts</em>. With supplementary material documenting the analyses using <span class="pkg">DNAmixtures</span>.
+Journal of the Royal Statistical Society: Series C (Applied Statistics).
+Volume 64, Issue 1, pages 1-48.
+</p>
+<p>Graversen, T. (2014)
+<em>Statistical and Computational Methodology for the Analysis of Forensic DNA Mixtures with Artefacts</em>.
+DPhil. University of Oxford.
+<a href="https://ora.ox.ac.uk/objects/uuid:4c3bfc88-25e7-4c5b-968f-10a35f5b82b0">https://ora.ox.ac.uk/objects/uuid:4c3bfc88-25e7-4c5b-968f-10a35f5b82b0</a>.
+</p>
+<p>Graversen, T. and Lauritzen, S. (2014).
+<em>Computational aspects of DNA mixture analysis</em>.
+Statistics and Computing, DOI: 10.1007/s11222-014-9451-7.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Analysing trace MC18, using USCaucasian allele-frequencies.
+data(MC18, USCaucasian, SGMplusDyes)
+## The prosecution hypothesis could be that K1, K2, and K3 have
+## contributed to the trace. Setting detection threshold to 50rfu.
+## For layout as an EPG we follow the layout of SGMplus.
+mixHp &lt;- DNAmixture(list(MC18), k = 3, K = c("K1", "K2", "K3"), C = list(50),
+                  database = USCaucasian, dyes = list(SGMplusDyes))
+plot(mixHp, epg = TRUE)
+## The yellow is a bit difficult to see; we can
+## change the colors representing the dyes
+plot(mixHp, epg = TRUE, dyecol = list(c("blue", "green", "black")))
+
+## Fit by maximum likelihood using p as the initial value for optimisation
+p &lt;- mixpar(rho = list(30), eta = list(34), xi = list(0.08),
+            phi = list(c(K1 = 0.71, K3 = 0.1, K2 = 0.19)))
+mlHp &lt;- mixML(mixHp, pars = p)
+mlHp$mle
+
+## Find the estimated covariance matrix of the MLE
+V.Hp &lt;- varEst(mixHp, mlHp$mle, npars = list(rho=1,eta=1,xi=1,phi=1))
+V.Hp$cov ## using (rho, eta)
+## The summary is a table containing the MLE and their standard errors
+summary(V.Hp)
+
+## Assess the fit of the distribution of peak heights
+qqpeak(mixHp, pars = mlHp$mle, dist = "conditional")
+
+## Assess the prediction of allele presence
+pr &lt;- prequential.score(mixHp, pars = mlHp$mle)
+plot(pr)
+
+## Compare observed peak heights to peak heights simulated under the model
+sims &lt;- rPeakHeight(mixHp, mlHp$mle, nsim = 100, dist = "conditional")
+oldpar &lt;- par(mfrow = c(2,5), mar = c(2,2,2,0))
+boxplot(mixHp, sims)
+par(oldpar)
+
+
+data(MC18, USCaucasian, SGMplusDyes)
+
+## A defence hypothesis could be that one unknown person has
+## contributed along with K1 and K3.
+mixHd &lt;- DNAmixture(list(MC18), k = 3, K = c("K1", "K3"), C = list(50),
+                  database = USCaucasian, dyes = list(SGMplusDyes))
+
+## Fit by ML
+mlHd &lt;- mixML(mixHd, pars = mixpar(rho = list(30), eta = list(34), xi = list(0.08),
+                       phi = list(c(K1 = 0.71, K3 = 0.1, U1 = 0.19))))
+mlHd$mle
+
+## Find the estimated covariance matrix of the MLE
+V &lt;- varEst(mixHd, mlHd$mle, npars = list(rho=1,eta=1,xi=1,phi=1))
+summary(V)
+
+## Assess the peak height distribution
+qq &lt;- qqpeak(mixHd, pars = mlHd$mle, dist = "conditional")
+
+## Assess the prediction of allele presence
+pr &lt;- prequential.score(mixHd, pars = mlHd$mle)
+plot(pr, col = pr$trace)
+
+## Compare observed peak heights to peak heights simulated under the model
+sims &lt;- rPeakHeight(mixHd, mlHd$mle, nsim = 100, dist = "conditional")
+par(mfrow = c(2,5), mar = c(2,2,2,0))
+boxplot(mixHd, sims)
+
+
+## The log10 of likelihood-ratio can be found as
+(mlHp$lik - mlHd$lik)/log(10)
+
+
+## We can find the most probable genotypes for U1 under the hypothesis
+## Hd : K1, K2, and U1.
+
+## Include the peak heights
+setPeakInfo(mixHd, mlHd$mle)
+## Jointly best for all unknown contributors
+mp &lt;- map.genotypes(mixHd, pmin = 0.01, type = "seen")
+## See the genotypes rather than allelecounts
+print(summary(mp), marker = "D2S1338")
+
+## Include only information on presence and absence of alleles
+setPeakInfo(mixHd, mlHd$mle, presence.only = TRUE)
+## Jointly best for all unknown contributors
+mp2 &lt;- map.genotypes(mixHd, pmin = 0.01, type = "seen")
+## See the genotypes rather than allelecounts
+print(summary(mp2), marker = "D2S1338")
+
+</code></pre>
+
 <hr>
 <h2 id='boxplot.DNAmixture'>Plot simulated peak heights for multiple DNA mixtures.</h2><span id='topic+boxplot.DNAmixture'></span>
 
@@ -711,263 +968,6 @@ epgdf &lt;- data.frame(marker = rep(c("FGA", "TH01"), each = 3),
 
 data(USCaucasian)
 dat &lt;- DNAmixtureData(epgdf, K = c("Anna", "Peter"), database = USCaucasian)
-</code></pre>
-
-<hr>
-<h2 id='DNAmixturesLite-package'>Statistical Inference for Mixed Samples of DNA (Lite-Version)</h2><span id='topic+DNAmixturesLite-package'></span><span id='topic+DNAmixturesLite'></span><span id='topic+DNAmixtures'></span>
-
-<h3>Description</h3>
-
-<p>Tools for statistical inference for one or multiple DNA mixtures.
-</p>
-<p><em>IMPORTANT: This is the <span class="pkg">DNAmixturesLite</span> package, which is intended as a service to enable users to try <span class="pkg">DNAmixtures</span> without purchasing a commercial licence for Hugin. When at all possible, we strongly recommend the use of <span class="pkg">DNAmixtures</span> rather than this lite-version. See <a href="https://dnamixtures.r-forge.r-project.org/">https://dnamixtures.r-forge.r-project.org/</a> for details on both packages.</em>
-</p>
-<p><em>While the lite-version seeks to provide the full functionality of <span class="pkg">DNAmixtures</span>, note that computations are much less efficient and that there are some differences in available functionality. Be aware that the present documentation is copied from <span class="pkg">DNAmixtures</span> and thus may not accurately describe the implementation of this lite-version.</em>
-</p>
-
-
-<h3>Details</h3>
-
-<p>The package implements a statistical model for analysis
-of one or more mixed samples of DNA in the possible presence of
-dropout and stutter. Details of the model can be found in Cowell
-et. al (2013), and details on the model checking tools and
-Bayesian network structure can be found in Graversen and Lauritzen
-(2014).
-</p>
-<p>Any hypothesis involving unknown contributors relies on
-computations in a Bayesian network. For performing such
-computations, <span class="pkg">DNAmixtures</span> package relies on Hugin
-(<a href="https://www.hugin.com">https://www.hugin.com</a>) through the <span class="rlang"><b>R</b></span>-package <span class="pkg">RHugin</span>. For an
-installation guide, see the package webpage
-<a href="https://dnamixtures.r-forge.r-project.org">https://dnamixtures.r-forge.r-project.org</a>.
-</p>
-<p>Although <span class="pkg">DNAmixtures</span> can be installed with only the free
-version of Hugin, the size of the networks will in practice
-require the full licence. In theory, the implementation allows
-analysis with an arbitrary number of unknown
-contributors. However, in practice, depending on hardware and
-time-constraints working with up to 5 or 6 unknown contributors
-seems realistic.
-</p>
-
-
-<h3>Summary of the statistical model</h3>
-
-<p>The statistical model jointly models the observed peak heights and
-the set of contributors to the DNA sample(s). In the event of
-analysing multiple DNA mixtures, the union of the contributors is
-used as the contributor set for each mixture. By allowing a
-contribution of zero, we cover the case of a contributor not
-having contributed to a particular mixture.
-</p>
-<p>Genotypes for unknown contributors are modelled using
-allele-frequencies from a database specified by the user. The
-database is also used to define the range of alleles at each
-marker. A genotype for an unknown contributor is represented by a
-vector of allele counts <code class="reqn">n_{ia}</code>, counting for each allele
-<code class="reqn">a</code> the number of alleles <code class="reqn">i</code> that a person possesses; in
-the network for a marker, the allele count <code class="reqn">n_{ia}</code> is
-represented by a variable <code>n_i_a</code>. The vector of allele
-counts follows a multinomial distribution with <code class="reqn">\sum_i n_{ia}
-= 2</code> and the specified allele frequencies. It is assumed that
-genotypes are independent across markers and between
-contributors. If desired, the database of allele frequencies may
-be corrected for F_st or sampling adjustment before use.
-</p>
-<p>Peak heights are assumed mutually independent and their
-distributions for a fixed set of DNA profiles are modelled using
-gamma distributions.  The peak height for allele <code class="reqn">a</code> in EPG <code class="reqn">r</code>
-is assumed to follow a gamma distribution with scale parameter
-<code class="reqn">\eta_r</code> and shape parameter
-</p>
-<p style="text-align: center;"><code class="reqn">\rho_r \sum_a ((1-\xi_{ra})n_{ia} + \xi_{r,a+1} n_{i,a+1})\phi_{ri}.</code>
-</p>
-
-<p>Applying a detection threshold <code class="reqn">C_r\ge 0</code>, any peak height
-falling below the threshold is considered to be 0.  The peak
-heights are denoted by <code>height1, ..., heightR</code>.
-</p>
-<p>The model parameters are for each DNA mixture
-</p>
-
-<dl>
-<dt><code class="reqn">\phi</code></dt><dd><p>The proportions of DNA from each contributor.</p>
-</dd>
-<dt><code class="reqn">\rho</code></dt><dd><p>Amplification parameter, which will be larger for larger amounts of DNA amplified.</p>
-</dd>
-<dt><code class="reqn">\eta</code></dt><dd><p>Scale parameter for the gamma distribution.</p>
-</dd>
-<dt><code class="reqn">\xi</code></dt><dd><p>Mean stutter percentage. Allele <code class="reqn">a</code> uses stutter parameter <code class="reqn">\xi_a = \xi</code> if the allele <code class="reqn">a-1</code> is included in the model, and <code class="reqn">\xi_a = 0</code> otherwise</p>
-</dd>
-</dl>
-
-<p>An alternative parametrisation uses <code class="reqn">\mu = \rho \eta</code> and
-<code class="reqn">\sigma = 1/\sqrt{\rho}</code>, which can be interpreted as the mean
-peak height and the coefficient of variation respectively. Besides
-being interpretable, an advantage of this reparametrisation is
-that the parameters are fairly orthogonal.
-</p>
-<p>The model assumes the model parameters to be the same across
-markers.  Relaxations of these assumptions are not implemented
-here.
-</p>
-
-
-<h3>Computation by auxiliary variables</h3>
-
-<p>The computational approach of the implementation of this package
-is discussed in Graversen and Lauritzen (2014).
-</p>
-<p>The Bayesian networks include three types of auxiliary variables
-<code>O</code>, <code>D</code>, and <code>Q</code>; these can be thought of as
-representing the observed peak heights, the absence/presence of
-peaks, and the peak height distribution function. Note that if
-invalid tables are set &ndash; for instance if very extreme parameter
-values are used, or if the vector of mixture proportions is
-mis-labeled &ndash; then any subsequent propagation will fail. No
-roll-back functionality has so far been implemented to fix this,
-and the easiest solution is to re-fit the mixture model.
-</p>
-<p>The workhorses of this package are the functions
-<code><a href="#topic+setCPT.O">setCPT.O</a></code>, <code><a href="#topic+setCPT.D">setCPT.D</a></code> and
-<code><a href="#topic+setCPT.Q">setCPT.Q</a></code> for setting the conditional probability
-tables for the three types of auxiliary variables according to
-specified peak heights and model parameters.
-</p>
-
-
-<h3>Amelogenin</h3>
-
-<p>As an experiment, it is possible to add the
-marker Amelogenin, provided that the marker is named &quot;AMEL&quot; and
-that the coding of alleles X and Y is of a particular form. One
-example of a suitable form is the coding X = 0 and Y = 1. The
-allele frequencies used should then also contain a marker &quot;AMEL&quot;,
-and here frequencies have a slightly different interpretation than
-for the rest of the markers; as all people possess one X, the
-frequencies of X and Y denote the presence of an additional X or Y
-respectively, and thus the frequencies correspond directly to the
-proportions of the two genders.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Therese Graversen <a href="mailto:theg@itu.dk">theg@itu.dk</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Details on the implemented model may be found in
-</p>
-<p>Cowell, R. G., Graversen, T., Lauritzen, S., and Mortera, J. (2015).
-<em>Analysis of Forensic DNA Mixtures with Artefacts</em>. With supplementary material documenting the analyses using <span class="pkg">DNAmixtures</span>.
-Journal of the Royal Statistical Society: Series C (Applied Statistics).
-Volume 64, Issue 1, pages 1-48.
-</p>
-<p>Graversen, T. (2014)
-<em>Statistical and Computational Methodology for the Analysis of Forensic DNA Mixtures with Artefacts</em>.
-DPhil. University of Oxford.
-<a href="https://ora.ox.ac.uk/objects/uuid:4c3bfc88-25e7-4c5b-968f-10a35f5b82b0">https://ora.ox.ac.uk/objects/uuid:4c3bfc88-25e7-4c5b-968f-10a35f5b82b0</a>.
-</p>
-<p>Graversen, T. and Lauritzen, S. (2014).
-<em>Computational aspects of DNA mixture analysis</em>.
-Statistics and Computing, DOI: 10.1007/s11222-014-9451-7.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Analysing trace MC18, using USCaucasian allele-frequencies.
-data(MC18, USCaucasian, SGMplusDyes)
-## The prosecution hypothesis could be that K1, K2, and K3 have
-## contributed to the trace. Setting detection threshold to 50rfu.
-## For layout as an EPG we follow the layout of SGMplus.
-mixHp &lt;- DNAmixture(list(MC18), k = 3, K = c("K1", "K2", "K3"), C = list(50),
-                  database = USCaucasian, dyes = list(SGMplusDyes))
-plot(mixHp, epg = TRUE)
-## The yellow is a bit difficult to see; we can
-## change the colors representing the dyes
-plot(mixHp, epg = TRUE, dyecol = list(c("blue", "green", "black")))
-
-## Fit by maximum likelihood using p as the initial value for optimisation
-p &lt;- mixpar(rho = list(30), eta = list(34), xi = list(0.08),
-            phi = list(c(K1 = 0.71, K3 = 0.1, K2 = 0.19)))
-mlHp &lt;- mixML(mixHp, pars = p)
-mlHp$mle
-
-## Find the estimated covariance matrix of the MLE
-V.Hp &lt;- varEst(mixHp, mlHp$mle, npars = list(rho=1,eta=1,xi=1,phi=1))
-V.Hp$cov ## using (rho, eta)
-## The summary is a table containing the MLE and their standard errors
-summary(V.Hp)
-
-## Assess the fit of the distribution of peak heights
-qqpeak(mixHp, pars = mlHp$mle, dist = "conditional")
-
-## Assess the prediction of allele presence
-pr &lt;- prequential.score(mixHp, pars = mlHp$mle)
-plot(pr)
-
-## Compare observed peak heights to peak heights simulated under the model
-sims &lt;- rPeakHeight(mixHp, mlHp$mle, nsim = 100, dist = "conditional")
-oldpar &lt;- par(mfrow = c(2,5), mar = c(2,2,2,0))
-boxplot(mixHp, sims)
-par(oldpar)
-
-
-data(MC18, USCaucasian, SGMplusDyes)
-
-## A defence hypothesis could be that one unknown person has
-## contributed along with K1 and K3.
-mixHd &lt;- DNAmixture(list(MC18), k = 3, K = c("K1", "K3"), C = list(50),
-                  database = USCaucasian, dyes = list(SGMplusDyes))
-
-## Fit by ML
-mlHd &lt;- mixML(mixHd, pars = mixpar(rho = list(30), eta = list(34), xi = list(0.08),
-                       phi = list(c(K1 = 0.71, K3 = 0.1, U1 = 0.19))))
-mlHd$mle
-
-## Find the estimated covariance matrix of the MLE
-V &lt;- varEst(mixHd, mlHd$mle, npars = list(rho=1,eta=1,xi=1,phi=1))
-summary(V)
-
-## Assess the peak height distribution
-qq &lt;- qqpeak(mixHd, pars = mlHd$mle, dist = "conditional")
-
-## Assess the prediction of allele presence
-pr &lt;- prequential.score(mixHd, pars = mlHd$mle)
-plot(pr, col = pr$trace)
-
-## Compare observed peak heights to peak heights simulated under the model
-sims &lt;- rPeakHeight(mixHd, mlHd$mle, nsim = 100, dist = "conditional")
-par(mfrow = c(2,5), mar = c(2,2,2,0))
-boxplot(mixHd, sims)
-
-
-## The log10 of likelihood-ratio can be found as
-(mlHp$lik - mlHd$lik)/log(10)
-
-
-## We can find the most probable genotypes for U1 under the hypothesis
-## Hd : K1, K2, and U1.
-
-## Include the peak heights
-setPeakInfo(mixHd, mlHd$mle)
-## Jointly best for all unknown contributors
-mp &lt;- map.genotypes(mixHd, pmin = 0.01, type = "seen")
-## See the genotypes rather than allelecounts
-print(summary(mp), marker = "D2S1338")
-
-## Include only information on presence and absence of alleles
-setPeakInfo(mixHd, mlHd$mle, presence.only = TRUE)
-## Jointly best for all unknown contributors
-mp2 &lt;- map.genotypes(mixHd, pmin = 0.01, type = "seen")
-## See the genotypes rather than allelecounts
-print(summary(mp2), marker = "D2S1338")
-
 </code></pre>
 
 <hr>

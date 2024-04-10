@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {texmex}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#texmex-package'><p>Extreme value modelling</p></a></li>
 <li><a href='#.exprel'><p>Accurately compute (exp(x) - 1) / x</p></a></li>
 <li><a href='#.log1mexp'><p>Accurately compute log(1-exp(x))</p></a></li>
 <li><a href='#.log1prel'><p>Accurately compute log(1 + x) / x</p></a></li>
@@ -80,7 +81,6 @@ predictors.</a></li>
 <li><a href='#rMaxAR'><p>Extreme Value random process generation.</p></a></li>
 <li><a href='#simulate.evmOpt'><p>Simulate from a fitted evm object</p></a></li>
 <li><a href='#summer and winter data'><p>Air pollution data, separately for summer and winter months</p></a></li>
-<li><a href='#texmex-package'><p>Extreme value modelling</p></a></li>
 <li><a href='#texmexFamily'><p>Create families of distributions</p></a></li>
 <li><a href='#thinAndBurn'><p>Process Metropolis output from extreme value model fitting to discard</p>
 unwanted observations.</a></li>
@@ -232,6 +232,142 @@ tidyr, testthat, devtools, survival, ismev</td>
 <td>2024-03-04 16:40:03 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='texmex-package'>Extreme value modelling</h2><span id='topic+texmex-package'></span><span id='topic+texmex'></span>
+
+<h3>Description</h3>
+
+<p>Extreme values modelling, including the conditional multivariate approach of
+Heffernan and Tawn (2004).
+</p>
+
+
+<h3>Details</h3>
+
+<p>The
+package was originally called &lsquo;texmex&rsquo; for Threshold EXceedances and
+Multivariate EXtremes. However, it is no longer the case that only threshold
+excess models are implemented, so the &lsquo;tex&rsquo; bit doesn't make sense. So, the
+package is called &lsquo;texmex&rsquo; because it used to be called &lsquo;texmex&rsquo;.
+</p>
+<p><code><a href="#topic+evm">evm</a></code>: Fit extreme value distributions to data, possibly with
+covariates. Use maximum likelihood estimation, maximum penalized likelihood
+estimation, simulate from the posterior distribution or run a parametric
+bootstrap. Extreme value families include the generalized Pareto
+distribution (<code>gpd</code>) and generalized extreme value (<code>gev</code>)
+distribution.
+</p>
+<p><code><a href="#topic+mex">mex</a></code>: Fit multiple, independent generalized Pareto models to
+the the upper tails of the columns of a data set, and estimate the
+conditional dependence structure between the columns using the method of
+Heffernan and Tawn.
+</p>
+<p><code><a href="#topic+bootmex">bootmex</a></code>: Bootstrap estimation for parameters in generalized
+Pareto models and in the dependence structure.
+</p>
+<p><code><a href="#topic+declust">declust</a></code>: Estimation of extremal index and subsequent
+declustering of dependent sequences using the intervals estimator of Ferro
+and Segers.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Harry Southworth, Janet E. Heffernan, Paul D. Metcalfe
+</p>
+<p>Maintainer: Harry Southworth &lt;harry.southworth@gmail.com&gt;
+</p>
+<p>URL: https://github.com/harrysouthworth/texmex
+</p>
+
+
+<h3>References</h3>
+
+<p>J. E. Heffernan and J. A. Tawn, A conditional approach for
+multivariate extreme values, Journal of the Royal Statistical society B, 66,
+497 &ndash; 546, 2004.
+</p>
+<p>C.A.T Ferro and J. Segers, Inference for Clusters of Extreme Values, Journal
+of the Royal Statistical society B, 65, 545 &ndash; 556, 2003.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# Analyse the winter data used by Heffernan and Tawn
+mymex &lt;- mex(winter, mqu = .7, penalty="none", dqu=.7, which = "NO")
+plot(mymex)
+# Only do 10 replicates to keep CRAN checks happy. Do many more in any
+# real application
+myboot &lt;- bootmex(mymex, R=10)
+plot(myboot)
+mypred &lt;- predict(myboot,  pqu=.95)
+summary(mypred , probs = c( .025, .5, .975 ))
+
+# Analyse the liver data included in the package
+library(MASS) # For the rlm function
+
+liver &lt;- liver[liver$ALP.M &gt; 1,] # Get rid of outlier
+liver$ndose &lt;- as.numeric(liver$dose)
+
+alt &lt;- resid(rlm(log(ALT.M) ~ log(ALT.B) + ndose, data=liver, method="MM"))
+ast &lt;- resid(rlm(log(AST.M) ~ log(AST.B) + ndose, data=liver, method="MM"))
+alp &lt;- resid(rlm(log(ALP.M) ~ log(ALP.B) + ndose, data=liver, method="MM"))
+tbl &lt;- resid(rlm(log(TBL.M) ~ log(TBL.B) + ndose, data=liver, method="MM"))
+
+r &lt;- data.frame(alt=alt, ast=ast, alp=alp, tbl=tbl)
+
+Amex &lt;- mex(r[liver$dose == "A",], mqu=.7)
+Bmex &lt;- mex(r[liver$dose == "B",], mqu=.7)
+Cmex &lt;- mex(r[liver$dose == "C",], mqu=.7)
+Dmex &lt;- mex(r[liver$dose == "D",], mqu=.7)
+
+par(mfcol=c(3,3))
+plot(Amex)
+
+plot(Dmex, col="blue")
+
+## Take a closer look at the marginal behaviour of ALT
+
+r$ndose &lt;- liver$ndose
+
+altmod1 &lt;- evm(alt, qu=.7, phi = ~ ndose, xi = ~ ndose, data=r)
+altmod2 &lt;- evm(alt, qu=.7, phi = ~ ndose, data=r)
+altmod3 &lt;- evm(alt, qu=.7, xi = ~ ndose, data=r)
+altmod4 &lt;- evm(alt, qu=.7, data=r)
+
+# Prefer model 3, with term for xi on basis of AIC
+
+balt3 &lt;- evm(alt, qu=.7, xi = ~ ndose, data=r, method="simulate")
+par(mfrow=c(3,3))
+plot(balt3)
+
+# use longer burn-in and also thin the output
+
+balt3 &lt;- thinAndBurn(balt3,burn=1000,thin=5)
+plot(balt3)
+
+# Get some simulated values for dose D
+
+DParam &lt;- predict(balt3,type="lp",newdata=data.frame(ndose=4),all=TRUE)$obj$link[[1]]
+
+simD &lt;- rgpd(nrow(DParam), sigma=exp(DParam[,"phi"]), xi=DParam[,"xi"], u=quantile(alt, .7))
+
+# These are simulated residuals. Get some baselines and transform all
+# to raw scale
+
+b &lt;- sample(log(liver$ALT.M), size=nrow(balt3$param), replace=TRUE)
+res &lt;- exp(b + simD)
+
+# estimate quantiles on raw scale
+quantile(res, prob=c(.5, .75, .9, .95, .99))
+
+# estimate proportion exceeding 3*upper limit of normal mean(res &gt;
+# 36 * 3) # 36 is the upper limit of normal for ALT
+
+</code></pre>
+
 <hr>
 <h2 id='.exprel'>Accurately compute (exp(x) - 1) / x</h2><span id='topic+.exprel'></span>
 
@@ -6612,142 +6748,6 @@ multivariate extreme values, Journal of the Royal Statistical society B, 66,
 <pre><code class='language-R'>
 data(summer)
 data(winter)
-
-</code></pre>
-
-<hr>
-<h2 id='texmex-package'>Extreme value modelling</h2><span id='topic+texmex-package'></span><span id='topic+texmex'></span>
-
-<h3>Description</h3>
-
-<p>Extreme values modelling, including the conditional multivariate approach of
-Heffernan and Tawn (2004).
-</p>
-
-
-<h3>Details</h3>
-
-<p>The
-package was originally called &lsquo;texmex&rsquo; for Threshold EXceedances and
-Multivariate EXtremes. However, it is no longer the case that only threshold
-excess models are implemented, so the &lsquo;tex&rsquo; bit doesn't make sense. So, the
-package is called &lsquo;texmex&rsquo; because it used to be called &lsquo;texmex&rsquo;.
-</p>
-<p><code><a href="#topic+evm">evm</a></code>: Fit extreme value distributions to data, possibly with
-covariates. Use maximum likelihood estimation, maximum penalized likelihood
-estimation, simulate from the posterior distribution or run a parametric
-bootstrap. Extreme value families include the generalized Pareto
-distribution (<code>gpd</code>) and generalized extreme value (<code>gev</code>)
-distribution.
-</p>
-<p><code><a href="#topic+mex">mex</a></code>: Fit multiple, independent generalized Pareto models to
-the the upper tails of the columns of a data set, and estimate the
-conditional dependence structure between the columns using the method of
-Heffernan and Tawn.
-</p>
-<p><code><a href="#topic+bootmex">bootmex</a></code>: Bootstrap estimation for parameters in generalized
-Pareto models and in the dependence structure.
-</p>
-<p><code><a href="#topic+declust">declust</a></code>: Estimation of extremal index and subsequent
-declustering of dependent sequences using the intervals estimator of Ferro
-and Segers.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Harry Southworth, Janet E. Heffernan, Paul D. Metcalfe
-</p>
-<p>Maintainer: Harry Southworth &lt;harry.southworth@gmail.com&gt;
-</p>
-<p>URL: https://github.com/harrysouthworth/texmex
-</p>
-
-
-<h3>References</h3>
-
-<p>J. E. Heffernan and J. A. Tawn, A conditional approach for
-multivariate extreme values, Journal of the Royal Statistical society B, 66,
-497 &ndash; 546, 2004.
-</p>
-<p>C.A.T Ferro and J. Segers, Inference for Clusters of Extreme Values, Journal
-of the Royal Statistical society B, 65, 545 &ndash; 556, 2003.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# Analyse the winter data used by Heffernan and Tawn
-mymex &lt;- mex(winter, mqu = .7, penalty="none", dqu=.7, which = "NO")
-plot(mymex)
-# Only do 10 replicates to keep CRAN checks happy. Do many more in any
-# real application
-myboot &lt;- bootmex(mymex, R=10)
-plot(myboot)
-mypred &lt;- predict(myboot,  pqu=.95)
-summary(mypred , probs = c( .025, .5, .975 ))
-
-# Analyse the liver data included in the package
-library(MASS) # For the rlm function
-
-liver &lt;- liver[liver$ALP.M &gt; 1,] # Get rid of outlier
-liver$ndose &lt;- as.numeric(liver$dose)
-
-alt &lt;- resid(rlm(log(ALT.M) ~ log(ALT.B) + ndose, data=liver, method="MM"))
-ast &lt;- resid(rlm(log(AST.M) ~ log(AST.B) + ndose, data=liver, method="MM"))
-alp &lt;- resid(rlm(log(ALP.M) ~ log(ALP.B) + ndose, data=liver, method="MM"))
-tbl &lt;- resid(rlm(log(TBL.M) ~ log(TBL.B) + ndose, data=liver, method="MM"))
-
-r &lt;- data.frame(alt=alt, ast=ast, alp=alp, tbl=tbl)
-
-Amex &lt;- mex(r[liver$dose == "A",], mqu=.7)
-Bmex &lt;- mex(r[liver$dose == "B",], mqu=.7)
-Cmex &lt;- mex(r[liver$dose == "C",], mqu=.7)
-Dmex &lt;- mex(r[liver$dose == "D",], mqu=.7)
-
-par(mfcol=c(3,3))
-plot(Amex)
-
-plot(Dmex, col="blue")
-
-## Take a closer look at the marginal behaviour of ALT
-
-r$ndose &lt;- liver$ndose
-
-altmod1 &lt;- evm(alt, qu=.7, phi = ~ ndose, xi = ~ ndose, data=r)
-altmod2 &lt;- evm(alt, qu=.7, phi = ~ ndose, data=r)
-altmod3 &lt;- evm(alt, qu=.7, xi = ~ ndose, data=r)
-altmod4 &lt;- evm(alt, qu=.7, data=r)
-
-# Prefer model 3, with term for xi on basis of AIC
-
-balt3 &lt;- evm(alt, qu=.7, xi = ~ ndose, data=r, method="simulate")
-par(mfrow=c(3,3))
-plot(balt3)
-
-# use longer burn-in and also thin the output
-
-balt3 &lt;- thinAndBurn(balt3,burn=1000,thin=5)
-plot(balt3)
-
-# Get some simulated values for dose D
-
-DParam &lt;- predict(balt3,type="lp",newdata=data.frame(ndose=4),all=TRUE)$obj$link[[1]]
-
-simD &lt;- rgpd(nrow(DParam), sigma=exp(DParam[,"phi"]), xi=DParam[,"xi"], u=quantile(alt, .7))
-
-# These are simulated residuals. Get some baselines and transform all
-# to raw scale
-
-b &lt;- sample(log(liver$ALT.M), size=nrow(balt3$param), replace=TRUE)
-res &lt;- exp(b + simD)
-
-# estimate quantiles on raw scale
-quantile(res, prob=c(.5, .75, .9, .95, .99))
-
-# estimate proportion exceeding 3*upper limit of normal mean(res &gt;
-# 36 * 3) # 36 is the upper limit of normal for ALT
 
 </code></pre>
 

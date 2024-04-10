@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {pgenlibr}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#pgenlibr-package'>
+<p>PLINK 2 Binary (.pgen) Reader</p></a></li>
 <li><a href='#AlleleCodeBuf'><p>Returns an empty two-row numeric matrix that ReadAlleles() can load to.</p></a></li>
 <li><a href='#BoolBuf'><p>Returns a bool buffer that ReadAlleles() can load phasing information to.</p></a></li>
 <li><a href='#Buf'><p>Returns a numeric buffer that Read() or ReadHardcalls() can load to.</p></a></li>
@@ -39,8 +41,6 @@ information.</a></li>
 <li><a href='#NewPgen'><p>Opens a .pgen or PLINK 1 .bed file.</p></a></li>
 <li><a href='#NewPvar'><p>Loads variant IDs and allele codes from a .pvar or .bim file (which can be</p>
 compressed with gzip or Zstd).</a></li>
-<li><a href='#pgenlibr-package'>
-<p>PLINK 2 Binary (.pgen) Reader</p></a></li>
 <li><a href='#Read'><p>Loads the variant_numth variant, and then fills buf with numeric dosages</p>
 in [0, 2] indicating the dosages of the first ALT (or user-specified)
 allele for each sample, with missing values represented by NA.</a></li>
@@ -141,6 +141,91 @@ Christopher Chang.</td>
 <td>2023-06-12 18:10:06 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='pgenlibr-package'>
+PLINK 2 Binary (.pgen) Reader
+</h2><span id='topic+pgenlibr-package'></span><span id='topic+pgenlibr'></span>
+
+<h3>Description</h3>
+
+<p>A thin wrapper over PLINK 2's core libraries which provides an R interface
+for reading .pgen files.  A minimal .pvar loader is also included.
+</p>
+
+
+<h3>Details</h3>
+
+<p><code>NewPvar</code> and <code>NewPgen</code> initialize the respective readers.  Then,
+you can either iterate through one variant at a time (<code>Read</code>,
+<code>ReadAlleles</code>) or perform a multi-variant matrix load
+(<code>ReadIntList</code>, <code>ReadList</code>).  When you're done, <code>ClosePgen</code>
+and <code>ClosePvar</code> free resources.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Christopher Chang <a href="mailto:chrchang@alumni.caltech.edu">chrchang@alumni.caltech.edu</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Chang, C.C. and Chow, C.C. and Tellier, L.C.A.M. and Vattikuti, S. and
+Purcell, S.M. and Lee J.J. (2015) Second-generation PLINK: rising to the
+challenge of larger and richer datasets.  <em>Gigascience</em> 4:7.
+<a href="https://doi.org/10.1186/s13742-015-0047-8">doi:10.1186/s13742-015-0047-8</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  # This is modified from https://yosuketanigawa.com/posts/2020/09/PLINK2 .
+  library(pgenlibr)
+
+  # These files are subsetted from downloads available at
+  #   https://www.cog-genomics.org/plink/2.0/resources#phase3_1kg .
+  # Note that, after downloading the original files, the .pgen file must be
+  # decompressed before use; but both pgenlibr and the PLINK 2 program can
+  # handle compressed .pvar files.
+  pvar_path &lt;- system.file("extdata", "chr21_phase3_start.pvar.zst", package="pgenlibr")
+  pgen_path &lt;- system.file("extdata", "chr21_phase3_start.pgen", package="pgenlibr")
+
+  pvar &lt;- pgenlibr::NewPvar(pvar_path)
+  pgen &lt;- pgenlibr::NewPgen(pgen_path, pvar=pvar)
+
+  # Check the number of variants and samples.
+  pgenlibr::GetVariantCt(pgen)
+  pgenlibr::GetRawSampleCt(pgen)
+
+  # Get the ID of the first variant.
+  GetVariantId(pvar, 1)
+
+  # Read the 14th variant.
+  buf &lt;- pgenlibr::Buf(pgen)
+  pgenlibr::Read(pgen, buf, 14)
+
+  # Get the index of the variant with ID "rs569225703".
+  var_id &lt;- pgenlibr::GetVariantsById(pvar, "rs569225703")
+
+  # Get allele count.
+  pgenlibr::GetAlleleCt(pvar, var_id)
+
+  # It has three alleles, i.e. two ALT alleles.
+  # Read first-ALT-allele dosages for that variant.
+  pgenlibr::Read(pgen, buf, var_id)
+
+  # Read second-ALT-allele dosages.
+  pgenlibr::Read(pgen, buf, var_id, allele_num=3)
+
+  # Read a matrix with both variants.  Note that, for the multiallelic variant,
+  # the dosages of both ALT alleles are summed here.
+  geno_mat &lt;- pgenlibr::ReadList(pgen, c(14, var_id))
+
+  pgenlibr::ClosePgen(pgen)
+  pgenlibr::ClosePvar(pvar)
+</code></pre>
+
 <hr>
 <h2 id='AlleleCodeBuf'>Returns an empty two-row numeric matrix that ReadAlleles() can load to.</h2><span id='topic+AlleleCodeBuf'></span>
 
@@ -704,91 +789,6 @@ compressed with gzip or Zstd).
 <p>A pvar object, which can be queried for variant IDs and allele
 codes.
 </p>
-
-<hr>
-<h2 id='pgenlibr-package'>
-PLINK 2 Binary (.pgen) Reader
-</h2><span id='topic+pgenlibr-package'></span><span id='topic+pgenlibr'></span>
-
-<h3>Description</h3>
-
-<p>A thin wrapper over PLINK 2's core libraries which provides an R interface
-for reading .pgen files.  A minimal .pvar loader is also included.
-</p>
-
-
-<h3>Details</h3>
-
-<p><code>NewPvar</code> and <code>NewPgen</code> initialize the respective readers.  Then,
-you can either iterate through one variant at a time (<code>Read</code>,
-<code>ReadAlleles</code>) or perform a multi-variant matrix load
-(<code>ReadIntList</code>, <code>ReadList</code>).  When you're done, <code>ClosePgen</code>
-and <code>ClosePvar</code> free resources.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Christopher Chang <a href="mailto:chrchang@alumni.caltech.edu">chrchang@alumni.caltech.edu</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Chang, C.C. and Chow, C.C. and Tellier, L.C.A.M. and Vattikuti, S. and
-Purcell, S.M. and Lee J.J. (2015) Second-generation PLINK: rising to the
-challenge of larger and richer datasets.  <em>Gigascience</em> 4:7.
-<a href="https://doi.org/10.1186/s13742-015-0047-8">doi:10.1186/s13742-015-0047-8</a>.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>  # This is modified from https://yosuketanigawa.com/posts/2020/09/PLINK2 .
-  library(pgenlibr)
-
-  # These files are subsetted from downloads available at
-  #   https://www.cog-genomics.org/plink/2.0/resources#phase3_1kg .
-  # Note that, after downloading the original files, the .pgen file must be
-  # decompressed before use; but both pgenlibr and the PLINK 2 program can
-  # handle compressed .pvar files.
-  pvar_path &lt;- system.file("extdata", "chr21_phase3_start.pvar.zst", package="pgenlibr")
-  pgen_path &lt;- system.file("extdata", "chr21_phase3_start.pgen", package="pgenlibr")
-
-  pvar &lt;- pgenlibr::NewPvar(pvar_path)
-  pgen &lt;- pgenlibr::NewPgen(pgen_path, pvar=pvar)
-
-  # Check the number of variants and samples.
-  pgenlibr::GetVariantCt(pgen)
-  pgenlibr::GetRawSampleCt(pgen)
-
-  # Get the ID of the first variant.
-  GetVariantId(pvar, 1)
-
-  # Read the 14th variant.
-  buf &lt;- pgenlibr::Buf(pgen)
-  pgenlibr::Read(pgen, buf, 14)
-
-  # Get the index of the variant with ID "rs569225703".
-  var_id &lt;- pgenlibr::GetVariantsById(pvar, "rs569225703")
-
-  # Get allele count.
-  pgenlibr::GetAlleleCt(pvar, var_id)
-
-  # It has three alleles, i.e. two ALT alleles.
-  # Read first-ALT-allele dosages for that variant.
-  pgenlibr::Read(pgen, buf, var_id)
-
-  # Read second-ALT-allele dosages.
-  pgenlibr::Read(pgen, buf, var_id, allele_num=3)
-
-  # Read a matrix with both variants.  Note that, for the multiallelic variant,
-  # the dosages of both ALT alleles are summed here.
-  geno_mat &lt;- pgenlibr::ReadList(pgen, c(14, var_id))
-
-  pgenlibr::ClosePgen(pgen)
-  pgenlibr::ClosePvar(pvar)
-</code></pre>
 
 <hr>
 <h2 id='Read'>Loads the variant_numth variant, and then fills buf with numeric dosages

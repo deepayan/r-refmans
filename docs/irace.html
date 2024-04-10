@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {irace}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#irace-package'><p>The irace package: Iterated Racing for Automatic Algorithm Configuration</p></a></li>
 <li><a href='#ablation'><p>Performs ablation between two configurations (from source to target).</p></a></li>
 <li><a href='#ablation_cmdline'><p>Launch ablation with command-line options.</p></a></li>
 <li><a href='#buildCommandLine'><p>Generate a command-line representation of a configuration</p></a></li>
@@ -32,7 +33,6 @@ function processMathHTML() {
 <li><a href='#getConfigurationByIteration'><p>Returns the configurations by the iteration in which they were executed.</p></a></li>
 <li><a href='#getFinalElites'><p>Return the elite configurations of the final iteration.</p></a></li>
 <li><a href='#irace'><p>irace</p></a></li>
-<li><a href='#irace-package'><p>The irace package: Iterated Racing for Automatic Algorithm Configuration</p></a></li>
 <li><a href='#irace.cmdline'><p>Launch <code>irace</code> with command-line options.</p></a></li>
 <li><a href='#irace.license'><p>irace.license</p></a></li>
 <li><a href='#irace.main'><p>Higher-level interface to launch irace.</p></a></li>
@@ -163,6 +163,177 @@ scenario</a></li>
 <td>2022-10-23 14:55:06 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='irace-package'>The irace package: Iterated Racing for Automatic Algorithm Configuration</h2><span id='topic+irace-package'></span>
+
+<h3>Description</h3>
+
+<p>Iterated race is an extension of the Iterated F-race method for
+             the automatic configuration of optimization algorithms, that is,
+             (offline) tuning their parameters by finding the most appropriate
+             settings given a set of instances of an optimization problem.
+             M. López-Ibáñez, J. Dubois-Lacoste, L. Pérez Cáceres, T. Stützle,
+             and M. Birattari (2016) &lt;doi:10.1016/j.orp.2016.09.002&gt;.
+</p>
+
+
+<h3>Details</h3>
+
+<p>License: GPL (&gt;= 2)
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Maintainers: Manuel López-Ibáñez and Leslie Pérez Cáceres
+<a href="mailto:irace-package@googlegroups.com">irace-package@googlegroups.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Manuel López-Ibáñez, Jérémie Dubois-Lacoste, Leslie Pérez Cáceres,
+Thomas Stützle, and Mauro Birattari. The irace package: Iterated
+Racing for Automatic Algorithm Configuration. <em>Operations Research
+Perspectives</em>, 2016. doi: <a href="https://doi.org/10.1016/j.orp.2016.09.002">10.1016/j.orp.2016.09.002</a>
+</p>
+<p>Manuel López-Ibáñez, Jérémie Dubois-Lacoste, Thomas Stützle, and Mauro
+Birattari. <em>The irace package, Iterated Race for Automatic
+Algorithm Configuration</em>. Technical Report TR/IRIDIA/2011-004, IRIDIA,
+Université Libre de Bruxelles, Belgium, 2011.
+</p>
+<p>Manuel López-Ibáñez and Thomas Stützle. The Automatic Design of
+Multi-Objective Ant Colony Optimization Algorithms. <em>IEEE Transactions
+on Evolutionary Computation</em>, 2012.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+irace.main">irace.main</a></code> to start <span class="pkg">irace</span> with a given scenario.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> #######################################################################
+ # This example illustrates how to tune the parameters of the simulated
+ # annealing algorithm (SANN) provided by the optim() function in the
+ # R base package.  The goal in this example is to optimize instances of
+ # the following family:
+ # f(x) = lambda * f_rastrigin(x) + (1 - lambda) * f_rosenbrock(x)
+ # where lambda follows a normal distribution whose mean is 0.9 and
+ # standard deviation is 0.02. f_rastrigin and f_rosenbrock are the
+ # well-known Rastrigin and Rosenbrock benchmark functions (taken from
+ # the cmaes package). In this scenario, different instances are given
+ # by different values of lambda.
+ #######################################################################
+ ## First we provide an implementation of the functions to be optimized:
+ f_rosenbrock &lt;- function (x) {
+   d &lt;- length(x)
+   z &lt;- x + 1
+   hz &lt;- z[1:(d - 1)]
+   tz &lt;- z[2:d]
+   s &lt;- sum(100 * (hz^2 - tz)^2 + (hz - 1)^2)
+   return(s)
+ }
+ f_rastrigin &lt;- function (x) {
+   sum(x * x - 10 * cos(2 * pi * x) + 10)
+ }
+ 
+ ## We generate 20 instances (in this case, weights):
+ weights &lt;- rnorm(20, mean = 0.9, sd = 0.02)
+ 
+ ## On this set of instances, we are interested in optimizing two
+ ## parameters of the SANN algorithm: tmax and temp. We setup the
+ ## parameter space as follows:
+ parameters_table &lt;- '
+ tmax "" i,log (1, 5000)
+ temp "" r (0, 100)
+ '
+ 
+ ## We use the irace function readParameters to read this table:
+ parameters &lt;- readParameters(text = parameters_table)
+ 
+ ## Next, we define the function that will evaluate each candidate
+ ## configuration on a single instance. For simplicity, we restrict to
+ ## three-dimensional functions and we set the maximum number of
+ ## iterations of SANN to 1000.
+ target_runner &lt;- function(experiment, scenario)
+ {
+   instance &lt;- experiment$instance
+   configuration &lt;- experiment$configuration
+ 
+   D &lt;- 3
+   par &lt;- runif(D, min=-1, max=1)
+   fn &lt;- function(x) {
+     weight &lt;- instance
+     return(weight * f_rastrigin(x) + (1 - weight) * f_rosenbrock(x))
+   }
+   res &lt;- stats::optim(par,fn, method="SANN",
+                control=list(maxit=1000
+                  , tmax = as.numeric(configuration[["tmax"]])
+                  , temp = as.numeric(configuration[["temp"]])
+                  ))
+   ## New output interface in irace 2.0. This list may also contain:
+   ## - 'time' if irace is called with 'maxTime'
+   ## - 'error' is a string used to report an error
+   ## - 'outputRaw' is a string used to report the raw output of calls to
+   ##   an external program or function.
+   ## - 'call' is a string used to report how target_runner called the
+   ##   external program or function.
+   return(list(cost = res$value))
+ }
+ 
+ ## We define a configuration scenario by setting targetRunner to the
+ ## function define above, instances to the first 10 random weights, and
+ ## a maximum budget of 'maxExperiments' calls to targetRunner.
+ scenario &lt;- list(targetRunner = target_runner,
+                  instances = weights[1:10],
+                  maxExperiments = 500,
+                  # Do not create a logFile
+                  logFile = "")
+ 
+ ## We check that the scenario is valid. This will also try to execute
+ ## target_runner.
+ checkIraceScenario(scenario, parameters = parameters)
+ 
+ 
+ ## We are now ready to launch irace. We do it by means of the irace
+ ## function. The function will print information about its
+ ## progress. This may require a few minutes, so it is not run by default.
+ tuned_confs &lt;- irace(scenario = scenario, parameters = parameters)
+ 
+ ## We can print the best configurations found by irace as follows:
+ configurations.print(tuned_confs)
+ 
+ ## We can evaluate the quality of the best configuration found by
+ ## irace versus the default configuration of the SANN algorithm on
+ ## the other 10 instances previously generated.
+ ## To do so, first we apply the default configuration of the SANN
+ ## algorithm to these instances:
+ test &lt;- function(configuration)
+ {
+   res &lt;- lapply(weights[11:20],
+                 function(x) target_runner(
+                               experiment = list(instance = x,
+                                                 configuration = configuration),
+                               scenario = scenario))
+   return (sapply(res, getElement, name = "cost"))
+ }
+ default &lt;- test(data.frame(tmax=10, temp=10))
+ ## We extract and apply the winning configuration found by irace
+ ## to these instances:
+ tuned &lt;- test(removeConfigurationsMetaData(tuned_confs[1,]))
+ 
+ ## Finally, we can compare using a boxplot the quality obtained with the
+ ## default parametrization of SANN and the quality obtained with the
+ ## best configuration found by irace.
+ boxplot(list(default = default, tuned = tuned))
+
+
+</code></pre>
+
 <hr>
 <h2 id='ablation'>Performs ablation between two configurations (from source to target).</h2><span id='topic+ablation'></span>
 
@@ -1434,177 +1605,6 @@ scenario &lt;- readScenario(filename = "scenario.txt")
 irace(scenario = scenario, parameters = parameters)
 
 ## End(Not run)
-
-</code></pre>
-
-<hr>
-<h2 id='irace-package'>The irace package: Iterated Racing for Automatic Algorithm Configuration</h2><span id='topic+irace-package'></span>
-
-<h3>Description</h3>
-
-<p>Iterated race is an extension of the Iterated F-race method for
-             the automatic configuration of optimization algorithms, that is,
-             (offline) tuning their parameters by finding the most appropriate
-             settings given a set of instances of an optimization problem.
-             M. López-Ibáñez, J. Dubois-Lacoste, L. Pérez Cáceres, T. Stützle,
-             and M. Birattari (2016) &lt;doi:10.1016/j.orp.2016.09.002&gt;.
-</p>
-
-
-<h3>Details</h3>
-
-<p>License: GPL (&gt;= 2)
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Maintainers: Manuel López-Ibáñez and Leslie Pérez Cáceres
-<a href="mailto:irace-package@googlegroups.com">irace-package@googlegroups.com</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Manuel López-Ibáñez, Jérémie Dubois-Lacoste, Leslie Pérez Cáceres,
-Thomas Stützle, and Mauro Birattari. The irace package: Iterated
-Racing for Automatic Algorithm Configuration. <em>Operations Research
-Perspectives</em>, 2016. doi: <a href="https://doi.org/10.1016/j.orp.2016.09.002">10.1016/j.orp.2016.09.002</a>
-</p>
-<p>Manuel López-Ibáñez, Jérémie Dubois-Lacoste, Thomas Stützle, and Mauro
-Birattari. <em>The irace package, Iterated Race for Automatic
-Algorithm Configuration</em>. Technical Report TR/IRIDIA/2011-004, IRIDIA,
-Université Libre de Bruxelles, Belgium, 2011.
-</p>
-<p>Manuel López-Ibáñez and Thomas Stützle. The Automatic Design of
-Multi-Objective Ant Colony Optimization Algorithms. <em>IEEE Transactions
-on Evolutionary Computation</em>, 2012.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+irace.main">irace.main</a></code> to start <span class="pkg">irace</span> with a given scenario.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'> #######################################################################
- # This example illustrates how to tune the parameters of the simulated
- # annealing algorithm (SANN) provided by the optim() function in the
- # R base package.  The goal in this example is to optimize instances of
- # the following family:
- # f(x) = lambda * f_rastrigin(x) + (1 - lambda) * f_rosenbrock(x)
- # where lambda follows a normal distribution whose mean is 0.9 and
- # standard deviation is 0.02. f_rastrigin and f_rosenbrock are the
- # well-known Rastrigin and Rosenbrock benchmark functions (taken from
- # the cmaes package). In this scenario, different instances are given
- # by different values of lambda.
- #######################################################################
- ## First we provide an implementation of the functions to be optimized:
- f_rosenbrock &lt;- function (x) {
-   d &lt;- length(x)
-   z &lt;- x + 1
-   hz &lt;- z[1:(d - 1)]
-   tz &lt;- z[2:d]
-   s &lt;- sum(100 * (hz^2 - tz)^2 + (hz - 1)^2)
-   return(s)
- }
- f_rastrigin &lt;- function (x) {
-   sum(x * x - 10 * cos(2 * pi * x) + 10)
- }
- 
- ## We generate 20 instances (in this case, weights):
- weights &lt;- rnorm(20, mean = 0.9, sd = 0.02)
- 
- ## On this set of instances, we are interested in optimizing two
- ## parameters of the SANN algorithm: tmax and temp. We setup the
- ## parameter space as follows:
- parameters_table &lt;- '
- tmax "" i,log (1, 5000)
- temp "" r (0, 100)
- '
- 
- ## We use the irace function readParameters to read this table:
- parameters &lt;- readParameters(text = parameters_table)
- 
- ## Next, we define the function that will evaluate each candidate
- ## configuration on a single instance. For simplicity, we restrict to
- ## three-dimensional functions and we set the maximum number of
- ## iterations of SANN to 1000.
- target_runner &lt;- function(experiment, scenario)
- {
-   instance &lt;- experiment$instance
-   configuration &lt;- experiment$configuration
- 
-   D &lt;- 3
-   par &lt;- runif(D, min=-1, max=1)
-   fn &lt;- function(x) {
-     weight &lt;- instance
-     return(weight * f_rastrigin(x) + (1 - weight) * f_rosenbrock(x))
-   }
-   res &lt;- stats::optim(par,fn, method="SANN",
-                control=list(maxit=1000
-                  , tmax = as.numeric(configuration[["tmax"]])
-                  , temp = as.numeric(configuration[["temp"]])
-                  ))
-   ## New output interface in irace 2.0. This list may also contain:
-   ## - 'time' if irace is called with 'maxTime'
-   ## - 'error' is a string used to report an error
-   ## - 'outputRaw' is a string used to report the raw output of calls to
-   ##   an external program or function.
-   ## - 'call' is a string used to report how target_runner called the
-   ##   external program or function.
-   return(list(cost = res$value))
- }
- 
- ## We define a configuration scenario by setting targetRunner to the
- ## function define above, instances to the first 10 random weights, and
- ## a maximum budget of 'maxExperiments' calls to targetRunner.
- scenario &lt;- list(targetRunner = target_runner,
-                  instances = weights[1:10],
-                  maxExperiments = 500,
-                  # Do not create a logFile
-                  logFile = "")
- 
- ## We check that the scenario is valid. This will also try to execute
- ## target_runner.
- checkIraceScenario(scenario, parameters = parameters)
- 
- 
- ## We are now ready to launch irace. We do it by means of the irace
- ## function. The function will print information about its
- ## progress. This may require a few minutes, so it is not run by default.
- tuned_confs &lt;- irace(scenario = scenario, parameters = parameters)
- 
- ## We can print the best configurations found by irace as follows:
- configurations.print(tuned_confs)
- 
- ## We can evaluate the quality of the best configuration found by
- ## irace versus the default configuration of the SANN algorithm on
- ## the other 10 instances previously generated.
- ## To do so, first we apply the default configuration of the SANN
- ## algorithm to these instances:
- test &lt;- function(configuration)
- {
-   res &lt;- lapply(weights[11:20],
-                 function(x) target_runner(
-                               experiment = list(instance = x,
-                                                 configuration = configuration),
-                               scenario = scenario))
-   return (sapply(res, getElement, name = "cost"))
- }
- default &lt;- test(data.frame(tmax=10, temp=10))
- ## We extract and apply the winning configuration found by irace
- ## to these instances:
- tuned &lt;- test(removeConfigurationsMetaData(tuned_confs[1,]))
- 
- ## Finally, we can compare using a boxplot the quality obtained with the
- ## default parametrization of SANN and the quality obtained with the
- ## best configuration found by irace.
- boxplot(list(default = default, tuned = tuned))
-
 
 </code></pre>
 

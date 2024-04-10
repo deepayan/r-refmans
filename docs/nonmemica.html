@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {nonmemica}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#nonmemica'><p>Create and Evaluate NONMEM Models in a Project Context</p></a></li>
 <li><a href='#[.inits'><p>Subset inits</p></a></li>
 <li><a href='#[.model'><p>Subset model</p></a></li>
 <li><a href='#[[.model'><p>Select model Element</p></a></li>
@@ -170,7 +171,6 @@ Calculates comment widths.</a></li>
 <li><a href='#nms_psn.character'><p>Generate PsN-style Names for Character</p></a></li>
 <li><a href='#nms_psn.model'><p>Generate PsN-style Names for Model</p></a></li>
 <li><a href='#nms_psn.numeric'><p>Generate PsN-style Names for Numeric</p></a></li>
-<li><a href='#nonmemica'><p>Create and Evaluate NONMEM Models in a Project Context</p></a></li>
 <li><a href='#num_parameters'><p>Get the Number of Parameters</p></a></li>
 <li><a href='#num_parameters.default'><p>Get the Number of Declared Parameters for a NONMEM Model</p></a></li>
 <li><a href='#offdiag'><p>Isolate Off-diagonal</p></a></li>
@@ -323,6 +323,186 @@ metaplot (&ge; 0.1.4), magrittr, rlang</td>
 <td>2023-09-20 23:20:10 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='nonmemica'>Create and Evaluate NONMEM Models in a Project Context</h2><span id='topic+nonmemica'></span><span id='topic+nonmemica-package'></span>
+
+<h3>Description</h3>
+
+<p>Nonmemica (emphasis like 'America') creates and evaluates NONMEM
+models in a project context.
+</p>
+
+
+<h3>Details</h3>
+
+<p>NONMEM (ICON Development Solutions) is software for nonlinear mixed 
+effects modeling. The fundamental interface is a text file (control 
+stream, typ. *.mod or *.ctl) that specifies model input, structure, 
+and output. There are many add-on interfaces for NONMEM (see references 
+for a few examples). However, much day-to-day modeling, even for R users,
+involves substantial manual interventions.
+</p>
+<p>Nonmemica streamlines interactions with NONMEM. It adopts some
+established conventions and techniques (e.g. from PsN and metrumrg), but 
+introduces others that may be useful. Principally, it parses existing 
+control streams for systematic analysis and alteration. Relatively simple,
+single-problem control streams are supported; see the example.
+</p>
+<p>Of course, NONMEM itself is licensed software that must be installed
+independently.  Nonmemica is largely indifferent to how NONMEM is 
+installed or invoked. However, several features depend on the *.xml 
+output that NONMEM creates; make sure it is available. Also, the 
+best-supported directory structure is that which has numbers for 
+model names, with all model-specific files in eponymous subdirectories
+of a &quot;project&quot; directory. An example is given below.
+</p>
+<p>Nonmemica adopts three control stream encoding conventions that merit
+special mention. First, the problem statement is encoded in the form
+//like/x//but/y// where x is a reference model name and y is a feature
+difference from the reference model (see likebut() ).  This allows any 
+given model to be described by chaining together its legacy of features
+(use runlog(depenencies = TRUE, ...) ), which generally works better than
+trying to describe it exhaustively in the model name. As of version
+0.9.2, experimental support is available for natural-language
+problem statements of the form &quot;like run1001 but fixed additive error&quot;.
+</p>
+<p>Second, Nonmemica only needs a single output table ($TABLE record). 
+Be sure to use ONEHEADER but avoid FIRSTONLY.  Nonmemica will integrate
+model inputs and outputs, regardless of table counts, into one data.frame
+(see superset() ).
+</p>
+<p>Third, Nonmemica supports integrated metadata. With respect to model 
+inputs, use package spec to store column metadata in a companion file
+(a data specification, e.g. *.spec). Keep the data file and data 
+specification in a central location, not copied to the model directory.
+For model outputs (tabled items) supply column metadata directly in 
+the control stream (or a *.def file; see example and help).
+</p>
+<p>Nonmemica supports three global options: 'project' (default getwd() ) 
+is the parent directory of model-specific files or directories; 
+'nested' (default TRUE) tells whether model-specific files are nested 
+within eponymous directories; 'modex' (default 'ctl') gives the file 
+extension for control streams.  In many cases you can pass these 
+options to the relevant functions; but since they likely won't change
+for the scope of a given project, it saves effort to set them as global 
+options (if they differ from the defaults) using e.g. options(project=).
+</p>
+<p>Numbers make good names for models because it is never hard for you
+or the software to think of a new one.  That said, model names are
+typically processed as character in Nonmemica.  There are many generic
+functions with both numeric and character methods that simply assume
+the (length-one) argument you supply is a model name.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://en.wikipedia.org/wiki/NONMEM">NONMEM</a>
+</p>
+<p><a href="https://www.iconplc.com/solutions/technologies/nonmem/">Icon</a>
+</p>
+<p><a href="https://uupharmacometrics.github.io/PsN/">PsN</a>
+</p>
+<p><a href="https://xpose.sourceforge.net/">Xpose</a>
+</p>
+<p><a href="https://wfn.sourceforge.net/">Wings for NONMEM</a>
+</p>
+<p><a href="https://r-forge.r-project.org/R/?group_id=1215">metrumrg</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# Create a working project.
+source &lt;- system.file(package = 'nonmemica','project')
+target &lt;- tempdir()
+target &lt;- gsub('\\\\','/',target) # for windows
+source
+target
+file.copy(source,target,recursive = TRUE)
+project &lt;- file.path(target,'project','model')
+
+# Point project option at working project
+options(project = project)
+
+# Load some packages
+library(magrittr)
+library(metaplot)
+library(wrangle)
+library(spec)
+library(dplyr,warn.conflicts = FALSE)
+
+# Identify features of a model.
+1001 %&gt;% modelpath
+1001 %&gt;% modeldir
+1001 %&gt;% modelfile
+1001 %&gt;% modelpath('xml')
+1001 %&gt;% datafile
+datafile(1001) %matches% specfile(1001)
+1001 %&gt;% specfile
+1001 %&gt;% specfile %&gt;% read.spec
+1001 %&gt;% as.model
+1001 %&gt;% as.model %&gt;% comments
+1001 %&gt;% definitions
+1001 %&gt;% runlog(TRUE)
+1001 %&gt;% runlog
+1001 %&gt;% partab
+1001 %&gt;% num_parameters
+1001 %&gt;% nms_canonical
+1001 %&gt;% nms_psn
+1001 %&gt;% nms_nonmem
+1001 %&gt;% parameters
+1001 %&gt;% errors
+1001 %&gt;% as.model %&gt;% initial
+1001 %&gt;% as.model %&gt;% lower
+1001 %&gt;% as.model %&gt;% upper
+1001 %&gt;% as.model %&gt;% fixed
+1001 %&gt;% meta %&gt;% class
+1001 %&gt;% meta
+
+# Derive datasets.
+1001 %&gt;% superset %&gt;% head
+1001 %&gt;% superset %&gt;% filter(VISIBLE == 1) %&gt;% group_by(ID,TIME) %&gt;% status
+1001 %&gt;% metasuperset(c('ID','TIME')) %&gt;% head
+1001 %&gt;% metasuperset(c('ID','TIME')) %&gt;% sapply(attr,'label')
+
+# Make diagnostic plots.
+1001 %&gt;% metaplot(
+ CWRESI, TAD, SEX, 
+ groups = c('ID','TIME'), 
+ subset = 'MDV == 0',
+ yref=0, 
+ ysmooth = TRUE
+)
+1001 %&gt;% metaplot(
+ ETA1, SEX, 
+ ref = 0,
+ groups = c('ID','TIME'),
+ subset = 'MDV == 0'
+)
+1001 %&gt;% metaplot(
+ SEX, ETA1, 
+ ref = 0,
+ groups = c('ID','TIME'),
+ subset = 'MDV == 0'
+)
+1001 %&gt;% metaplot(
+ ETA1, ETA2, ETA3,
+ groups = c('ID','TIME'),
+ subset = 'MDV == 0'
+)
+
+# Derive models.
+1001 %&gt;% likebut('revised',y = 1002, overwrite=TRUE )
+# At this point, edit 1002.ctl to match whatever 'revised' means.
+# Then run it with NONMEM and post-process results as above.
+
+# Make ten new models with slightly different initial estimates.
+1001 %&gt;% tweak
+
+</code></pre>
+
 <hr>
 <h2 id='+5B.inits'>Subset inits</h2><span id='topic++5B.inits'></span>
 
@@ -8233,186 +8413,6 @@ nms_psn(x, ...)
 <code><a href="#topic+nms_psn.model">nms_psn.model</a>()</code>,
 <code><a href="#topic+nms_psn">nms_psn</a>()</code>
 </p>
-
-<hr>
-<h2 id='nonmemica'>Create and Evaluate NONMEM Models in a Project Context</h2><span id='topic+nonmemica'></span><span id='topic+nonmemica-package'></span>
-
-<h3>Description</h3>
-
-<p>Nonmemica (emphasis like 'America') creates and evaluates NONMEM
-models in a project context.
-</p>
-
-
-<h3>Details</h3>
-
-<p>NONMEM (ICON Development Solutions) is software for nonlinear mixed 
-effects modeling. The fundamental interface is a text file (control 
-stream, typ. *.mod or *.ctl) that specifies model input, structure, 
-and output. There are many add-on interfaces for NONMEM (see references 
-for a few examples). However, much day-to-day modeling, even for R users,
-involves substantial manual interventions.
-</p>
-<p>Nonmemica streamlines interactions with NONMEM. It adopts some
-established conventions and techniques (e.g. from PsN and metrumrg), but 
-introduces others that may be useful. Principally, it parses existing 
-control streams for systematic analysis and alteration. Relatively simple,
-single-problem control streams are supported; see the example.
-</p>
-<p>Of course, NONMEM itself is licensed software that must be installed
-independently.  Nonmemica is largely indifferent to how NONMEM is 
-installed or invoked. However, several features depend on the *.xml 
-output that NONMEM creates; make sure it is available. Also, the 
-best-supported directory structure is that which has numbers for 
-model names, with all model-specific files in eponymous subdirectories
-of a &quot;project&quot; directory. An example is given below.
-</p>
-<p>Nonmemica adopts three control stream encoding conventions that merit
-special mention. First, the problem statement is encoded in the form
-//like/x//but/y// where x is a reference model name and y is a feature
-difference from the reference model (see likebut() ).  This allows any 
-given model to be described by chaining together its legacy of features
-(use runlog(depenencies = TRUE, ...) ), which generally works better than
-trying to describe it exhaustively in the model name. As of version
-0.9.2, experimental support is available for natural-language
-problem statements of the form &quot;like run1001 but fixed additive error&quot;.
-</p>
-<p>Second, Nonmemica only needs a single output table ($TABLE record). 
-Be sure to use ONEHEADER but avoid FIRSTONLY.  Nonmemica will integrate
-model inputs and outputs, regardless of table counts, into one data.frame
-(see superset() ).
-</p>
-<p>Third, Nonmemica supports integrated metadata. With respect to model 
-inputs, use package spec to store column metadata in a companion file
-(a data specification, e.g. *.spec). Keep the data file and data 
-specification in a central location, not copied to the model directory.
-For model outputs (tabled items) supply column metadata directly in 
-the control stream (or a *.def file; see example and help).
-</p>
-<p>Nonmemica supports three global options: 'project' (default getwd() ) 
-is the parent directory of model-specific files or directories; 
-'nested' (default TRUE) tells whether model-specific files are nested 
-within eponymous directories; 'modex' (default 'ctl') gives the file 
-extension for control streams.  In many cases you can pass these 
-options to the relevant functions; but since they likely won't change
-for the scope of a given project, it saves effort to set them as global 
-options (if they differ from the defaults) using e.g. options(project=).
-</p>
-<p>Numbers make good names for models because it is never hard for you
-or the software to think of a new one.  That said, model names are
-typically processed as character in Nonmemica.  There are many generic
-functions with both numeric and character methods that simply assume
-the (length-one) argument you supply is a model name.
-</p>
-
-
-<h3>References</h3>
-
-<p><a href="https://en.wikipedia.org/wiki/NONMEM">NONMEM</a>
-</p>
-<p><a href="https://www.iconplc.com/solutions/technologies/nonmem/">Icon</a>
-</p>
-<p><a href="https://uupharmacometrics.github.io/PsN/">PsN</a>
-</p>
-<p><a href="https://xpose.sourceforge.net/">Xpose</a>
-</p>
-<p><a href="https://wfn.sourceforge.net/">Wings for NONMEM</a>
-</p>
-<p><a href="https://r-forge.r-project.org/R/?group_id=1215">metrumrg</a>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# Create a working project.
-source &lt;- system.file(package = 'nonmemica','project')
-target &lt;- tempdir()
-target &lt;- gsub('\\\\','/',target) # for windows
-source
-target
-file.copy(source,target,recursive = TRUE)
-project &lt;- file.path(target,'project','model')
-
-# Point project option at working project
-options(project = project)
-
-# Load some packages
-library(magrittr)
-library(metaplot)
-library(wrangle)
-library(spec)
-library(dplyr,warn.conflicts = FALSE)
-
-# Identify features of a model.
-1001 %&gt;% modelpath
-1001 %&gt;% modeldir
-1001 %&gt;% modelfile
-1001 %&gt;% modelpath('xml')
-1001 %&gt;% datafile
-datafile(1001) %matches% specfile(1001)
-1001 %&gt;% specfile
-1001 %&gt;% specfile %&gt;% read.spec
-1001 %&gt;% as.model
-1001 %&gt;% as.model %&gt;% comments
-1001 %&gt;% definitions
-1001 %&gt;% runlog(TRUE)
-1001 %&gt;% runlog
-1001 %&gt;% partab
-1001 %&gt;% num_parameters
-1001 %&gt;% nms_canonical
-1001 %&gt;% nms_psn
-1001 %&gt;% nms_nonmem
-1001 %&gt;% parameters
-1001 %&gt;% errors
-1001 %&gt;% as.model %&gt;% initial
-1001 %&gt;% as.model %&gt;% lower
-1001 %&gt;% as.model %&gt;% upper
-1001 %&gt;% as.model %&gt;% fixed
-1001 %&gt;% meta %&gt;% class
-1001 %&gt;% meta
-
-# Derive datasets.
-1001 %&gt;% superset %&gt;% head
-1001 %&gt;% superset %&gt;% filter(VISIBLE == 1) %&gt;% group_by(ID,TIME) %&gt;% status
-1001 %&gt;% metasuperset(c('ID','TIME')) %&gt;% head
-1001 %&gt;% metasuperset(c('ID','TIME')) %&gt;% sapply(attr,'label')
-
-# Make diagnostic plots.
-1001 %&gt;% metaplot(
- CWRESI, TAD, SEX, 
- groups = c('ID','TIME'), 
- subset = 'MDV == 0',
- yref=0, 
- ysmooth = TRUE
-)
-1001 %&gt;% metaplot(
- ETA1, SEX, 
- ref = 0,
- groups = c('ID','TIME'),
- subset = 'MDV == 0'
-)
-1001 %&gt;% metaplot(
- SEX, ETA1, 
- ref = 0,
- groups = c('ID','TIME'),
- subset = 'MDV == 0'
-)
-1001 %&gt;% metaplot(
- ETA1, ETA2, ETA3,
- groups = c('ID','TIME'),
- subset = 'MDV == 0'
-)
-
-# Derive models.
-1001 %&gt;% likebut('revised',y = 1002, overwrite=TRUE )
-# At this point, edit 1002.ctl to match whatever 'revised' means.
-# Then run it with NONMEM and post-process results as above.
-
-# Make ten new models with slightly different initial estimates.
-1001 %&gt;% tweak
-
-</code></pre>
 
 <hr>
 <h2 id='num_parameters'>Get the Number of Parameters</h2><span id='topic+num_parameters'></span>

@@ -13,11 +13,12 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {rmonad}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#rmonad'><p>rmonad: handling pipes, errors, and everything with monads</p></a></li>
 <li><a href='#add_transitive_edges'><p>Find inputs to a nest</p></a></li>
 <li><a href='#apply_rewriters'><p>Apply rewriters to an Rmonad</p></a></li>
 <li><a href='#bind'><p>Apply f to the contents of a monad and merge messages</p></a></li>
@@ -47,7 +48,6 @@ function processMathHTML() {
 <li><a href='#print.Rmonad'><p>Rmonad print generic function</p></a></li>
 <li><a href='#reexports'><p>Objects exported from other packages</p></a></li>
 <li><a href='#report'><p>Convert a pipeline to Rmarkdown</p></a></li>
-<li><a href='#rmonad'><p>rmonad: handling pipes, errors, and everything with monads</p></a></li>
 <li><a href='#rmonad_checkers'><p>Vectorized existence checkers for public Rmonad fields</p></a></li>
 <li><a href='#rmonad_getters'><p>Vectorized getters for public Rmonad fields</p></a></li>
 <li><a href='#second'><p>Given two arguments, return the second</p></a></li>
@@ -157,6 +157,113 @@ dplyr, Nozzle.R1</td>
 <td>2020-02-14 07:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='rmonad'>rmonad: handling pipes, errors, and everything with monads</h2><span id='topic+rmonad'></span><span id='topic+rmonad-package'></span>
+
+<h3>Description</h3>
+
+<p>Rmonad merges blocks of code into a graph containing the history of all past
+operations, and optionally their values. It consists mainly of a set of
+monadic bind operators for controlling a pipeline and handling error. It
+also contains functions for operating on monads, evaluating expressions into
+monads, and extracting values from them. I will briefly introduce the most
+useful of these here. For more information see the <code>introduction</code>
+vignette.
+</p>
+
+
+<h3>Basic Operators</h3>
+
+
+<dl>
+<dt><code>%&gt;&gt;%</code></dt><dd><p>monadic bind: applies rhs function to the lhs value</p>
+</dd>
+<dt><code>%v&gt;%</code></dt><dd><p>monadic bind: store intermediate result</p>
+</dd>
+<dt><code>%*&gt;%</code></dt><dd><p>bind lhs list as arguments to right. The lhs may be
+a literal list or a monad bound list.</p>
+</dd>
+<dt><code>%&gt;_%</code></dt><dd><p>perform rhs action, discard result, pass the lhs</p>
+</dd>
+<dt><code>%&gt;^%</code></dt><dd><p>Bind as a new branch, pass input on main. This
+differs from <code>%&gt;_%</code> in that future operations do not depend on its
+pass/fail status. Use <code>unbranch</code> to extract all branches from an
+Rmonad object.</p>
+</dd> 
+<dt><code>%||%</code></dt><dd><p>if input is error, use rhs value instead</p>
+</dd>
+<dt><code>%|&gt;%</code></dt><dd><p>if input is error, run rhs on last passing result</p>
+</dd>
+<dt><code>%__%</code></dt><dd><p>keep parents from the lhs (errors ignored). This allows chaining of independent operations.</p>
+</dd>
+</dl>
+
+
+
+<h3>Operators targeted for deprecation</h3>
+
+<p><code>%^&gt;%</code> Monadic bind and record input in monad. Perform rhs operation
+on lhs branches. I may deprecate this operator.
+</p>
+
+
+<h3>x to monad functions</h3>
+
+<p><code>as_monad</code> - evaluate an expression into a monad (capturing error)
+</p>
+<p><code>funnel</code> - evaluate expressions into a list inside a monad
+</p>
+
+
+<h3>monad to monad functions</h3>
+
+<p><code>forget</code> - erase parents from a monad
+</p>
+<p><code>combine</code> - combine a list of monads into a list in a monad
+</p>
+
+
+<h3>monad to x functions</h3>
+
+<p><code>esc</code> - extract the result from a computation
+</p>
+<p><code>mtabulate</code> - summarize all steps in a pipeline into a table
+</p>
+<p><code>missues</code> - tabulate all warnings and errors from a pipeline 
+</p>
+<p><code>unbranch</code> - extract all branches from the pipeline
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# chain operations
+cars %&gt;&gt;% colSums
+
+# chain operations with intermediate storing
+cars %v&gt;% colSums
+
+# handle failing monad
+iris %&gt;&gt;% colSums %|&gt;% head
+cars %&gt;&gt;% colSums %|&gt;% head
+
+# run an effect
+cars %&gt;_% plot %&gt;&gt;% colSums
+
+# return first successful operation
+read.csv("a.csv") %||% iris %&gt;&gt;% head
+
+# join two independent pipelines, preserving history
+cars %&gt;&gt;% colSums %__% cars %&gt;&gt;% lapply(sd) %&gt;&gt;% unlist
+
+# load an expression into a monad, catching errors
+as_monad(stop("instant death"))
+
+# convert multiple expressions into a list inside a monad
+funnel(stop("oh no"), runif(5), sqrt(-1))
+</code></pre>
+
 <hr>
 <h2 id='add_transitive_edges'>Find inputs to a nest</h2><span id='topic+add_transitive_edges'></span>
 
@@ -1402,113 +1509,6 @@ generated by rmonad, rather than THE report.
 report(-1:2 %&gt;&gt;% log %&gt;&gt;% sqrt %__% "asdf" %&gt;&gt;% sqrt)
 
 ## End(Not run)
-</code></pre>
-
-<hr>
-<h2 id='rmonad'>rmonad: handling pipes, errors, and everything with monads</h2><span id='topic+rmonad'></span><span id='topic+rmonad-package'></span>
-
-<h3>Description</h3>
-
-<p>Rmonad merges blocks of code into a graph containing the history of all past
-operations, and optionally their values. It consists mainly of a set of
-monadic bind operators for controlling a pipeline and handling error. It
-also contains functions for operating on monads, evaluating expressions into
-monads, and extracting values from them. I will briefly introduce the most
-useful of these here. For more information see the <code>introduction</code>
-vignette.
-</p>
-
-
-<h3>Basic Operators</h3>
-
-
-<dl>
-<dt><code>%&gt;&gt;%</code></dt><dd><p>monadic bind: applies rhs function to the lhs value</p>
-</dd>
-<dt><code>%v&gt;%</code></dt><dd><p>monadic bind: store intermediate result</p>
-</dd>
-<dt><code>%*&gt;%</code></dt><dd><p>bind lhs list as arguments to right. The lhs may be
-a literal list or a monad bound list.</p>
-</dd>
-<dt><code>%&gt;_%</code></dt><dd><p>perform rhs action, discard result, pass the lhs</p>
-</dd>
-<dt><code>%&gt;^%</code></dt><dd><p>Bind as a new branch, pass input on main. This
-differs from <code>%&gt;_%</code> in that future operations do not depend on its
-pass/fail status. Use <code>unbranch</code> to extract all branches from an
-Rmonad object.</p>
-</dd> 
-<dt><code>%||%</code></dt><dd><p>if input is error, use rhs value instead</p>
-</dd>
-<dt><code>%|&gt;%</code></dt><dd><p>if input is error, run rhs on last passing result</p>
-</dd>
-<dt><code>%__%</code></dt><dd><p>keep parents from the lhs (errors ignored). This allows chaining of independent operations.</p>
-</dd>
-</dl>
-
-
-
-<h3>Operators targeted for deprecation</h3>
-
-<p><code>%^&gt;%</code> Monadic bind and record input in monad. Perform rhs operation
-on lhs branches. I may deprecate this operator.
-</p>
-
-
-<h3>x to monad functions</h3>
-
-<p><code>as_monad</code> - evaluate an expression into a monad (capturing error)
-</p>
-<p><code>funnel</code> - evaluate expressions into a list inside a monad
-</p>
-
-
-<h3>monad to monad functions</h3>
-
-<p><code>forget</code> - erase parents from a monad
-</p>
-<p><code>combine</code> - combine a list of monads into a list in a monad
-</p>
-
-
-<h3>monad to x functions</h3>
-
-<p><code>esc</code> - extract the result from a computation
-</p>
-<p><code>mtabulate</code> - summarize all steps in a pipeline into a table
-</p>
-<p><code>missues</code> - tabulate all warnings and errors from a pipeline 
-</p>
-<p><code>unbranch</code> - extract all branches from the pipeline
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# chain operations
-cars %&gt;&gt;% colSums
-
-# chain operations with intermediate storing
-cars %v&gt;% colSums
-
-# handle failing monad
-iris %&gt;&gt;% colSums %|&gt;% head
-cars %&gt;&gt;% colSums %|&gt;% head
-
-# run an effect
-cars %&gt;_% plot %&gt;&gt;% colSums
-
-# return first successful operation
-read.csv("a.csv") %||% iris %&gt;&gt;% head
-
-# join two independent pipelines, preserving history
-cars %&gt;&gt;% colSums %__% cars %&gt;&gt;% lapply(sd) %&gt;&gt;% unlist
-
-# load an expression into a monad, catching errors
-as_monad(stop("instant death"))
-
-# convert multiple expressions into a list inside a monad
-funnel(stop("oh no"), runif(5), sqrt(-1))
 </code></pre>
 
 <hr>

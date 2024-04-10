@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {bapred}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#bapred-package'>
+<p>The bapred package</p></a></li>
 <li><a href='#autism'>
 <p>Autism dataset</p></a></li>
 <li><a href='#avedist'>
@@ -29,8 +31,6 @@ function processMathHTML() {
 <li><a href='#bametric'>
 <p>Diverse metrics for quality of (adjusted) batch data</p></a></li>
 <li><a href='#bapred-internal'><p>Internal bapred functions</p></a></li>
-<li><a href='#bapred-package'>
-<p>The bapred package</p></a></li>
 <li><a href='#batch'>
 <p>batch variable of dataset <code>autism</code></p></a></li>
 <li><a href='#combatba'>
@@ -180,6 +180,162 @@ Prediction using Gene Data)</td>
 <td>2022-06-22 08:20:13 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='bapred-package'>
+The bapred package
+</h2><span id='topic+bapred-package'></span><span id='topic+bapred'></span>
+
+<h3>Description</h3>
+
+<p>This is a short summary of the features of <span class="pkg">bapred</span>, a package in <span class="rlang"><b>R</b></span> for the treatment and analysis of batch effects based in high-dimensional molecular data via batch effect adjustment and addon quantile normalization. Here, a special focus is set on phenotype prediction in the presence of batch effects.
+</p>
+
+
+<h3>Details</h3>
+
+<p>Various tools dealing with batch effects, in particular enabling the 
+removal of discrepancies between training and test sets in prediction scenarios.
+Moreover, addon quantile normalization and addon RMA normalization (Kostka &amp; Spang, 
+2008) is implemented to enable integrating the quantile normalization step into 
+prediction rules. The following batch effect removal methods are implemented: 
+FAbatch, ComBat, (f)SVA, mean-centering, standardization, Ratio-A and Ratio-G. 
+For each of these we provide  an additional function which enables a posteriori 
+('addon') batch effect removal in independent batches ('test data'). Here, the
+(already batch effect adjusted) training data is not altered. For evaluating the
+success of batch effect adjustment several metrics are provided. Moreover, the 
+package implements a plot for the visualization of batch effects using principal 
+component analysis. The main functions of the package for batch effect adjustment 
+are <code><a href="#topic+ba">ba</a>()</code> and <code><a href="#topic+baaddon">baaddon</a>()</code> which enable batch effect removal and addon batch effect 
+removal, respectively, with one of the seven methods mentioned above. Another 
+important function here is <code><a href="#topic+bametric">bametric</a>()</code> which is a wrapper function for all implemented
+methods for evaluating the success of batch effect removal. For (addon) quantile 
+normalization and (addon) RMA normalization the functions <code><a href="#topic+qunormtrain">qunormtrain</a>()</code>, 
+<code><a href="#topic+qunormaddon">qunormaddon</a>()</code>, <code><a href="#topic+rmatrain">rmatrain</a>()</code> and <code><a href="#topic+rmaaddon">rmaaddon</a>()</code> can be used.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Roman Hornung, David Causeur
+</p>
+<p>Maintainer: Roman Hornung
+<a href="mailto:hornung@ibe.med.uni-muenchen.de">hornung@ibe.med.uni-muenchen.de</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Hornung, R., Boulesteix, A.-L., Causeur, D. (2016). Combining location-and-scale batch effect adjustment with data cleaning by latent factor adjustment. BMC Bioinformatics 17:27, &lt;doi: <a href="https://doi.org/10.1186/s12859-015-0870-z">10.1186/s12859-015-0870-z</a>&gt;.
+</p>
+<p>Hornung, R., Causeur, D., Bernau, C., Boulesteix, A.-L. (2017). Improving cross-study prediction through addon batch effect adjustment and addon normalization. Bioinformatics 33(3):397–404, &lt;doi: <a href="https://doi.org/10.1093/bioinformatics/btw650">10.1093/bioinformatics/btw650</a>&gt;.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Load example dataset:
+
+data(autism)
+
+
+
+# Subset this example dataset to reduce the
+# computational burden of the toy examples:
+
+# Random subset of 150 variables:
+set.seed(1234)
+Xsub &lt;- X[,sample(1:ncol(X), size=150)]
+
+# In cases of batches with more than 20 observations
+# select 20 observations at random:
+subinds &lt;- unlist(sapply(1:length(levels(batch)), function(x) {
+  indbatch &lt;- which(batch==x)
+  if(length(indbatch) &gt; 20)
+    indbatch &lt;- sort(sample(indbatch, size=20))
+  indbatch
+}))
+Xsub &lt;- Xsub[subinds,]
+batchsub &lt;- batch[subinds]
+ysub &lt;- y[subinds]
+
+
+
+# Split into training and test sets:
+
+trainind &lt;- which(batchsub %in% c(1,2))
+
+Xsubtrain &lt;- Xsub[trainind,]
+ysubtrain &lt;- ysub[trainind]
+batchsubtrain &lt;- factor(as.numeric(batchsub[trainind]), levels=c(1,2))
+
+
+testind &lt;- which(batchsub %in% c(3,4))
+
+Xsubtest &lt;- Xsub[testind,]
+ysubtest &lt;- ysub[testind]
+
+batchsubtest &lt;- as.numeric(batchsub[testind])
+batchsubtest[batchsubtest==3] &lt;- 1
+batchsubtest[batchsubtest==4] &lt;- 2
+batchsubtest &lt;- factor(batchsubtest, levels=c(1,2))
+
+
+
+# Batch effect adjustment:
+
+combatparams &lt;- ba(x=Xsubtrain, y=ysubtrain, batch=batchsubtrain, 
+  method = "combat")
+Xsubtraincombat &lt;- combatparams$xadj
+
+meancenterparams &lt;- ba(x=Xsubtrain, y=ysubtrain, batch=batchsubtrain, 
+  method = "meancenter")
+Xsubtrainmeancenter &lt;- meancenterparams$xadj
+
+
+
+# Addon batch effect adjustment:
+
+Xsubtestcombat &lt;- baaddon(params=combatparams, x=Xsubtest, 
+  batch=batchsubtest)
+
+Xsubtestmeancenter &lt;- baaddon(params=meancenterparams, x=Xsubtest, 
+  batch=batchsubtest)
+
+
+
+# Metrics for evaluating the success of batch effect adjustment:
+
+bametric(xba=Xsubtrain, batch=batchsubtrain, metric = "sep")
+bametric(xba=Xsubtrainmeancenter, batch=batchsubtrain, metric = "sep")
+
+bametric(x=Xsubtrain, batch=batchsubtrain, y=ysubtrain, 
+  metric = "diffexpr", method = "meancenter")
+
+bametric(xba=Xsubtrainmeancenter, x=Xsubtrain, metric = "cor")
+
+
+
+# Principal component analysis plots for the visualization 
+# of batch effects:
+
+par(mfrow=c(1,3))
+pcplot(x=Xsub, batch=batchsub, y=ysub, alpha=0.25, main="alpha = 0.25")
+pcplot(x=Xsub, batch=batchsub, y=ysub, alpha=0.75, main="alpha = 0.75")
+pcplot(x=Xsub, batch=batchsub, y=ysub, col=1:length(unique(batchsub)), 
+  main="col = 1:length(unique(batchsub))")
+par(mfrow=c(1,1))
+
+
+
+# (Addon) quantile normalization:
+
+qunormparams &lt;- qunormtrain(x=Xsubtrain)
+
+Xtrainnorm &lt;- qunormparams$xnorm
+
+Xtestaddonnorm &lt;- qunormaddon(qunormparams, x=Xsubtest)
+</code></pre>
+
 <hr>
 <h2 id='autism'>
 Autism dataset
@@ -785,162 +941,6 @@ summarizeval2(abo)
 <p>These internal <span class="pkg">bapred</span> functions are not usually called
 directly by the user.
 </p>
-
-<hr>
-<h2 id='bapred-package'>
-The bapred package
-</h2><span id='topic+bapred-package'></span><span id='topic+bapred'></span>
-
-<h3>Description</h3>
-
-<p>This is a short summary of the features of <span class="pkg">bapred</span>, a package in <span class="rlang"><b>R</b></span> for the treatment and analysis of batch effects based in high-dimensional molecular data via batch effect adjustment and addon quantile normalization. Here, a special focus is set on phenotype prediction in the presence of batch effects.
-</p>
-
-
-<h3>Details</h3>
-
-<p>Various tools dealing with batch effects, in particular enabling the 
-removal of discrepancies between training and test sets in prediction scenarios.
-Moreover, addon quantile normalization and addon RMA normalization (Kostka &amp; Spang, 
-2008) is implemented to enable integrating the quantile normalization step into 
-prediction rules. The following batch effect removal methods are implemented: 
-FAbatch, ComBat, (f)SVA, mean-centering, standardization, Ratio-A and Ratio-G. 
-For each of these we provide  an additional function which enables a posteriori 
-('addon') batch effect removal in independent batches ('test data'). Here, the
-(already batch effect adjusted) training data is not altered. For evaluating the
-success of batch effect adjustment several metrics are provided. Moreover, the 
-package implements a plot for the visualization of batch effects using principal 
-component analysis. The main functions of the package for batch effect adjustment 
-are <code><a href="#topic+ba">ba</a>()</code> and <code><a href="#topic+baaddon">baaddon</a>()</code> which enable batch effect removal and addon batch effect 
-removal, respectively, with one of the seven methods mentioned above. Another 
-important function here is <code><a href="#topic+bametric">bametric</a>()</code> which is a wrapper function for all implemented
-methods for evaluating the success of batch effect removal. For (addon) quantile 
-normalization and (addon) RMA normalization the functions <code><a href="#topic+qunormtrain">qunormtrain</a>()</code>, 
-<code><a href="#topic+qunormaddon">qunormaddon</a>()</code>, <code><a href="#topic+rmatrain">rmatrain</a>()</code> and <code><a href="#topic+rmaaddon">rmaaddon</a>()</code> can be used.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Roman Hornung, David Causeur
-</p>
-<p>Maintainer: Roman Hornung
-<a href="mailto:hornung@ibe.med.uni-muenchen.de">hornung@ibe.med.uni-muenchen.de</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Hornung, R., Boulesteix, A.-L., Causeur, D. (2016). Combining location-and-scale batch effect adjustment with data cleaning by latent factor adjustment. BMC Bioinformatics 17:27, &lt;doi: <a href="https://doi.org/10.1186/s12859-015-0870-z">10.1186/s12859-015-0870-z</a>&gt;.
-</p>
-<p>Hornung, R., Causeur, D., Bernau, C., Boulesteix, A.-L. (2017). Improving cross-study prediction through addon batch effect adjustment and addon normalization. Bioinformatics 33(3):397–404, &lt;doi: <a href="https://doi.org/10.1093/bioinformatics/btw650">10.1093/bioinformatics/btw650</a>&gt;.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'># Load example dataset:
-
-data(autism)
-
-
-
-# Subset this example dataset to reduce the
-# computational burden of the toy examples:
-
-# Random subset of 150 variables:
-set.seed(1234)
-Xsub &lt;- X[,sample(1:ncol(X), size=150)]
-
-# In cases of batches with more than 20 observations
-# select 20 observations at random:
-subinds &lt;- unlist(sapply(1:length(levels(batch)), function(x) {
-  indbatch &lt;- which(batch==x)
-  if(length(indbatch) &gt; 20)
-    indbatch &lt;- sort(sample(indbatch, size=20))
-  indbatch
-}))
-Xsub &lt;- Xsub[subinds,]
-batchsub &lt;- batch[subinds]
-ysub &lt;- y[subinds]
-
-
-
-# Split into training and test sets:
-
-trainind &lt;- which(batchsub %in% c(1,2))
-
-Xsubtrain &lt;- Xsub[trainind,]
-ysubtrain &lt;- ysub[trainind]
-batchsubtrain &lt;- factor(as.numeric(batchsub[trainind]), levels=c(1,2))
-
-
-testind &lt;- which(batchsub %in% c(3,4))
-
-Xsubtest &lt;- Xsub[testind,]
-ysubtest &lt;- ysub[testind]
-
-batchsubtest &lt;- as.numeric(batchsub[testind])
-batchsubtest[batchsubtest==3] &lt;- 1
-batchsubtest[batchsubtest==4] &lt;- 2
-batchsubtest &lt;- factor(batchsubtest, levels=c(1,2))
-
-
-
-# Batch effect adjustment:
-
-combatparams &lt;- ba(x=Xsubtrain, y=ysubtrain, batch=batchsubtrain, 
-  method = "combat")
-Xsubtraincombat &lt;- combatparams$xadj
-
-meancenterparams &lt;- ba(x=Xsubtrain, y=ysubtrain, batch=batchsubtrain, 
-  method = "meancenter")
-Xsubtrainmeancenter &lt;- meancenterparams$xadj
-
-
-
-# Addon batch effect adjustment:
-
-Xsubtestcombat &lt;- baaddon(params=combatparams, x=Xsubtest, 
-  batch=batchsubtest)
-
-Xsubtestmeancenter &lt;- baaddon(params=meancenterparams, x=Xsubtest, 
-  batch=batchsubtest)
-
-
-
-# Metrics for evaluating the success of batch effect adjustment:
-
-bametric(xba=Xsubtrain, batch=batchsubtrain, metric = "sep")
-bametric(xba=Xsubtrainmeancenter, batch=batchsubtrain, metric = "sep")
-
-bametric(x=Xsubtrain, batch=batchsubtrain, y=ysubtrain, 
-  metric = "diffexpr", method = "meancenter")
-
-bametric(xba=Xsubtrainmeancenter, x=Xsubtrain, metric = "cor")
-
-
-
-# Principal component analysis plots for the visualization 
-# of batch effects:
-
-par(mfrow=c(1,3))
-pcplot(x=Xsub, batch=batchsub, y=ysub, alpha=0.25, main="alpha = 0.25")
-pcplot(x=Xsub, batch=batchsub, y=ysub, alpha=0.75, main="alpha = 0.75")
-pcplot(x=Xsub, batch=batchsub, y=ysub, col=1:length(unique(batchsub)), 
-  main="col = 1:length(unique(batchsub))")
-par(mfrow=c(1,1))
-
-
-
-# (Addon) quantile normalization:
-
-qunormparams &lt;- qunormtrain(x=Xsubtrain)
-
-Xtrainnorm &lt;- qunormparams$xnorm
-
-Xtestaddonnorm &lt;- qunormaddon(qunormparams, x=Xsubtest)
-</code></pre>
 
 <hr>
 <h2 id='batch'>

@@ -13,15 +13,15 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {Information}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#Information'><p>Data exploration with information theory (weight-of-evidence and information value)</p></a></li>
 <li><a href='#Aggregate'><p>(helper function )Aggregate data for WOE/NWOE calculations</p></a></li>
 <li><a href='#CheckInputs'><p>(helper function) Check user inputs and convert factors to characters. Provide readable reasons if errors are found.</p></a></li>
 <li><a href='#create_infotables'><p>Create WOE/NWOE tables and rank variables by IV/NIV</p></a></li>
-<li><a href='#Information'><p>Data exploration with information theory (weight-of-evidence and information value)</p></a></li>
 <li><a href='#is.binary'><p>(helper function) Calculate cross validation penalty</p></a></li>
 <li><a href='#MultiPlot'><p>(helper function) Plot mutiple WOE vectors on one page</p></a></li>
 <li><a href='#NWOE'><p>Create WOE table (helper function)</p></a></li>
@@ -117,6 +117,96 @@ parallel, foreach</td>
 <td>2016-04-09 00:24:08</td>
 </tr>
 </table>
+<hr>
+<h2 id='Information'>Data exploration with information theory (weight-of-evidence and information value)</h2><span id='topic+Information'></span><span id='topic+Information-package'></span>
+
+<h3>Description</h3>
+
+<p>The information package performs exploratory data analysis and variable screening for binary 
+classification models using information theory (WOE and IV). 
+</p>
+<p>The package also supports exploratory analysis and variable screening for uplift models (NWOE and NIV).
+</p>
+<p>Note that the only functions you will need to use are create_infotables() and plot_infotables():
+</p>
+<p>- create_infotables() creates WOE or NWOE tables and outputs a variable-strength summary data.frame (IV or NIV)
+</p>
+<p>- plot_infotables() creates WOE or NWOE bar charts for one or more variables
+</p>
+
+
+<h3>Details</h3>
+
+<p>Given a data.frame with a set of predictive variables and a binary response variable,
+create_infotables() will cycle through all variables and create NWOE or WOE tables.
+It will also rank all variables by their respective IV or NIV values and return the results in a data.frame. 
+</p>
+<p>The package needs minimal inputs. You do not have to explicitly specify which variables to evaluate or provide bins: 
+create_infotables() will process all variables in the dataset and generate appropriate bins for WOE/NWOE analysis.
+</p>
+<p>If requested, calculations can be distributed across multiple cores for better performance.
+</p>
+<p>Note that NWOE analysis is only for uplift models. Thus, for NWOE analysis, you must have a &quot;treatment&quot; and a &quot;control&quot; group in your dataset. 
+The treatment and control groups should identified by a binary indicator variable (1/0).
+</p>
+<p>For regular WOE analysis, on the other hand, all you need is a binary response variable (dependent variable).
+</p>
+<p>You can cross validate your IV or NIV values by supplying a validation dataset. This will produce penalized IV/NIV values.
+</p>
+<p>#' To learn more about the Information package, start with the vignette:
+<code>browseVignettes(package = "Information")</code>
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Kim Larsen (kblarsen4 at gmail.com)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>##------------------------------------------------------------
+## WOE analysis, no validation
+##------------------------------------------------------------
+library(Information)
+
+data(train, package="Information")
+train &lt;- subset(train, TREATMENT==1)
+IV &lt;- Information::create_infotables(data=train, y="PURCHASE", parallel=FALSE)
+
+print(head(IV$Summary), row.names=FALSE)
+print(IV$Tables$N_OPEN_REV_ACTS, row.names=FALSE)
+
+# Plotting a single variable
+Information::plot_infotables(IV, "N_OPEN_REV_ACTS")
+
+# Plotting multiple variables
+Information::plot_infotables(IV, IV$Summary$Variable[1:4], same_scale=TRUE)
+
+# If the goal is to plot multiple variables individually, as opposed to a comparison-grid, we can
+# loop through the variable names and create individual plots
+## Not run: 
+names &lt;- names(IV$Tables)
+plots &lt;- list()
+for (i in 1:length(names)){
+  plots[[i]] &lt;- plot_infotables(IV, names[i])
+}
+# Showing the top 18 variables
+plots[1:18]
+
+## End(Not run)
+
+# We can speed up create_infotables() by setting parallel=TRUE (default setting)
+# If we leave ncore as the default, ncore is set to available clusters - 1
+## Not run: 
+train &lt;- subset(train, TREATMENT==1)
+IV &lt;- Information::create_infotables(data=train, y="PURCHASE")
+
+## End(Not run)
+closeAllConnections()
+</code></pre>
+
 <hr>
 <h2 id='Aggregate'>(helper function )Aggregate data for WOE/NWOE calculations</h2><span id='topic+Aggregate'></span>
 
@@ -257,96 +347,6 @@ train &lt;- subset(train, TREATMENT==1)
 IV &lt;- Information::create_infotables(data=train, y="PURCHASE", parallel=FALSE)
 print(head(IV$Summary), row.names=FALSE)
 print(IV$Tables$N_OPEN_REV_ACTS, row.names=FALSE)
-closeAllConnections()
-</code></pre>
-
-<hr>
-<h2 id='Information'>Data exploration with information theory (weight-of-evidence and information value)</h2><span id='topic+Information'></span><span id='topic+Information-package'></span>
-
-<h3>Description</h3>
-
-<p>The information package performs exploratory data analysis and variable screening for binary 
-classification models using information theory (WOE and IV). 
-</p>
-<p>The package also supports exploratory analysis and variable screening for uplift models (NWOE and NIV).
-</p>
-<p>Note that the only functions you will need to use are create_infotables() and plot_infotables():
-</p>
-<p>- create_infotables() creates WOE or NWOE tables and outputs a variable-strength summary data.frame (IV or NIV)
-</p>
-<p>- plot_infotables() creates WOE or NWOE bar charts for one or more variables
-</p>
-
-
-<h3>Details</h3>
-
-<p>Given a data.frame with a set of predictive variables and a binary response variable,
-create_infotables() will cycle through all variables and create NWOE or WOE tables.
-It will also rank all variables by their respective IV or NIV values and return the results in a data.frame. 
-</p>
-<p>The package needs minimal inputs. You do not have to explicitly specify which variables to evaluate or provide bins: 
-create_infotables() will process all variables in the dataset and generate appropriate bins for WOE/NWOE analysis.
-</p>
-<p>If requested, calculations can be distributed across multiple cores for better performance.
-</p>
-<p>Note that NWOE analysis is only for uplift models. Thus, for NWOE analysis, you must have a &quot;treatment&quot; and a &quot;control&quot; group in your dataset. 
-The treatment and control groups should identified by a binary indicator variable (1/0).
-</p>
-<p>For regular WOE analysis, on the other hand, all you need is a binary response variable (dependent variable).
-</p>
-<p>You can cross validate your IV or NIV values by supplying a validation dataset. This will produce penalized IV/NIV values.
-</p>
-<p>#' To learn more about the Information package, start with the vignette:
-<code>browseVignettes(package = "Information")</code>
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Kim Larsen (kblarsen4 at gmail.com)
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>##------------------------------------------------------------
-## WOE analysis, no validation
-##------------------------------------------------------------
-library(Information)
-
-data(train, package="Information")
-train &lt;- subset(train, TREATMENT==1)
-IV &lt;- Information::create_infotables(data=train, y="PURCHASE", parallel=FALSE)
-
-print(head(IV$Summary), row.names=FALSE)
-print(IV$Tables$N_OPEN_REV_ACTS, row.names=FALSE)
-
-# Plotting a single variable
-Information::plot_infotables(IV, "N_OPEN_REV_ACTS")
-
-# Plotting multiple variables
-Information::plot_infotables(IV, IV$Summary$Variable[1:4], same_scale=TRUE)
-
-# If the goal is to plot multiple variables individually, as opposed to a comparison-grid, we can
-# loop through the variable names and create individual plots
-## Not run: 
-names &lt;- names(IV$Tables)
-plots &lt;- list()
-for (i in 1:length(names)){
-  plots[[i]] &lt;- plot_infotables(IV, names[i])
-}
-# Showing the top 18 variables
-plots[1:18]
-
-## End(Not run)
-
-# We can speed up create_infotables() by setting parallel=TRUE (default setting)
-# If we leave ncore as the default, ncore is set to available clusters - 1
-## Not run: 
-train &lt;- subset(train, TREATMENT==1)
-IV &lt;- Information::create_infotables(data=train, y="PURCHASE")
-
-## End(Not run)
 closeAllConnections()
 </code></pre>
 

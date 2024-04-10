@@ -13,11 +13,13 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {PortfolioAnalytics}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#PortfolioAnalytics-package'>
+<p>Numeric methods for optimization of portfolios</p></a></li>
 <li><a href='#ac.ranking'><p>Asset Ranking</p></a></li>
 <li><a href='#add.constraint'><p>General interface for adding and/or updating optimization constraints.</p></a></li>
 <li><a href='#add.objective'><p>General interface for adding optimization objectives, including risk, return, and risk budget</p></a></li>
@@ -118,8 +120,6 @@ same naming as the v1_constraint object.</a></li>
 <li><a href='#portfolio.moments.bl'><p>Portfolio Moments</p></a></li>
 <li><a href='#portfolio.moments.boudt'><p>Portfolio Moments</p></a></li>
 <li><a href='#portfolio.spec'><p>constructor for class portfolio</p></a></li>
-<li><a href='#PortfolioAnalytics-package'>
-<p>Numeric methods for optimization of portfolios</p></a></li>
 <li><a href='#pos_limit_fail'><p>function to check for violation of position limits constraints</p></a></li>
 <li><a href='#position_limit_constraint'><p>constructor for position_limit_constraint</p></a></li>
 <li><a href='#print.constraint'><p>print method for constraint objects</p></a></li>
@@ -253,6 +253,216 @@ robustbase</td>
 <td>2018-05-17 22:48:29 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='PortfolioAnalytics-package'>
+Numeric methods for optimization of portfolios
+</h2><span id='topic+PortfolioAnalytics-package'></span><span id='topic+PortfolioAnalytics'></span>
+
+<h3>Description</h3>
+
+<p><kbd>PortfolioAnalytics</kbd> is an <span class="rlang"><b>R</b></span> package to provide numerical solutions for portfolio problems with complex constraints and objective sets. The goal of the package is to aid practicioners and researchers in solving portfolio optimization problems with complex constraints and objectives that mirror real-world applications.
+</p>
+<p>One of the goals of the packages is to provide a common interface to specify constraints and objectives that can be solved by any supported solver (i.e. optimization method). Currently supported optimization methods include
+</p>
+
+<ul>
+<li><p> random portfolios
+</p>
+</li>
+<li><p> differential evolution
+</p>
+</li>
+<li><p> particle swarm optimization
+</p>
+</li>
+<li><p> generalized simulated annealing
+</p>
+</li>
+<li><p> linear and quadratic programming routines
+</p>
+</li></ul>
+
+<p>The solver can be specified with the <code>optimize_method</code> argument in <code>optimize.portfolio</code> and <code>optimize.portfolio.rebalancing</code>. The <code>optimize_method</code> argument must be one of &quot;random&quot;, &quot;DEoptim&quot;, &quot;pso&quot;, &quot;GenSA&quot;, &quot;ROI&quot;, &quot;quadprog&quot;, &quot;glpk&quot;, or &quot;symphony&quot;.
+</p>
+<p>Additional information on random portfolios is provided below. The differential evolution algorithm is implemented via the <kbd>DEoptim</kbd> package, the particle swarm optimization algorithm via the <kbd>pso</kbd> package, the generalized simulated annealing via the <kbd>GenSA</kbd> package, and linear and quadratic programming are implemented via the <kbd>ROI</kbd> package which acts as an interface to the <kbd>Rglpk</kbd>, <kbd>Rsymphony</kbd>, and <kbd>quadprog</kbd> packages.
+</p>
+<p>A key strength of <kbd>PortfolioAnalytics</kbd> is the generalization of constraints and objectives that can be solved.
+</p>
+<p>If <code>optimize_method="ROI"</code> is specified, a default solver will be selected based on the optimization problem. The <code>glpk</code> solver is the default solver for LP and MILP optimization problems. The <code>quadprog</code> solver is the default solver for QP optimization problems. For example, <code>optimize_method = "quadprog"</code> can be specified and the optimization problem will be solved via ROI using the quadprog plugin package.
+</p>
+<p>The extension to ROI solves a limited type of convex optimization problems:
+</p>
+
+<ul>
+<li><p>Maxmimize portfolio return subject leverage, box, group, position limit, target mean return, and/or factor exposure constraints on weights.
+</p>
+</li>
+<li><p>Minimize portfolio variance subject to leverage, box, group, turnover, and/or factor exposure constraints (otherwise known as global minimum variance portfolio).
+</p>
+</li>
+<li><p>Minimize portfolio variance subject to leverage, box, group, and/or factor exposure constraints and a desired portfolio return.
+</p>
+</li>
+<li><p>Maximize quadratic utility subject to leverage, box, group, target mean return, turnover, and/or factor exposure constraints and risk aversion parameter.
+(The risk aversion parameter is passed into <code>optimize.portfolio</code> as an added argument to the <code>portfolio</code> object).
+</p>
+</li>
+<li><p>Maximize portfolio mean return per unit standard deviation (i.e. the Sharpe Ratio) can be done by specifying <code>maxSR=TRUE</code> in <code>optimize.portfolio</code>. 
+If both mean and StdDev are specified as objective names, the default action is to maximize quadratic utility, therefore <code>maxSR=TRUE</code> must be specified to maximize Sharpe Ratio.
+</p>
+</li>
+<li><p>Minimize portfolio ES/ETL/CVaR optimization subject to leverage, box, group, position limit, target mean return, and/or factor exposure constraints and target portfolio return.
+</p>
+</li>
+<li><p>Maximize portfolio mean return per unit ES/ETL/CVaR (i.e. the STARR Ratio) can be done by specifying <code>maxSTARR=TRUE</code> in <code>optimize.portfolio</code>. 
+If both mean and ES/ETL/CVaR are specified as objective names, the default action is to maximize mean return per unit ES/ETL/CVaR.
+</p>
+</li></ul>
+
+<p>These problems also support a weight_concentration objective where concentration of weights as measured by HHI is added as a penalty term to the quadratic objective.
+</p>
+<p>Because these convex optimization problem are standardized, there is no need for a penalty term. The <code>multiplier</code> argument in <code><a href="#topic+add.objective">add.objective</a></code> passed into the complete constraint object are ingnored by the ROI solver.
+</p>
+<p>Many real-world portfolio optimization problems are global optimization problems, and therefore are not suitable for linear or quadratic programming routines. <kbd>PortfolioAnalytics</kbd> provides a random portfolio optimization method and also utilizes the <span class="rlang"><b>R</b></span> packages DEoptim, pso, and GenSA for solving non-convex global optimization problems.
+</p>
+<p><kbd>PortfolioAnalytics</kbd> supports three methods of generating random portfolios.
+</p>
+
+<ul>
+<li><p> The sample method to generate random portfolios is based on an idea by Pat Burns. This is the most flexible method, but also the slowest, and can generate portfolios to satisfy leverage, box, group, position limit, and leverage constraints.
+</p>
+</li>
+<li><p> The simplex method to generate random portfolios is based on a paper by W. T. Shaw. The simplex method is useful to generate random portfolios with the full investment constraint (where the sum of the weights is equal to 1) and min box constraints. Values for min_sum and max_sum of the leverage constraint will be ignored, the sum of weights will equal 1. All other constraints such as the box constraint max, group and position limit constraints will be handled by elimination. If the constraints are very restrictive, this may result in very few feasible portfolios remaining. Another key point to note is that the solution may not be along the vertexes depending on the objective. For example, a risk budget objective will likely place the portfolio somewhere on the interior.
+</p>
+</li>
+<li><p> The grid method to generate random portfolios is based on the <code>gridSearch</code> function in package <kbd>NMOF</kbd>. The grid search method only satisfies the min and max box constraints. The min_sum and max_sum leverage constraint will likely be violated and the weights in the random portfolios should be normalized. Normalization may cause the box constraints to be violated and will be penalized in <code>constrained_objective</code>.
+</p>
+</li></ul>
+
+<p><kbd>PortfolioAnalytics</kbd> leverages the <kbd>PerformanceAnalytics</kbd> package for many common objective functions. The objective types in <kbd>PortfolioAnalytics</kbd> are designed to be used with <kbd>PerformanceAnalytics</kbd> functions, but any user supplied valid <span class="rlang"><b>R</b></span> function can be used as an objective.
+</p>
+
+
+<h3>Optimization</h3>
+
+<p>This summary attempts to provide an overview of how to construct a portfolio object with constraints and objectives, run the optimization, and chart the results.
+</p>
+<p>The portfolio object is initialized with the <code><a href="#topic+portfolio.spec">portfolio.spec</a></code> function. The main argument to <code><a href="#topic+portfolio.spec">portfolio.spec</a></code> is <code>assets</code>. The <code>assets</code> argument can be a scalar value for the number of assets, a character vector of fund names, or a named vector of initial weights.
+</p>
+<p>Adding constraints to the portfolio object is done with <code><a href="#topic+add.constraint">add.constraint</a></code>. The <code><a href="#topic+add.constraint">add.constraint</a></code> function is the main interface for adding and/or updating constraints to the portfolio object. This function allows the user to specify the portfolio to add the constraints to, the type of constraints, arguments for the constraint, and whether or not to enable the constraint. If updating an existing constraint, the <code>indexnum</code> argument can be specified.
+</p>
+<p>Objectives can be added to the portfolio object with <code><a href="#topic+add.objective">add.objective</a></code>. The <code><a href="#topic+add.objective">add.objective</a></code> function is the main function for adding and/or updating objectives to the portfolio object. This function allows the user to specify the portfolio to add the objectives to, the type, name of the objective function, arguments to the objective function, and whether or not to enable the objective. If updating an existing objective, the <code>indexnum</code> argument can be specified.
+</p>
+<p>With the constraints and objectives specified in the portfolio object, the portfolio object can be passed to <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> or <code><a href="#topic+optimize.portfolio.rebalancing">optimize.portfolio.rebalancing</a></code> to run the optimization. Arguments to <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> include asset returns, the portfolio obect specifying constraints and objectives, optimization method, and other parameters specific to the solver. <code><a href="#topic+optimize.portfolio.rebalancing">optimize.portfolio.rebalancing</a></code> adds support for backtesting portfolio optimization through time with rebalancing or rolling periods.
+</p>
+
+
+<h3>Advanced Optimization</h3>
+
+<p>In addition to the more standard optimizations described above, <kbd>PortfolioAnalytics</kbd> also supports multi-layer optimization and regime switching optimization. 
+</p>
+<p>Support for multi-layer optimization allows one to construct a top level portfolio and several sub-portfolios with potentially different assets, constraints, and objectives. First, each sub-portfolio is optimized out-of-sample which creates a time series of returns. One can think of the out of sample returns for each sub-portfolio as the returns for a synthetic instrument. Finally, the out-of-sample returns of each sub-portfolio are then used as inputs for the top level optimization. The top level portfolio and sub-portfolios are created as normal using <code>portfolio.spec</code>, <code>add.constraint</code>, and <code>add.objective</code>. The multi-layer portfolio specification object is first initialized by passing the top level portfolio to <code>mult.portfolio.spec</code>. Sub-portfolios are then added with <code>add.sub.portfolio</code>. The multi-layer portfolio specification object can then be passed to <code>optimize.portfolio</code> and <code>optimize.portfolio.rebalancing</code>. See <code>demo(multi_layer_optimization)</code>.
+</p>
+<p>Support for regime switching models allows one to change constraints and objectives depending on the current regime. Portfolios are created as normal with <code>portfolio.spec</code>, <code>add.constraint</code>, and <code>add.objective</code>. The portfolios are then combined with a regime object using <code>regime.portfolios</code> to create a regime portfolio specification which can then be passed to <code>optimize.portfolio</code> and <code>optimize.portfolio.rebalancing</code>. Regime switching optimization is implemented in such a way that any arbitrary regime model can be used. See <code>demo(regime_switching)</code>.
+</p>
+
+
+<h3>Portfolio Moments</h3>
+
+<p>The <kbd>PortfolioAnalytics</kbd> framework to estimate solutions to constrained optimization problems is implemented in such a way that the moments of the returns are set once for use in lower level optimization functions. The <code>set.portfolio.moments</code> function computes the first, second, third, and fourth moments depending on the objective function(s) in the <code>portfolio</code> object. For example, if the third and fourth moments do not need to be calculated for a given objective, then <code>set.portfolio.moments</code> will try to detect this and not compute those moments. Currently, <code>set.portfolio.moments</code> implements methods to compute moments based on sample estimates, higher moments from fitting a statistical factor model based on the work of Kris Boudt, the Black Litterman model, and the Fully Flexible Framework based on the work of Attilio Meucci (NEED REFERENCE HERE). See the Custom Moment and Objective Functions vignette for a more detailed description and examples. 
+</p>
+
+
+<h3>Charts and Graphs</h3>
+
+<p>Intuition into the optimization can be aided through visualization. The goal of creating the charts is to provide visualization tools for optimal portfolios regardless of the chosen optimization method.
+</p>
+<p><code><a href="#topic+chart.Weights">chart.Weights</a></code> plots the weights of the optimal portfolio. <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code> plots the optimal portfolio in risk-reward space. The random portfolios, DEoptim, and pso solvers will return trace portfolio information at each iteration when <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> is run with <code>trace=TRUE</code>. If this is the case, <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code> will plot these portfolios so that the feasible space can be easily visualized. Although the GenSA and ROI solvers do not return trace portfolio information, random portfolios can be be generated with the argument <code>rp=TRUE</code> in <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code>. A <code>plot</code> function is provided that will plot the weights and risk-reward scatter chart. The component risk contribution can be charted for portfolio optimization problems with risk budget objectives with <code><a href="#topic+chart.RiskBudget">chart.RiskBudget</a></code>. Neighbor portfolios can be plotted in <code><a href="#topic+chart.RiskBudget">chart.RiskBudget</a></code>, <code><a href="#topic+chart.Weights">chart.Weights</a></code>, and <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code>.
+</p>
+<p>Efficient frontiers can be extracted from <code>optimize.portfolio</code> objects or created from a <code>portfolio</code> object. The efficient frontier can be charted in risk-reward space with <code><a href="#topic+chart.EfficientFrontier">chart.EfficientFrontier</a></code>. The weights along the efficient frontier can be charted with <code><a href="#topic+chart.EF.Weights">chart.EF.Weights</a></code>.
+</p>
+<p>Multiple objects created via <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> can be combined with <code><a href="#topic+combine.optimizations">combine.optimizations</a></code> for visual comparison. The weights of the optimal portfolios can be plotted with <code><a href="#topic+chart.Weights">chart.Weights</a></code>. The optimal portfolios can be compared in risk-reward space with <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code>. The portfolio component risk contributions of the multiple optimal portfolios can be plotted with <code><a href="#topic+chart.RiskBudget">chart.RiskBudget</a></code>.
+</p>
+
+
+<h3>Demos</h3>
+
+<p><kbd>PortfolioAnalytics</kbd> contains a comprehensive collection of demos to demonstrate the functionality from very basic optimization problems such as estimating the solution to a minimum variance portfolio to more complex optimization problems with custom moment and objective functions.
+</p>
+
+
+<h3>Vignettes</h3>
+
+<p>TODO
+</p>
+
+
+<h3>Package Dependencies</h3>
+
+<p>Several of the functions in the <kbd>PortfolioAnalytics</kbd> package require time series data of returns and the <code><a href="xts.html#topic+xts">xts</a></code> package is used for working with time series data. 
+</p>
+<p>The <kbd>PerformanceAnalytics</kbd> package is used for many common objective functions. The objective types in <kbd>PortfolioAnalytics</kbd> are designed to be used with <kbd>PerformanceAnalytics</kbd> functions such as <code><a href="PerformanceAnalytics.html#topic+StdDev">StdDev</a></code>, <code><a href="PerformanceAnalytics.html#topic+VaR">VaR</a></code>, and <code><a href="PerformanceAnalytics.html#topic+ES">ES</a></code>.
+</p>
+<p>The <kbd>foreach</kbd> and <kbd>iterators</kbd> packages are used extensively throughout the package to support parallel programming. The primary functions where <code>foreach</code> loops are used is <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code>, <code><a href="#topic+optimize.portfolio.rebalancing">optimize.portfolio.rebalancing</a></code>, and <code><a href="#topic+create.EfficientFrontier">create.EfficientFrontier</a></code>.
+</p>
+<p>In addition to a random portfolios optimzation method, <kbd>PortfolioAnalytics</kbd> supports backend solvers by leveraging the following packages: <kbd>DEoptim</kbd>, <kbd>pso</kbd>, <kbd>GenSA</kbd>, <kbd>ROI</kbd> and associated ROI plugin packages.
+</p>
+
+
+<h3>Further Work</h3>
+
+<p>Continued work to improved charts and graphs.
+</p>
+<p>Continued work to improve features to combine and compare multiple optimal portfolio objects.
+</p>
+<p>Support for more solvers.
+</p>
+<p>Comments, suggestions, and/or code patches are welcome.
+</p>
+
+
+<h3>Acknowledgements</h3>
+
+<p>TODO
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Ross Bennett <br />
+Kris Boudt <br />
+Peter Carl <br />
+Brian G. Peterson <br />
+</p>
+<p>Maintainer: Brian G. Peterson <a href="mailto:brian@braverock.com">brian@braverock.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Boudt, Kris and Lu, Wanbo and Peeters, Benedict, <em>Higher Order Comoments of Multifactor Models and Asset Allocation</em> (June 16, 2014). Available at SSRN: http://ssrn.com/abstract=2409603 or http://dx.doi.org/10.2139/ssrn.2409603
+</p>
+<p>Chriss, Neil A and Almgren, Robert, <em>Portfolios from Sorts</em> (April 27, 2005). Available at SSRN: http://ssrn.com/abstract=720041 or http://dx.doi.org/10.2139/ssrn.720041 <br />
+</p>
+<p>Meucci, Attilio, <em>The Black-Litterman Approach: Original Model and Extensions</em> (August 1, 2008). Shorter version in, THE ENCYCLOPEDIA OF QUANTITATIVE FINANCE, Wiley, 2010. Available at SSRN: http://ssrn.com/abstract=1117574 or http://dx.doi.org/10.2139/ssrn.1117574 <br />
+</p>
+<p>Meucci, Attilio, <em>Fully Flexible Views: Theory and Practice</em> (August 8, 2008). Fully Flexible Views: Theory and Practice, Risk, Vol. 21, No. 10, pp. 97-102, October 2008. Available at SSRN: http://ssrn.com/abstract=1213325
+</p>
+<p>Scherer, Bernd and Martin, Doug, <em>Modern Portfolio Optimization</em>. Springer. 2005. <br />
+</p>
+<p>Shaw, William Thornton, <em>Portfolio Optimization for VAR, CVaR, Omega and Utility with General Return Distributions: A Monte Carlo Approach for Long-Only and Bounded Short Portfolios with Optional Robustness and a Simplified Approach to Covariance Matching</em> (June 1, 2011). Available at SSRN: http://ssrn.com/abstract=1856476 or http://dx.doi.org/10.2139/ssrn.1856476 <br />
+</p>
+
+
+<h3>See Also</h3>
+
+<p>CRAN task view on Empirical Finance <br /> <a href="https://cran.r-project.org/view=Econometrics">https://cran.r-project.org/view=Econometrics</a>
+</p>
+<p>CRAN task view on Optimization <br /> <a href="https://cran.r-project.org/view=Optimization">https://cran.r-project.org/view=Optimization</a>
+</p>
+<p>Large-scale portfolio optimization with DEoptim <br /> <a href="https://cran.r-project.org/package=DEoptim">https://cran.r-project.org/package=DEoptim</a>
+</p>
+
 <hr>
 <h2 id='ac.ranking'>Asset Ranking</h2><span id='topic+ac.ranking'></span>
 
@@ -6607,216 +6817,6 @@ required argument to <code>portfolio.spec</code> is <code>assets</code>.
 pspec &lt;- portfolio.spec(assets=colnames(edhec))
 pspec &lt;- portfolio.spec(assets=10, weight_seq=generatesequence())
 </code></pre>
-
-<hr>
-<h2 id='PortfolioAnalytics-package'>
-Numeric methods for optimization of portfolios
-</h2><span id='topic+PortfolioAnalytics-package'></span><span id='topic+PortfolioAnalytics'></span>
-
-<h3>Description</h3>
-
-<p><kbd>PortfolioAnalytics</kbd> is an <span class="rlang"><b>R</b></span> package to provide numerical solutions for portfolio problems with complex constraints and objective sets. The goal of the package is to aid practicioners and researchers in solving portfolio optimization problems with complex constraints and objectives that mirror real-world applications.
-</p>
-<p>One of the goals of the packages is to provide a common interface to specify constraints and objectives that can be solved by any supported solver (i.e. optimization method). Currently supported optimization methods include
-</p>
-
-<ul>
-<li><p> random portfolios
-</p>
-</li>
-<li><p> differential evolution
-</p>
-</li>
-<li><p> particle swarm optimization
-</p>
-</li>
-<li><p> generalized simulated annealing
-</p>
-</li>
-<li><p> linear and quadratic programming routines
-</p>
-</li></ul>
-
-<p>The solver can be specified with the <code>optimize_method</code> argument in <code>optimize.portfolio</code> and <code>optimize.portfolio.rebalancing</code>. The <code>optimize_method</code> argument must be one of &quot;random&quot;, &quot;DEoptim&quot;, &quot;pso&quot;, &quot;GenSA&quot;, &quot;ROI&quot;, &quot;quadprog&quot;, &quot;glpk&quot;, or &quot;symphony&quot;.
-</p>
-<p>Additional information on random portfolios is provided below. The differential evolution algorithm is implemented via the <kbd>DEoptim</kbd> package, the particle swarm optimization algorithm via the <kbd>pso</kbd> package, the generalized simulated annealing via the <kbd>GenSA</kbd> package, and linear and quadratic programming are implemented via the <kbd>ROI</kbd> package which acts as an interface to the <kbd>Rglpk</kbd>, <kbd>Rsymphony</kbd>, and <kbd>quadprog</kbd> packages.
-</p>
-<p>A key strength of <kbd>PortfolioAnalytics</kbd> is the generalization of constraints and objectives that can be solved.
-</p>
-<p>If <code>optimize_method="ROI"</code> is specified, a default solver will be selected based on the optimization problem. The <code>glpk</code> solver is the default solver for LP and MILP optimization problems. The <code>quadprog</code> solver is the default solver for QP optimization problems. For example, <code>optimize_method = "quadprog"</code> can be specified and the optimization problem will be solved via ROI using the quadprog plugin package.
-</p>
-<p>The extension to ROI solves a limited type of convex optimization problems:
-</p>
-
-<ul>
-<li><p>Maxmimize portfolio return subject leverage, box, group, position limit, target mean return, and/or factor exposure constraints on weights.
-</p>
-</li>
-<li><p>Minimize portfolio variance subject to leverage, box, group, turnover, and/or factor exposure constraints (otherwise known as global minimum variance portfolio).
-</p>
-</li>
-<li><p>Minimize portfolio variance subject to leverage, box, group, and/or factor exposure constraints and a desired portfolio return.
-</p>
-</li>
-<li><p>Maximize quadratic utility subject to leverage, box, group, target mean return, turnover, and/or factor exposure constraints and risk aversion parameter.
-(The risk aversion parameter is passed into <code>optimize.portfolio</code> as an added argument to the <code>portfolio</code> object).
-</p>
-</li>
-<li><p>Maximize portfolio mean return per unit standard deviation (i.e. the Sharpe Ratio) can be done by specifying <code>maxSR=TRUE</code> in <code>optimize.portfolio</code>. 
-If both mean and StdDev are specified as objective names, the default action is to maximize quadratic utility, therefore <code>maxSR=TRUE</code> must be specified to maximize Sharpe Ratio.
-</p>
-</li>
-<li><p>Minimize portfolio ES/ETL/CVaR optimization subject to leverage, box, group, position limit, target mean return, and/or factor exposure constraints and target portfolio return.
-</p>
-</li>
-<li><p>Maximize portfolio mean return per unit ES/ETL/CVaR (i.e. the STARR Ratio) can be done by specifying <code>maxSTARR=TRUE</code> in <code>optimize.portfolio</code>. 
-If both mean and ES/ETL/CVaR are specified as objective names, the default action is to maximize mean return per unit ES/ETL/CVaR.
-</p>
-</li></ul>
-
-<p>These problems also support a weight_concentration objective where concentration of weights as measured by HHI is added as a penalty term to the quadratic objective.
-</p>
-<p>Because these convex optimization problem are standardized, there is no need for a penalty term. The <code>multiplier</code> argument in <code><a href="#topic+add.objective">add.objective</a></code> passed into the complete constraint object are ingnored by the ROI solver.
-</p>
-<p>Many real-world portfolio optimization problems are global optimization problems, and therefore are not suitable for linear or quadratic programming routines. <kbd>PortfolioAnalytics</kbd> provides a random portfolio optimization method and also utilizes the <span class="rlang"><b>R</b></span> packages DEoptim, pso, and GenSA for solving non-convex global optimization problems.
-</p>
-<p><kbd>PortfolioAnalytics</kbd> supports three methods of generating random portfolios.
-</p>
-
-<ul>
-<li><p> The sample method to generate random portfolios is based on an idea by Pat Burns. This is the most flexible method, but also the slowest, and can generate portfolios to satisfy leverage, box, group, position limit, and leverage constraints.
-</p>
-</li>
-<li><p> The simplex method to generate random portfolios is based on a paper by W. T. Shaw. The simplex method is useful to generate random portfolios with the full investment constraint (where the sum of the weights is equal to 1) and min box constraints. Values for min_sum and max_sum of the leverage constraint will be ignored, the sum of weights will equal 1. All other constraints such as the box constraint max, group and position limit constraints will be handled by elimination. If the constraints are very restrictive, this may result in very few feasible portfolios remaining. Another key point to note is that the solution may not be along the vertexes depending on the objective. For example, a risk budget objective will likely place the portfolio somewhere on the interior.
-</p>
-</li>
-<li><p> The grid method to generate random portfolios is based on the <code>gridSearch</code> function in package <kbd>NMOF</kbd>. The grid search method only satisfies the min and max box constraints. The min_sum and max_sum leverage constraint will likely be violated and the weights in the random portfolios should be normalized. Normalization may cause the box constraints to be violated and will be penalized in <code>constrained_objective</code>.
-</p>
-</li></ul>
-
-<p><kbd>PortfolioAnalytics</kbd> leverages the <kbd>PerformanceAnalytics</kbd> package for many common objective functions. The objective types in <kbd>PortfolioAnalytics</kbd> are designed to be used with <kbd>PerformanceAnalytics</kbd> functions, but any user supplied valid <span class="rlang"><b>R</b></span> function can be used as an objective.
-</p>
-
-
-<h3>Optimization</h3>
-
-<p>This summary attempts to provide an overview of how to construct a portfolio object with constraints and objectives, run the optimization, and chart the results.
-</p>
-<p>The portfolio object is initialized with the <code><a href="#topic+portfolio.spec">portfolio.spec</a></code> function. The main argument to <code><a href="#topic+portfolio.spec">portfolio.spec</a></code> is <code>assets</code>. The <code>assets</code> argument can be a scalar value for the number of assets, a character vector of fund names, or a named vector of initial weights.
-</p>
-<p>Adding constraints to the portfolio object is done with <code><a href="#topic+add.constraint">add.constraint</a></code>. The <code><a href="#topic+add.constraint">add.constraint</a></code> function is the main interface for adding and/or updating constraints to the portfolio object. This function allows the user to specify the portfolio to add the constraints to, the type of constraints, arguments for the constraint, and whether or not to enable the constraint. If updating an existing constraint, the <code>indexnum</code> argument can be specified.
-</p>
-<p>Objectives can be added to the portfolio object with <code><a href="#topic+add.objective">add.objective</a></code>. The <code><a href="#topic+add.objective">add.objective</a></code> function is the main function for adding and/or updating objectives to the portfolio object. This function allows the user to specify the portfolio to add the objectives to, the type, name of the objective function, arguments to the objective function, and whether or not to enable the objective. If updating an existing objective, the <code>indexnum</code> argument can be specified.
-</p>
-<p>With the constraints and objectives specified in the portfolio object, the portfolio object can be passed to <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> or <code><a href="#topic+optimize.portfolio.rebalancing">optimize.portfolio.rebalancing</a></code> to run the optimization. Arguments to <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> include asset returns, the portfolio obect specifying constraints and objectives, optimization method, and other parameters specific to the solver. <code><a href="#topic+optimize.portfolio.rebalancing">optimize.portfolio.rebalancing</a></code> adds support for backtesting portfolio optimization through time with rebalancing or rolling periods.
-</p>
-
-
-<h3>Advanced Optimization</h3>
-
-<p>In addition to the more standard optimizations described above, <kbd>PortfolioAnalytics</kbd> also supports multi-layer optimization and regime switching optimization. 
-</p>
-<p>Support for multi-layer optimization allows one to construct a top level portfolio and several sub-portfolios with potentially different assets, constraints, and objectives. First, each sub-portfolio is optimized out-of-sample which creates a time series of returns. One can think of the out of sample returns for each sub-portfolio as the returns for a synthetic instrument. Finally, the out-of-sample returns of each sub-portfolio are then used as inputs for the top level optimization. The top level portfolio and sub-portfolios are created as normal using <code>portfolio.spec</code>, <code>add.constraint</code>, and <code>add.objective</code>. The multi-layer portfolio specification object is first initialized by passing the top level portfolio to <code>mult.portfolio.spec</code>. Sub-portfolios are then added with <code>add.sub.portfolio</code>. The multi-layer portfolio specification object can then be passed to <code>optimize.portfolio</code> and <code>optimize.portfolio.rebalancing</code>. See <code>demo(multi_layer_optimization)</code>.
-</p>
-<p>Support for regime switching models allows one to change constraints and objectives depending on the current regime. Portfolios are created as normal with <code>portfolio.spec</code>, <code>add.constraint</code>, and <code>add.objective</code>. The portfolios are then combined with a regime object using <code>regime.portfolios</code> to create a regime portfolio specification which can then be passed to <code>optimize.portfolio</code> and <code>optimize.portfolio.rebalancing</code>. Regime switching optimization is implemented in such a way that any arbitrary regime model can be used. See <code>demo(regime_switching)</code>.
-</p>
-
-
-<h3>Portfolio Moments</h3>
-
-<p>The <kbd>PortfolioAnalytics</kbd> framework to estimate solutions to constrained optimization problems is implemented in such a way that the moments of the returns are set once for use in lower level optimization functions. The <code>set.portfolio.moments</code> function computes the first, second, third, and fourth moments depending on the objective function(s) in the <code>portfolio</code> object. For example, if the third and fourth moments do not need to be calculated for a given objective, then <code>set.portfolio.moments</code> will try to detect this and not compute those moments. Currently, <code>set.portfolio.moments</code> implements methods to compute moments based on sample estimates, higher moments from fitting a statistical factor model based on the work of Kris Boudt, the Black Litterman model, and the Fully Flexible Framework based on the work of Attilio Meucci (NEED REFERENCE HERE). See the Custom Moment and Objective Functions vignette for a more detailed description and examples. 
-</p>
-
-
-<h3>Charts and Graphs</h3>
-
-<p>Intuition into the optimization can be aided through visualization. The goal of creating the charts is to provide visualization tools for optimal portfolios regardless of the chosen optimization method.
-</p>
-<p><code><a href="#topic+chart.Weights">chart.Weights</a></code> plots the weights of the optimal portfolio. <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code> plots the optimal portfolio in risk-reward space. The random portfolios, DEoptim, and pso solvers will return trace portfolio information at each iteration when <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> is run with <code>trace=TRUE</code>. If this is the case, <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code> will plot these portfolios so that the feasible space can be easily visualized. Although the GenSA and ROI solvers do not return trace portfolio information, random portfolios can be be generated with the argument <code>rp=TRUE</code> in <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code>. A <code>plot</code> function is provided that will plot the weights and risk-reward scatter chart. The component risk contribution can be charted for portfolio optimization problems with risk budget objectives with <code><a href="#topic+chart.RiskBudget">chart.RiskBudget</a></code>. Neighbor portfolios can be plotted in <code><a href="#topic+chart.RiskBudget">chart.RiskBudget</a></code>, <code><a href="#topic+chart.Weights">chart.Weights</a></code>, and <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code>.
-</p>
-<p>Efficient frontiers can be extracted from <code>optimize.portfolio</code> objects or created from a <code>portfolio</code> object. The efficient frontier can be charted in risk-reward space with <code><a href="#topic+chart.EfficientFrontier">chart.EfficientFrontier</a></code>. The weights along the efficient frontier can be charted with <code><a href="#topic+chart.EF.Weights">chart.EF.Weights</a></code>.
-</p>
-<p>Multiple objects created via <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code> can be combined with <code><a href="#topic+combine.optimizations">combine.optimizations</a></code> for visual comparison. The weights of the optimal portfolios can be plotted with <code><a href="#topic+chart.Weights">chart.Weights</a></code>. The optimal portfolios can be compared in risk-reward space with <code><a href="#topic+chart.RiskReward">chart.RiskReward</a></code>. The portfolio component risk contributions of the multiple optimal portfolios can be plotted with <code><a href="#topic+chart.RiskBudget">chart.RiskBudget</a></code>.
-</p>
-
-
-<h3>Demos</h3>
-
-<p><kbd>PortfolioAnalytics</kbd> contains a comprehensive collection of demos to demonstrate the functionality from very basic optimization problems such as estimating the solution to a minimum variance portfolio to more complex optimization problems with custom moment and objective functions.
-</p>
-
-
-<h3>Vignettes</h3>
-
-<p>TODO
-</p>
-
-
-<h3>Package Dependencies</h3>
-
-<p>Several of the functions in the <kbd>PortfolioAnalytics</kbd> package require time series data of returns and the <code><a href="xts.html#topic+xts">xts</a></code> package is used for working with time series data. 
-</p>
-<p>The <kbd>PerformanceAnalytics</kbd> package is used for many common objective functions. The objective types in <kbd>PortfolioAnalytics</kbd> are designed to be used with <kbd>PerformanceAnalytics</kbd> functions such as <code><a href="PerformanceAnalytics.html#topic+StdDev">StdDev</a></code>, <code><a href="PerformanceAnalytics.html#topic+VaR">VaR</a></code>, and <code><a href="PerformanceAnalytics.html#topic+ES">ES</a></code>.
-</p>
-<p>The <kbd>foreach</kbd> and <kbd>iterators</kbd> packages are used extensively throughout the package to support parallel programming. The primary functions where <code>foreach</code> loops are used is <code><a href="#topic+optimize.portfolio">optimize.portfolio</a></code>, <code><a href="#topic+optimize.portfolio.rebalancing">optimize.portfolio.rebalancing</a></code>, and <code><a href="#topic+create.EfficientFrontier">create.EfficientFrontier</a></code>.
-</p>
-<p>In addition to a random portfolios optimzation method, <kbd>PortfolioAnalytics</kbd> supports backend solvers by leveraging the following packages: <kbd>DEoptim</kbd>, <kbd>pso</kbd>, <kbd>GenSA</kbd>, <kbd>ROI</kbd> and associated ROI plugin packages.
-</p>
-
-
-<h3>Further Work</h3>
-
-<p>Continued work to improved charts and graphs.
-</p>
-<p>Continued work to improve features to combine and compare multiple optimal portfolio objects.
-</p>
-<p>Support for more solvers.
-</p>
-<p>Comments, suggestions, and/or code patches are welcome.
-</p>
-
-
-<h3>Acknowledgements</h3>
-
-<p>TODO
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Ross Bennett <br />
-Kris Boudt <br />
-Peter Carl <br />
-Brian G. Peterson <br />
-</p>
-<p>Maintainer: Brian G. Peterson <a href="mailto:brian@braverock.com">brian@braverock.com</a>
-</p>
-
-
-<h3>References</h3>
-
-<p>Boudt, Kris and Lu, Wanbo and Peeters, Benedict, <em>Higher Order Comoments of Multifactor Models and Asset Allocation</em> (June 16, 2014). Available at SSRN: http://ssrn.com/abstract=2409603 or http://dx.doi.org/10.2139/ssrn.2409603
-</p>
-<p>Chriss, Neil A and Almgren, Robert, <em>Portfolios from Sorts</em> (April 27, 2005). Available at SSRN: http://ssrn.com/abstract=720041 or http://dx.doi.org/10.2139/ssrn.720041 <br />
-</p>
-<p>Meucci, Attilio, <em>The Black-Litterman Approach: Original Model and Extensions</em> (August 1, 2008). Shorter version in, THE ENCYCLOPEDIA OF QUANTITATIVE FINANCE, Wiley, 2010. Available at SSRN: http://ssrn.com/abstract=1117574 or http://dx.doi.org/10.2139/ssrn.1117574 <br />
-</p>
-<p>Meucci, Attilio, <em>Fully Flexible Views: Theory and Practice</em> (August 8, 2008). Fully Flexible Views: Theory and Practice, Risk, Vol. 21, No. 10, pp. 97-102, October 2008. Available at SSRN: http://ssrn.com/abstract=1213325
-</p>
-<p>Scherer, Bernd and Martin, Doug, <em>Modern Portfolio Optimization</em>. Springer. 2005. <br />
-</p>
-<p>Shaw, William Thornton, <em>Portfolio Optimization for VAR, CVaR, Omega and Utility with General Return Distributions: A Monte Carlo Approach for Long-Only and Bounded Short Portfolios with Optional Robustness and a Simplified Approach to Covariance Matching</em> (June 1, 2011). Available at SSRN: http://ssrn.com/abstract=1856476 or http://dx.doi.org/10.2139/ssrn.1856476 <br />
-</p>
-
-
-<h3>See Also</h3>
-
-<p>CRAN task view on Empirical Finance <br /> <a href="https://cran.r-project.org/view=Econometrics">https://cran.r-project.org/view=Econometrics</a>
-</p>
-<p>CRAN task view on Optimization <br /> <a href="https://cran.r-project.org/view=Optimization">https://cran.r-project.org/view=Optimization</a>
-</p>
-<p>Large-scale portfolio optimization with DEoptim <br /> <a href="https://cran.r-project.org/package=DEoptim">https://cran.r-project.org/package=DEoptim</a>
-</p>
 
 <hr>
 <h2 id='pos_limit_fail'>function to check for violation of position limits constraints</h2><span id='topic+pos_limit_fail'></span>

@@ -13,16 +13,16 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {easyPubMed}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#easyPubMed-package'><p>Retrieve and Process Scientific Publication Records from Pubmed</p></a></li>
 <li><a href='#article_to_df'><p>Extract Data from a PubMed Record</p></a></li>
 <li><a href='#articles_to_list'><p>Cast PubMed Data into a List of Articles</p></a></li>
 <li><a href='#batch_pubmed_download'><p>Download PubMed Records in XML or TXT Format</p></a></li>
 <li><a href='#custom_grep'><p>Retrieve Text Between XML Tags</p></a></li>
-<li><a href='#easyPubMed-package'><p>Retrieve and Process Scientific Publication Records from Pubmed</p></a></li>
 <li><a href='#EPMsamples'><p>PubMed Records downloaded and analyzed via easyPubMed</p></a></li>
 <li><a href='#fetch_all_pubmed_ids'><p>Retrieve All PubMed Record Identifiers Returned by a Query</p></a></li>
 <li><a href='#fetch_pubmed_data'><p>Retrieve PubMed Data in XML or TXT Format</p></a></li>
@@ -114,6 +114,94 @@ function processMathHTML() {
 <td>2019-03-29 09:00:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='easyPubMed-package'>Retrieve and Process Scientific Publication Records from Pubmed</h2><span id='topic+easyPubMed'></span><span id='topic+easyPubMed-package'></span>
+
+<h3>Description</h3>
+
+<p>Query NCBI Entrez and retrieve PubMed records in XML or TXT format. PubMed records 
+can be downloaded and saved as XML or text files. Data integrity is enforced during data download, 
+allowing to retrieve and save very large number of records effortlessly. PubMed records can be processed 
+to extract publication- and author-specific information.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Damiano Fantini <a href="mailto:damiano.fantini@gmail.com">damiano.fantini@gmail.com</a>
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://www.data-pulse.com/dev_site/easypubmed/">https://www.data-pulse.com/dev_site/easypubmed/</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://www.data-pulse.com/dev_site/easypubmed/">https://www.data-pulse.com/dev_site/easypubmed/</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>try({
+  ## Example 01: retrieve data in TXT format
+  dami_query_string &lt;- "Damiano Fantini[AU]"
+  dami_on_pubmed &lt;- get_pubmed_ids(dami_query_string)
+  dami_papers &lt;- fetch_pubmed_data(dami_on_pubmed, format = "abstract")
+  dami_papers[dami_papers == ""] &lt;- "\n"
+  cat(paste(dami_papers[1:65], collapse = ""))
+  #
+}, silent = TRUE)
+
+## Not run: 
+## Example 02: retrieve data in XML format
+library("easyPubMed")
+dami_query_string &lt;- "Damiano Fantini[AU] AND 2018[PDAT]"
+dami_on_pubmed &lt;- get_pubmed_ids(dami_query_string)
+dami_papers &lt;- fetch_pubmed_data(dami_on_pubmed)
+titles &lt;- sapply(dami_papers, custom_grep, tag = "ArticleTitle", format = "char", USE.NAMES = FALSE)
+print(titles)
+#
+## Example 03: retrieve data from PubMed and save as XML file
+ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
+out1 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180)
+x &lt;- paste(readLines(out1[1], n = 10), collapse = "\n")
+cat(x)
+#
+## Example 04: retrieve data from PubMed and save as TXT file
+ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
+out2 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180, format = "medline")
+x &lt;- paste(readLines(out1[1], n = 30), collapse = "\n")
+cat(x)
+#
+## Example 05: extract information from a single PubMed record 
+ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
+out3 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180)
+PM_data &lt;- articles_to_list(out3[1])
+PM_record_df &lt;- article_to_df(PM_data[[80]])
+print(PM_record_df[1,])
+print(PM_record_df[,"address"])
+#
+## Example 06: query PubMed and extract information from multiple records in one step 
+ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
+out4 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180)
+PM_tab &lt;- table_articles_byAuth(out4[1], autofill = TRUE, included_authors = "last")
+PM_tab$address &lt;- substr(PM_tab$address, 1, 12)
+PM_tab[50:70,c("pmid", "jabbrv", "year", "lastname", "address")]
+
+## End(Not run)
+
+</code></pre>
+
 <hr>
 <h2 id='article_to_df'>Extract Data from a PubMed Record</h2><span id='topic+article_to_df'></span>
 
@@ -504,94 +592,6 @@ If an XML Document is provided as input, the function will rise an error.
   custom_grep(xml_data = string_01, tag = "strong", format = "char")
   custom_grep(xml_data = string_01, tag = "strong", format = "list")
 }, silent = TRUE)
-
-</code></pre>
-
-<hr>
-<h2 id='easyPubMed-package'>Retrieve and Process Scientific Publication Records from Pubmed</h2><span id='topic+easyPubMed'></span><span id='topic+easyPubMed-package'></span>
-
-<h3>Description</h3>
-
-<p>Query NCBI Entrez and retrieve PubMed records in XML or TXT format. PubMed records 
-can be downloaded and saved as XML or text files. Data integrity is enforced during data download, 
-allowing to retrieve and save very large number of records effortlessly. PubMed records can be processed 
-to extract publication- and author-specific information.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Damiano Fantini <a href="mailto:damiano.fantini@gmail.com">damiano.fantini@gmail.com</a>
-</p>
-
-
-<h3>References</h3>
-
-<p><a href="https://www.data-pulse.com/dev_site/easypubmed/">https://www.data-pulse.com/dev_site/easypubmed/</a>
-</p>
-
-
-<h3>See Also</h3>
-
-<p>Useful links:
-</p>
-
-<ul>
-<li> <p><a href="https://www.data-pulse.com/dev_site/easypubmed/">https://www.data-pulse.com/dev_site/easypubmed/</a>
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>try({
-  ## Example 01: retrieve data in TXT format
-  dami_query_string &lt;- "Damiano Fantini[AU]"
-  dami_on_pubmed &lt;- get_pubmed_ids(dami_query_string)
-  dami_papers &lt;- fetch_pubmed_data(dami_on_pubmed, format = "abstract")
-  dami_papers[dami_papers == ""] &lt;- "\n"
-  cat(paste(dami_papers[1:65], collapse = ""))
-  #
-}, silent = TRUE)
-
-## Not run: 
-## Example 02: retrieve data in XML format
-library("easyPubMed")
-dami_query_string &lt;- "Damiano Fantini[AU] AND 2018[PDAT]"
-dami_on_pubmed &lt;- get_pubmed_ids(dami_query_string)
-dami_papers &lt;- fetch_pubmed_data(dami_on_pubmed)
-titles &lt;- sapply(dami_papers, custom_grep, tag = "ArticleTitle", format = "char", USE.NAMES = FALSE)
-print(titles)
-#
-## Example 03: retrieve data from PubMed and save as XML file
-ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
-out1 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180)
-x &lt;- paste(readLines(out1[1], n = 10), collapse = "\n")
-cat(x)
-#
-## Example 04: retrieve data from PubMed and save as TXT file
-ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
-out2 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180, format = "medline")
-x &lt;- paste(readLines(out1[1], n = 30), collapse = "\n")
-cat(x)
-#
-## Example 05: extract information from a single PubMed record 
-ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
-out3 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180)
-PM_data &lt;- articles_to_list(out3[1])
-PM_record_df &lt;- article_to_df(PM_data[[80]])
-print(PM_record_df[1,])
-print(PM_record_df[,"address"])
-#
-## Example 06: query PubMed and extract information from multiple records in one step 
-ml_query &lt;- "Machine Learning[TI] AND 2016[PD]"
-out4 &lt;- batch_pubmed_download(pubmed_query_string = ml_query, batch_size = 180)
-PM_tab &lt;- table_articles_byAuth(out4[1], autofill = TRUE, included_authors = "last")
-PM_tab$address &lt;- substr(PM_tab$address, 1, 12)
-PM_tab[50:70,c("pmid", "jabbrv", "year", "lastname", "address")]
-
-## End(Not run)
 
 </code></pre>
 
