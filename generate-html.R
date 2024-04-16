@@ -62,6 +62,7 @@ for (pkg in pkgs) {
                          dir = sprintf("CRAN/%s", pkg),
                          out = sprintf("docs/%s.html", pkg),
                          stylesheet = "R-nav.css",
+                         mathjax_config = "mathjax-config.js",
                          xLinks = unlist(unname(xLinks[deps])),
                          stages = c("build", "install", "render", "later")),
                 silent = TRUE)
