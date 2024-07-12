@@ -10,19 +10,23 @@ options(warn = 1)
 
 sanitize_maintainer <- function(x) gsub("@", " at ", x, fixed = TRUE)
 
-makeTableRow <- function(x)
+makeTableRow <- function(x, cran_link = TRUE)
 {
-    trow_fmt <- paste0("\n<tr>",
-                       "<td><a href='%s.html'>%s</a></td>", # pkg, pkg (link to refman)
-                       "<td>%s</td>", # Version
-                       "<td><a href='https://cran.r-project.org/package=%s'>%s</a></td>",
-                                        # pkg, Title (link to CRAN)
-                       "<td>%s</td>", # Maintainer
-                       "</tr>")
-    with(x,
-         sprintf(trow_fmt,
-                 Package, Package, Version, Package, Title,
-                 sanitize_maintainer(Maintainer)))
+    package_column <- with(x, sprintf("\n<tr><td><a href='%s.html'>%s</a></td>", Package, Package))
+    version_column <- with(x, sprintf("<td>%s</td>", Version))
+    
+    if (cran_link) {
+      title_column <- with(x, sprintf("<td><a href='https://cran.r-project.org/package=%s'>%s</a></td>", Package, Title))
+    } else {
+      title_column <- with(x, sprintf("<td>%s</td>", Title))
+    }
+    
+    maintainer_column <-with(x, sprintf("<td>%s</td>", sanitize_maintainer(Maintainer)))
+    
+    paste0(package_column, 
+           version_column, 
+           title_column, 
+           maintainer_column)
 }
 
 INDEX_FILE <- "docs/index.html"
@@ -47,7 +51,7 @@ wbase <- which(ip[, "Priority"] == "base")
 for (pkg in ip[wbase, "Package"]) {
     cat(pkg, fill = TRUE)
     desc <- packageDescription(pkg)
-    makeTableRow(desc) |> cat(file = INDEX_FILE, append = TRUE)
+    makeTableRow(desc, cran_link = FALSE) |> cat(file = INDEX_FILE, append = TRUE)
 }
 
 pkgs <- list.dirs("CRAN", full.names = FALSE, recursive = FALSE)
