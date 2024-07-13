@@ -59,7 +59,7 @@ and return only strategic output.</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.1.0</td>
+<td>1.2.0</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -80,11 +80,11 @@ and return only strategic output.</a></li>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>coda (&ge; 0.19.4), digest (&ge; 0.6.25), fst (&ge; 0.9.2),
-posterior (&ge; 1.0.1), purrr (&ge; 0.3.4), qs (&ge; 0.23.2), R2jags
-(&ge; 0.6.1), rjags (&ge; 4.10), rlang (&ge; 0.4.10), stats, targets
-(&ge; 0.12.0), tarchetypes (&ge; 0.6.0), tibble (&ge; 3.0.1), tools,
-utils, withr (&ge; 2.1.2),</td>
+<td>coda (&ge; 0.19.4), fst (&ge; 0.9.2), posterior (&ge; 1.0.1), purrr
+(&ge; 0.3.4), qs (&ge; 0.23.2), R2jags (&ge; 0.6.1), rjags (&ge; 4.10),
+rlang (&ge; 0.4.10), secretbase (&ge; 0.4.0), stats, targets (&ge;
+1.6.0), tarchetypes (&ge; 0.8.0), tibble (&ge; 3.0.1), tidyselect,
+tools, utils, withr (&ge; 2.1.2),</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -106,7 +106,7 @@ utils, withr (&ge; 2.1.2),</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -122,7 +122,7 @@ utils, withr (&ge; 2.1.2),</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-01-05 02:12:57 UTC; c240390</td>
+<td>2024-04-17 16:47:51 UTC; C240390</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -133,7 +133,7 @@ utils, withr (&ge; 2.1.2),</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
-<td>William Michael Landau &lt;will.landau@gmail.com&gt;</td>
+<td>William Michael Landau &lt;will.landau.oss@gmail.com&gt;</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -141,7 +141,7 @@ utils, withr (&ge; 2.1.2),</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-01-06 14:50:27 UTC</td>
+<td>2024-04-17 19:40:06 UTC</td>
 </tr>
 </table>
 <hr>
@@ -215,7 +215,8 @@ and save multiple outputs.
   resources = targets::tar_option_get("resources"),
   storage = targets::tar_option_get("storage"),
   retrieval = targets::tar_option_get("retrieval"),
-  cue = targets::tar_option_get("cue")
+  cue = targets::tar_option_get("cue"),
+  description = targets::tar_option_get("description")
 )
 </code></pre>
 
@@ -380,7 +381,7 @@ the values of global objects.</p>
 <tr><td><code id="tar_jags_+3A_packages">packages</code></td>
 <td>
 <p>Character vector of packages to load right before
-the target builds or the output data is reloaded for
+the target runs or the output data is reloaded for
 downstream targets. Use <code>tar_option_set()</code> to set packages
 globally for all subsequent targets you define.</p>
 </td></tr>
@@ -491,16 +492,19 @@ just before the target runs.</p>
 </td></tr>
 <tr><td><code id="tar_jags_+3A_deployment">deployment</code></td>
 <td>
-<p>Character of length 1, only relevant to
-<code><a href="targets.html#topic+tar_make_clustermq">tar_make_clustermq()</a></code> and <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>. If <code>"worker"</code>,
-the target builds on a parallel worker. If <code>"main"</code>,
-the target builds on the host machine / process managing the pipeline.</p>
+<p>Character of length 1. If <code>deployment</code> is
+<code>"main"</code>, then the target will run on the central controlling R process.
+Otherwise, if <code>deployment</code> is <code>"worker"</code> and you set up the pipeline
+with distributed/parallel computing, then
+the target runs on a parallel worker. For more on distributed/parallel
+computing in <code>targets</code>, please visit
+<a href="https://books.ropensci.org/targets/crew.html">https://books.ropensci.org/targets/crew.html</a>.</p>
 </td></tr>
 <tr><td><code id="tar_jags_+3A_priority">priority</code></td>
 <td>
 <p>Numeric of length 1 between 0 and 1. Controls which
 targets get deployed first when multiple competing targets are ready
-simultaneously. Targets with priorities closer to 1 get built earlier
+simultaneously. Targets with priorities closer to 1 get dispatched earlier
 (and polled earlier in <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>).</p>
 </td></tr>
 <tr><td><code id="tar_jags_+3A_resources">resources</code></td>
@@ -559,7 +563,7 @@ Must be one of the following values:
 
 <ul>
 <li> <p><code>"main"</code>: the target's dependencies are loaded on the host machine
-and sent to the worker before the target builds.
+and sent to the worker before the target runs.
 </p>
 </li>
 <li> <p><code>"worker"</code>: the worker loads the targets dependencies.
@@ -576,6 +580,17 @@ explicitly from another language.
 <td>
 <p>An optional object from <code>tar_cue()</code> to customize the
 rules that decide whether the target is up to date.</p>
+</td></tr>
+<tr><td><code id="tar_jags_+3A_description">description</code></td>
+<td>
+<p>Character of length 1, a custom free-form human-readable
+text description of the target. Descriptions appear as target labels
+in functions like <code><a href="targets.html#topic+tar_manifest">tar_manifest()</a></code> and <code><a href="targets.html#topic+tar_visnetwork">tar_visnetwork()</a></code>,
+and they let you select subsets of targets for the <code>names</code> argument of
+functions like <code><a href="targets.html#topic+tar_make">tar_make()</a></code>. For example,
+<code>tar_manifest(names = tar_described_as(starts_with("survival model")))</code>
+lists all the targets whose descriptions start with the character
+string <code>"survival model"</code>.</p>
 </td></tr>
 </table>
 
@@ -939,7 +954,8 @@ writeLines(readLines(path))
   resources = targets::tar_option_get("resources"),
   storage = targets::tar_option_get("storage"),
   retrieval = targets::tar_option_get("retrieval"),
-  cue = targets::tar_option_get("cue")
+  cue = targets::tar_option_get("cue"),
+  description = targets::tar_option_get("description")
 )
 </code></pre>
 
@@ -1128,7 +1144,7 @@ the values of global objects.</p>
 <tr><td><code id="tar_jags_rep_+3A_packages">packages</code></td>
 <td>
 <p>Character vector of packages to load right before
-the target builds or the output data is reloaded for
+the target runs or the output data is reloaded for
 downstream targets. Use <code>tar_option_set()</code> to set packages
 globally for all subsequent targets you define.</p>
 </td></tr>
@@ -1238,16 +1254,19 @@ just before the target runs.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_+3A_deployment">deployment</code></td>
 <td>
-<p>Character of length 1, only relevant to
-<code><a href="targets.html#topic+tar_make_clustermq">tar_make_clustermq()</a></code> and <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>. If <code>"worker"</code>,
-the target builds on a parallel worker. If <code>"main"</code>,
-the target builds on the host machine / process managing the pipeline.</p>
+<p>Character of length 1. If <code>deployment</code> is
+<code>"main"</code>, then the target will run on the central controlling R process.
+Otherwise, if <code>deployment</code> is <code>"worker"</code> and you set up the pipeline
+with distributed/parallel computing, then
+the target runs on a parallel worker. For more on distributed/parallel
+computing in <code>targets</code>, please visit
+<a href="https://books.ropensci.org/targets/crew.html">https://books.ropensci.org/targets/crew.html</a>.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_+3A_priority">priority</code></td>
 <td>
 <p>Numeric of length 1 between 0 and 1. Controls which
 targets get deployed first when multiple competing targets are ready
-simultaneously. Targets with priorities closer to 1 get built earlier
+simultaneously. Targets with priorities closer to 1 get dispatched earlier
 (and polled earlier in <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>).</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_+3A_resources">resources</code></td>
@@ -1306,7 +1325,7 @@ Must be one of the following values:
 
 <ul>
 <li> <p><code>"main"</code>: the target's dependencies are loaded on the host machine
-and sent to the worker before the target builds.
+and sent to the worker before the target runs.
 </p>
 </li>
 <li> <p><code>"worker"</code>: the worker loads the targets dependencies.
@@ -1323,6 +1342,17 @@ explicitly from another language.
 <td>
 <p>An optional object from <code>tar_cue()</code> to customize the
 rules that decide whether the target is up to date.</p>
+</td></tr>
+<tr><td><code id="tar_jags_rep_+3A_description">description</code></td>
+<td>
+<p>Character of length 1, a custom free-form human-readable
+text description of the target. Descriptions appear as target labels
+in functions like <code><a href="targets.html#topic+tar_manifest">tar_manifest()</a></code> and <code><a href="targets.html#topic+tar_visnetwork">tar_visnetwork()</a></code>,
+and they let you select subsets of targets for the <code>names</code> argument of
+functions like <code><a href="targets.html#topic+tar_make">tar_make()</a></code>. For example,
+<code>tar_manifest(names = tar_described_as(starts_with("survival model")))</code>
+lists all the targets whose descriptions start with the character
+string <code>"survival model"</code>.</p>
 </td></tr>
 </table>
 
@@ -1457,7 +1487,8 @@ for each run.
   resources = targets::tar_option_get("resources"),
   storage = targets::tar_option_get("storage"),
   retrieval = targets::tar_option_get("retrieval"),
-  cue = targets::tar_option_get("cue")
+  cue = targets::tar_option_get("cue"),
+  description = targets::tar_option_get("description")
 )
 </code></pre>
 
@@ -1609,7 +1640,7 @@ the values of global objects.</p>
 <tr><td><code id="tar_jags_rep_dic_+3A_packages">packages</code></td>
 <td>
 <p>Character vector of packages to load right before
-the target builds or the output data is reloaded for
+the target runs or the output data is reloaded for
 downstream targets. Use <code>tar_option_set()</code> to set packages
 globally for all subsequent targets you define.</p>
 </td></tr>
@@ -1719,16 +1750,19 @@ just before the target runs.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_dic_+3A_deployment">deployment</code></td>
 <td>
-<p>Character of length 1, only relevant to
-<code><a href="targets.html#topic+tar_make_clustermq">tar_make_clustermq()</a></code> and <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>. If <code>"worker"</code>,
-the target builds on a parallel worker. If <code>"main"</code>,
-the target builds on the host machine / process managing the pipeline.</p>
+<p>Character of length 1. If <code>deployment</code> is
+<code>"main"</code>, then the target will run on the central controlling R process.
+Otherwise, if <code>deployment</code> is <code>"worker"</code> and you set up the pipeline
+with distributed/parallel computing, then
+the target runs on a parallel worker. For more on distributed/parallel
+computing in <code>targets</code>, please visit
+<a href="https://books.ropensci.org/targets/crew.html">https://books.ropensci.org/targets/crew.html</a>.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_dic_+3A_priority">priority</code></td>
 <td>
 <p>Numeric of length 1 between 0 and 1. Controls which
 targets get deployed first when multiple competing targets are ready
-simultaneously. Targets with priorities closer to 1 get built earlier
+simultaneously. Targets with priorities closer to 1 get dispatched earlier
 (and polled earlier in <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>).</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_dic_+3A_resources">resources</code></td>
@@ -1787,7 +1821,7 @@ Must be one of the following values:
 
 <ul>
 <li> <p><code>"main"</code>: the target's dependencies are loaded on the host machine
-and sent to the worker before the target builds.
+and sent to the worker before the target runs.
 </p>
 </li>
 <li> <p><code>"worker"</code>: the worker loads the targets dependencies.
@@ -1804,6 +1838,17 @@ explicitly from another language.
 <td>
 <p>An optional object from <code>tar_cue()</code> to customize the
 rules that decide whether the target is up to date.</p>
+</td></tr>
+<tr><td><code id="tar_jags_rep_dic_+3A_description">description</code></td>
+<td>
+<p>Character of length 1, a custom free-form human-readable
+text description of the target. Descriptions appear as target labels
+in functions like <code><a href="targets.html#topic+tar_manifest">tar_manifest()</a></code> and <code><a href="targets.html#topic+tar_visnetwork">tar_visnetwork()</a></code>,
+and they let you select subsets of targets for the <code>names</code> argument of
+functions like <code><a href="targets.html#topic+tar_make">tar_make()</a></code>. For example,
+<code>tar_manifest(names = tar_described_as(starts_with("survival model")))</code>
+lists all the targets whose descriptions start with the character
+string <code>"survival model"</code>.</p>
 </td></tr>
 </table>
 
@@ -1967,7 +2012,8 @@ for each run.
   resources = targets::tar_option_get("resources"),
   storage = targets::tar_option_get("storage"),
   retrieval = targets::tar_option_get("retrieval"),
-  cue = targets::tar_option_get("cue")
+  cue = targets::tar_option_get("cue"),
+  description = targets::tar_option_get("description")
 )
 </code></pre>
 
@@ -2131,7 +2177,7 @@ the values of global objects.</p>
 <tr><td><code id="tar_jags_rep_draws_+3A_packages">packages</code></td>
 <td>
 <p>Character vector of packages to load right before
-the target builds or the output data is reloaded for
+the target runs or the output data is reloaded for
 downstream targets. Use <code>tar_option_set()</code> to set packages
 globally for all subsequent targets you define.</p>
 </td></tr>
@@ -2241,16 +2287,19 @@ just before the target runs.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_draws_+3A_deployment">deployment</code></td>
 <td>
-<p>Character of length 1, only relevant to
-<code><a href="targets.html#topic+tar_make_clustermq">tar_make_clustermq()</a></code> and <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>. If <code>"worker"</code>,
-the target builds on a parallel worker. If <code>"main"</code>,
-the target builds on the host machine / process managing the pipeline.</p>
+<p>Character of length 1. If <code>deployment</code> is
+<code>"main"</code>, then the target will run on the central controlling R process.
+Otherwise, if <code>deployment</code> is <code>"worker"</code> and you set up the pipeline
+with distributed/parallel computing, then
+the target runs on a parallel worker. For more on distributed/parallel
+computing in <code>targets</code>, please visit
+<a href="https://books.ropensci.org/targets/crew.html">https://books.ropensci.org/targets/crew.html</a>.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_draws_+3A_priority">priority</code></td>
 <td>
 <p>Numeric of length 1 between 0 and 1. Controls which
 targets get deployed first when multiple competing targets are ready
-simultaneously. Targets with priorities closer to 1 get built earlier
+simultaneously. Targets with priorities closer to 1 get dispatched earlier
 (and polled earlier in <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>).</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_draws_+3A_resources">resources</code></td>
@@ -2309,7 +2358,7 @@ Must be one of the following values:
 
 <ul>
 <li> <p><code>"main"</code>: the target's dependencies are loaded on the host machine
-and sent to the worker before the target builds.
+and sent to the worker before the target runs.
 </p>
 </li>
 <li> <p><code>"worker"</code>: the worker loads the targets dependencies.
@@ -2326,6 +2375,17 @@ explicitly from another language.
 <td>
 <p>An optional object from <code>tar_cue()</code> to customize the
 rules that decide whether the target is up to date.</p>
+</td></tr>
+<tr><td><code id="tar_jags_rep_draws_+3A_description">description</code></td>
+<td>
+<p>Character of length 1, a custom free-form human-readable
+text description of the target. Descriptions appear as target labels
+in functions like <code><a href="targets.html#topic+tar_manifest">tar_manifest()</a></code> and <code><a href="targets.html#topic+tar_visnetwork">tar_visnetwork()</a></code>,
+and they let you select subsets of targets for the <code>names</code> argument of
+functions like <code><a href="targets.html#topic+tar_make">tar_make()</a></code>. For example,
+<code>tar_manifest(names = tar_described_as(starts_with("survival model")))</code>
+lists all the targets whose descriptions start with the character
+string <code>"survival model"</code>.</p>
 </td></tr>
 </table>
 
@@ -2686,7 +2746,8 @@ for each run.
   resources = targets::tar_option_get("resources"),
   storage = targets::tar_option_get("storage"),
   retrieval = targets::tar_option_get("retrieval"),
-  cue = targets::tar_option_get("cue")
+  cue = targets::tar_option_get("cue"),
+  description = targets::tar_option_get("description")
 )
 </code></pre>
 
@@ -2855,7 +2916,7 @@ the values of global objects.</p>
 <tr><td><code id="tar_jags_rep_summary_+3A_packages">packages</code></td>
 <td>
 <p>Character vector of packages to load right before
-the target builds or the output data is reloaded for
+the target runs or the output data is reloaded for
 downstream targets. Use <code>tar_option_set()</code> to set packages
 globally for all subsequent targets you define.</p>
 </td></tr>
@@ -2965,16 +3026,19 @@ just before the target runs.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_summary_+3A_deployment">deployment</code></td>
 <td>
-<p>Character of length 1, only relevant to
-<code><a href="targets.html#topic+tar_make_clustermq">tar_make_clustermq()</a></code> and <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>. If <code>"worker"</code>,
-the target builds on a parallel worker. If <code>"main"</code>,
-the target builds on the host machine / process managing the pipeline.</p>
+<p>Character of length 1. If <code>deployment</code> is
+<code>"main"</code>, then the target will run on the central controlling R process.
+Otherwise, if <code>deployment</code> is <code>"worker"</code> and you set up the pipeline
+with distributed/parallel computing, then
+the target runs on a parallel worker. For more on distributed/parallel
+computing in <code>targets</code>, please visit
+<a href="https://books.ropensci.org/targets/crew.html">https://books.ropensci.org/targets/crew.html</a>.</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_summary_+3A_priority">priority</code></td>
 <td>
 <p>Numeric of length 1 between 0 and 1. Controls which
 targets get deployed first when multiple competing targets are ready
-simultaneously. Targets with priorities closer to 1 get built earlier
+simultaneously. Targets with priorities closer to 1 get dispatched earlier
 (and polled earlier in <code><a href="targets.html#topic+tar_make_future">tar_make_future()</a></code>).</p>
 </td></tr>
 <tr><td><code id="tar_jags_rep_summary_+3A_resources">resources</code></td>
@@ -3033,7 +3097,7 @@ Must be one of the following values:
 
 <ul>
 <li> <p><code>"main"</code>: the target's dependencies are loaded on the host machine
-and sent to the worker before the target builds.
+and sent to the worker before the target runs.
 </p>
 </li>
 <li> <p><code>"worker"</code>: the worker loads the targets dependencies.
@@ -3050,6 +3114,17 @@ explicitly from another language.
 <td>
 <p>An optional object from <code>tar_cue()</code> to customize the
 rules that decide whether the target is up to date.</p>
+</td></tr>
+<tr><td><code id="tar_jags_rep_summary_+3A_description">description</code></td>
+<td>
+<p>Character of length 1, a custom free-form human-readable
+text description of the target. Descriptions appear as target labels
+in functions like <code><a href="targets.html#topic+tar_manifest">tar_manifest()</a></code> and <code><a href="targets.html#topic+tar_visnetwork">tar_visnetwork()</a></code>,
+and they let you select subsets of targets for the <code>names</code> argument of
+functions like <code><a href="targets.html#topic+tar_make">tar_make()</a></code>. For example,
+<code>tar_manifest(names = tar_described_as(starts_with("survival model")))</code>
+lists all the targets whose descriptions start with the character
+string <code>"survival model"</code>.</p>
 </td></tr>
 </table>
 

@@ -20,17 +20,18 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#allocate_wave'><p>Adaptive Multi-Wave Sampling</p></a></li>
 <li><a href='#apply_multiwave'><p>Apply a basic optimall function to a Multiwave Object</p></a></li>
-<li><a href='#get_data'><p>Access and Write Slots of a Multiwave Object</p></a></li>
+<li><a href='#get_mw'><p>Access Slots of a Multiwave Object</p></a></li>
 <li><a href='#MatWgt_Sim'><p>Example Dataset: Maternal Weights</p></a></li>
 <li><a href='#merge_samples'><p>Merge Sampled Data based on IDs</p></a></li>
 <li><a href='#merge_strata'><p>Merge Strata</p></a></li>
+<li><a href='#multiwave'><p>Initialize a Multiwave Object</p></a></li>
 <li><a href='#multiwave_diagram'><p>Print Summary Diagram of Multiwave Object</p></a></li>
 <li><a href='#Multiwave-class'><p>Multiwave Class for Multi-Wave Sampling Organization</p></a></li>
-<li><a href='#new_multiwave'><p>Initialize a Multiwave Object</p></a></li>
 <li><a href='#optimall_shiny'><p>Run the shiny application</p></a></li>
 <li><a href='#optimum_allocation'><p>Optimum Allocation</p></a></li>
 <li><a href='#Phase-class'><p>Phase Class for Multi-Wave Sampling Organization</p></a></li>
 <li><a href='#sample_strata'><p>Select Sampling Units based on Stratified Random Sampling</p></a></li>
+<li><a href='#set_mw+26lt+3B-'><p>Write Slots of a Multiwave Object</p></a></li>
 <li><a href='#shiny_server'><p>Server logic for Interactive Shiny for Optimall.</p></a></li>
 <li><a href='#shiny_ui'><p>UI for Shiny App for Splitting Strata with Optimum Allocation</p></a></li>
 <li><a href='#split_strata'><p>Split Strata</p></a></li>
@@ -52,7 +53,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.5</td>
+<td>1.1.1</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -87,9 +88,10 @@ methods (&ge; 4.0.0), rlang (&ge; 0.2.2), stats (&ge; 4.0.2), tibble
 <tr>
 <td>Suggests:</td>
 <td>bslib (&ge; 0.2.4), DiagrammeR (&ge; 1.0.0), DT (&ge; 0.15),
-datasets, globals (&ge; 0.12), knitr (&ge; 1.28), rmarkdown (&ge;
-2.7), shiny (&ge; 1.6.0), shinytest (&ge; 1.4.0), survey (&ge; 4.0),
-testthat (&ge; 3.0.2), webshot (&ge; 0.5)</td>
+datasets, globals (&ge; 0.12), knitr (&ge; 1.28), MASS (&ge; 7.1),
+rmarkdown (&ge; 2.7), shiny (&ge; 1.6.0), shinytest (&ge; 1.4.0),
+survey (&ge; 4.0), tidyr (&ge; 1.3), testthat (&ge; 3.0.2), webshot
+(&ge; 0.5)</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -105,15 +107,15 @@ testthat (&ge; 3.0.2), webshot (&ge; 0.5)</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Collate:</td>
 <td>'allocate_wave.R' 'sample_strata.R' 'wave.R' 'phase.R'
 'multiwave.R' 'merge_samples.R' 'optimum_allocation.R'
-'get_data.R' 'apply_multiwave.R' 'matwgt_sim.R'
-'merge_strata.R' 'multiwave_diagram.R' 'new_multiwave.R'
-'optimall_shiny.R' 'split_strata.R' 'summary.multiwave.R'</td>
+'set_mw.R' 'get_mw.R' 'apply_multiwave.R' 'matwgt_sim.R'
+'merge_strata.R' 'multiwave_diagram.R' 'optimall_shiny.R'
+'split_strata.R' 'summary.multiwave.R'</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -121,7 +123,7 @@ testthat (&ge; 3.0.2), webshot (&ge; 0.5)</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-15 16:42:04 UTC; jasper</td>
+<td>2024-06-03 06:01:37 UTC; jasper</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -137,7 +139,7 @@ testthat (&ge; 3.0.2), webshot (&ge; 0.5)</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-15 18:50:02 UTC</td>
+<td>2024-06-03 07:59:20 UTC</td>
 </tr>
 </table>
 <hr>
@@ -240,7 +242,8 @@ re-runs the allocation with the 'iterative' method.
 dataframe should include details about each stratum including
 the true optimum allocation without the constraint of
 previous waves of sampling
-and stratum standard deviations. Defaults to FALSE.
+and stratum standard deviations. Defaults to FALSE, unless called within
+<code>apply_multiwave()</code>.
 These details are all available from
 <code>optimum_allocation()</code>.</p>
 </td></tr>
@@ -375,7 +378,9 @@ The default argument when <code>allocate_wave</code> is applied in a <code>apply
 <li> <p><code>sample_strata</code>: Uses the <code>data</code> from the previous wave
 (or previous phase if <code>wave = 1</code>) and <code>design</code>
 from current wave to generate a vector of ids to sample for the current
-wave. If used, the output multiwave object contains an updated
+wave. Note that the <code>wave</code> argument of the standalone
+<code>sample_strata()</code> function does not apply here,
+If used, the output multiwave object contains an updated
 <code>"samples"</code> slot in the specified wave.
 </p>
 </li>
@@ -423,8 +428,8 @@ determine the optimum allocation will be taken from the previous wave
 <pre><code class='language-R'>
 library(datasets)
 
-MySurvey &lt;- new_multiwave(phases = 2, waves = c(1, 3))
-get_data(MySurvey, phase = 1, slot = "data") &lt;-
+MySurvey &lt;- multiwave(phases = 2, waves = c(1, 3))
+set_mw(MySurvey, phase = 1, slot = "data") &lt;-
   dplyr::select(datasets::iris, -Sepal.Width)
 
 # Get Design by applying optimum_allocation
@@ -437,7 +442,7 @@ MySurvey &lt;- apply_multiwave(MySurvey,
 )
 
 # or, we can establish function args in the metadata
-get_data(MySurvey, phase = 2, slot = "metadata") &lt;- list(
+set_mw(MySurvey, phase = 2, slot = "metadata") &lt;- list(
   strata = "Species",
   nsample = 15,
   y = "Sepal.Length",
@@ -452,18 +457,25 @@ MySurvey &lt;- apply_multiwave(MySurvey,
 </code></pre>
 
 <hr>
-<h2 id='get_data'>Access and Write Slots of a Multiwave Object</h2><span id='topic+get_data'></span><span id='topic+get_data+2CMultiwave-method'></span><span id='topic+get_data+3C-'></span><span id='topic+get_data+3C-+2CMultiwave-method'></span>
+<h2 id='get_mw'>Access Slots of a Multiwave Object</h2><span id='topic+get_mw'></span><span id='topic+get_mw+2CMultiwave-method'></span><span id='topic+get_data'></span><span id='topic+get_data+2CMultiwave-method'></span><span id='topic+get_data+3C-'></span><span id='topic+get_data+3C-+2CMultiwave-method'></span>
 
 <h3>Description</h3>
 
-<p><code>get_data</code> is the accessor function for objects of
-class <code>Multiwave</code>. It can be used to access or write slots.
+<p><code>get_mw</code> is the accessor function for objects of
+class <code>Multiwave</code>. It is used to get values from multiwave (mw) objects.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_data(
+<pre><code class='language-R'>get_mw(
+  x,
+  phase = 1,
+  wave = NA,
+  slot = c("data", "design", "metadata", "samples", "sampled_data")
+)
+
+get_data(
   x,
   phase = 1,
   wave = NA,
@@ -482,21 +494,21 @@ get_data(
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="get_data_+3A_x">x</code></td>
+<tr><td><code id="get_mw_+3A_x">x</code></td>
 <td>
 <p>an object of class <code>'Multiwave'</code></p>
 </td></tr>
-<tr><td><code id="get_data_+3A_phase">phase</code></td>
+<tr><td><code id="get_mw_+3A_phase">phase</code></td>
 <td>
 <p>a numeric value specifying the phase that should be accessed.
 To access the overall metadata, set <code>phase = NA</code>. Defaults to 1.</p>
 </td></tr>
-<tr><td><code id="get_data_+3A_wave">wave</code></td>
+<tr><td><code id="get_mw_+3A_wave">wave</code></td>
 <td>
 <p>a numeric value specifying the wave that should be accessed.
 Ta access phase metadata, set <code>wave = NA</code>. Defaults to <code>NA</code>.</p>
 </td></tr>
-<tr><td><code id="get_data_+3A_slot">slot</code></td>
+<tr><td><code id="get_mw_+3A_slot">slot</code></td>
 <td>
 <p>a character value specifying the name of the slot to be
 accessed. Must be one of <code>"metadata"</code>, <code>"design"</code>,
@@ -504,7 +516,7 @@ accessed. Must be one of <code>"metadata"</code>, <code>"design"</code>,
 <code>"data"</code>. See class documentation or package vignettes for more
 information about slots.</p>
 </td></tr>
-<tr><td><code id="get_data_+3A_value">value</code></td>
+<tr><td><code id="get_mw_+3A_value">value</code></td>
 <td>
 <p>value to assign to specified slot</p>
 </td></tr>
@@ -521,6 +533,9 @@ information about slots.</p>
 
 
 <ul>
+<li> <p><code>get_mw()</code>: access slot of multiwave object
+</p>
+</li>
 <li> <p><code>get_data()</code>: access slot of multiwave object
 </p>
 </li>
@@ -537,21 +552,21 @@ information about slots.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'># Intiate multiwave object
-MySurvey &lt;- new_multiwave(phases = 2, waves = c(1, 3))
+MySurvey &lt;- multiwave(phases = 2, waves = c(1, 3))
 
 # To access overall metadata
-get_data(MySurvey, phase = NA, slot = "metadata")
+get_mw(MySurvey, phase = NA, slot = "metadata")
 
 # To write overall metadata
-get_data(MySurvey, phase = NA, slot = "metadata") &lt;- list(
+set_mw(MySurvey, phase = NA, slot = "metadata") &lt;- list(
   title = "Maternal Weight Survey"
 )
 
 # To access Phase 2 metadata
-get_data(MySurvey, phase = 2, slot = "metadata")
+get_mw(MySurvey, phase = 2, slot = "metadata")
 
 # To access Phase 2, Wave 2 design
-get_data(MySurvey, phase = 2, wave = 2, slot = "design")
+get_mw(MySurvey, phase = 2, wave = 2, slot = "design")
 </code></pre>
 
 <hr>
@@ -612,7 +627,15 @@ the <code>"data"</code> slot of the previous wave.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>merge_samples(x, phase, wave, id = NULL, sampled_ind = "already_sampled_ind")
+<pre><code class='language-R'>merge_samples(
+  x,
+  phase,
+  wave,
+  id = NULL,
+  phase_sample_ind = "sampled_phase",
+  wave_sample_ind = "sampled_wave",
+  include_probs = NULL
+)
 </code></pre>
 
 
@@ -644,31 +667,55 @@ dataframe in the <code>"data"</code> slot.</p>
 ids. Taken from wave, phase, or overall metadata (searched for in that
 order) if <code>NULL</code>. Defaults to <code>NULL</code>.</p>
 </td></tr>
-<tr><td><code id="merge_samples_+3A_sampled_ind">sampled_ind</code></td>
+<tr><td><code id="merge_samples_+3A_phase_sample_ind">phase_sample_ind</code></td>
 <td>
-<p>a character value specifying the name of the column that
-should hold the indicator of whether each unit has already been sampled in
-the current phase.</p>
+<p>a character value specifying the name of the column
+that should hold the indicator of whether each unit has already been sampled
+in the current <em>phase</em>. The specified phase number will be appended
+to the end of the given character name. Defaults to &quot;sampled_phase&quot;.</p>
+</td></tr>
+<tr><td><code id="merge_samples_+3A_wave_sample_ind">wave_sample_ind</code></td>
+<td>
+<p>a character value specifying the name of the column
+that should hold the indicator of whether each unit has already been sampled
+in the current <em>wave</em>. The specified phase and wave numbers separated
+by &quot;.&quot; will be appended o the end of the given character name.
+If FALSE, no such column is created. Defaults to &quot;sampled_wave&quot;.</p>
+</td></tr>
+<tr><td><code id="merge_samples_+3A_include_probs">include_probs</code></td>
+<td>
+<p>A logical value. If TRUE, looks for &quot;probs&quot; in
+the <code>design_data</code> slot and includes the corresponding sampling
+probability for each element sampled in the current wave in the merged data
+in a column named &quot;sampling_prob&quot;. If this column already exists, it keeps
+the existing column and adds (or replaces) the values for units sampled in
+the current wave. Returns an error if specified but
+<code>wave_sample_wave</code> is FALSE.
+Defaults to NULL, which looks for &quot;probs&quot; argument in
+metadata and does not create (or add to existing) &quot;sampling_prob&quot; column if
+none is found.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>If a column name in the <code>"sampled data"</code> matches a column name in
-the <code>"data"</code> slot of the previous wave, these columns will be
-merged into one column with the same name in the output dataframe.
-For ids that have non-missing values in both columns of the merge,
-the value from
-<code>"sampled_data"</code> will overwrite the previous value and a warning
-will be printed. All ids present in the <code>"data"</code> from the previous
-wave but missing from <code>"sampled_data"</code> will be given NA values
-for the newly merged variables
-</p>
 <p>Columns in <code>"sampled_data"</code> that do not match names of the
 <code>"data"</code> from the previous wave will be added as new columns in
 the output dataframe. All ids that do not appear in
 <code>"sampled_data"</code> will receive NA values for these new variables.
+</p>
+<p>If a column name in the <code>"sampled_data"</code> matches a column name in
+the <code>"data"</code> slot of the previous wave, these columns will be
+merged into one column with the same name in the output dataframe.
+For ids that have non-missing values in both columns of the merge,
+the value from <code>"sampled_data"</code> will overwrite the previous value
+and a warning will be printed. All ids present in the <code>"data"</code> from the
+previous wave but missing from <code>"sampled_data"</code> will be given NA values
+for the newly merged variables.
+</p>
+<p>If columns with the name produced by <code>phase_sample_ind</code> or
+<code>wave_sample_ind</code> already exist, they will be overwritten.
 </p>
 
 
@@ -684,11 +731,13 @@ the output dataframe. All ids that do not appear in
 <pre><code class='language-R'>library(datasets)
 iris &lt;- data.frame(iris, id = 1:150)
 
-MySurvey &lt;- new_multiwave(phases = 2, waves = c(1, 3))
-get_data(MySurvey, phase = 1, slot = "data") &lt;-
+MySurvey &lt;- multiwave(phases = 2, waves = c(1, 3))
+set_mw(MySurvey, phase = 1, slot = "data") &lt;-
   data.frame(dplyr::select(iris, -Sepal.Width))
-get_data(MySurvey, phase = 2, wave = 1, slot = "sampled_data") &lt;-
+set_mw(MySurvey, phase = 2, wave = 1, slot = "sampled_data") &lt;-
   dplyr::select(iris, id, Sepal.Width)[1:40, ]
+set_mw(MySurvey, phase = 2, wave = 1, slot = "samples") &lt;-
+   list(ids = 1:40)
 MySurvey &lt;- merge_samples(MySurvey, phase = 2, wave = 1, id = "id")
 </code></pre>
 
@@ -754,6 +803,80 @@ strata names is retained and given the name 'old_strata'.
 </code></pre>
 
 <hr>
+<h2 id='multiwave'>Initialize a Multiwave Object</h2><span id='topic+multiwave'></span><span id='topic+new_multiwave'></span>
+
+<h3>Description</h3>
+
+<p><code>multiwave()</code> Creates an Object of Class <code>Multiwave</code> with the
+specified number
+of phases and waves. All contents will be NULL upon initialization,
+but the object contains a framework for contents to be added to
+during the survey design and sample collection process. Currently,
+multiwave objects may only have one wave in Phase 1.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>multiwave(phases, waves, metadata = list(), phase1 = data.frame())
+
+new_multiwave(phases, waves, metadata = list(), phase1 = data.frame())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="multiwave_+3A_phases">phases</code></td>
+<td>
+<p>A numeric value specifying the number of phases in the
+survey design.</p>
+</td></tr>
+<tr><td><code id="multiwave_+3A_waves">waves</code></td>
+<td>
+<p>A vector of numeric values specifying the number of waves in
+each phase of the survey design. Length must match the number of
+<code>phases</code> and the first</p>
+</td></tr>
+<tr><td><code id="multiwave_+3A_metadata">metadata</code></td>
+<td>
+<p>A list containing the survey metadata.
+Defaults to an empty list.</p>
+</td></tr>
+<tr><td><code id="multiwave_+3A_phase1">phase1</code></td>
+<td>
+<p>A dataframe containing the phase 1 data of the survey.
+Defaults to an empty dataframe.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns an object of class <code>Multiwave</code> that stores all
+relevant data from the survey design in an organized and easy-to-access
+manner. See package vignettes or class documentation for more information.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# Initialize a multiwave object for a two-phase sampling design that will
+# sample over three waves in the second phase
+multiwave_object &lt;- multiwave(phases = 2, waves = c(1, 3))
+
+# If we already have the phase 1 data and want to add a title to the survey
+# metadata, we can initialize the object with these included.
+
+library(datasets)
+multiwave_object &lt;- multiwave(
+  phases = 2, waves = c(1, 3),
+  metadata = list(title = "my two-phase survey"), phase1 = iris
+)
+</code></pre>
+
+<hr>
 <h2 id='multiwave_diagram'>Print Summary Diagram of Multiwave Object</h2><span id='topic+multiwave_diagram'></span>
 
 <h3>Description</h3>
@@ -800,7 +923,7 @@ displaying the structure of the <code>x</code>.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>MySurvey &lt;- new_multiwave(phases = 2, waves = c(1, 3))
+<pre><code class='language-R'>MySurvey &lt;- multiwave(phases = 2, waves = c(1, 3))
 multiwave_diagram(MySurvey)
 </code></pre>
 
@@ -832,77 +955,6 @@ may add anything to it as they see fit. It may include a &quot;title&quot;.</p>
 documentation).</p>
 </dd>
 </dl>
-
-<hr>
-<h2 id='new_multiwave'>Initialize a Multiwave Object</h2><span id='topic+new_multiwave'></span>
-
-<h3>Description</h3>
-
-<p>Creates an Object of Class <code>Multiwave</code> with the specified number
-of phases and waves. All contents will be NULL upon initialization,
-but the object contains a framework for contents to be added to
-during the survey design and sample collection process. Currently,
-multiwave objects may only have one wave in Phase 1.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>new_multiwave(phases, waves, metadata = list(), phase1 = data.frame())
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="new_multiwave_+3A_phases">phases</code></td>
-<td>
-<p>A numeric value specifying the number of phases in the
-survey design.</p>
-</td></tr>
-<tr><td><code id="new_multiwave_+3A_waves">waves</code></td>
-<td>
-<p>A vector of numeric values specifying the number of waves in
-each phase of the survey design. Length must match the number of
-<code>phases</code> and the first</p>
-</td></tr>
-<tr><td><code id="new_multiwave_+3A_metadata">metadata</code></td>
-<td>
-<p>A list containing the survey metadata.
-Defaults to an empty list.</p>
-</td></tr>
-<tr><td><code id="new_multiwave_+3A_phase1">phase1</code></td>
-<td>
-<p>A dataframe containing the phase 1 data of the survey.
-Defaults to an empty dataframe.</p>
-</td></tr>
-</table>
-
-
-<h3>Value</h3>
-
-<p>Returns an object of class <code>Multiwave</code> that stores all
-relevant data from the survey design in an organized and easy-to-access
-manner. See package vignettes or class documentation for more information.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# Initialize a multiwave object for a two-phase sampling design that will
-# sample over three waves in the second phase
-multiwave_object &lt;- new_multiwave(phases = 2, waves = c(1, 3))
-
-# If we already have the phase 1 data and want to add a title to the survey
-# metadata, we can initialize the object with these included.
-
-library(datasets)
-multiwave_object &lt;- new_multiwave(
-  phases = 2, waves = c(1, 3),
-  metadata = list(title = "my two-phase survey"), phase1 = iris
-)
-</code></pre>
 
 <hr>
 <h2 id='optimall_shiny'>Run the shiny application</h2><span id='topic+optimall_shiny'></span>
@@ -1065,9 +1117,8 @@ be allowed to have NA values. Defaults to <code>FALSE</code>.</p>
 
 <h3>Value</h3>
 
-<p>Returns a data frame with the specified total
-sample size, <code>nsample</code>, allocated across
-strata or the sampling fractions if nsample is NULL.
+<p>Returns a data frame with the number of samples allocated to each
+stratum, or just the sampling fractions if nsample is NULL.
 </p>
 
 
@@ -1157,7 +1208,10 @@ or <code>optimum_allocation()</code>.
   already_sampled = NULL,
   design_data,
   design_strata = "strata",
-  n_allocated = "n_to_sample"
+  n_allocated = "n_to_sample",
+  probs = NULL,
+  wave = NULL,
+  warn_prob_overwrite = TRUE
 )
 </code></pre>
 
@@ -1208,6 +1262,32 @@ Defaults to &quot;strata&quot;.</p>
 column in <code>design_data</code> that indicates the n allocated to each
 stratum. Defaults to &quot;n_to_sample&quot;.</p>
 </td></tr>
+<tr><td><code id="sample_strata_+3A_probs">probs</code></td>
+<td>
+<p>a character string specifying the name of the column in
+in <code>design_data</code> that indicates the sampling probability for each
+stratum, or a formula indicating how the sampling probabilities can be
+computed. From existing columns.
+If specified, a new column containing the sampling probability
+attached to each sampled unit will be created in the outputted
+dataframe. This column will be named &quot;sampling_prob&quot;. Defaults to NULL.</p>
+</td></tr>
+<tr><td><code id="sample_strata_+3A_wave">wave</code></td>
+<td>
+<p>A numeric value or character string indicating the
+sampling wave. If specified, the input is appended to
+&quot;sample_indicator&quot; in the new the sample indicator column name
+(as long as such columns name do not already exist in <code>data</code>).
+Defaults to NULL. This argument does not
+apply when <code>sample_strata()</code> is called inside <code>allocate_wave()</code>.</p>
+</td></tr>
+<tr><td><code id="sample_strata_+3A_warn_prob_overwrite">warn_prob_overwrite</code></td>
+<td>
+<p>Logical indicator for whether warning should
+be printed if <code>probs</code> is specified and a &quot;sampling_prob&quot; columns is
+going to be overwritten. Defaults to TRUE. If function is called inside
+<code>apply_multiwave()</code>, then defaults to FALSE</p>
+</td></tr>
 </table>
 
 
@@ -1215,7 +1295,11 @@ stratum. Defaults to &quot;n_to_sample&quot;.</p>
 
 <p>returns <code>data</code> as a dataframe with a new column named
 &quot;sample_indicator&quot; containing a binary (1/0) indicator of
-whether each unit should be sampled.
+whether each unit should be sampled. If <code>wave</code> argument is
+specified, then the given input is appended to the name &quot;sample_indicator&quot;.
+If <code>probs</code> argument is specified, then the dataframe will also contain
+a new column named &quot;sampling_prob&quot; holding the sampling probabilities for
+each sampled element.
 </p>
 
 
@@ -1224,6 +1308,7 @@ whether each unit should be sampled.
 <pre><code class='language-R'># Define a design dataframe
 design &lt;- data.frame(
   strata = c("setosa", "virginica", "versicolor"),
+  npop = c(50, 50, 50),
   n_to_sample = c(5, 5, 5)
 )
 
@@ -1233,7 +1318,15 @@ iris$id &lt;- 1:nrow(iris)
 # Run
 sample_strata(
   data = iris, strata = "Species", id = "id",
-  design_data = design, design_strata = "strata", n_allocated = "n_to_sample"
+  design_data = design, design_strata = "strata",
+  n_allocated = "n_to_sample"
+)
+
+# To include probs as a formula
+sample_strata(
+  data = iris, strata = "Species", id = "id",
+  design_data = design, design_strata = "strata",
+  n_allocated = "n_to_sample", probs = ~n_to_sample/npop
 )
 
 # If some units had already been sampled
@@ -1242,8 +1335,78 @@ iris$already_sampled &lt;- rbinom(nrow(iris), 1, 0.25)
 sample_strata(
   data = iris, strata = "Species", id = "id",
   already_sampled = "already_sampled",
-  design_data = design, design_strata = "strata", n_allocated = "n_to_sample"
+  design_data = design, design_strata = "strata",
+  n_allocated = "n_to_sample"
 )
+</code></pre>
+
+<hr>
+<h2 id='set_mw+26lt+3B-'>Write Slots of a Multiwave Object</h2><span id='topic+set_mw+3C-'></span><span id='topic+set_mw+3C-+2CMultiwave-method'></span>
+
+<h3>Description</h3>
+
+<p><code>set_mw</code> is used to assign values (write to) slots of
+<code>Multiwave</code> class objects. It is used to set values of
+multiwave (mw) objects.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_mw(
+  x,
+  phase = 1,
+  wave = NA,
+  slot = c("data", "design", "metadata", "samples", "sampled_data")
+) &lt;- value
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_mw+2B26lt+2B3B-_+3A_x">x</code></td>
+<td>
+<p>an object of class <code>'Multiwave'</code></p>
+</td></tr>
+<tr><td><code id="set_mw+2B26lt+2B3B-_+3A_phase">phase</code></td>
+<td>
+<p>a numeric value specifying the phase that should be accessed.
+To access the overall metadata, set <code>phase = NA</code>. Defaults to 1.</p>
+</td></tr>
+<tr><td><code id="set_mw+2B26lt+2B3B-_+3A_wave">wave</code></td>
+<td>
+<p>a numeric value specifying the wave that should be accessed.
+Ta access phase metadata, set <code>wave = NA</code>. Defaults to <code>NA</code>.</p>
+</td></tr>
+<tr><td><code id="set_mw+2B26lt+2B3B-_+3A_slot">slot</code></td>
+<td>
+<p>a character value specifying the name of the slot to be
+accessed. Must be one of <code>"metadata"</code>, <code>"design"</code>,
+<code>"samples"</code>, <code>"sampled_data"</code>, <code>"data"</code>. Defaults to
+<code>"data"</code>. See class documentation or package vignettes for more
+information about slots.</p>
+</td></tr>
+<tr><td><code id="set_mw+2B26lt+2B3B-_+3A_value">value</code></td>
+<td>
+<p>value to assign to specified slot</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Intiate multiwave object
+MySurvey &lt;- multiwave(phases = 2, waves = c(1, 3))
+
+# To write overall metadata
+set_mw(MySurvey, phase = NA, slot = "metadata") &lt;-
+ list(title = "Maternal Weight Survey")
+
+# To write Phase 2 metadata
+set_mw(MySurvey, phase = 2, slot = "metadata") &lt;-
+ list(strata = "mystrata", id = "id")
+
 </code></pre>
 
 <hr>

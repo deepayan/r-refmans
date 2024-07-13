@@ -19,14 +19,17 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#ChenFang2019BetaRankTest'><p>Asset Pricing Model Identification via Chen-Fang (2019) Beta Rank Test</p></a></li>
-<li><a href='#factors'><p>Factors - monthly observations from <code>01/1970</code> to <code>12/2021</code></p></a></li>
+<li><a href='#factors'><p>Factors - monthly observations from <code>07/1963</code> to <code>02/2024</code></p></a></li>
+<li><a href='#FGXFactorsTest'><p>Testing for the pricing contribution of new factors.</p></a></li>
 <li><a href='#FRP'><p>Factor risk premia.</p></a></li>
 <li><a href='#GKRFactorScreening'><p>Factor screening procedure of Gospodinov-Kan-Robotti (2014)</p></a></li>
 <li><a href='#HACcovariance'><p>Heteroskedasticity and Autocorrelation robust covariance estimator</p></a></li>
 <li><a href='#HJMisspecificationDistance'><p>Compute the HJ asset pricing model misspecification distance.</p></a></li>
 <li><a href='#IterativeKleibergenPaap2006BetaRankTest'><p>Asset Pricing Model Identification via Iterative Kleibergen-Paap 2006 Beta Rank Test</p></a></li>
 <li><a href='#OracleTFRP'><p>Oracle tradable factor risk premia.</p></a></li>
-<li><a href='#returns'><p>Test Asset Excess Returns - monthly observations from <code>01/1970</code> to <code>12/2021</code></p></a></li>
+<li><a href='#returns'><p>Test Asset Excess Returns - monthly observations from <code>07/1963</code> to <code>02/2024</code></p></a></li>
+<li><a href='#risk_free'><p>Risk free - monthly observations from <code>07/1963</code> to <code>02/2024</code></p></a></li>
+<li><a href='#SDFCoefficients'><p>SDF Coefficients</p></a></li>
 <li><a href='#TFRP'><p>Tradable factor risk premia.</p></a></li>
 </ul>
 </div>
@@ -40,11 +43,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.0.1</td>
+<td>2.1.0</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-01-07</td>
+<td>2024-04-15</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -95,7 +98,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>LinkingTo:</td>
@@ -103,7 +106,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>graphics, Rcpp</td>
+<td>glmnet, graphics, Rcpp</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -127,7 +130,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-01-07 11:51:47 UTC; albertoquaini</td>
+<td>2024-04-15 20:23:36 UTC; albertoquaini</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -140,7 +143,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-01-08 11:20:02 UTC</td>
+<td>2024-04-15 21:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -225,11 +228,11 @@ hj_test = ChenFang2019BetaRankTest(returns, factors)
 </code></pre>
 
 <hr>
-<h2 id='factors'>Factors - monthly observations from <code>01/1970</code> to <code>12/2021</code></h2><span id='topic+factors'></span>
+<h2 id='factors'>Factors - monthly observations from <code>07/1963</code> to <code>02/2024</code></h2><span id='topic+factors'></span>
 
 <h3>Description</h3>
 
-<p>Monthly observations from <code>01/1970</code> to <code>12/2021</code> of
+<p>Monthly observations from <code>07/1963</code> to <code>02/2024</code> of
 the Fama-French <code>5</code> factors and the momentum factor.
 </p>
 
@@ -265,6 +268,105 @@ the Fama-French <code>5</code> factors and the momentum factor.
 </p>
 
 <hr>
+<h2 id='FGXFactorsTest'>Testing for the pricing contribution of new factors.</h2><span id='topic+FGXFactorsTest'></span>
+
+<h3>Description</h3>
+
+<p>Computes the three-pass procedure of Feng Giglio and Xiu (2020)
+<a href="doi:org/10.1111/jofi.12883">doi:org/10.1111/jofi.12883</a>, which evaluates the contribution
+to cross-sectional pricing of any new factors on top of a set of control
+factors.
+The third step is a OLS regression of average returns on the covariances between
+asset returns and the new factors, as well as the control factors selected
+in either one of the first two steps.
+The first stwo steps consists in (i) a Lasso regression of average returns
+on the ovariances between asset returns and all control factors and (ii)
+a Lasso regression of the covariances between asset returns and the new factors
+on the ovariances between asset returns and all control factors.
+The second selection aims at correcting for potential omitted variables in the
+first selection.
+Tuning of the penalty parameters in the Lasso regressions is performed via
+Cross Validation (CV).
+Standard errors are computed following Feng Giglio and Xiu (2020) using the
+Newey-West (1994) <a href="doi:10.2307/2297912">doi:10.2307/2297912</a> plug-in procedure to select the number
+of relevant lags, i.e., <code>n_lags = 4 * (n_observations/100)^(2/9)</code>.
+For the standard error computations, the function allows to internally
+pre-whiten the series by fitting a VAR(1),
+i.e., a vector autoregressive model of order 1.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>FGXFactorsTest(
+  gross_returns,
+  control_factors,
+  new_factors,
+  n_folds = 5,
+  check_arguments = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="FGXFactorsTest_+3A_gross_returns">gross_returns</code></td>
+<td>
+<p>A <code style="white-space: pre;">&#8288;n_observations x n_returns&#8288;</code>-dimensional matrix of test asset
+gross returns.</p>
+</td></tr>
+<tr><td><code id="FGXFactorsTest_+3A_control_factors">control_factors</code></td>
+<td>
+<p>A <code style="white-space: pre;">&#8288;n_observations x n_control_factors&#8288;</code>-dimensional
+matrix of control or benchmark factors.</p>
+</td></tr>
+<tr><td><code id="FGXFactorsTest_+3A_new_factors">new_factors</code></td>
+<td>
+<p>A <code style="white-space: pre;">&#8288;n_observations x n_new_factors&#8288;</code>-dimensional
+matrix of new factors.</p>
+</td></tr>
+<tr><td><code id="FGXFactorsTest_+3A_n_folds">n_folds</code></td>
+<td>
+<p>An integer indicating
+the number of k-fold for cross validation. Default is <code>5</code>.</p>
+</td></tr>
+<tr><td><code id="FGXFactorsTest_+3A_check_arguments">check_arguments</code></td>
+<td>
+<p>A boolean <code>TRUE</code> for internal check of all function
+arguments; <code>FALSE</code> otherwise. Default is <code>TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the <code>n_new_factors</code>-dimensional vector of SDF
+coefficients in <code>"sdf_coefficients"</code> and corresponding standard errors in
+<code>"standard_errors"</code>; it also returns the index of control factors that are
+selected by the two-step selection procedure.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># import package data on 6 risk factors and 42 test asset excess returns
+control_factors = intrinsicFRP::factors[,2:4]
+new_factors = intrinsicFRP::factors[,5:7]
+returns = intrinsicFRP::returns[,-1]
+RF = intrinsicFRP::risk_free[,-1]
+
+gross_returns = returns + 1 + RF
+
+output = FGXFactorsTest(
+  gross_returns,
+  control_factors,
+  new_factors
+)
+
+</code></pre>
+
+<hr>
 <h2 id='FRP'>Factor risk premia.</h2><span id='topic+FRP'></span>
 
 <h3>Description</h3>
@@ -287,7 +389,8 @@ and
 <code style="white-space: pre;">&#8288;argmin_{d} (E[R] - Cov[R,F] * d)' * V[R]^{-1} * (E[R] - Cov[R,F] * d)&#8288;</code>,
 respectively.
 Optionally computes the corresponding
-heteroskedasticity and autocorrelation robust standard errors using the
+heteroskedasticity and autocorrelation robust standard errors (accounting
+for a potential model misspecification) using the
 Newey-West (1994) <a href="doi:10.2307/2297912">doi:10.2307/2297912</a> plug-in procedure to select the
 number of relevant lags, i.e., <code>n_lags = 4 * (n_observations/100)^(2/9)</code>.
 For the standard error computations, the function allows to internally
@@ -920,12 +1023,12 @@ include_standard_errors = TRUE
 </code></pre>
 
 <hr>
-<h2 id='returns'>Test Asset Excess Returns - monthly observations from <code>01/1970</code> to <code>12/2021</code></h2><span id='topic+returns'></span>
+<h2 id='returns'>Test Asset Excess Returns - monthly observations from <code>07/1963</code> to <code>02/2024</code></h2><span id='topic+returns'></span>
 
 <h3>Description</h3>
 
 <p>Monthly excess returns on the <code>25</code> Size/Book-to-Market double sorted portfolios
-and the <code>17</code> industry portfolios from <code>01/1970</code> to <code>12/2021</code>.
+and the <code>17</code> industry portfolios from <code>07/1963</code> to <code>02/2024</code>.
 </p>
 
 
@@ -958,6 +1061,153 @@ and the <code>17</code> industry portfolios from <code>01/1970</code> to <code>1
 
 <p><a href="https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html">https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html</a>
 </p>
+
+<hr>
+<h2 id='risk_free'>Risk free - monthly observations from <code>07/1963</code> to <code>02/2024</code></h2><span id='topic+risk_free'></span>
+
+<h3>Description</h3>
+
+<p>Monthly observations from <code>07/1963</code> to <code>02/2024</code> of
+the US risk free asset.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>risk_free
+</code></pre>
+
+
+<h3>Format</h3>
+
+
+
+<h4><code>risk_free</code></h4>
+
+<p>A data frame with <code>624</code> rows and <code>2</code> columns:
+</p>
+
+<dl>
+<dt>Date</dt><dd><p>Date in yyyymm format</p>
+</dd>
+<dt>...</dt><dd><p>risk free observations</p>
+</dd>
+</dl>
+
+
+
+
+<h3>Source</h3>
+
+<p><a href="https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html">https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html</a>
+</p>
+
+<hr>
+<h2 id='SDFCoefficients'>SDF Coefficients</h2><span id='topic+SDFCoefficients'></span>
+
+<h3>Description</h3>
+
+<p>Computes the SDF coefficients of Fama-MachBeth (1973) <a href="doi:10.1086/260061">doi:10.1086/260061</a>
+<code style="white-space: pre;">&#8288;FMSDFcoefficients = (C' * C)^{-1} * C' * E[R]&#8288;</code>
+or the misspecification-robust SDF coefficients of
+Gospodinov-Kan-Robotti (2014) <a href="doi:10.1093/rfs/hht135">doi:10.1093/rfs/hht135</a>:
+<code style="white-space: pre;">&#8288;GKRSDFcoefficients = (C' * V[R]^{-1} * C)^{-1} * C' * V[R]^{-1} * E[R]&#8288;</code>
+from data on factors <code>F</code> and test asset excess returns <code>R</code>.
+These notions of SDF coefficients minimize pricing errors:
+<code style="white-space: pre;">&#8288;argmin_{d} (E[R] - Cov[R,F] * d)' * W * (E[R] - Cov[R,F] * d)&#8288;</code>,
+with <code>W=I</code>, i.e., the identity, and <code>W=V[R]^{-1}</code>, respectively.
+Optionally computes the corresponding
+heteroskedasticity and autocorrelation robust standard errors (accounting
+for a potential model misspecification) using the
+Newey-West (1994) <a href="doi:10.2307/2297912">doi:10.2307/2297912</a> plug-in procedure to select the
+number of relevant lags, i.e., <code>n_lags = 4 * (n_observations/100)^(2/9)</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>SDFCoefficients(
+  returns,
+  factors,
+  misspecification_robust = TRUE,
+  include_standard_errors = FALSE,
+  hac_prewhite = FALSE,
+  target_level_gkr2014_screening = 0,
+  check_arguments = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="SDFCoefficients_+3A_returns">returns</code></td>
+<td>
+<p>A <code style="white-space: pre;">&#8288;n_observations x n_returns&#8288;</code>-dimensional matrix of test asset
+excess returns.</p>
+</td></tr>
+<tr><td><code id="SDFCoefficients_+3A_factors">factors</code></td>
+<td>
+<p>A <code style="white-space: pre;">&#8288;n_observations x n_factors&#8288;</code>-dimensional matrix of factors.</p>
+</td></tr>
+<tr><td><code id="SDFCoefficients_+3A_misspecification_robust">misspecification_robust</code></td>
+<td>
+<p>A boolean: <code>TRUE</code> for the
+&quot;misspecification-robust&quot; Kan-Robotti-Shanken (2013) GLS approach using the
+inverse covariance matrix of returns; <code>FALSE</code> for standard Fama-MacBeth
+risk premia. Default is <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="SDFCoefficients_+3A_include_standard_errors">include_standard_errors</code></td>
+<td>
+<p>A boolean: <code>TRUE</code> if you want to compute the
+SDF coefficients' HAC standard errors; <code>FALSE</code> otherwise.
+Default is <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="SDFCoefficients_+3A_hac_prewhite">hac_prewhite</code></td>
+<td>
+<p>A boolean indicating if the series needs pre-whitening by
+fitting an AR(1) in the internal heteroskedasticity and autocorrelation
+robust covariance (HAC) estimation. Default is <code>false</code>.</p>
+</td></tr>
+<tr><td><code id="SDFCoefficients_+3A_target_level_gkr2014_screening">target_level_gkr2014_screening</code></td>
+<td>
+<p>A number indicating the target level of
+the tests underlying the factor screening procedure in Gospodinov-Kan-Robotti
+(2014). If it is zero, then no factor screening procedure is
+implemented. Otherwise, it implements an iterative screening procedure
+based on the sequential removal of factors associated with the smallest insignificant
+t-test of a nonzero SDF coefficient. The threshold for the absolute t-test is
+<code>target_level_gkr2014_screening / n_factors</code>, where n_factors indicate the
+number of factors in the model at the current iteration. Default is <code>0.</code>, i.e.,
+no factor screening.</p>
+</td></tr>
+<tr><td><code id="SDFCoefficients_+3A_check_arguments">check_arguments</code></td>
+<td>
+<p>A boolean: <code>TRUE</code> for internal check of all function
+arguments; <code>FALSE</code> otherwise. Default is <code>TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing <code>n_factors</code>-dimensional vector of SDF coefficients
+in <code>"sdf_coefficients"</code>; if <code>include_standard_errors = TRUE</code>, then
+it further includes <code>n_factors</code>-dimensional vector of SDF coefficients'
+standard errors in <code>"standard_errors"</code>;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># import package data on 6 risk factors and 42 test asset excess returns
+factors = intrinsicFRP::factors[,-1]
+returns = intrinsicFRP::returns[,-1]
+
+# compute GKR SDF coefficients and their standard errors
+frp = SDFCoefficients(returns, factors, include_standard_errors = TRUE)
+
+</code></pre>
 
 <hr>
 <h2 id='TFRP'>Tradable factor risk premia.</h2><span id='topic+TFRP'></span>

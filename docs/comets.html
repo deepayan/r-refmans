@@ -19,8 +19,11 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#comet'><p>Covariance measure tests with formula interface</p></a></li>
-<li><a href='#gcm'><p>Generalised covariance measure test using random forests</p></a></li>
+<li><a href='#gcm'><p>Generalised covariance measure test</p></a></li>
 <li><a href='#pcm'><p>Projected covariance measure test for conditional mean independence</p></a></li>
+<li><a href='#plm_equiv_test'><p>Equivalence test for the parameter in a partially linear model</p></a></li>
+<li><a href='#rf'><p>Implemented regression methods</p></a></li>
+<li><a href='#wgcm'><p>Weighted Generalised covariance measure test</p></a></li>
 </ul>
 </div>
 <hr>
@@ -37,7 +40,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.0-1</td>
+<td>0.0-2</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -51,7 +54,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>ranger, glmnet, Formula</td>
+<td>ranger, glmnet, Formula, survival, coin</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -63,7 +66,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -74,12 +77,20 @@ function processMathHTML() {
 <td>3</td>
 </tr>
 <tr>
+<td>URL:</td>
+<td><a href="https://github.com/LucasKook/comets">https://github.com/LucasKook/comets</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/LucasKook/comets/issues">https://github.com/LucasKook/comets/issues</a></td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>no</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-23 11:32:04 UTC; stigler</td>
+<td>2024-07-05 13:46:01 UTC; lkook</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -96,7 +107,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-26 16:30:15 UTC</td>
+<td>2024-07-05 14:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -110,7 +121,7 @@ function processMathHTML() {
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>comet(formula, data, test = c("gcm", "pcm"), ...)
+<pre><code class='language-R'>comet(formula, data, test = c("gcm", "pcm", "wgcm"), ...)
 </code></pre>
 
 
@@ -128,7 +139,7 @@ of X given Z.</p>
 </td></tr>
 <tr><td><code id="comet_+3A_test">test</code></td>
 <td>
-<p>Character string; <code>"gcm"</code> or <code>"pcm"</code>.</p>
+<p>Character string; <code>"gcm"</code>, <code>"pcm"</code>, or <code>"wgcm"</code>.</p>
 </td></tr>
 <tr><td><code id="comet_+3A_...">...</code></td>
 <td>
@@ -146,8 +157,8 @@ tests.
 
 <h3>Value</h3>
 
-<p>Object of class <code>"gcm"</code> or <code>"pcm"</code> and <code>"htest"</code>.
-See <code><a href="#topic+gcm">gcm</a></code> and <code><a href="#topic+pcm">pcm</a></code> for details.
+<p>Object of class <code>"gcm"</code>, <code>"wgcm"</code> or <code>"pcm"</code> and
+<code>"htest"</code>. See <code><a href="#topic+gcm">gcm</a></code> and <code><a href="#topic+pcm">pcm</a></code> for details.
 </p>
 
 
@@ -155,7 +166,7 @@ See <code><a href="#topic+gcm">gcm</a></code> and <code><a href="#topic+pcm">pcm
 
 <p>Kook, L. &amp; Lundborg A. R. (2024). Algorithm-agnostic significance testing in
 supervised learning with multimodal data. arXiv preprint.
-doi: <a href="https://doi.org/10.48550/arXiv.2402.14416">10.48550/arXiv.2402.14416</a>
+<a href="https://doi.org/10.48550/arXiv.2402.14416">doi:10.48550/arXiv.2402.14416</a>
 </p>
 
 
@@ -167,11 +178,11 @@ comet(y ~ x1 + x2 | z, data = df, test = "gcm")
 </code></pre>
 
 <hr>
-<h2 id='gcm'>Generalised covariance measure test using random forests</h2><span id='topic+gcm'></span>
+<h2 id='gcm'>Generalised covariance measure test</h2><span id='topic+gcm'></span>
 
 <h3>Description</h3>
 
-<p>Generalised covariance measure test using random forests
+<p>Generalised covariance measure test
 </p>
 
 
@@ -185,6 +196,10 @@ comet(y ~ x1 + x2 | z, data = df, test = "gcm")
   reg_YonZ = "rf",
   reg_XonZ = "rf",
   args_XonZ = NULL,
+  type = c("quadratic", "max"),
+  B = 499L,
+  coin = FALSE,
+  cointrol = list(distribution = "asymptotic"),
   ...
 )
 </code></pre>
@@ -195,8 +210,7 @@ comet(y ~ x1 + x2 | z, data = df, test = "gcm")
 <table>
 <tr><td><code id="gcm_+3A_y">Y</code></td>
 <td>
-<p>Vector of response values. Can be supplied as a numeric vector or
-a single column matrix.</p>
+<p>Vector or matrix of response values.</p>
 </td></tr>
 <tr><td><code id="gcm_+3A_x">X</code></td>
 <td>
@@ -210,25 +224,50 @@ a single column matrix.</p>
 <td>
 <p>A character string specifying the alternative hypothesis,
 must be one of <code>"two.sided"</code> (default), <code>"greater"</code> or
-<code>"less"</code></p>
+<code>"less"</code>. Only applies if <code>type = "quadratic"</code> and <code>Y</code> and
+<code>X</code> are one-dimensional.</p>
 </td></tr>
 <tr><td><code id="gcm_+3A_reg_yonz">reg_YonZ</code></td>
 <td>
 <p>Character string or function specifying the regression for
-Y on Z.</p>
+Y on Z. See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
 </td></tr>
 <tr><td><code id="gcm_+3A_reg_xonz">reg_XonZ</code></td>
 <td>
 <p>Character string or function specifying the regression for
-X on Z.</p>
+X on Z. See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
 </td></tr>
 <tr><td><code id="gcm_+3A_args_xonz">args_XonZ</code></td>
 <td>
 <p>Additional arguments passed to <code>reg_XonZ</code>.</p>
 </td></tr>
+<tr><td><code id="gcm_+3A_type">type</code></td>
+<td>
+<p>Type of test statistic, either <code>"quadratic"</code> (default) or
+<code>"max"</code>. If <code>"max"</code> is specified, the p-value is computed
+based on a bootstrap approximation of the null distribution with
+<code>B</code> samples.</p>
+</td></tr>
+<tr><td><code id="gcm_+3A_b">B</code></td>
+<td>
+<p>Number of bootstrap samples. Only applies if <code>type = "max"</code> is
+used.</p>
+</td></tr>
+<tr><td><code id="gcm_+3A_coin">coin</code></td>
+<td>
+<p>Logical; whether or not to use the <code>coin</code> package for
+computing the test statistic and p-value. The <code>coin</code> package
+computes variances with n - 1 degrees of freedom.
+The default is <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="gcm_+3A_cointrol">cointrol</code></td>
+<td>
+<p>List; further arguments passed to
+<code><a href="coin.html#topic+independence_test">independence_test</a></code>.</p>
+</td></tr>
 <tr><td><code id="gcm_+3A_...">...</code></td>
 <td>
-<p>Additional arguments passed to <code>reg_YonZ</code></p>
+<p>Additional arguments passed to <code>reg_YonZ</code>.</p>
 </td></tr>
 </table>
 
@@ -261,7 +300,7 @@ freedom used for the chi-squared test.</p>
 </td></tr>
 <tr><td><code>hypothesis</code></td>
 <td>
-<p>String specifying the null hypothesis .</p>
+<p>String specifying the null hypothesis.</p>
 </td></tr>
 <tr><td><code>null.value</code></td>
 <td>
@@ -290,17 +329,18 @@ freedom used for the chi-squared test.</p>
 
 <p>Rajen D. Shah, Jonas Peters &quot;The hardness of conditional independence testing
 and the generalised covariance measure,&quot; The Annals of Statistics, 48(3),
-1514-1538. doi: <a href="https://doi.org/10.1214/19-aos1857">10.1214/19-aos1857</a>
+1514-1538. <a href="https://doi.org/10.1214/19-aos1857">doi:10.1214/19-aos1857</a>
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>X &lt;- matrix(rnorm(3e2), ncol = 2)
+<pre><code class='language-R'>n &lt;- 150
+X &lt;- matrix(rnorm(2 * n), ncol = 2)
 colnames(X) &lt;- c("X1", "X2")
-Z &lt;- matrix(rnorm(3e2), ncol = 2)
+Z &lt;- matrix(rnorm(2 * n), ncol = 2)
 colnames(Z) &lt;- c("Z1", "Z2")
-Y &lt;- rnorm(150) # X[, 2] + Z[, 2] + rnorm(150)
+Y &lt;- X[, 2]^2 + Z[, 2] + rnorm(n)
 (gcm1 &lt;- gcm(Y, X, Z))
 
 </code></pre>
@@ -324,9 +364,17 @@ Y &lt;- rnorm(150) # X[, 2] + Z[, 2] + rnorm(150)
   est_vhat = TRUE,
   reg_YonXZ = "rf",
   reg_YonZ = "rf",
+  reg_YhatonZ = "rf",
+  reg_VonXZ = "rf",
+  reg_RonZ = "rf",
   args_YonXZ = NULL,
   args_YonZ = NULL,
-  mtry = identity,
+  args_YhatonZ = list(mtry = identity),
+  args_VonXZ = list(mtry = identity),
+  args_RonZ = list(mtry = identity),
+  frac = 0.5,
+  coin = FALSE,
+  cointrol = NULL,
   ...
 )
 </code></pre>
@@ -359,28 +407,75 @@ a single column matrix.</p>
 <tr><td><code id="pcm_+3A_reg_yonxz">reg_YonXZ</code></td>
 <td>
 <p>Character string or function specifying the regression
-for Y on X and Z, default is <code>"rf"</code> for random forest.</p>
+for Y on X and Z, default is <code>"rf"</code> for random forest.
+See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
 </td></tr>
 <tr><td><code id="pcm_+3A_reg_yonz">reg_YonZ</code></td>
 <td>
 <p>Character string or function specifying the regression
-for Y on Z, default is <code>"rf"</code> for random forest.</p>
+for Y on Z, default is <code>"rf"</code> for random forest.
+See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_reg_yhatonz">reg_YhatonZ</code></td>
+<td>
+<p>Character string or function specifying the regression
+for the predicted values of <code>reg_YonXZ</code> on Z, default is <code>"rf"</code>
+for random forest.
+See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_reg_vonxz">reg_VonXZ</code></td>
+<td>
+<p>Character string or function specifying the regression
+for estimating the conditional variance of Y given X and Z, default
+is <code>"rf"</code> for random forest.
+See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_reg_ronz">reg_RonZ</code></td>
+<td>
+<p>Character string or function specifying the regression
+for the estimated transformation of Y, X, and Z on Z, default is
+<code>"rf"</code> for random forest.
+See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
 </td></tr>
 <tr><td><code id="pcm_+3A_args_yonxz">args_YonXZ</code></td>
 <td>
-<p>Arguments passed to <code>reg</code></p>
+<p>Arguments passed to <code>reg_YonXZ</code>.</p>
 </td></tr>
 <tr><td><code id="pcm_+3A_args_yonz">args_YonZ</code></td>
 <td>
-<p>Arguments passed to <code>reg</code></p>
+<p>Arguments passed to <code>reg_YonZ</code>.</p>
 </td></tr>
-<tr><td><code id="pcm_+3A_mtry">mtry</code></td>
+<tr><td><code id="pcm_+3A_args_yhatonz">args_YhatonZ</code></td>
 <td>
-<p>Argument passed to <code>ranger</code></p>
+<p>Arguments passed to <code>reg_YhatonZ</code>.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_args_vonxz">args_VonXZ</code></td>
+<td>
+<p>Arguments passed to <code>reg_VonXZ</code>.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_args_ronz">args_RonZ</code></td>
+<td>
+<p>Arguments passed to <code>reg_RonZ</code>.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_frac">frac</code></td>
+<td>
+<p>Relative size of train split.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_coin">coin</code></td>
+<td>
+<p>Logical; whether or not to use the <code>coin</code> package for
+computing the test statistic and p-value. The <code>coin</code> package
+computes variances with n - 1 degrees of freedom.
+The default is <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="pcm_+3A_cointrol">cointrol</code></td>
+<td>
+<p>List; further arguments passed to
+<code><a href="coin.html#topic+independence_test">independence_test</a></code>.</p>
 </td></tr>
 <tr><td><code id="pcm_+3A_...">...</code></td>
 <td>
-<p>Additional arguments passed to <code>ranger</code></p>
+<p>Additional arguments currently ignored.</p>
 </td></tr>
 </table>
 
@@ -388,7 +483,7 @@ for Y on Z, default is <code>"rf"</code> for random forest.</p>
 <h3>Details</h3>
 
 <p>The projected covariance measure test tests whether the conditional
-mean of Y given X and Z depends on X.
+mean of Y given X and Z is independent of X.
 </p>
 
 
@@ -438,7 +533,7 @@ freedom used for the chi-squared test.</p>
 
 <p>Lundborg, A. R., Kim, I., Shah, R. D., &amp; Samworth, R. J. (2022). The
 Projected Covariance Measure for assumption-lean variable significance
-testing. arXiv preprint. doi: <a href="https://doi.org/10.48550/arXiv.2211.02039">10.48550/arXiv.2211.02039</a>
+testing. arXiv preprint. <a href="https://doi.org/10.48550/arXiv.2211.02039">doi:10.48550/arXiv.2211.02039</a>
 </p>
 
 
@@ -449,8 +544,343 @@ X &lt;- matrix(rnorm(2 * n), ncol = 2)
 colnames(X) &lt;- c("X1", "X2")
 Z &lt;- matrix(rnorm(2 * n), ncol = 2)
 colnames(Z) &lt;- c("Z1", "Z2")
-Y &lt;- rnorm(n) # X[, 2] + Z[, 2] + rnorm(1e3)
+Y &lt;- X[, 2]^2 + Z[, 2] + rnorm(n)
 (pcm1 &lt;- pcm(Y, X, Z))
+
+</code></pre>
+
+<hr>
+<h2 id='plm_equiv_test'>Equivalence test for the parameter in a partially linear model</h2><span id='topic+plm_equiv_test'></span>
+
+<h3>Description</h3>
+
+<p>Equivalence test for the parameter in a partially linear model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plm_equiv_test(Y, X, Z, from, to, scale = c("plm", "cov", "cor"), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plm_equiv_test_+3A_y">Y</code></td>
+<td>
+<p>Vector or matrix of response values.</p>
+</td></tr>
+<tr><td><code id="plm_equiv_test_+3A_x">X</code></td>
+<td>
+<p>Matrix or data.frame of covariates.</p>
+</td></tr>
+<tr><td><code id="plm_equiv_test_+3A_z">Z</code></td>
+<td>
+<p>Matrix or data.frame of covariates.</p>
+</td></tr>
+<tr><td><code id="plm_equiv_test_+3A_from">from</code></td>
+<td>
+<p>Lower bound of the equivalence margin</p>
+</td></tr>
+<tr><td><code id="plm_equiv_test_+3A_to">to</code></td>
+<td>
+<p>Upper bound of the equivalence margin</p>
+</td></tr>
+<tr><td><code id="plm_equiv_test_+3A_scale">scale</code></td>
+<td>
+<p>Scale on which to specify the equivalence margin. Default
+<code>"plm"</code> corresponds to the partially linear model parameter
+described in the details. <code>"cov"</code> corresponds to the conditional
+covariance and <code>"cor"</code> to conditional correlation which lies in
+<code class="reqn">[-1, 1]</code>.</p>
+</td></tr>
+<tr><td><code id="plm_equiv_test_+3A_...">...</code></td>
+<td>
+<p>Further arguments passed to <code><a href="#topic+gcm">gcm</a></code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The partially linear model postulates </p>
+<p style="text-align: center;"><code class="reqn">Y = X \theta + g(Z) + \epsilon,</code>
+</p>
+
+<p>and the target of inference is theta. The target is closely related to
+the conditional covariance between Y and X given Z:
+</p>
+<p style="text-align: center;"><code class="reqn">\theta = E[cov(X, Y | Z)] / E[Var(X | Z)].</code>
+</p>
+<p> The equivalence test (based
+on the GCM test) tests <code class="reqn">H_0: \theta \not\in [{\tt from}, {\tt to}]</code> versus
+<code class="reqn">H_1: \theta \in [{\tt from}, {\tt to}]</code>. Y, X (and theta) can only be
+one-dimensional. There are no restrictions on Z. The equivalence test can
+also be performed on the conditional covariance scale directly (using
+<code>scale = "cov"</code>) or on the conditional correlation scale:
+</p>
+<p style="text-align: center;"><code class="reqn">E[cox(X, Y | Z)] / \sqrt{E[Var(X | Z)]E[Var(Y | Z)]}</code>
+</p>
+<p>,
+using <code>scale = "cor"</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Object of class '<code>gcm</code>' and '<code>htest</code>'
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 150
+X &lt;- rnorm(n)
+Z &lt;- matrix(rnorm(2 * n), ncol = 2)
+colnames(Z) &lt;- c("Z1", "Z2")
+Y &lt;- X^2 + Z[, 2] + rnorm(n)
+plm_equiv_test(Y, X, Z, from = -1, to = 1)
+</code></pre>
+
+<hr>
+<h2 id='rf'>Implemented regression methods</h2><span id='topic+rf'></span><span id='topic+survforest'></span><span id='topic+qrf'></span><span id='topic+lasso'></span><span id='topic+ridge'></span><span id='topic+postlasso'></span><span id='topic+cox'></span>
+
+<h3>Description</h3>
+
+<p>Implemented regression methods
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rf(y, x, ...)
+
+survforest(y, x, ...)
+
+qrf(y, x, ...)
+
+lasso(y, x, ...)
+
+ridge(y, x, ...)
+
+postlasso(y, x, ...)
+
+cox(y, x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="rf_+3A_y">y</code></td>
+<td>
+<p>Vector (or matrix) of response values.</p>
+</td></tr>
+<tr><td><code id="rf_+3A_x">x</code></td>
+<td>
+<p>Design matrix of predictors.</p>
+</td></tr>
+<tr><td><code id="rf_+3A_...">...</code></td>
+<td>
+<p>Additional arguments passed to the underlying regression method.
+In case of <code>"rf"</code>, <code>"survforest"</code> and <code>"qrf"</code>, this is
+<code><a href="ranger.html#topic+ranger">ranger</a></code>. In case of <code>"lasso"</code> and
+<code>"ridge"</code>, this is <code><a href="glmnet.html#topic+glmnet">glmnet</a></code>. In case of
+<code>"cox"</code>, this is <code><a href="survival.html#topic+coxph">coxph</a></code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The implemented choices are <code>"rf"</code> for random forests as implemented in
+ranger, <code>"lasso"</code> for cross-validated Lasso regression (using the
+one-standard error rule), <code>"ridge"</code>
+for cross-validated ridge regression (using the one-standard error rule),
+<code>"cox"</code> for the Cox proportional
+hazards model as implemented in survival, <code>"qrf"</code> or <code>"survforest"</code>
+for quantile and survival random forests, respectively. The option
+<code>"postlasso"</code> option refers to a cross-validated LASSO (using the
+one-standard error rule) and subsequent OLS regression.
+New regression methods can be implemented and supplied as well and need the
+following structure. The regression method <code>"custom_reg"</code> needs to take
+arguments <code>y, x, ...</code>, fit the model using <code>y</code> and <code>x</code> as
+matrices and return an object of a user-specified class, for instance,
+'<code>custom</code>'. For the GCM test, implementing a <code>residuals.custom</code>
+method is sufficient, which should take arguments
+<code>object, response = NULL, data = NULL, ...</code>. For the PCM test, a
+<code>predict.custom</code> method is necessary for out-of-sample prediction
+and computation of residuals.
+</p>
+
+<hr>
+<h2 id='wgcm'>Weighted Generalised covariance measure test</h2><span id='topic+wgcm'></span>
+
+<h3>Description</h3>
+
+<p>Weighted Generalised covariance measure test
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>wgcm(
+  Y,
+  X,
+  Z,
+  reg_YonZ = "rf",
+  reg_XonZ = "rf",
+  reg_wfun = "rf",
+  args_XonZ = NULL,
+  args_wfun = NULL,
+  frac = 0.5,
+  B = 499L,
+  coin = FALSE,
+  cointrol = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="wgcm_+3A_y">Y</code></td>
+<td>
+<p>Vector of response values. Can be supplied as a numeric vector or
+a single column matrix.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_x">X</code></td>
+<td>
+<p>Matrix or data.frame of covariates.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_z">Z</code></td>
+<td>
+<p>Matrix or data.frame of covariates.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_reg_yonz">reg_YonZ</code></td>
+<td>
+<p>Character string or function specifying the regression for
+Y on Z. See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_reg_xonz">reg_XonZ</code></td>
+<td>
+<p>Character string or function specifying the regression for
+X on Z. See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_reg_wfun">reg_wfun</code></td>
+<td>
+<p>Character string or function specifying the regression for
+estimating the weighting function.
+See <code>?<a href="#topic+regressions">regressions</a></code> for more detail.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_args_xonz">args_XonZ</code></td>
+<td>
+<p>Additional arguments passed to <code>reg_XonZ</code>.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_args_wfun">args_wfun</code></td>
+<td>
+<p>Additional arguments passed to <code>reg_XonZ</code>.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_frac">frac</code></td>
+<td>
+<p>Relative size of train split.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_b">B</code></td>
+<td>
+<p>Number of bootstrap samples. Only applies if <code>type = "max"</code> is
+used.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_coin">coin</code></td>
+<td>
+<p>Logical; whether or not to use the <code>coin</code> package for
+computing the test statistic and p-value. The <code>coin</code> package
+computes variances with n - 1 degrees of freedom.
+The default is <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_cointrol">cointrol</code></td>
+<td>
+<p>List; further arguments passed to
+<code><a href="coin.html#topic+independence_test">independence_test</a></code>.</p>
+</td></tr>
+<tr><td><code id="wgcm_+3A_...">...</code></td>
+<td>
+<p>Additional arguments passed to <code>reg_YonZ</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The weighted generalised covariance measure test tests whether a weighted
+version of the conditional covariance of Y and X given Z is zero.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Object of class '<code>wgcm</code>' and '<code>htest</code>' with the following
+components:
+</p>
+<table>
+<tr><td><code>statistic</code></td>
+<td>
+<p>The value of the test statistic.</p>
+</td></tr>
+<tr><td><code>p.value</code></td>
+<td>
+<p>The p-value for the <code>hypothesis</code></p>
+</td></tr>
+<tr><td><code>parameter</code></td>
+<td>
+<p>In case X is multidimensional, this is the degrees of
+freedom used for the chi-squared test.</p>
+</td></tr>
+<tr><td><code>hypothesis</code></td>
+<td>
+<p>String specifying the null hypothesis .</p>
+</td></tr>
+<tr><td><code>null.value</code></td>
+<td>
+<p>String specifying the null hypothesis.</p>
+</td></tr>
+<tr><td><code>method</code></td>
+<td>
+<p>The string <code>"Generalised covariance measure test"</code>.</p>
+</td></tr>
+<tr><td><code>data.name</code></td>
+<td>
+<p>A character string giving the name(s) of the data.</p>
+</td></tr>
+<tr><td><code>rY</code></td>
+<td>
+<p>Residuals for the Y on Z regression.</p>
+</td></tr>
+<tr><td><code>rX</code></td>
+<td>
+<p>Weighted residuals for the X on Z regression.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Scheidegger, C., Hörrmann, J., &amp; Bühlmann, P. (2022). The weighted
+generalised covariance measure. Journal of Machine Learning Research,
+23(273), 1-68.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>n &lt;- 150
+X &lt;- matrix(rnorm(2 * n), ncol = 2)
+colnames(X) &lt;- c("X1", "X2")
+Z &lt;- matrix(rnorm(2 * n), ncol = 2)
+colnames(Z) &lt;- c("Z1", "Z2")
+Y &lt;- X[, 2]^2 + Z[, 2] + rnorm(n)
+(wgcm1 &lt;- wgcm(Y, X, Z))
 
 </code></pre>
 

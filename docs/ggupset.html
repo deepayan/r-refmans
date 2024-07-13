@@ -41,7 +41,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.0</td>
+<td>0.4.0</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -74,7 +74,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.0.2</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -94,7 +94,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2020-05-05 10:25:17 UTC; ahlmanne</td>
+<td>2024-06-24 09:50:34 UTC; ahlmanne</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -111,7 +111,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2020-05-05 10:40:03 UTC</td>
+<td>2024-06-24 10:10:04 UTC</td>
 </tr>
 </table>
 <hr>
@@ -129,6 +129,7 @@ views each occurring element as potential set.
 <pre><code class='language-R'>axis_combmatrix(
   sep = "[^[:alnum:]]+",
   levels = NULL,
+  override_plotting_function = NULL,
   xlim = NULL,
   ylim = NULL,
   expand = TRUE,
@@ -151,6 +152,12 @@ regex. Default: <code>"[^[:alnum:]]+"</code></p>
 <p>The selection of string elements that are displayed in the
 combination matrix axis. Default: NULL, which means simply all elements
 in the text labels are used</p>
+</td></tr>
+<tr><td><code id="axis_combmatrix_+3A_override_plotting_function">override_plotting_function</code></td>
+<td>
+<p>to achieve maximum flexibility, you can
+provide a custom plotting function. For more information, see details.
+Default: <code>NULL</code></p>
 </td></tr>
 <tr><td><code id="axis_combmatrix_+3A_xlim">xlim</code>, <code id="axis_combmatrix_+3A_ylim">ylim</code></td>
 <td>
@@ -188,6 +195,31 @@ first step <code>scale_x_mergelist()</code> turns a list argument
 to 'x' into a character vector that <code>axis_combmatrix()</code>
 can work with.
 </p>
+<p>For maximum flexibility, you can use the 'override_plotting_function' parameter
+which returns a ggplot and is called with a <code>tibble</code>
+with one entry per point of the combination matrix. Specifically, it contains
+</p>
+
+<dl>
+<dt>labels</dt><dd><p>the collapsed label string</p>
+</dd>
+<dt>single_label</dt><dd><p>an ordered factor with the labels on the left of the plot</p>
+</dd>
+<dt>id</dt><dd><p>consecutive numbering of the points</p>
+</dd>
+<dt>labels_split</dt><dd><p>a list column that contains the splitted labels</p>
+</dd>
+<dt>at</dt><dd><p>the x-position of the point</p>
+</dd>
+<dt>observed</dt><dd><p>boolean to indicate if this element is active in the intersection</p>
+</dd>
+<dt>index</dt><dd><p>the row of the point</p>
+</dd>
+</dl>
+
+<p>See the examples how the <code>override_plotting_function</code> looks that recreates
+the default combination matrix
+</p>
 
 
 <h3>Examples</h3>
@@ -198,6 +230,34 @@ can work with.
   ggplot(mtcars, aes(x=combined)) +
     geom_bar() +
     axis_combmatrix(sep = "_")
+
+# Example of 'override_plotting_function'
+
+ggplot(mtcars, aes(x=combined)) +
+  geom_bar() +
+    axis_combmatrix(sep = "_", override_plotting_function = function(df){
+      ggplot(df, aes(x= at, y= single_label)) +
+        geom_rect(aes(fill= index %% 2 == 0), ymin=df$index-0.5,
+                  ymax=df$index+0.5, xmin=0, xmax=1) +
+        geom_point(aes(color= observed), size = 3) +
+        geom_line(data= function(dat) dat[dat$observed, ,drop=FALSE],
+                  aes(group = labels), size= 1.2) +
+        ylab("") + xlab("") +
+        scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+        scale_fill_manual(values= c(`TRUE` = "white", `FALSE` = "#F7F7F7")) +
+        scale_color_manual(values= c(`TRUE` = "black", `FALSE` = "#E0E0E0")) +
+        guides(color="none", fill="none") +
+        theme(
+          panel.background = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.ticks.length = unit(0, "pt"),
+          axis.title.y = element_blank(),
+          axis.title.x = element_blank(),
+          axis.line = element_blank(),
+          panel.border = element_blank()
+        )
+    })
 
 </code></pre>
 
@@ -241,6 +301,7 @@ of a metabolite.
 </li></ul>
 
 
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>dim(df_complex_conditions)
@@ -267,7 +328,8 @@ head(df_complex_conditions)
 
 <p>a matrix with 6 rows and 37 columns. Each row is one pathway, with
 its name given as 'rownames' and each column is a gene. The values
-in the matrix are Boolean indicators if the gene is a member of the pathway.</p>
+in the matrix are Boolean indicators if the gene is a member of the pathway.
+</p>
 
 
 <h3>Examples</h3>
@@ -453,6 +515,7 @@ by extending the default ggplot2 <code>theme()</code>.
   combmatrix.panel.striped_background.color.two = "#F7F7F7",
   combmatrix.panel.point.size = 3,
   combmatrix.panel.line.size = 1.2,
+  combmatrix.panel.line.color = "black",
   combmatrix.panel.point.color.fill = "black",
   combmatrix.panel.point.color.empty = "#E0E0E0",
   ...
@@ -528,6 +591,11 @@ in the combination matrix. Default: 3</p>
 <td>
 <p>Number to specify the size of the lines
 connecting the points. Default: 1.2</p>
+</td></tr>
+<tr><td><code id="theme_combmatrix_+3A_combmatrix.panel.line.color">combmatrix.panel.line.color</code></td>
+<td>
+<p>Color of the lines connecting the points.
+Default: &quot;black&quot;</p>
 </td></tr>
 <tr><td><code id="theme_combmatrix_+3A_combmatrix.panel.point.color.fill">combmatrix.panel.point.color.fill</code></td>
 <td>
@@ -620,6 +688,7 @@ of the dataset. Furthermore each star rating is in its on row.
 percentage of people rating the movie with this many stars.
 </p>
 </li></ul>
+
 
 
 <h3>Examples</h3>

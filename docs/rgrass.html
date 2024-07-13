@@ -33,11 +33,11 @@ function processMathHTML() {
 <table>
 <tr>
 <td>Version:</td>
-<td>0.4-2</td>
+<td>0.4-3</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-03-17</td>
+<td>2024-06-19</td>
 </tr>
 <tr>
 <td>Title:</td>
@@ -59,7 +59,7 @@ function processMathHTML() {
 <tr>
 <td>Suggests:</td>
 <td>terra (&ge; 1.6-16), sp (&ge; 0.9), knitr, rmarkdown, sf, stars,
-raster (&ge; 3.6-3)</td>
+raster (&ge; 3.6-3), codetools</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -86,7 +86,7 @@ raster (&ge; 3.6-3)</td>
 <tr>
 <td>Collate:</td>
 <td>AAA.R options.R rgrass.R rast_link.R vect_link.R
-vect_link_ng.R initGRASS.R xml1.R</td>
+vect_link_ng.R initGRASS.R xml1.R gdal_grass.R read_helpers.R</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -94,7 +94,7 @@ vect_link_ng.R initGRASS.R xml1.R</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-17 08:01:37 UTC; rsb</td>
+<td>2024-06-18 18:19:29 UTC; rsb</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -120,7 +120,7 @@ vect_link_ng.R initGRASS.R xml1.R</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-17 13:00:02 UTC</td>
+<td>2024-06-19 11:00:06 UTC</td>
 </tr>
 </table>
 <hr>
@@ -496,6 +496,8 @@ if (run) {
 </p>
 <p>On Windows, if OSGeo4W GRASS is being used, the R session must be started in the OSGeo4W shell. If not, the non-standard placing of files and of environment variables confuses the function. If <code>toupper(gisBase)</code> contains &ldquo;OSGEO4W64/APPS/GRASS&rdquo; or &ldquo;OSGEO4W/APPS/GRASS&rdquo; (and after converting &ldquo;\&rdquo; to &ldquo;/&rdquo;), but the environment variable <code>OSGEO4W_ROOT</code> is not defined, <code>initGRASS()</code> will exit with an error before confusion leads to further errors. For further details, see <a href="https://github.com/rsbivand/rgrass/issues/16">https://github.com/rsbivand/rgrass/issues/16</a> and <a href="https://lists.osgeo.org/pipermail/grass-stats/2018-November/001800.html">https://lists.osgeo.org/pipermail/grass-stats/2018-November/001800.html</a>.
 </p>
+<p>The same restriction applies to use of GRASS with QGIS Windows standalone installations, which may be used with <code>initGRASS</code> only if the R session is started from the OSGeo4W shell shipped as part of the standalone installer (see <a href="https://github.com/rsbivand/rgrass/issues/87">https://github.com/rsbivand/rgrass/issues/87</a>). The function will exit with an error if R was not started from the QGIS OSGeo4W shell before confusion leads to further errors.
+</p>
 <p>The locking functions are used internally, but are exposed for experienced R/GRASS scripters needing to use the GRASS module &ldquo;g.mapset&rdquo; through <code>initGRASS</code> in an existing GRASS location. In particular, &ldquo;g.mapset&rdquo; may leave a <code>.gislock</code> file in the current MAPSET, so it may be important to call <code>unlink_.gislock</code> to clean up before quitting the R session. <code>remove_GISRC</code> may be used to try to remove the file given in the &ldquo;GISRC&rdquo; environment variable if created by <code>initGRASS</code> with argument <code>remove_GISRC=</code> TRUE.
 </p>
 
@@ -632,15 +634,16 @@ plot(u1[["elev"]], col=grDevices::terrain.colors(50))
 
 <h3>Description</h3>
 
-<p>Read GRASS raster files from GRASS into R <span class="pkg">terra</span> <code>"SpatRaster"</code> or <span class="pkg">sp</span> <code>"SpatialGridDataFrame"</code> objects, and write single columns of <span class="pkg">terra</span> <code>"SpatRaster"</code> or <span class="pkg">sp</span> <code>"SpatialGridDataFrame"</code> objects to GRASS. When <code>return_format="terra"</code>, temporary binary files and r.out.bin and r.in.bin are used for speed reasons. <code>read_RAST()</code> and <code>write_RAST()</code> by default use <code>"RRASTER"</code> files written and read by GDAL. 
+<p>Read GRASS raster files from GRASS into R <span class="pkg">terra</span> <code>"SpatRaster"</code> or <span class="pkg">sp</span> <code>"SpatialGridDataFrame"</code> objects, and write single columns of <span class="pkg">terra</span> <code>"SpatRaster"</code> or <span class="pkg">sp</span> <code>"SpatialGridDataFrame"</code> objects to GRASS. When <code>return_format="terra"</code>, temporary binary files and r.out.bin and r.in.bin are used for speed reasons. <code>read_RAST()</code> and <code>write_RAST()</code> by default use <code>"RRASTER"</code> files written and read by GDAL.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>read_RAST(vname, cat=NULL, NODATA=NULL, ignore.stderr=get.ignore.stderrOption(),
- return_format="terra", close_OK=return_format=="SGDF", flags=NULL)
-write_RAST(x, vname, zcol = 1, NODATA=NULL, flags=NULL, 
+<pre><code class='language-R'>read_RAST(vname, cat=NULL, NODATA=NULL,
+ return_format="terra", close_OK=return_format=="SGDF",
+ flags=NULL, Sys_ignore.stdout = FALSE, ignore.stderr=get.ignore.stderrOption())
+write_RAST(x, vname, zcol = 1, NODATA=NULL, flags=NULL,
  ignore.stderr = get.ignore.stderrOption(), overwrite=FALSE, verbose=TRUE)
 </code></pre>
 
@@ -659,6 +662,10 @@ write_RAST(x, vname, zcol = 1, NODATA=NULL, flags=NULL,
 <tr><td><code id="readRAST_+3A_return_format">return_format</code></td>
 <td>
 <p>default <code>"terra"</code>, optionally <code>"SGDF"</code></p>
+</td></tr>
+<tr><td><code id="readRAST_+3A_sys_ignore.stdout">Sys_ignore.stdout</code></td>
+<td>
+<p>Passed to <code>system</code>.</p>
 </td></tr>
 <tr><td><code id="readRAST_+3A_ignore.stderr">ignore.stderr</code></td>
 <td>
@@ -709,22 +716,30 @@ write_RAST(x, vname, zcol = 1, NODATA=NULL, flags=NULL,
 
 <pre><code class='language-R'>run &lt;- FALSE
 if (nchar(Sys.getenv("GISRC")) &gt; 0 &amp;&amp;
-  read.dcf(Sys.getenv("GISRC"))[1,"LOCATION_NAME"] == "nc_basic_spm_grass7") run &lt;- TRUE
+    read.dcf(Sys.getenv("GISRC"))[1,"LOCATION_NAME"] == "nc_basic_spm_grass7") run &lt;- TRUE
 GV &lt;- Sys.getenv("GRASS_VERBOSE")
 Sys.setenv("GRASS_VERBOSE"=0)
 ois &lt;- get.ignore.stderrOption()
 set.ignore.stderrOption(TRUE)
 if (run) {
-unlist(strsplit(execGRASS("g.mapsets", flags="p", intern=TRUE), " "))
+  meta &lt;- gmeta()
+  location_path &lt;- file.path(meta$GISDBASE, meta$LOCATION_NAME)
+  previous_mapset &lt;- meta$MAPSET
+  example_mapset &lt;- "RGRASS_EXAMPLES"
+  execGRASS("g.mapset", "c", mapset = example_mapset)
+}
+
+if (run) {
+  unlist(strsplit(execGRASS("g.mapsets", flags="p", intern=TRUE), " "))
 }
 if (run) {
-execGRASS("g.list", type="raster", pattern="soils", flags="m", intern=TRUE)
+  execGRASS("g.list", type="raster", pattern="soils", flags="m", intern=TRUE)
 }
 if (run) {
-execGRASS("g.list", type="raster", pattern="soils@PERMANENT", mapset=".", flags="m", intern=TRUE)
+  execGRASS("g.list", type="raster", pattern="soils@PERMANENT", mapset=".", flags="m", intern=TRUE)
 }
 if (run) {
-execGRASS("g.list", type="raster", pattern="soils", mapset="PERMANENT", flags="m", intern=TRUE)
+  execGRASS("g.list", type="raster", pattern="soils", mapset="PERMANENT", flags="m", intern=TRUE)
 }
 run &lt;- run &amp;&amp; require("terra", quietly=TRUE)
 if (run) {
@@ -741,7 +756,7 @@ Sys.setenv("_SP_EVOLUTION_STATUS_"="2")
 run &lt;- run &amp;&amp; require("sp", quietly=TRUE)
 if (run) {
   nc_basic &lt;- read_RAST(c("geology", "elevation"), cat=c(TRUE, FALSE),
-    return_format="SGDF")
+                        return_format="SGDF")
   print(table(nc_basic$geology))
 }
 if (run) {
@@ -759,7 +774,7 @@ if (run) {
 }
 if (run) {
   print(system.time(sqdemSP &lt;- read_RAST(c("sqdemSP", "elevation"),
-    return_format="SGDF")))
+                                         return_format="SGDF")))
 }
 if (run) {
   print(system.time(sqdem &lt;- read_RAST(c("sqdemSP", "elevation"),
@@ -769,10 +784,10 @@ if (run) {
 names(sqdem)
 }
 if (run) {
-  try(sqdem1 &lt;- read_RAST(c("sqdemSP@rsb", "elevation@PERMANENT")))
+  sqdem1 &lt;- read_RAST(c("sqdemSP@RGRASS_EXAMPLES", "elevation@PERMANENT"))
 }
 if (run) {
-names(sqdem1)
+  names(sqdem1)
 }
 if (run) {
   execGRASS("g.remove", flags="f", name="sqdemSP", type="raster")
@@ -796,6 +811,12 @@ if (run) {
 if (run) {
   execGRASS("g.remove", flags="f", name="test_t", type="raster")
 }
+if (run) {
+  execGRASS("g.mapset", mapset = previous_mapset)
+  if (example_mapset != previous_mapset) {
+    unlink(file.path(location_path, example_mapset), recursive = TRUE)
+  }
+}
 Sys.setenv("GRASS_VERBOSE"=GV)
 set.ignore.stderrOption(ois)
 </code></pre>
@@ -811,9 +832,10 @@ set.ignore.stderrOption(ois)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>read_VECT(vname, layer, type=NULL, flags="overwrite",
-    ignore.stderr = NULL)
-write_VECT(x, vname, flags="overwrite", ignore.stderr = NULL)
+<pre><code class='language-R'>read_VECT(vname, layer = "", proxy = FALSE, use_gdal_grass_driver = TRUE, type = NULL,
+    flags = "overwrite", Sys_ignore.stdout = FALSE,
+    ignore.stderr = get.ignore.stderrOption())
+write_VECT(x, vname, flags = "overwrite", ignore.stderr = get.ignore.stderrOption())
 vInfo(vname, layer, ignore.stderr = NULL)
 vColumns(vname, layer, ignore.stderr = NULL)
 vDataCount(vname, layer, ignore.stderr = NULL)
@@ -831,11 +853,23 @@ vect2neigh(vname, ID=NULL, ignore.stderr = NULL, remove=TRUE, vname2=NULL,
 </td></tr>
 <tr><td><code id="readVECT_+3A_layer">layer</code></td>
 <td>
-<p>a layer name (string); if missing set to default of &ldquo;1&rdquo;</p>
+<p>a layer name (string); if missing the first layer will be used</p>
+</td></tr>
+<tr><td><code id="readVECT_+3A_proxy">proxy</code></td>
+<td>
+<p>Default is <code>FALSE</code>. Set as <code>TRUE</code> if you need a <code>SpatVectorProxy</code> object.</p>
+</td></tr>
+<tr><td><code id="readVECT_+3A_use_gdal_grass_driver">use_gdal_grass_driver</code></td>
+<td>
+<p>Default <code>TRUE</code>. The <a href="https://github.com/OSGeo/gdal-grass">standalone GDAL-GRASS driver</a> for the vector format will be used if it is installed. The advantage is that no intermediate file needs to be written from GRASS GIS and subsequently read into R; instead the vector layer is read directly from the GRASS GIS database. Please read the <strong>Note</strong> further below!</p>
 </td></tr>
 <tr><td><code id="readVECT_+3A_type">type</code></td>
 <td>
 <p>override type detection when multiple types are non-zero, passed to v.out.ogr</p>
+</td></tr>
+<tr><td><code id="readVECT_+3A_sys_ignore.stdout">Sys_ignore.stdout</code></td>
+<td>
+<p>Passed to <code>system</code>.</p>
 </td></tr>
 <tr><td><code id="readVECT_+3A_ignore.stderr">ignore.stderr</code></td>
 <td>
@@ -870,9 +904,15 @@ vect2neigh(vname, ID=NULL, ignore.stderr = NULL, remove=TRUE, vname2=NULL,
 
 <h3>Value</h3>
 
-<p><code>read_VECT</code> imports a GRASS vector object into a <code>"SpatVector"</code> object.
+<p><code>read_VECT</code> imports a GRASS vector layer into a <code>SpatVector</code> or <code>SpatVectorProxy</code> object.
 </p>
 <p><code>vect2neigh</code> returns a data frame object with left and right neighbours and boundary lengths, also given class GRASSneigh and spatial.neighbour (as used in spdep). The incantation to retrieve the neighbours list is <code>sn2listw(vect2neigh())$neighbours</code>, and to retrieve the boundary lengths: <code>sn2listw(vect2neigh())$weights</code>. The GRASSneigh object has two other useful attributes: external is a vector giving the length of shared boundary between each polygon and the external area, and total giving each polygon's total boundary length.
+</p>
+
+
+<h3>Note</h3>
+
+<p>Be aware that the GDAL-GRASS driver may have some <a href="https://github.com/OSGeo/gdal-grass/issues">issues</a> for vector data. In our experience, the error and warning messages for vector data can be ignored. Further, the returned metadata about the coordinate reference system may currently be incomplete, e.g. it may miss the EPSG code.
 </p>
 
 
@@ -885,11 +925,19 @@ vect2neigh(vname, ID=NULL, ignore.stderr = NULL, remove=TRUE, vname2=NULL,
 
 <pre><code class='language-R'>run &lt;- FALSE
 if (nchar(Sys.getenv("GISRC")) &gt; 0 &amp;&amp;
-  read.dcf(Sys.getenv("GISRC"))[1,"LOCATION_NAME"] == "nc_basic_spm_grass7") run &lt;- TRUE
+    read.dcf(Sys.getenv("GISRC"))[1,"LOCATION_NAME"] == "nc_basic_spm_grass7") run &lt;- TRUE
 GV &lt;- Sys.getenv("GRASS_VERBOSE")
 Sys.setenv("GRASS_VERBOSE"=0)
 ois &lt;- get.ignore.stderrOption()
 set.ignore.stderrOption(TRUE)
+if (run) {
+  meta &lt;- gmeta()
+  location_path &lt;- file.path(meta$GISDBASE, meta$LOCATION_NAME)
+  previous_mapset &lt;- meta$MAPSET
+  example_mapset &lt;- "RGRASS_EXAMPLES"
+  execGRASS("g.mapset", "c", mapset = example_mapset)
+}
+
 if (run) {
   execGRASS("v.info", map="schools", layer="1")
 }
@@ -897,6 +945,12 @@ if (run) {
   print(vInfo("schools"))
   schs &lt;- read_VECT("schools")
   print(summary(schs))
+}
+if (run) {
+  try({
+    write_VECT(schs, "newsch", flags=c("o", "overwrite"))
+  })
+  schs &lt;- read_VECT("schools", use_gdal_grass_driver = FALSE)
 }
 if (run) {
   write_VECT(schs, "newsch", flags=c("o", "overwrite"))
@@ -916,12 +970,18 @@ if (run) {
   roads &lt;- read_VECT("roadsmajor")
   print(summary(roads))
 }
-if (run) {
+if (FALSE) {
+  # not run: vect2neigh() currently writes 3 new data sources in the PERMANENT
+  # mapset, despite this mapset not being the active one.
   cen_neig &lt;- vect2neigh("census")
   str(cen_neig)
 }
 if (run) {
   execGRASS("g.remove", flags="f", name=c("newsch", "newsch1"), type="vector")
+  execGRASS("g.mapset", mapset = previous_mapset)
+  if (example_mapset != previous_mapset) {
+    unlink(file.path(location_path, example_mapset), recursive = TRUE)
+  }
 }
 Sys.setenv("GRASS_VERBOSE"=GV)
 set.ignore.stderrOption(ois)

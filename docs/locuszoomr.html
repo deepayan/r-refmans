@@ -52,7 +52,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.1</td>
+<td>0.3.1</td>
 </tr>
 <tr>
 <td>BugReports:</td>
@@ -107,7 +107,7 @@ rlang, rtracklayer, zoo</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-17 13:57:44 UTC; myles</td>
+<td>2024-07-03 19:58:45 UTC; myles</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -124,7 +124,7 @@ rlang, rtracklayer, zoo</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-17 14:30:02 UTC</td>
+<td>2024-07-03 20:40:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -257,11 +257,16 @@ new plot.</p>
   filter_gene_name = NULL,
   filter_gene_biotype = NULL,
   cex.text = 0.7,
-  gene_col = "blue4",
+  gene_col = ifelse(showExons, "blue4", "skyblue"),
   exon_col = "blue4",
   exon_border = "blue4",
+  showExons = TRUE,
   maxrows = 8,
-  xlab = NULL
+  width = 600,
+  xlab = NULL,
+  blanks = c("fill", "hide", "show"),
+  height = NULL,
+  plot = TRUE
 )
 </code></pre>
 
@@ -297,18 +302,45 @@ new plot.</p>
 </td></tr>
 <tr><td><code id="genetrack_ly_+3A_exon_border">exon_border</code></td>
 <td>
-<p>Border line colour outlining exons. Set to <code>NA</code> for no
-border.</p>
+<p>Border line colour outlining exons (or genes if
+<code>showExons</code> is <code>FALSE</code>). Set to <code>NA</code> for no border.</p>
+</td></tr>
+<tr><td><code id="genetrack_ly_+3A_showexons">showExons</code></td>
+<td>
+<p>Logical whether to show exons or simply show whole gene as a
+rectangle. If <code>showExons = FALSE</code> colours are specified by <code>exon_border</code>
+for rectangle border and <code>gene_col</code> for the fill colour.</p>
 </td></tr>
 <tr><td><code id="genetrack_ly_+3A_maxrows">maxrows</code></td>
 <td>
 <p>Specifies maximum number of rows to display in gene
 annotation panel.</p>
 </td></tr>
+<tr><td><code id="genetrack_ly_+3A_width">width</code></td>
+<td>
+<p>Width of plotly plot in pixels which is purely used to prevent
+overlapping text for gene names.</p>
+</td></tr>
 <tr><td><code id="genetrack_ly_+3A_xlab">xlab</code></td>
 <td>
 <p>Title for x axis. Defaults to chromosome <code>seqname</code> specified
 in <code>locus</code>.</p>
+</td></tr>
+<tr><td><code id="genetrack_ly_+3A_blanks">blanks</code></td>
+<td>
+<p>Controls handling of genes with blank names: <code>"fill"</code> replaces
+blank gene symbols with ensembl gene ids. <code>"hide"</code> completely hides genes
+which are missing gene symbols. <code>"show"</code> shows gene lines but no label
+(hovertext is still available).</p>
+</td></tr>
+<tr><td><code id="genetrack_ly_+3A_height">height</code></td>
+<td>
+<p>Height in pixels (optional, defaults to automatic sizing).</p>
+</td></tr>
+<tr><td><code id="genetrack_ly_+3A_plot">plot</code></td>
+<td>
+<p>Logical whether to produce plotly object or return plot
+coordinates.</p>
 </td></tr>
 </table>
 
@@ -321,7 +353,9 @@ in <code>locus</code>.</p>
 
 <h3>Value</h3>
 
-<p>A 'plotly' plotting object showing gene tracks.
+<p>Either a 'plotly' plotting object showing gene tracks, or if
+<code>plot = FALSE</code> a list containing <code>TX</code>, a dataframe of coordinates for
+gene transcripts, and <code>EX</code>, a dataframe of coordinates for exons.
 </p>
 
 
@@ -362,6 +396,9 @@ genetrack_ly(loc)
   text_pos = "top",
   xticks = TRUE,
   xlab = NULL,
+  highlight = NULL,
+  highlight_col = "red",
+  blanks = c("fill", "hide"),
   showRecomb = TRUE,
   align = TRUE
 )
@@ -439,6 +476,21 @@ placement of gene name labels.</p>
 <p>Title for x axis. Defaults to chromosome <code>seqname</code> specified
 in <code>locus</code>.</p>
 </td></tr>
+<tr><td><code id="genetracks_+3A_highlight">highlight</code></td>
+<td>
+<p>Vector of genes to highlight.</p>
+</td></tr>
+<tr><td><code id="genetracks_+3A_highlight_col">highlight_col</code></td>
+<td>
+<p>Single colour or vector of colours for highlighted
+genes.</p>
+</td></tr>
+<tr><td><code id="genetracks_+3A_blanks">blanks</code></td>
+<td>
+<p>Controls handling of genes with blank names: <code>"fill"</code> replaces
+blank gene symbols with ensembl gene ids. <code>"hide"</code> hides genes which are
+missing gene symbols.</p>
+</td></tr>
 <tr><td><code id="genetracks_+3A_showrecomb">showRecomb</code></td>
 <td>
 <p>Logical controls alignment of right margin if
@@ -453,9 +505,16 @@ recombination data present.</p>
 
 <h3>Details</h3>
 
-<p>This function is called by <code><a href="#topic+locus_plot">locus_plot()</a></code>. It can be used to plot
-the gene annotation tracks on their own. It uses base graphics, so
-<code><a href="graphics.html#topic+layout">layout()</a></code> can be used to position adjacent plots above or below.
+<p>This function is called by <code><a href="#topic+locus_plot">locus_plot()</a></code>. It can be used to plot the gene
+annotation tracks on their own. It uses base graphics, so <code><a href="graphics.html#topic+layout">layout()</a></code> can be
+used to position adjacent plots above or below.
+</p>
+<p><code>gene_col</code>, <code>exon_col</code> and <code>exon_border</code> set colours for all genes, while
+<code>highlight</code> and <code>highlight_col</code> can optionally be used together to highlight
+specific genes of interest. For full control over every single gene, users
+can add columns <code>gene_col</code>, <code>exon_col</code> and <code>exon_border</code> to the <code>TX</code> object
+within the 'locus' object. Columns added to <code>TX</code> override their equivalent
+arguments.
 </p>
 
 
@@ -508,7 +567,10 @@ create a grob.
   exon_border = "blue4",
   showExons = TRUE,
   maxrows = NULL,
-  text_pos = "top"
+  text_pos = "top",
+  highlight = NULL,
+  highlight_col = "red",
+  blanks = c("fill", "hide")
 )
 </code></pre>
 
@@ -567,13 +629,28 @@ annotation panel.</p>
 <p>Character value of either 'top' or 'left' specifying
 placement of gene name labels.</p>
 </td></tr>
+<tr><td><code id="genetracks_grob_+3A_highlight">highlight</code></td>
+<td>
+<p>Vector of genes to highlight.</p>
+</td></tr>
+<tr><td><code id="genetracks_grob_+3A_highlight_col">highlight_col</code></td>
+<td>
+<p>Single colour or vector of colours for highlighted
+genes.</p>
+</td></tr>
+<tr><td><code id="genetracks_grob_+3A_blanks">blanks</code></td>
+<td>
+<p>Controls handling of genes with blank names: <code>"fill"</code> replaces
+blank gene symbols with ensembl gene ids. <code>"hide"</code> hides genes which are
+missing gene symbols.</p>
+</td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>This function is called by <code><a href="#topic+locus_ggplot">locus_ggplot()</a></code>. It can be used to plot
-the gene annotation tracks on their own.
+<p>This function is called by <code><a href="#topic+gg_genetracks">gg_genetracks()</a></code>. It can be used to
+generate a grob of the gene annotation tracks on their own.
 </p>
 
 
@@ -663,7 +740,7 @@ gg_addgenes(p, loc)
 
 <h3>Description</h3>
 
-<p>Plot gene annotation tracks from <code>ensembldb</code> data using ggplot2.
+<p>Plot gene annotation tracks from <code>ensembldb</code> data using ggplot2 and grid.
 </p>
 
 
@@ -684,7 +761,10 @@ gg_addgenes(p, loc)
   maxrows = NULL,
   text_pos = "top",
   xticks = TRUE,
-  xlab = NULL
+  xlab = NULL,
+  highlight = NULL,
+  highlight_col = "red",
+  blanks = c("fill", "hide")
 )
 </code></pre>
 
@@ -760,13 +840,36 @@ placement of gene name labels.</p>
 <p>Title for x axis. Defaults to chromosome <code>seqname</code> specified in
 <code>locus</code>.</p>
 </td></tr>
+<tr><td><code id="gg_genetracks_+3A_highlight">highlight</code></td>
+<td>
+<p>Vector of genes to highlight.</p>
+</td></tr>
+<tr><td><code id="gg_genetracks_+3A_highlight_col">highlight_col</code></td>
+<td>
+<p>Single colour or vector of colours for highlighted
+genes.</p>
+</td></tr>
+<tr><td><code id="gg_genetracks_+3A_blanks">blanks</code></td>
+<td>
+<p>Controls handling of genes with blank names: <code>"fill"</code> replaces
+blank gene symbols with ensembl gene ids. <code>"hide"</code> hides genes which are
+missing gene symbols.</p>
+</td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>This function is called by <code><a href="#topic+locus_ggplot">locus_ggplot()</a></code>. It can be used to plot
-the gene annotation tracks on their own.
+<p>This function is called by <code><a href="#topic+locus_ggplot">locus_ggplot()</a></code>, and in turn it calls
+<code><a href="#topic+genetracks_grob">genetracks_grob()</a></code>. It can be used to plot the gene annotation tracks on
+their own as a ggplot2 object.
+</p>
+<p><code>gene_col</code>, <code>exon_col</code> and <code>exon_border</code> set colours for all genes, while
+<code>highlight</code> and <code>highlight_col</code> can optionally be used together to highlight
+specific genes of interest. For full control over every single gene, users
+can add columns <code>gene_col</code>, <code>exon_col</code> and <code>exon_border</code> to the <code>TX</code> object
+within the 'locus' object. Columns added to <code>TX</code> override their equivalent
+arguments.
 </p>
 
 
@@ -776,13 +879,18 @@ the gene annotation tracks on their own.
 </p>
 
 
+<h3>See Also</h3>
+
+<p><code><a href="#topic+locus_ggplot">locus_ggplot()</a></code> <code><a href="#topic+genetracks_grob">genetracks_grob()</a></code>
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>if(require(EnsDb.Hsapiens.v75)) {
 data(SLE_gwas_sub)
 loc &lt;- locus(SLE_gwas_sub, gene = 'IRF5', flank = c(7e4, 2e5), LD = "r2",
              ens_db = "EnsDb.Hsapiens.v75")
-grid::grid.newpage()
 gg_genetracks(loc)
 }
 </code></pre>
@@ -802,7 +910,7 @@ gg_genetracks(loc)
   loc,
   index_snp = loc$index_snp,
   pcutoff = 5e-08,
-  scheme = c("royalblue", "red", "purple"),
+  scheme = c("grey", "dodgerblue", "red"),
   size = 2,
   cex.axis = 1,
   cex.lab = 1,
@@ -816,6 +924,8 @@ gg_genetracks(loc)
   recomb_col = "blue",
   legend_pos = "topleft",
   labels = NULL,
+  eqtl_gene = NULL,
+  beta = NULL,
   ...
 )
 </code></pre>
@@ -902,6 +1012,16 @@ recombination rate data.</p>
 <p>Character vector of SNP or genomic feature IDs to label. The
 value &quot;index&quot; selects the highest point or index SNP as defined when
 <code><a href="#topic+locus">locus()</a></code> is called. Set to <code>NULL</code> to remove all labels.</p>
+</td></tr>
+<tr><td><code id="gg_scatter_+3A_eqtl_gene">eqtl_gene</code></td>
+<td>
+<p>Optional column name in <code>loc$data</code> for colouring eQTL genes.</p>
+</td></tr>
+<tr><td><code id="gg_scatter_+3A_beta">beta</code></td>
+<td>
+<p>Optional column name for beta coefficient to display upward
+triangles for positive beta and downward triangles for negative beta
+(significant SNPs only).</p>
 </td></tr>
 <tr><td><code id="gg_scatter_+3A_...">...</code></td>
 <td>
@@ -1106,7 +1226,14 @@ disequilibrium (LD) information on a reference SNP.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>link_LD(loc, pop = "CEU", r2d = "r2", token = "", ...)
+<pre><code class='language-R'>link_LD(
+  loc,
+  pop = "CEU",
+  r2d = "r2",
+  token = "",
+  method = c("proxy", "matrix"),
+  ...
+)
 </code></pre>
 
 
@@ -1125,24 +1252,36 @@ allowed, default = &quot;CEU&quot;. Passed to <code>LDlinkR::LDmatrix()</code>.<
 <tr><td><code id="link_LD_+3A_r2d">r2d</code></td>
 <td>
 <p>Either &quot;r2&quot; for LD r^2 or &quot;d&quot; for LD D', default = &quot;r2&quot;. Passed
-to <code>LDlinkR::LDmatrix()</code>.</p>
+to <code>LDlinkR::LDmatrix()</code> or <code>LDproxy()</code>.</p>
 </td></tr>
 <tr><td><code id="link_LD_+3A_token">token</code></td>
 <td>
 <p>Personal access token for accessing 1000 Genomes LD data via
 LDlink API. See <code>LDlinkR</code> package documentation.</p>
 </td></tr>
+<tr><td><code id="link_LD_+3A_method">method</code></td>
+<td>
+<p>Either <code>"proxy"</code> or <code>"matrix"</code>. Controls whether to use
+<code>LDproxy()</code> or <code>LDmatrix()</code> to obtain LD data.</p>
+</td></tr>
 <tr><td><code id="link_LD_+3A_...">...</code></td>
 <td>
 <p>Optional arguments such as <code>genome_build</code> which are passed on to
-<code>LDlinkR::LDmatrix()</code></p>
+<code>LDlinkR::LDmatrix()</code> or <code>LDlinkR::LDproxy()</code></p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>Results are cached using <code>memoise</code> to reduce API requests.
+<p>The argument <code>method</code> controls which LDlinkR function is used to retrieve LD
+data. <code>LDmatrix()</code> is slower but usually more complete for small queries
+(&lt;1000 SNPs). However, it has a limit of 1000 SNPs which can be queried.
+<code>LDproxy()</code> is faster but data on some SNPs may be absent.
+</p>
+<p>Note SNPs have to be correctly formatted as required by LDlinkR, either as
+rsID or chromosome coordinate e.g. &quot;chr7:24966446&quot;. Default genome build is
+<code>grch37</code>, see <code>LDproxy()</code> or <code>LDmatrix()</code>.
 </p>
 
 
@@ -1169,7 +1308,7 @@ column <code>ld</code> in list element <code>data</code>.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>link_recomb(loc, genome = "hg38", table = NULL)
+<pre><code class='language-R'>link_recomb(loc, genome = "hg38", table = NULL, recomb = NULL)
 </code></pre>
 
 
@@ -1189,6 +1328,10 @@ column <code>ld</code> in list element <code>data</code>.
 <p>Optional character value specifying which recombination table to
 use.</p>
 </td></tr>
+<tr><td><code id="link_recomb_+3A_recomb">recomb</code></td>
+<td>
+<p>Optional <code>GRanges</code> class object of recombination data.</p>
+</td></tr>
 </table>
 
 
@@ -1199,15 +1342,25 @@ rate data.
 </p>
 <p>Possible options for <code>table</code> for hg19 are <code>"hapMapRelease24YRIRecombMap"</code>,
 <code>"hapMapRelease24CEURecombMap"</code>, <code>"hapMapRelease24CombinedRecombMap"</code> (the
+default). The only option for <code>table</code> for hg38 is <code>"recomb1000GAvg"</code> (the
 default).
 </p>
-<p>The only option for <code>table</code> for hg38 is <code>"recomb1000GAvg"</code> (the default).
+<p>If you are doing many queries, it may be much faster to download the entire
+recombination track data (around 30 MB for hg38) from the Recombination Rate
+Tracks page at
+<a href="https://genome.ucsc.edu/cgi-bin/hgTrackUi?g=recombRate2">UCSC genome browser</a>.
+The link to the hg38 download folder is
+<a href="http://hgdownload.soe.ucsc.edu/gbdb/hg38/recombRate/">http://hgdownload.soe.ucsc.edu/gbdb/hg38/recombRate/</a> and for hg19 is
+<a href="http://hgdownload.soe.ucsc.edu/gbdb/hg19/decode/">http://hgdownload.soe.ucsc.edu/gbdb/hg19/decode/</a>. These .bw files can be
+converted to useable <code>GRanges</code> objects using <code>rtracklayer::import.bw()</code> (see
+the vignette).
 </p>
-<p>Sometimes <code>rtracklayer</code> generates an intermittent API error: try calling
-<code>link_recomb()</code> again. Errors are handled gracefully using <code>try()</code> to allow
-users to wrap <code>link_recomb()</code> in a loop without quitting halfway. Error
-messages are still shown. Successful API calls are cached using <code>memoise</code> to
-reduce API requests.
+<p>Sometimes <code>rtracklayer</code> generates intermittent API errors or warnings: try
+calling <code>link_recomb()</code> again. If warnings persist restart your R session.
+Errors are handled gracefully using <code>try()</code> to allow users to wrap
+<code>link_recomb()</code> in a loop without quitting halfway. Error messages are still
+shown. Successful API calls are cached using <code>memoise</code> to reduce API
+requests.
 </p>
 
 
@@ -1340,15 +1493,71 @@ genes and exons in the locus.
 
 <h3>Value</h3>
 
-<p>Returns an object of class 'locus' ready for plotting, containing
-the subset of GWAS data to be plotted,
-chromosome and genomic position range,
-Ensembl database version number,
-column names for chromosome, position, SNP ID, p-value or variable for
-plotting on y axis,
-locus gene information from Ensembl and
-locus exon information from Ensembl. If <code>data</code> is <code>NULL</code> then gene track
-information alone is returned.
+<p>Returns an object of class 'locus' ready for plotting, containing:
+</p>
+<table>
+<tr><td><code>seqname</code></td>
+<td>
+<p>chromosome value</p>
+</td></tr>
+<tr><td><code>xrange</code></td>
+<td>
+<p>vector of genomic position range</p>
+</td></tr>
+<tr><td><code>gene</code></td>
+<td>
+<p>gene name</p>
+</td></tr>
+<tr><td><code>ens_db</code></td>
+<td>
+<p>Ensembl or AnnotationHub database version</p>
+</td></tr>
+<tr><td><code>chrom</code></td>
+<td>
+<p>column name in <code>data</code> containing chromosome information</p>
+</td></tr>
+<tr><td><code>pos</code></td>
+<td>
+<p>column name in <code>data</code> containing position</p>
+</td></tr>
+<tr><td><code>p</code></td>
+<td>
+<p>column name in <code>data</code> containing p-value</p>
+</td></tr>
+<tr><td><code>yvar</code></td>
+<td>
+<p>column name in <code>data</code> to be plotted on y axis as alternative to
+<code>p</code></p>
+</td></tr>
+<tr><td><code>labs</code></td>
+<td>
+<p>column name in <code>data</code> containing SNP IDs</p>
+</td></tr>
+<tr><td><code>index_snp</code></td>
+<td>
+<p>id of the most significant SNP</p>
+</td></tr>
+<tr><td><code>data</code></td>
+<td>
+<p>the subset of GWAS data to be plotted</p>
+</td></tr>
+<tr><td><code>TX</code></td>
+<td>
+<p>dataframe of transcript annotations</p>
+</td></tr>
+<tr><td><code>EX</code></td>
+<td>
+<p><code>GRanges</code> object of exon annotations</p>
+</td></tr>
+</table>
+<p>If <code>data</code> is <code>NULL</code> when <code>locus()</code> is called then gene track information
+alone is returned.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+locus_plot">locus_plot()</a></code> <code><a href="#topic+locus_ggplot">locus_ggplot()</a></code> <code><a href="#topic+locus_plotly">locus_plotly()</a></code>
 </p>
 
 
@@ -1395,6 +1604,9 @@ locus_plot(loc2)
   text_pos = "top",
   xticks = "top",
   xlab = NULL,
+  highlight = NULL,
+  highlight_col = "red",
+  blanks = "fill",
   ...
 )
 </code></pre>
@@ -1475,6 +1687,21 @@ placement of gene name labels.</p>
 <p>Title for x axis. Defaults to chromosome <code>seqname</code> specified in
 <code>locus</code>.</p>
 </td></tr>
+<tr><td><code id="locus_ggplot_+3A_highlight">highlight</code></td>
+<td>
+<p>Vector of genes to highlight.</p>
+</td></tr>
+<tr><td><code id="locus_ggplot_+3A_highlight_col">highlight_col</code></td>
+<td>
+<p>Single colour or vector of colours for highlighted
+genes.</p>
+</td></tr>
+<tr><td><code id="locus_ggplot_+3A_blanks">blanks</code></td>
+<td>
+<p>Controls handling of genes with blank names: <code>"fill"</code> replaces
+blank gene symbols with ensembl gene ids. <code>"hide"</code> hides genes which are
+missing gene symbols.</p>
+</td></tr>
 <tr><td><code id="locus_ggplot_+3A_...">...</code></td>
 <td>
 <p>Additional arguments passed to <code><a href="#topic+gg_scatter">gg_scatter()</a></code> to control
@@ -1541,10 +1768,13 @@ locus_ggplot(loc)
   maxrows = 7,
   xticks = "bottom",
   border = FALSE,
-  gene_col = "blue4",
+  gene_col = ifelse(showExons, "blue4", "skyblue"),
   exon_col = "blue4",
   exon_border = "blue4",
   text_pos = "top",
+  highlight = NULL,
+  highlight_col = "red",
+  blanks = "fill",
   recomb_col = "blue",
   ...
 )
@@ -1636,6 +1866,21 @@ lower plots.</p>
 <p>Character value of either 'top' or 'left' specifying
 placement of gene name labels.</p>
 </td></tr>
+<tr><td><code id="locus_plot_+3A_highlight">highlight</code></td>
+<td>
+<p>Vector of genes to highlight.</p>
+</td></tr>
+<tr><td><code id="locus_plot_+3A_highlight_col">highlight_col</code></td>
+<td>
+<p>Single colour or vector of colours for highlighted
+genes.</p>
+</td></tr>
+<tr><td><code id="locus_plot_+3A_blanks">blanks</code></td>
+<td>
+<p>Controls handling of genes with blank names: <code>"fill"</code> replaces
+blank gene symbols with ensembl gene ids. <code>"hide"</code> hides genes which are
+missing gene symbols.</p>
+</td></tr>
 <tr><td><code id="locus_plot_+3A_recomb_col">recomb_col</code></td>
 <td>
 <p>Colour for recombination rate line if recombination rate
@@ -1710,11 +1955,14 @@ locus_plot(loc2, labels = "index")
   filter_gene_name = NULL,
   filter_gene_biotype = NULL,
   cex.text = 0.7,
-  gene_col = "blue4",
+  gene_col = ifelse(showExons, "blue4", "skyblue"),
   exon_col = "blue4",
   exon_border = "blue4",
+  showExons = TRUE,
   maxrows = 8,
+  width = 600,
   xlab = NULL,
+  blanks = "show",
   ...
 )
 </code></pre>
@@ -1729,7 +1977,9 @@ locus_plot(loc2, labels = "index")
 </td></tr>
 <tr><td><code id="locus_plotly_+3A_heights">heights</code></td>
 <td>
-<p>Vector controlling relative height of each panel on 0-1 scale.</p>
+<p>Vector controlling relative height of each panel on 0-1 scale.
+Alternatively a vector of length 2 of height in pixels passed to
+<code>scatter_plotly()</code> and <code>genetrack_ly()</code>.</p>
 </td></tr>
 <tr><td><code id="locus_plotly_+3A_filter_gene_name">filter_gene_name</code></td>
 <td>
@@ -1755,18 +2005,36 @@ locus_plot(loc2, labels = "index")
 </td></tr>
 <tr><td><code id="locus_plotly_+3A_exon_border">exon_border</code></td>
 <td>
-<p>Border line colour outlining exons. Set to <code>NA</code> for no
-border.</p>
+<p>Border line colour outlining exons (or genes if
+<code>showExons</code> is <code>FALSE</code>). Set to <code>NA</code> for no border.</p>
+</td></tr>
+<tr><td><code id="locus_plotly_+3A_showexons">showExons</code></td>
+<td>
+<p>Logical whether to show exons or simply show whole gene as a
+rectangle. If <code>showExons = FALSE</code> colours are specified by <code>exon_border</code>
+for rectangle border and <code>gene_col</code> for the fill colour.</p>
 </td></tr>
 <tr><td><code id="locus_plotly_+3A_maxrows">maxrows</code></td>
 <td>
 <p>Specifies maximum number of rows to display in gene
 annotation panel.</p>
 </td></tr>
+<tr><td><code id="locus_plotly_+3A_width">width</code></td>
+<td>
+<p>Width of plotly plot in pixels which is purely used to prevent
+overlapping text for gene names.</p>
+</td></tr>
 <tr><td><code id="locus_plotly_+3A_xlab">xlab</code></td>
 <td>
 <p>Title for x axis. Defaults to chromosome <code>seqname</code> specified
 in <code>locus</code>.</p>
+</td></tr>
+<tr><td><code id="locus_plotly_+3A_blanks">blanks</code></td>
+<td>
+<p>Controls handling of genes with blank names: <code>"fill"</code> replaces
+blank gene symbols with ensembl gene ids. <code>"hide"</code> completely hides genes
+which are missing gene symbols. <code>"show"</code> shows gene lines but no label
+(hovertext is still available).</p>
 </td></tr>
 <tr><td><code id="locus_plotly_+3A_...">...</code></td>
 <td>
@@ -2073,8 +2341,9 @@ whose peaks may well be broader than <code>span</code> may produce multiple entr
 
 <h3>Description</h3>
 
-<p>Produces a scatter plot from a 'locus' class object. Intended for use with
-<code><a href="#topic+set_layers">set_layers()</a></code>.
+<p>Produces a base graphics scatter plot from a 'locus' class object. This
+function is called by <code><a href="#topic+locus_plot">locus_plot()</a></code> to generate the scatter plot portion.
+Can be used manually with <code><a href="#topic+set_layers">set_layers()</a></code>.
 </p>
 
 
@@ -2084,7 +2353,7 @@ whose peaks may well be broader than <code>span</code> may produce multiple entr
   loc,
   index_snp = loc$index_snp,
   pcutoff = 5e-08,
-  scheme = c("royalblue", "red", "purple"),
+  scheme = c("grey", "dodgerblue", "red"),
   cex = 1,
   cex.axis = 0.9,
   cex.lab = 1,
@@ -2100,6 +2369,8 @@ whose peaks may well be broader than <code>span</code> may produce multiple entr
   labels = NULL,
   label_x = 4,
   label_y = 4,
+  eqtl_gene = NULL,
+  beta = NULL,
   add = FALSE,
   align = TRUE,
   ...
@@ -2116,9 +2387,9 @@ whose peaks may well be broader than <code>span</code> may produce multiple entr
 </td></tr>
 <tr><td><code id="scatter_plot_+3A_index_snp">index_snp</code></td>
 <td>
-<p>Specifies index SNP to be shown in a different colour and
-symbol. Defaults to the SNP with the lowest p-value. Set to <code>NULL</code> to not
-show this.</p>
+<p>Specifies index SNP or a vector of SNPs to be shown in a
+different colour and symbol. Defaults to the SNP with the lowest p-value.
+Set to <code>NULL</code> to not show this.</p>
 </td></tr>
 <tr><td><code id="scatter_plot_+3A_pcutoff">pcutoff</code></td>
 <td>
@@ -2128,7 +2399,7 @@ to <code>NULL</code> to disable.</p>
 <tr><td><code id="scatter_plot_+3A_scheme">scheme</code></td>
 <td>
 <p>Vector of 3 colours if LD is not shown: 1st = normal points,
-2nd = colour for significant points, 3rd = index SNP.</p>
+2nd = colour for significant points, 3rd = index SNP(s).</p>
 </td></tr>
 <tr><td><code id="scatter_plot_+3A_cex">cex</code></td>
 <td>
@@ -2201,6 +2472,16 @@ scale.</p>
 <p>Value or vector for position of label as percentage of y axis
 scale.</p>
 </td></tr>
+<tr><td><code id="scatter_plot_+3A_eqtl_gene">eqtl_gene</code></td>
+<td>
+<p>Column name in <code>loc$data</code> for colouring eQTL genes.</p>
+</td></tr>
+<tr><td><code id="scatter_plot_+3A_beta">beta</code></td>
+<td>
+<p>Optional column name for beta coefficient to display upward
+triangles for positive beta and downward triangles for negative beta
+(significant SNPs only).</p>
+</td></tr>
 <tr><td><code id="scatter_plot_+3A_add">add</code></td>
 <td>
 <p>Logical whether to add points to an existing plot or generate a
@@ -2216,6 +2497,16 @@ new plot.</p>
 e.g. <code>main</code>, <code>ylim</code> etc.</p>
 </td></tr>
 </table>
+
+
+<h3>Details</h3>
+
+<p>Advanced users familiar with base graphics can customise every single point
+on the scatter plot, by adding columns named <code>bg</code>, <code>col</code>, <code>pch</code> or <code>cex</code>
+directly to the dataframe stored in <code style="white-space: pre;">&#8288;$data&#8288;</code> element of the 'locus' object.
+Setting these will overrule any default settings. These columns refer to
+their respective base graphics arguments, see <code><a href="graphics.html#topic+points">graphics::points()</a></code>.
+</p>
 
 
 <h3>Value</h3>
@@ -2244,8 +2535,7 @@ e.g. <code>main</code>, <code>ylim</code> etc.</p>
   loc,
   index_snp = loc$index_snp,
   pcutoff = 5e-08,
-  chromCol = "royalblue",
-  sigCol = "red",
+  scheme = c("grey", "dodgerblue", "red"),
   xlab = NULL,
   ylab = NULL,
   yzero = (loc$yvar == "logP"),
@@ -2253,7 +2543,13 @@ e.g. <code>main</code>, <code>ylim</code> etc.</p>
   LD_scheme = c("grey", "royalblue", "cyan2", "green3", "orange", "red", "purple"),
   marker_outline = "black",
   marker_size = 7,
-  recomb_col = "blue"
+  recomb_col = "blue",
+  eqtl_gene = NULL,
+  beta = NULL,
+  add_hover = NULL,
+  showlegend = TRUE,
+  height = NULL,
+  webGL = TRUE
 )
 </code></pre>
 
@@ -2267,23 +2563,19 @@ e.g. <code>main</code>, <code>ylim</code> etc.</p>
 </td></tr>
 <tr><td><code id="scatter_plotly_+3A_index_snp">index_snp</code></td>
 <td>
-<p>Specifies index SNP to be shown in a different colour and
-symbol. Defaults to the SNP with the lowest p-value. Set to <code>NULL</code> to not
-show this.</p>
+<p>Specifies index SNP or a vector of SNPs to be shown in a
+different colour and symbol. Defaults to the SNP with the lowest p-value.
+Set to <code>NULL</code> to not show this.</p>
 </td></tr>
 <tr><td><code id="scatter_plotly_+3A_pcutoff">pcutoff</code></td>
 <td>
 <p>Cut-off for p value significance. Defaults to p = 5e-08. Set
 to <code>NULL</code> to disable.</p>
 </td></tr>
-<tr><td><code id="scatter_plotly_+3A_chromcol">chromCol</code></td>
+<tr><td><code id="scatter_plotly_+3A_scheme">scheme</code></td>
 <td>
-<p>Colour for normal points if <code>LD</code> is <code>FALSE</code> when the locus
-object is made.</p>
-</td></tr>
-<tr><td><code id="scatter_plotly_+3A_sigcol">sigCol</code></td>
-<td>
-<p>Colour for significant points if <code>LD</code> is <code>FALSE</code>.</p>
+<p>Vector of 3 colours if LD is not shown: 1st = normal points,
+2nd = colour for significant points, 3rd = index SNP(s).</p>
 </td></tr>
 <tr><td><code id="scatter_plotly_+3A_xlab">xlab</code></td>
 <td>
@@ -2321,6 +2613,33 @@ the index SNP.</p>
 <p>Colour for recombination rate line if recombination rate
 data is present. Set to <code>NA</code> to hide the line. See <code><a href="#topic+link_recomb">link_recomb()</a></code> to add
 recombination rate data.</p>
+</td></tr>
+<tr><td><code id="scatter_plotly_+3A_eqtl_gene">eqtl_gene</code></td>
+<td>
+<p>Column name in <code>loc$data</code> for eQTL genes.</p>
+</td></tr>
+<tr><td><code id="scatter_plotly_+3A_beta">beta</code></td>
+<td>
+<p>Optional column name for beta coefficient to display upward
+triangles for positive beta and downward triangles for negative beta
+(significant SNPs only).</p>
+</td></tr>
+<tr><td><code id="scatter_plotly_+3A_add_hover">add_hover</code></td>
+<td>
+<p>Optional vector of column names in <code>loc$data</code> to add to the
+plotly hover text for scatter points.</p>
+</td></tr>
+<tr><td><code id="scatter_plotly_+3A_showlegend">showlegend</code></td>
+<td>
+<p>Logical whether to show a legend for the scatter points.</p>
+</td></tr>
+<tr><td><code id="scatter_plotly_+3A_height">height</code></td>
+<td>
+<p>Height in pixels (optional, defaults to automatic sizing).</p>
+</td></tr>
+<tr><td><code id="scatter_plotly_+3A_webgl">webGL</code></td>
+<td>
+<p>Logical whether to use webGL or SVG for scatter plot.</p>
 </td></tr>
 </table>
 

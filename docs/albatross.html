@@ -27,6 +27,7 @@ function processMathHTML() {
 <li><a href='#cmf'><p>Implementation notes for constrained matrix factorisation</p></a></li>
 <li><a href='#feem'>
 <p>Create a fluorescence excitation-emission matrix object</p></a></li>
+<li><a href='#feemcorcondia'><p>Core consistency diagnostic for PARAFAC models</p></a></li>
 <li><a href='#feemcube'><p>Data cubes of fluorescence excitation-emission matrices</p></a></li>
 <li><a href='#feemflame'>
 <p>Fluorescence and scAttering Model Estimation</p></a></li>
@@ -64,7 +65,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3-7</td>
+<td>0.3-8</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -107,7 +108,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-11-10 18:43:10 UTC; nobody</td>
+<td>2024-05-07 11:48:43 UTC; ivan</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -125,7 +126,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-11-10 21:03:18 UTC</td>
+<td>2024-05-07 15:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -219,6 +220,7 @@ albatross-package       PARAFAC Analysis of Fluorescence
 as.data.frame.feem      Transform a FEEM object into a data.frame
 feem                    Create a fluorescence excitation-emission
                         matrix object
+feemcorcondia           Core consistency diagnostic for PARAFAC models
 feemcube                Data cubes of fluorescence excitation-emission
                         matrices
 feemflame               Fluorescence and scAttering Model Estimation
@@ -288,19 +290,21 @@ write.openfluor         Export a PARAFAC model for the OpenFluor
 <pre><code class='language-R'>  data(feems)
 
   dataset &lt;- feemcube(feems, FALSE)
-  dataset &lt;- feemscatter(dataset, rep(24, 4), 'pchip')
+  dataset &lt;- feemscatter(dataset, c(24, 15, 10), 'whittaker')
   dataset &lt;- feemife(dataset, absorp)
   plot(dataset &lt;- feemscale(dataset, na.rm = TRUE))
 
   
     # takes a long time
-    (sh &lt;- feemsplithalf(cube, nfac = 2:5, splits = 4))
+    (sh &lt;- feemsplithalf(
+      feemscatter(cube, c(24, 15)),
+      # in real life, set a stricter stopping criterion, 1e-6..1e-8
+      nfac = 2:4, splits = 4, ctol = 1e-4
+    ))
     plot(sh)
-    jk &lt;- feemjackknife(cube, nfac = 3)
-    plot(jk)
   
 
-  pf &lt;- feemparafac(cube, nfac = 3)
+  pf &lt;- feemparafac(cube, nfac = 3, ctol = 1e-4)
   plot(pf)
 </code></pre>
 
@@ -813,7 +817,7 @@ further notice. Please do not call from outside <a href="https://CRAN.R-project.
 <pre><code class='language-R'>  cmf(
     X, nfac = 1,
     const = list(list(const = "nonneg"), list(const = "nonneg")),
-    start = c("svd", "random"), ctol = 1e-04, maxiter = 10
+    start = c("svd", "random"), ctol = 1e-04, maxit = 10
   )
   ## S3 method for class 'cmf'
 fitted(object, ...)
@@ -889,7 +893,7 @@ stop when
     </code>.
 </p>
 </td></tr>
-<tr><td><code id="cmf_+3A_maxiter">maxiter</code></td>
+<tr><td><code id="cmf_+3A_maxit">maxit</code></td>
 <td>
 
 <p>Iteration number limit.
@@ -1154,12 +1158,12 @@ fluorometer by using <code>feem(<var>file</var>, 'table', sep = ',')</code>.
 are assumed to correspond to excitation wavelengths; if that's
 not the case, set the <code>transpose</code> argument to <code>TRUE</code>.
 </p>
-<p>If there are unmeasured points in the spectrum (e.g. the anti-Stokes
-area) but they are hard to distinguish from measured values
-(e.g. stored as zeroes instead of <code>NA</code>), specify their
-values as the <code>na</code> argument (numeric vector). The function
-will check for triangles filled with these values (such that a
-threshold <code class="reqn">\Delta</code> exists where for all <code class="reqn">
+<p>If there are unmeasured points in the spectrum (e.g. the
+anti-Stokes area) encoded as special numbers (e.g. stored as
+zeroes or <code class="reqn">-100</code>), specify their values as the <code>na</code>
+argument (numeric vector). The function will check for triangles
+filled with these values (such that a threshold
+<code class="reqn">\Delta</code> exists where for all <code class="reqn">
         \lambda_\mathrm{em} - \lambda_\mathrm{ex} &gt; \Delta
       </code> or <code class="reqn">
         \lambda_\mathrm{em} - \lambda_\mathrm{ex} &lt; \Delta
@@ -1180,6 +1184,11 @@ converted to UTF-8, then forwarded to
 is a file path, not a connection. (When passing a connection with
 an encoding attribute set, make sure that the file contents after
 decoding can be represented in the session charset.)
+</p>
+<p>The <code>dec</code> argument is also treated specially, making it
+possible to read a column containing both numbers (with a decimal
+comma) and strings and then convert them to numbers (transforming
+the strings into <code>NA_real_</code>).
 </p>
 <p>All other arguments are passed to <code><a href="utils.html#topic+read.table">read.table</a></code>,
 with <code>fill</code> defaulting to <code>TRUE</code> instead of
@@ -1310,6 +1319,228 @@ later to undo the scaling. Initially <code class="reqn">1</code>.
   feem(
     system.file('extdata/F900.txt', package = 'albatross'), 'F900txt'
   )
+</code></pre>
+
+<hr>
+<h2 id='feemcorcondia'>Core consistency diagnostic for PARAFAC models</h2><span id='topic+feemcorcondia'></span><span id='topic+print.feemcorcondia'></span>
+
+<h3>Description</h3>
+
+<p>Compute the core consistency diagnostic (&ldquo;CORCONDIA&rdquo;) by
+fitting a &ldquo;Tucker3&rdquo; core array to the existing PARAFAC
+loadings.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>  feemcorcondia(
+    model, divisor = c("nfac", "core"),
+    kind = c('pinv', 'iterative', 'vec'), ...
+  )
+  ## S3 method for class 'feemcorcondia'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="feemcorcondia_+3A_model">model</code></td>
+<td>
+
+<p>A PARAFAC model returned by <code><a href="#topic+feemparafac">feemparafac</a></code>.
+</p>
+</td></tr>
+<tr><td><code id="feemcorcondia_+3A_divisor">divisor</code></td>
+<td>
+
+<p>The divisor used in computation of the CORCONDIA value, see Details.
+</p>
+</td></tr>
+<tr><td><code id="feemcorcondia_+3A_kind">kind</code></td>
+<td>
+
+<p>A string choosing the method used to compute the least squares
+Tucker3 core. Defaults to &ldquo;pinv&rdquo; for PARAFAC models without
+missing data and &ldquo;iterative&rdquo; for models where missing data is
+present. See Details.
+</p>
+</td></tr>
+<tr><td><code id="feemcorcondia_+3A_x">x</code></td>
+<td>
+
+<p>An object returned by <code>feemcorcondia</code>.
+</p>
+</td></tr>
+<tr><td><code id="feemcorcondia_+3A_...">...</code></td>
+<td>
+
+<dl>
+<dt><code>feemcorcondia</code></dt><dd>
+<p>For <code>kind = 'iterative'</code>, forwarded to
+<code><a href="stats.html#topic+optim">optim</a></code> (see Details). Otherwise, not allowed.
+</p>
+</dd>
+<dt><code>print.feemcorcondia</code></dt><dd><p>Ignored.</p>
+</dd>
+</dl>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The &ldquo;Tucker3&rdquo; model uses three loading matrices and a small
+three-way &ldquo;core array&rdquo; to describe a larger three-way array:
+</p>
+<p style="text-align: center;"><code class="reqn">
+    X_{i,j,k} = \sum_r \sum_s \sum_t A_{i,r} B_{j,s} C_{k,t} G_{r,s,t}
+  </code>
+</p>
+
+<p>It's easy to show that constraining <code class="reqn">
+    G_{r,s,t} = 1_{r = s = t}</code> makes the Tucker3 model equivalent to a PARAFAC model. The core
+consistency diagnostic works by constraining the loading matrices of a
+Tucker3 model to the existing loading matrices from a PARAFAC model
+and estimating the core array. The closer the resulting
+<code class="reqn">\mathbf{G}</code> tensor is to a diagonal one, the
+better.
+</p>
+<p>Given the least-squares estimated core tensor
+<code class="reqn">\mathbf{G}</code>, the ideal core tensor <code class="reqn">
+    T_{r,s,t} = 1_{r = s = t}</code> and the denominator
+<code class="reqn">D</code>, the CORCONDIA metric is defined as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">
+    \left(
+      1 - \frac{
+        \sum_r \sum_s \sum_t (G_{r,s,t} - T_{r,s,t})^2
+      }{D}
+    \right) \cdot 100\%
+  </code>
+</p>
+
+<p>The denominator can be chosen to be either <code class="reqn">
+    \sum_r \sum_s \sum_t T_{r,s,t}^2
+  </code>, which is
+equal to the number of factors in the model (<code>divisor = 'nfac'</code>),
+or <code class="reqn">
+    \sum_r \sum_s \sum_t G_{r,s,t}^2
+  </code>, which will
+avoid resulting negative values (<code>divisor = 'core'</code>).
+</p>
+<p>There are multiple ways how the least squares Tucker3 core can be
+computed. When no data is missing, the matricised form of the model
+can be used to derive the expression (<code>kind = 'pinv'</code>, the
+default in such cases):
+</p>
+<p style="text-align: center;"><code class="reqn">
+    \mathbf{X} =
+    \mathbf{A} \mathbf{G} (\mathbf{C} \otimes \mathbf{B})^\top
+    + \epsilon
+  </code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+    \hat{\mathbf{G}} =
+    \mathbf{A}^{+} \mathbf{X} (
+      (\mathbf{C}^\top)^{+} \otimes
+      (\mathbf{B}^\top)^{+}
+    )
+  </code>
+</p>
+
+<p>With missing data present, a binary matrix of weights
+<code class="reqn">\mathbf{W}</code> appears:
+</p>
+<p style="text-align: center;"><code class="reqn">
+    \min_\mathbf{G} \left\| \mathbf W \circ (
+      \mathbf{A} \mathbf{G} (\mathbf{C} \otimes \mathbf{B})^\top
+      - \mathbf{X}
+    ) \right\|^2
+  </code>
+</p>
+
+<p>A gradient-based method can be used to solve this problem iteratively
+without allocating too much memory, but care must be taken to ensure
+convergence. For <code>kind = 'iterative'</code> (which is the default for
+models with missing data), <code><a href="stats.html#topic+optim">optim</a></code> is used with
+parameters <code>method = 'L-BFGS-B'</code>,
+<code>control = list(maxit = 1000, factr = 1)</code>. Warnings will be
+produced if the method doesn't indicate successful convergence.
+</p>
+<p>The problem can also be solved exactly by unfolding the tensor into a
+vector and skipping the elements marked as missing:
+</p>
+<p style="text-align: center;"><code class="reqn">
+    \min_\mathbf{G} \left\|
+      \mbox{vec}(
+        \mathbf{A} \mathbf{G} (\mathbf{C} \otimes \mathbf{B})^\top
+      )_{\mbox{non-missing}}
+      - \mbox{vec}(\mathbf{X})_{\mbox{non-missing}}
+    \right\|^2
+  </code>
+</p>
+
+<p style="text-align: center;"><code class="reqn">
+    \mbox{vec}(\mathbf{C} \otimes \mathbf{B} \otimes \mathbf{A})
+      _{\mbox{non-missing}}
+    \times \mbox{vec}\:\mathbf{G}
+    = \mbox{vec}(\mathbf{X})_{\mbox{non-missing}}
+  </code>
+</p>
+
+<p>Unfortunately, when this method is used (<code>kind = 'vec'</code>), the
+left-hand side of the equation has the size of
+<code class="reqn">\mathbf{X}</code> times the number of components cubed,
+which grows very quickly for models with large numbers of components.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric scalar of class <code>feemcorcondia</code> with the following
+attributes:
+</p>
+<table>
+<tr><td><code>divisor</code></td>
+<td>
+
+<p>The <code>divisor</code> argument, expanded to one of the valid options.
+</p>
+</td></tr>
+<tr><td><code>core</code></td>
+<td>
+
+<p>A three-way array containing the least-squares Tucker core for the
+given PARAFAC model.
+</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Bro R, Kiers HAL (2003).
+&ldquo;A new efficient method for determining the number of components in PARAFAC models.&rdquo;
+<em>Journal of Chemometrics</em>, <b>17</b>(5), 274-286.
+ISSN 0886-9383, <a href="https://doi.org/10.1002/cem.801">doi:10.1002/cem.801</a>.</p>
+
+
+<h3>See Also</h3>
+
+<p><code>multiway::<a href="multiway.html#topic+corcondia">corcondia</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>  data(feems)
+  cube &lt;- feemscale(feemscatter(cube, c(20, 14)), na.rm = TRUE)
+  # kind = 'vec' is exact but may take a lot of memory
+  feemcorcondia(feemparafac(cube, nfac = 3, ctol = 1e-4), kind = 'vec')
+  # kind = 'iterative' used by default for models with missing data
+  feemcorcondia(feemparafac(cube, nfac = 4, ctol = 1e-4))
 </code></pre>
 
 <hr>
@@ -1510,7 +1741,7 @@ unfolded matrix factorisation.
 
 <pre><code class='language-R'>  feemflame(
     X, ffac, sfac, maxiter = 32, widths = rep(25, 4), Raman.shift = 3400,
-    ctol = 1e-04, progress = TRUE
+    ctol = 1e-04, progress = TRUE, control.parafac, control.cmf
   )
   ## S3 method for class 'feemflame'
 fitted(object, ...)
@@ -1607,6 +1838,17 @@ stop when <code class="reqn">
 <p>Print progress information on the console, including the iteration
 number, relative sum of squared residuals, and relative change in
 sum of squared residuals.
+</p>
+</td></tr>
+<tr><td><code id="feemflame_+3A_control.parafac">control.parafac</code>, <code id="feemflame_+3A_control.cmf">control.cmf</code></td>
+<td>
+
+<p>Named lists of additional arguments to be passed to the underlying
+functions. Both default to <code>list(ctol = 1e-4, maxit = 10)</code>,
+which makes both steps to run for 10 iterations or stop
+when the absolute change in <code class="reqn">R^2</code> is less
+than <code class="reqn">10^{-4}</code>, whichever happens
+sooner.
 </p>
 </td></tr>
 <tr><td><code id="feemflame_+3A_object">object</code>, <code id="feemflame_+3A_x">x</code></td>
@@ -2663,8 +2905,8 @@ that was omitted from a given model.
 <pre><code class='language-R'>
   data(feems)
   cube &lt;- feemscale(feemscatter(cube, rep(14, 4)), na.rm = TRUE)
-  # takes a long time
-  jk &lt;- feemjackknife(cube, nfac = 3)
+  # takes a long time; the stopping criterion is weaked for speed
+  jk &lt;- feemjackknife(cube, nfac = 3, ctol = 1e-4)
   # feemparafac methods should be able to use the environment and subset
   plot(jk$leaveone[[1]])
   plot(jk)
@@ -2690,7 +2932,7 @@ that was omitted from a given model.
   ## S3 method for class 'character'
 feemlist(
     x, format, pattern = NULL, recursive = TRUE, ignore.case = FALSE,
-    simplify.names = TRUE, ...
+    simplify.names = TRUE, progress = TRUE, ...
   )
   ## S3 method for class 'eemlist'
 feemlist(x, ...)
@@ -2741,6 +2983,13 @@ value for the <code>recursive</code> option.
 (<code>/</code>, also <code>\</code> on Windows) and remove leading components
 that have the same value for all samples, but leave at least one
 component. See Details on how this is related to name generation.
+</p>
+</td></tr>
+<tr><td><code id="feemlist_+3A_progress">progress</code></td>
+<td>
+
+<p>If true, show a text progress bar using
+<code><a href="utils.html#topic+txtProgressBar">txtProgressBar</a></code>.
 </p>
 </td></tr>
 <tr><td><code id="feemlist_+3A_...">...</code></td>
@@ -2839,7 +3088,7 @@ methods presented below.
 <h3>Usage</h3>
 
 <pre><code class='language-R'>  feemparafac(
-    X, ..., const = rep('nonneg', 3),
+    X, ..., const = rep('nonneg', 3), ctol = 1e-6,
     rescale = 3, retries = 10, subset = TRUE, envir = NULL
   )
   ## S3 method for class 'feemparafac'
@@ -2847,7 +3096,8 @@ plot(x, type = c("image", "lines"), ...)
   ## S3 method for class 'feemparafac'
 coef(
     object, type = c(
-      "all", "scores", "loadings", "emission", "excitation", "samples"
+      "all", "scores", "loadings", "surfaces",
+      "emission", "excitation", "samples"
     ), ...
   )
   ## S3 method for class 'feemparafac'
@@ -2904,6 +3154,15 @@ to <code><a href="base.html#topic+get">get</a></code> from the environment.
 modes of <code>X</code>, passed to <code><a href="multiway.html#topic+parafac">parafac</a></code>.
 Defaults to non-negativity. See <code><a href="CMLS.html#topic+const">const</a></code> for more
 information.
+</p>
+</td></tr>
+<tr><td><code id="feemparafac_+3A_ctol">ctol</code></td>
+<td>
+
+<p>The stopping criterion used by <code><a href="multiway.html#topic+parafac">parafac</a></code>. When
+a step results in an absolute change in
+<code class="reqn">R^2</code> below <code>ctol</code>, the algorithm
+stops.
 </p>
 </td></tr>
 <tr><td><code id="feemparafac_+3A_rescale">rescale</code></td>
@@ -3006,6 +3265,16 @@ added, naming the kinds of loadings.
 &ldquo;samples&rdquo; containing results of
 <code>coef(object, "emission")</code>, <code>coef(object, "excitation")</code>,
 <code>coef(object, "samples")</code>, respectively.
+</p>
+</dd>
+<dt>surfaces</dt><dd>
+<p>A <code><a href="base.html#topic+data.frame">data.frame</a></code> containing the columns
+<code>emission</code>, <code>excitation</code> (containing the wavelengths),
+<code>intensity</code> (containing the values of the outer product
+<code class="reqn">
+          \mathbf{a}_r \times \mathbf{b}_r^\top
+        </code>),
+and <code>factor</code> (containing the factor numbers <code class="reqn">r</code>).
 </p>
 </dd>
 </dl>
@@ -3123,6 +3392,14 @@ following attributes added: </p>
 </dd>
 <dt>envir</dt><dd><p>A copy of the <code>envir</code> argument.</p>
 </dd>
+<dt>time</dt><dd>
+<p>The time it took to compute the decomposition as an object of
+class <code>proc_time</code>. Only the time taken to run
+<code>multiway::<a href="multiway.html#topic+parafac">parafac</a></code> (including the
+retries, if the decomposition failed) is included. The time
+taken to rescale the scores should be negligible.
+</p>
+</dd>
 </dl>
 
 <p><code><a href="base.html#topic+rownames">rownames</a></code> are added from the original data cube
@@ -3179,17 +3456,20 @@ a different default palette, see <code><a href="#topic+plot.feem.resid">plot.fee
 
 <h3>See Also</h3>
 
-<p><code><a href="multiway.html#topic+parafac">parafac</a></code> class structure;
+<p>The <code><a href="multiway.html#topic+parafac">parafac</a></code> class structure;
 <code><a href="#topic+write.openfluor">write.openfluor</a></code>, <code><a href="#topic+feemcube">feemcube</a></code> for methods
 specific to values returned from this function.
+</p>
+<p>The <code><a href="multiway.html#topic+rescale">rescale</a></code> generic is re-exported from the
+<a href="https://CRAN.R-project.org/package=multiway"><span class="pkg">multiway</span></a> package.
 </p>
 
 
 <h3>Examples</h3>
 
 <pre><code class='language-R'>  data(feems)
-  cube &lt;- feemscale(feemscatter(cube, rep(14, 4)), na.rm = TRUE)
-  (factors &lt;- feemparafac(cube, nfac = 3))
+  cube &lt;- feemscale(feemscatter(cube, c(24, 14)), na.rm = TRUE)
+  (factors &lt;- feemparafac(cube, nfac = 3, ctol = 1e-4))
   plot(factors, 'image')
   plot(factors, 'line')
   head(coef(factors, 'loadings'))
@@ -3697,11 +3977,15 @@ and comparing the results (DeSarbo 1984).
     cube, nfac, splits, random, groups, fixed, ..., progress = TRUE
   )
   ## S3 method for class 'feemsplithalf'
-plot(x, kind = c('tcc', 'factors'), ...)
+plot(
+    x, kind = c('tcc', 'factors', 'aggtcc', 'bandfactors'), ...
+  )
   ## S3 method for class 'feemsplithalf'
 print(x, ...)
   ## S3 method for class 'feemsplithalf'
-coef(object, kind = c('tcc', 'factors'), ...)
+coef(
+    object, kind = c('tcc', 'factors', 'aggtcc', 'bandfactors'), ...
+  )
 </code></pre>
 
 
@@ -3812,9 +4096,9 @@ consisting of whole numbers specifying sample indices in the cube
 
 <dl>
 <dt>tcc</dt><dd>
-<p>Statistics of between-half TCCs for different numbers of
-components. The smallest TCC is chosen between emission- and
-excitation-mode values, but otherwise they are not aggregated.
+<p>Between-half TCCs for different numbers of components. The
+smallest TCC is chosen between emission- and excitation-mode
+values, but otherwise they are not aggregated.
 </p>
 <p>When plotting, TCC values for the component with the same number
 have the same colour.
@@ -3826,6 +4110,34 @@ have the same colour.
 <p>When plotting, split the plot into panels per each number of
 components and each mode (emission or excitation). Components
 with the same number have the same colour.
+</p>
+</dd>
+<dt>aggtcc</dt><dd>
+<p><code><a href="stats.html#topic+aggregate">aggregate</a></code> the TCCs returned by
+<code>coef(x, 'tcc')</code> over individual components.
+By default, the function returns the minimal values, but a
+different aggregation can be chosen using the additional
+argument <code>FUN</code>.
+</p>
+<p>When plotting, use a combination of a box-and-whiskers plot and
+a violin plot.
+</p>
+</dd>
+<dt>bandfactors</dt><dd>
+<p><code><a href="stats.html#topic+aggregate">aggregate</a></code> the factor values from
+<code>coef(x, 'factors')</code> over individual tests and halves. By
+default, collect the <code class="reqn">2.5\%</code> and <code class="reqn">97.5\%</code> quantiles as
+the lower and the upper boundaries, respectively, and medians as
+the estimates.
+</p>
+<p>The additional argument <code>FUN</code> can be specified
+as a function returning <code>c(lower, estimate, upper)</code> given a
+numeric vector. The additional argument <code>subset</code> works as
+in <code>base::<a href="base.html#topic+subset">subset</a></code>.
+</p>
+<p>When plotting, the estimates are lines on top of
+semi-transparent polygons signifying the lower and upper
+boundaries..
 </p>
 </dd>
 </dl>
@@ -3841,11 +4153,18 @@ eventually, to <code><a href="multiway.html#topic+parafac">parafac</a></code>. I
 to fully name the parameters instead of relying on partial or
 positional matching.
 </p>
+<p>The arguments <code>parallel</code>, <code>cl</code> are handled separately,
+see Details.
+</p>
 </dd>
-<dt>plot.feemsplithalf</dt><dd><p>Passed as-is to <code><a href="lattice.html#topic+xyplot">xyplot</a></code>.</p>
+<dt>plot.feemsplithalf</dt><dd><p>Passed to <code><a href="lattice.html#topic+xyplot">xyplot</a></code>.</p>
 </dd>
-<dt>print.feemsplithalf, coef.feemsplithalf</dt><dd>
+<dt>print.feemsplithalf</dt><dd>
 <p>No additional options are allowed.
+</p>
+</dd>
+<dt>coef.feemsplithalf</dt><dd>
+<p>Ignored unless <code>kind %in% c('aggtcc', 'bandfactors')</code>.
 </p>
 </dd>
 </dl>
@@ -3887,6 +4206,13 @@ depth), consider binning samples into groups using
 unlike in <code><a href="#topic+feemparafac">feemparafac</a></code>, the <code>cube</code> argument has
 to be a <code><a href="#topic+feemcube">feemcube</a></code> object and passing <code>envir</code> and
 <code>subset</code> options to <code>feemsplithalf</code> is not supported.
+</p>
+<p>Instead of forwarding the arguments <code>parallel</code>, <code>cl</code> to
+<code>multiway::<a href="multiway.html#topic+parafac">parafac</a></code>, <code>feemsplithalf</code>
+schedules the calls to <code><a href="#topic+feemparafac">feemparafac</a></code> on the cluster by
+itself. This makes it possible to fit more than <code>nstart</code> models
+at the same time if enough nodes are present in the <span class="pkg">parallel</span>
+cluster <code>cl</code>.
 </p>
 <p><code>plot.feemsplithalf</code> plots results of the split-half procedure
 (TCC or loading values depending on the <code>kind</code> argument)
@@ -4020,6 +4346,18 @@ obtained from.
 </dd>
 </dl>
 </dd>
+<dt>aggtcc</dt><dd>
+<p>The columns <code>tcc</code>, <code>nfac</code>, <code>test</code> after
+aggregation of <code>coef(kind = 'tcc')</code>.
+</p>
+</dd>
+<dt>bandfactors</dt><dd>
+<p>Columns <code>wavelength</code>, <code>factor</code>, <code>mode</code>,
+<code>nfac</code> from <code>coef(kind = 'factors')</code>, plus columns
+<code>lower</code>, <code>estimate</code>, <code>upper</code> signifying the
+outputs from the aggregation function.
+</p>
+</dd>
 </dl>
 
 </dd>
@@ -4063,10 +4401,12 @@ obtained from.
   cube &lt;- feemscale(feemscatter(cube, rep(14, 4)), na.rm = TRUE)
 
   (sh &lt;- feemsplithalf(
-    cube, 1:4, splits = 4 # =&gt; S4C6T3
+    cube, 1:4, splits = 4, # =&gt; S4C6T3
     # splits = c(4, 2) would be S4C4T2, and so on
     # the rest is passed to multiway::parafac;
-    # setting ctol and maxit is recommended
+    ctol = 1e-4
+    # here we set a mild stopping criterion for speed;
+    # be sure to use a stricter one for real tasks
   ))
 
   # specifying fixed halves to compare as list of 2-element lists
@@ -4074,13 +4414,9 @@ obtained from.
     list(1:6, 7:12),
     list(seq(1, 11, 2), seq(2, 12, 2))
   )
-  sh.f &lt;- feemsplithalf(cube, 2:3, fixed = fixed)
+  sh.f &lt;- feemsplithalf(cube, 2:3, fixed = fixed, ctol = 1e-4)
 
-  # can use feemparafac methods for individual models in $factors
-  plot(sh$factors[[1]])
-  plot(sh)
-  plot(sh, 'factors')
-  head(coef(sh))
+  plot(sh, 'aggtcc')
   head(coef(sh, 'factors'))
 </code></pre>
 
@@ -4215,7 +4551,7 @@ for use with <span class="rlang"><b>R</b></span> graphics functions.
 (<a href="https://matplotlib.org/cmocean/#haline">https://matplotlib.org/cmocean/#haline</a>), but using <span class="rlang"><b>R</b></span>'s
 implementation of polar CIE-LUV colour space instead of CAM02-UCS.
 </p>
-<p>CUBEHELIX (<a href="https://www.mrao.cam.ac.uk/~dag/CUBEHELIX/">https://www.mrao.cam.ac.uk/~dag/CUBEHELIX/</a>) is a
+<p>CUBEHELIX (<a href="https://people.phy.cam.ac.uk/dag9/CUBEHELIX/">https://people.phy.cam.ac.uk/dag9/CUBEHELIX/</a>) is a
 similar technique using BT.601 luminance coefficients and RGB colour
 space.
 </p>
@@ -4244,15 +4580,13 @@ space.
 
 <pre><code class='language-R'>## S3 method for class 'feem'
 plot(
-  x,
-  xlab = quote(lambda[em] * ", nm"), ylab = quote(lambda[ex] * ", nm"),
-  cuts = 128, col.regions = marine.colours(256), ...
+  x, xlab, ylab, cuts = 128,
+  col.regions = marine.colours(256), ...
 )
 ## S3 method for class 'feemcube'
 plot(
-  x,
-  xlab = quote(lambda[em] * ", nm"), ylab = quote(lambda[ex] * ", nm"),
-  cuts = 128, col.regions = marine.colours(256), as.table = TRUE, ...
+  x, xlab, ylab, cuts = 128,
+  col.regions = marine.colours(256), as.table = TRUE, ...
 )
 ## S3 method for class 'feem.resid'
 plot(
@@ -5131,8 +5465,8 @@ of the fields may be specified programmatically.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>  data(feems)
-  cube &lt;- feemscale(feemscatter(cube, rep(14, 4)), na.rm = TRUE)
-  factors &lt;- feemparafac(cube, nfac = 3)
+  cube &lt;- feemscale(feemscatter(cube, c(24, 14)), na.rm = TRUE)
+  factors &lt;- feemparafac(cube, nfac = 3, ctol = 1e-4)
   # all defaults
   write.openfluor(factors, f1 &lt;- tempfile(fileext = '.txt'))
   if (interactive()) file.show(f1)

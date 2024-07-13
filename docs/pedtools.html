@@ -35,7 +35,6 @@ function processMathHTML() {
 <li><a href='#getMap'><p>Tabulate marker positions</p></a></li>
 <li><a href='#getSex'><p>Get or set the sex of pedigree members</p></a></li>
 <li><a href='#inbreedingLoops'><p>Pedigree loops</p></a></li>
-<li><a href='#internalplot'><p>Internal plot methods</p></a></li>
 <li><a href='#is.marker'><p>Test if something is a marker</p></a></li>
 <li><a href='#is.ped'><p>Is an object a <code>ped</code> object?</p></a></li>
 <li><a href='#locusAttributes'><p>Get or set locus attributes</p></a></li>
@@ -60,6 +59,7 @@ function processMathHTML() {
 <li><a href='#ped_subgroups'><p>Pedigree subgroups</p></a></li>
 <li><a href='#ped_utils'><p>Pedigree utilities</p></a></li>
 <li><a href='#plot.ped'><p>Plot pedigree</p></a></li>
+<li><a href='#plotmethods'><p>Internal plot methods</p></a></li>
 <li><a href='#plotPedList'><p>Plot a collection of pedigrees.</p></a></li>
 <li><a href='#print.nucleus'><p>S3 methods</p></a></li>
 <li><a href='#print.ped'><p>Printing pedigrees</p></a></li>
@@ -88,7 +88,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.6.0</td>
+<td>2.7.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -147,7 +147,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-30 21:31:55 UTC; magnu</td>
+<td>2024-06-28 11:34:23 UTC; magnu</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -164,7 +164,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-31 05:30:02 UTC</td>
+<td>2024-06-28 12:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -549,7 +549,10 @@ as.ped(
   locusAttributes = NULL,
   missing = 0,
   sep = NULL,
+  sexCodes = NULL,
+  addMissingFounders = FALSE,
   validate = TRUE,
+  verbose = TRUE,
   ...
 )
 </code></pre>
@@ -596,9 +599,9 @@ the remaining as unknown.</p>
 <tr><td><code id="as.ped_+3A_marker_col">marker_col</code></td>
 <td>
 <p>Index vector indicating columns with marker alleles. If NA,
-all columns to the right of all pedigree columns are used. If <code>sep</code>
-(see below) is non-NULL, each column is interpreted as a genotype column
-and split into separate alleles with <code>strsplit(..., split = sep, fixed = TRUE)</code>.</p>
+all columns to the right of all pedigree columns are used. If <code>sep</code> (see
+below) is non-NULL, each column is interpreted as a genotype column and
+split into separate alleles with <code>strsplit(..., split = sep, fixed = TRUE)</code>.</p>
 </td></tr>
 <tr><td><code id="as.ped_+3A_locusattributes">locusAttributes</code></td>
 <td>
@@ -612,9 +615,26 @@ and split into separate alleles with <code>strsplit(..., split = sep, fixed = TR
 <td>
 <p>Passed on to <code><a href="#topic+setMarkers">setMarkers()</a></code> (see explanation there).</p>
 </td></tr>
+<tr><td><code id="as.ped_+3A_sexcodes">sexCodes</code></td>
+<td>
+<p>A list with optional entries &quot;male&quot;, &quot;female&quot; and &quot;unknown&quot;,
+indicating how non-default entries in the <code>sex</code> column should be
+interpreted. Default values: male = 1, female = 2, unknown = 0.</p>
+</td></tr>
+<tr><td><code id="as.ped_+3A_addmissingfounders">addMissingFounders</code></td>
+<td>
+<p>A logical. If TRUE, any parent not included in the
+<code>id</code> column is added as a founder of corresponding sex. By default, missing
+founders result in an error.</p>
+</td></tr>
 <tr><td><code id="as.ped_+3A_validate">validate</code></td>
 <td>
-<p>A logical indicating if the pedigree structure should be validated.</p>
+<p>A logical indicating if the pedigree structure should be
+validated.</p>
+</td></tr>
+<tr><td><code id="as.ped_+3A_verbose">verbose</code></td>
+<td>
+<p>A logical.</p>
 </td></tr>
 </table>
 
@@ -648,6 +668,10 @@ as.ped(df2)
 # Two singletons
 df3 = data.frame(id = 1:2, fid = 0, mid = 0, sex = 1)
 as.ped(df3)
+
+# Add missing parents as founders
+df4 = data.frame(id = 1, fid = 2, mid = 3, sex = 1)
+as.ped(df4, addMissingFounders = TRUE)
 
 </code></pre>
 
@@ -1209,22 +1233,21 @@ ID labels, find the index of the component holding each individual.
 <table>
 <tr><td><code id="getComponent_+3A_x">x</code></td>
 <td>
-<p>A list of <code>ped</code> objects</p>
+<p>A <code>ped</code> object, or a list of such.</p>
 </td></tr>
 <tr><td><code id="getComponent_+3A_ids">ids</code></td>
 <td>
-<p>A vector of ID labels (coercible to character)</p>
+<p>A vector of ID labels (coercible to character).</p>
 </td></tr>
 <tr><td><code id="getComponent_+3A_checkunique">checkUnique</code></td>
 <td>
-<p>If TRUE an error is raised if any element of <code>ids</code> occurs
-more than once in <code>x</code>. Default: FALSE.</p>
+<p>A logical, by default FALSE. If TRUE, an error is raised
+if any element of <code>ids</code> occurs more than once in <code>x</code>.</p>
 </td></tr>
 <tr><td><code id="getComponent_+3A_errorifunknown">errorIfUnknown</code></td>
 <td>
-<p>If TRUE, the function stops with an error if not all
-elements of <code>ids</code> are recognised as names of members in <code>x</code>. Default:
-FALSE.</p>
+<p>A logical, by default FALSE. If TRUE, the function
+stops with an error if not all elements of <code>ids</code> are found in <code>x</code>.</p>
 </td></tr>
 </table>
 
@@ -1690,391 +1713,6 @@ if(requireNamespace("igraph", quietly = TRUE)) {
   y3 = breakLoops(y, 6:7)
   plot(y3)
 }
-
-</code></pre>
-
-<hr>
-<h2 id='internalplot'>Internal plot methods</h2><span id='topic+internalplot'></span><span id='topic+.pedAlignment'></span><span id='topic+.pedAnnotation'></span><span id='topic+.pedScaling'></span><span id='topic+.drawPed'></span><span id='topic+.annotatePed'></span>
-
-<h3>Description</h3>
-
-<p>The main purpose of this page is to document the many options for pedigree
-plotting. Most of the arguments shown here may be supplied directly in
-<code>plot(x, ...)</code>, where <code>x</code> is a pedigree. See <code><a href="#topic+plot.ped">plot.ped()</a></code> for many examples.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>.pedAlignment(
-  x = NULL,
-  plist = NULL,
-  arrows = FALSE,
-  twins = NULL,
-  packed = TRUE,
-  width = 10,
-  align = c(1.5, 2),
-  hints = NULL,
-  ...
-)
-
-.pedAnnotation(
-  x,
-  title = NULL,
-  marker = NULL,
-  sep = "/",
-  missing = "-",
-  showEmpty = FALSE,
-  labs = labels(x),
-  foldLabs = 12,
-  trimLabs = TRUE,
-  col = 1,
-  fill = NA,
-  lty = 1,
-  lwd = 1,
-  hatched = NULL,
-  hatchDensity = 25,
-  aff = NULL,
-  carrier = NULL,
-  deceased = NULL,
-  starred = NULL,
-  textAnnot = NULL,
-  textInside = NULL,
-  textAbove = NULL,
-  fouInb = "autosomal",
-  ...
-)
-
-.pedScaling(
-  alignment,
-  annotation,
-  cex = 1,
-  symbolsize = 1,
-  margins = 1,
-  addSpace = 0,
-  xlim = NULL,
-  ylim = NULL,
-  vsep2 = FALSE,
-  autoScale = FALSE,
-  minsize = 0.15,
-  ...
-)
-
-.drawPed(alignment, annotation, scaling)
-
-.annotatePed(
-  alignment,
-  annotation,
-  scaling,
-  font = NULL,
-  fam = NULL,
-  col = NULL,
-  colUnder = 1,
-  colInside = 1,
-  colAbove = 1,
-  cex.main = NULL,
-  font.main = NULL,
-  col.main = NULL,
-  ...
-)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="internalplot_+3A_x">x</code></td>
-<td>
-<p>A <code><a href="#topic+ped">ped()</a></code> object.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_plist">plist</code></td>
-<td>
-<p>Alignment list with format similar to
-<code><a href="kinship2.html#topic+align.pedigree">kinship2::align.pedigree()</a></code>.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_arrows">arrows</code></td>
-<td>
-<p>A logical (default = FALSE). If TRUE, the pedigree is plotted
-as a DAG, i.e., with arrows connecting parent-child pairs.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_twins">twins</code></td>
-<td>
-<p>A data frame with columns <code>id1</code>, <code>id2</code> and <code>code</code>, passed on to
-the <code>relation</code> parameter of <code><a href="kinship2.html#topic+plot.pedigree">kinship2::plot.pedigree()</a></code>.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_packed">packed</code>, <code id="internalplot_+3A_width">width</code>, <code id="internalplot_+3A_align">align</code></td>
-<td>
-<p>Parameters passed on to
-<code><a href="kinship2.html#topic+align.pedigree">kinship2::align.pedigree()</a></code>. Can usually be left untouched.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_hints">hints</code></td>
-<td>
-<p>An optional list of hints passed on to
-<code><a href="kinship2.html#topic+align.pedigree">kinship2::align.pedigree()</a></code>.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_...">...</code></td>
-<td>
-<p>Further parameters passed between methods.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_title">title</code></td>
-<td>
-<p>The plot title. If NULL (default) or &rdquo;, no title is added to
-the plot.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_marker">marker</code></td>
-<td>
-<p>Either a vector of names or indices referring to markers
-attached to <code>x</code>, a <code>marker</code> object, or a list of such. The genotypes for
-the chosen markers are written below each individual in the pedigree, in
-the format determined by <code>sep</code> and <code>missing</code>. See also <code>showEmpty</code>. If NULL
-(the default), no genotypes are plotted.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_sep">sep</code></td>
-<td>
-<p>A character of length 1 separating alleles for diploid markers.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_missing">missing</code></td>
-<td>
-<p>The symbol (integer or character) for missing alleles.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_showempty">showEmpty</code></td>
-<td>
-<p>A logical, indicating if empty genotypes should be included.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_labs">labs</code></td>
-<td>
-<p>A vector or function controlling the individual labels in the
-plot. By default, <code>labels(x)</code> are used. See Details for valid formats.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_foldlabs">foldLabs</code></td>
-<td>
-<p>A number or function controlling the folding of long labels.
-If a number, line breaks are inserted at roughly this width, trying to
-break at break-friendly characters. If a function, this is applied to each
-label.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_trimlabs">trimLabs</code></td>
-<td>
-<p>A logical, by default TRUE. Removes line breaks and tabs from
-both ends of the labels (after adding genotypes, if <code>marker</code> is not NULL).</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_col">col</code></td>
-<td>
-<p>A vector or list specifying outline colours for the pedigree
-members. See Details for valid formats.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_fill">fill</code></td>
-<td>
-<p>A vector or list specifying fill/hatch colours for the pedigree
-members. See Details for valid formats. Note that if <code>fill</code> is unnamed, and
-either <code>aff</code> or <code>hatched</code> are given, then the fill colour is applied only
-to those.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_lty">lty</code>, <code id="internalplot_+3A_lwd">lwd</code></td>
-<td>
-<p>Vectors or lists specifying linetype and width of pedigree
-symbol outlines. See Details for valid formats.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_hatched">hatched</code></td>
-<td>
-<p>A vector of labels identifying members whose plot symbols
-should be hatched.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_hatchdensity">hatchDensity</code></td>
-<td>
-<p>A number specifying the hatch density in lines per inch.
-Default: 25.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_aff">aff</code></td>
-<td>
-<p>A vector of labels identifying members whose plot symbols should
-be filled. (This is typically used in medical pedigrees to indicate
-affected members.)</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_carrier">carrier</code></td>
-<td>
-<p>A vector of labels identifying members whose plot symbols
-should be marked with a dot. (This is typically used in medical pedigrees
-to indicate unaffected carriers of the disease allele.)</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_deceased">deceased</code></td>
-<td>
-<p>A vector of labels indicating deceased pedigree members.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_starred">starred</code></td>
-<td>
-<p>A vector of labels indicating pedigree members that should be
-marked with a star in the pedigree plot.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_textannot">textAnnot</code></td>
-<td>
-<p>A list specifying further text annotation around or inside
-the pedigree symbols. See Details for more information.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_textinside">textInside</code>, <code id="internalplot_+3A_textabove">textAbove</code></td>
-<td>
-<p>Character vectors of text to be printed inside or
-above pedigree symbols. [Soft deprecated; replaced by <code>textAnnot</code>.]</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_fouinb">fouInb</code></td>
-<td>
-<p>Either &quot;autosomal&quot; (default), &quot;x&quot; or NULL. If &quot;autosomal&quot; or
-&quot;x&quot;, inbreeding coefficients are added to the plot above the inbred
-founders. If NULL, or if no founders are inbred, nothing is added.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_alignment">alignment</code></td>
-<td>
-<p>List of alignment details, as returned by <code><a href="#topic+.pedAlignment">.pedAlignment()</a></code>.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_annotation">annotation</code></td>
-<td>
-<p>List of annotation details as returned by
-<code><a href="#topic+.pedAnnotation">.pedAnnotation()</a></code>.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_cex">cex</code></td>
-<td>
-<p>Expansion factor controlling font size. This also affects symbol
-sizes, which by default have the width of 2.5 characters. Default: 1.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_symbolsize">symbolsize</code></td>
-<td>
-<p>Expansion factor for pedigree symbols. Default: 1.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_margins">margins</code></td>
-<td>
-<p>A numeric indicating the plot margins. If a single number is
-given, it is recycled to length 4.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_addspace">addSpace</code></td>
-<td>
-<p>A numeric of length 4, indicating extra padding (in inches)
-around the pedigree inside the plot region. Default: 0.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_xlim">xlim</code>, <code id="internalplot_+3A_ylim">ylim</code></td>
-<td>
-<p>Numeric vectors of length 2, used to set <code>par("usr")</code>
-explicitly. Rarely needed by end users.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_vsep2">vsep2</code></td>
-<td>
-<p>A logical; for internal use.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_autoscale">autoScale</code></td>
-<td>
-<p>A logical. It TRUE, an attempt is made to adjust <code>cex</code> so
-that the symbol dimensions are at least <code>minsize</code> inches. Default: FALSE.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_minsize">minsize</code></td>
-<td>
-<p>A positive number, by default 0.15. (See <code>autoScale</code>.)</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_scaling">scaling</code></td>
-<td>
-<p>List of scaling parameters as returned by <code><a href="#topic+.pedScaling">.pedScaling()</a></code>.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_font">font</code>, <code id="internalplot_+3A_fam">fam</code></td>
-<td>
-<p>Arguments passed on to <code><a href="graphics.html#topic+text">text()</a></code>.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_colunder">colUnder</code>, <code id="internalplot_+3A_colinside">colInside</code>, <code id="internalplot_+3A_colabove">colAbove</code></td>
-<td>
-<p>Colour vectors.</p>
-</td></tr>
-<tr><td><code id="internalplot_+3A_cex.main">cex.main</code>, <code id="internalplot_+3A_col.main">col.main</code>, <code id="internalplot_+3A_font.main">font.main</code></td>
-<td>
-<p>Parameters passed on to <code><a href="graphics.html#topic+title">title()</a></code>.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>The workflow of <code>plot.ped(x, ...)</code> is approximately as follows:
-</p>
-<div class="sourceCode"><pre>
-# Calculate plot parameters
-
-align = .pedAlignment(x, ...)
-
-annot = .pedAnnotation(x, ...)
-
-scale = .pedScaling(align, annot, ...)
-
-# Produce plot
-
-.drawPed(align, annot, scale)
-
-.annotatePed(align, annot, scale)
-
-</pre></div>
-<p>The <code>labs</code> argument control the individual ID labels printed below the
-pedigree symbols. By default the output of <code>labels(x)</code> is used, but there are
-several alternative forms:
-</p>
-
-<ul>
-<li><p> If <code>labs</code> is a vector with nonempty intersection with <code>labels(x)</code>, only
-these individuals will be labelled. If the vector is named, then the names
-are used instead of the ID label. (See Examples.)
-</p>
-</li>
-<li><p> If <code>labs</code> is the word &quot;num&quot;, then all individuals are numerically
-labelled following the internal ordering.
-</p>
-</li>
-<li><p> Use <code>labs = NULL</code> to remove all labels.
-</p>
-</li>
-<li><p> If <code>labs</code> is a function, it is replaced with <code>labs(x)</code> and handled as
-above. (See Examples.)
-</p>
-</li></ul>
-
-<p>The argument <code>textAnnot</code> allows customised annotation around and inside each
-symbol. This takes a list of lists, whose names may include &quot;topleft&quot;,
-&quot;topright&quot;, &quot;left&quot;, &quot;right&quot;, &quot;bottomleft&quot;, &quot;bottom&quot;, &quot;bottomright&quot; and
-&quot;inside&quot;. Each inner list should contain a character vector as its first
-element (with the text to printed), followed by further arguments passed to
-<code><a href="graphics.html#topic+text">text()</a></code>. For example, <code>textAnnot = list(left = list(c(A = "1"), cex = 2))</code>
-prints a large number &quot;1&quot; to the left of individual A (if such an individual
-exists in the pedigree. See Examples.
-</p>
-<p>The arguments <code>col</code>, <code>fill</code>, <code>lty</code> and <code>lwd</code> can all be indicated in a number
-of ways:
-</p>
-
-<ul>
-<li><p> An unnamed vector. This will be recycled and applied to all members. For
-example, <code>lty = 2</code> gives everyone a dashed outline.
-</p>
-</li>
-<li><p> A named vector. Only pedigree members appearing in the names are affected.
-Example: <code>fill = c("1" = "red", foo = "blue")</code> fills individual <code>1</code> red and
-<code>foo</code> blue.
-</p>
-</li>
-<li><p> A list of ID vectors, where the list names indicate the parameter values.
-Example: <code>col = list(red = 1:2, blue = 3:5)</code>.
-</p>
-</li>
-<li><p> List entries may also be functions, taking the pedigree <code>x</code> as input and
-producing a vector of ID labels. The many built-in functions in
-<a href="#topic+ped_subgroups">ped_subgroups</a> are particularly handy here, e.g.: <code>fill = list(red = founders, blue = leaves)</code>.
-</p>
-</li></ul>
-
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>x = nuclearPed()
-
-align = .pedAlignment(x)
-annot = .pedAnnotation(x)
-scale = .pedScaling(align, annot)
-
-frame()
-drawPed(align, annot, scale)
 
 </code></pre>
 
@@ -3880,7 +3518,9 @@ hasMarkers(y, compwise = TRUE) # c(TRUE, FALSE)
 <h3>Description</h3>
 
 <p>This is the basic constructor of <code>ped</code> objects. Utility functions for
-creating many common pedigree structures are described in <a href="#topic+ped_basic">ped_basic</a>.
+creating many common pedigree structures are described in <a href="#topic+ped_basic">ped_basic</a>. See
+also <code><a href="#topic+as.ped">as.ped()</a></code> and <code><a href="#topic+readPed">readPed()</a></code>, which are more liberal regarding the input
+format.
 </p>
 
 
@@ -3910,19 +3550,13 @@ singletons(id, sex = 1)
 <table>
 <tr><td><code id="ped_+3A_id">id</code></td>
 <td>
-<p>A vector (numeric or character) of individual ID labels.</p>
+<p>A vector (coercible to character) of individual ID labels.</p>
 </td></tr>
-<tr><td><code id="ped_+3A_fid">fid</code></td>
+<tr><td><code id="ped_+3A_fid">fid</code>, <code id="ped_+3A_mid">mid</code></td>
 <td>
-<p>A vector of the same length as <code>id</code>, containing the labels of the
-fathers. In other words <code>fid[i]</code> is the father of <code>id[i]</code>, or 0 if <code>id[i]</code>
-is a founder.</p>
-</td></tr>
-<tr><td><code id="ped_+3A_mid">mid</code></td>
-<td>
-<p>A vector of the same length as <code>id</code>, containing the labels of the
-mothers. In other words <code>mid[i]</code> is the mother of <code>id[i]</code>, or 0 if <code>id[i]</code>
-is a founder.</p>
+<p>Vectors of the same length as <code>id</code>, naming the father and
+mother of each individual, respectively. Missing parents (i.e.,
+corresponding to founder individuals) may be entered as &quot;0&quot;, &quot;&quot; or NA.</p>
 </td></tr>
 <tr><td><code id="ped_+3A_sex">sex</code></td>
 <td>
@@ -3965,6 +3599,11 @@ FALSE.</p>
 
 <h3>Details</h3>
 
+<p>Each individual must have either both parents specified, or no parents.
+Missing parents are indicated with entries &quot;0&quot;, &quot;&quot; or NA in <code>fid</code> and <code>mid</code>.
+Note that <code>id</code>,<code>fid</code>,<code>mid</code> are all converted to character vectors before
+matching to establish the parent connections.
+</p>
 <p>If the pedigree is disconnected, it is split into its connected components
 and returned as a list of <code>ped</code> objects.
 </p>
@@ -4194,8 +3833,9 @@ to include. The resulting pedigree has <code>2^(g+1)-1</code> members. The case 
 </td></tr>
 <tr><td><code id="ped_basic_+3A_s">s</code></td>
 <td>
-<p>A nonnegative integer indicating the number of consecutive selfings.
-The case <code>s = 0</code> results in a singleton.</p>
+<p>Either a character vector of ID labels, or a nonnegative integer
+indicating the number of consecutive selfings. The case <code>s = 0</code> results in
+a singleton.</p>
 </td></tr>
 </table>
 
@@ -4412,7 +4052,7 @@ members are listed when a <code>ped</code> object is printed to the screen.)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>reorderPed(x, neworder = NULL)
+<pre><code class='language-R'>reorderPed(x, neworder = NULL, internal = FALSE)
 
 parentsBeforeChildren(x)
 
@@ -4433,8 +4073,15 @@ internalID(x, ids, errorIfUnknown = TRUE)
 </td></tr>
 <tr><td><code id="ped_internal_+3A_neworder">neworder</code></td>
 <td>
-<p>A permutation of <code>labels(x)</code> or of vector <code>1:pedsize(x)</code>. By
-default, the sorting order of the ID labels is used.</p>
+<p>A permutation of <code>labels(x)</code> (or a subset of this),
+indicating the new internal ordering. If <code>internal = TRUE</code>, <code>neworder</code>
+refers to the internal ordering, so must be numeric. <code>1:pedsize(x)</code>. By
+default, the natural order of the ID labels is used.</p>
+</td></tr>
+<tr><td><code id="ped_internal_+3A_internal">internal</code></td>
+<td>
+<p>A logical (default: FALSE). If TRUE, <code>neworder</code> is
+interpreted as referring to the internal ordering.</p>
 </td></tr>
 <tr><td><code id="ped_internal_+3A_ids">ids</code></td>
 <td>
@@ -4483,18 +4130,25 @@ containing both the component number and internal ID (within the component).
 <pre><code class='language-R'>x = ped(id = 3:1, fid = c(1,0,0), mid = c(2,0,0), sex = c(1,2,1), reorder = FALSE)
 x
 
-# The 'ids' argument is converted to character, hence these are equivalent:
+# The 'ids' argument is converted to character, hence these are the same:
 internalID(x, ids = 3)
 internalID(x, ids = "3")
 
 hasParentsBeforeChildren(x)
 
-# Fix the ordering
-y = parentsBeforeChildren(x)
-internalID(y, ids = 3)
+# Put parents first
+parentsBeforeChildren(x)
 
-# A different ordering
-reorderPed(x, c(2,1,3))
+# Typical use of reorderPed: Swap sibling plot order
+y = nuclearPed(2) |&gt; reorderPed(4:3)
+plot(y)
+
+
+### If labels are numeric, argument `internal` is important
+z = singleton(1) |&gt; addParents(1)
+z
+reorderPed(z, 1:3, internal = FALSE) # ID order = "1","2","3"
+reorderPed(z, 1:3, internal = TRUE)  # index order: 1,2,3 (i.e., no change)
 
 </code></pre>
 
@@ -4968,7 +4622,7 @@ plot(relabel(w, "generations"))
 <p>This is the main function for plotting pedigrees. Many options are available
 for controlling the appearance of pedigree symbols and accompanying labels.
 The most important ones are illustrated in the Examples section below; for a
-complete overview, see the separate page <a href="#topic+internalplot">internalplot</a>, which also explains
+complete overview, see the separate page <a href="#topic+plotmethods">plotmethods</a>, which also explains
 the plotting procedure in more detail.
 </p>
 
@@ -5009,7 +4663,7 @@ additional annotation.</p>
 <tr><td><code id="plot.ped_+3A_...">...</code></td>
 <td>
 <p>Arguments passed on to the internal plot functions. For a complete
-list of parameters, see <a href="#topic+internalplot">internalplot</a>. The most important ones are
+list of parameters, see <a href="#topic+plotmethods">plotmethods</a>. The most important ones are
 illustrated in the Examples below.</p>
 </td></tr>
 <tr><td><code id="plot.ped_+3A_alignment">alignment</code></td>
@@ -5051,7 +4705,7 @@ nested lists of pedigrees, use <code><a href="#topic+plotPedList">plotPedList()<
 <h3>See Also</h3>
 
 <p><code><a href="#topic+plotPedList">plotPedList()</a></code>, <code><a href="kinship2.html#topic+plot.pedigree">kinship2::plot.pedigree()</a></code>. Plot options are
-documented in <a href="#topic+internalplot">internalplot</a>.
+documented in <a href="#topic+plotmethods">plotmethods</a>.
 </p>
 
 
@@ -5077,6 +4731,9 @@ plot(x, symbolsize = 1.5)
 
 # Various annotations
 plot(x, hatched = "boy", starred = "fa", deceased = "mo", title = "Fam 1")
+
+# Swap spouse order
+plot(x, spouseOrder = c("mo", "fa"))
 
 #----- ID labels -----
 
@@ -5195,6 +4852,398 @@ plot(list(singleton(1), nuclearPed(1), linearPed(2)))
 # Use of `drawPed()`
 dat = plot(nuclearPed(), draw = FALSE)
 drawPed(dat$alignment, dat$annotation, dat$scaling)
+
+</code></pre>
+
+<hr>
+<h2 id='plotmethods'>Internal plot methods</h2><span id='topic+plotmethods'></span><span id='topic+.pedAlignment'></span><span id='topic+.pedAnnotation'></span><span id='topic+.pedScaling'></span><span id='topic+.drawPed'></span><span id='topic+.annotatePed'></span>
+
+<h3>Description</h3>
+
+<p>The main purpose of this page is to document the many options for pedigree
+plotting. Most of the arguments shown here may be supplied directly in
+<code>plot(x, ...)</code>, where <code>x</code> is a pedigree. See <code><a href="#topic+plot.ped">plot.ped()</a></code> for many examples.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>.pedAlignment(
+  x = NULL,
+  plist = NULL,
+  arrows = FALSE,
+  twins = NULL,
+  packed = TRUE,
+  width = 10,
+  align = c(1.5, 2),
+  spouseOrder = NULL,
+  hints = NULL,
+  ...
+)
+
+.pedAnnotation(
+  x,
+  title = NULL,
+  marker = NULL,
+  sep = "/",
+  missing = "-",
+  showEmpty = FALSE,
+  labs = labels(x),
+  foldLabs = 12,
+  trimLabs = TRUE,
+  col = 1,
+  fill = NA,
+  lty = 1,
+  lwd = 1,
+  hatched = NULL,
+  hatchDensity = 25,
+  aff = NULL,
+  carrier = NULL,
+  deceased = NULL,
+  starred = NULL,
+  textAnnot = NULL,
+  textInside = NULL,
+  textAbove = NULL,
+  fouInb = "autosomal",
+  ...
+)
+
+.pedScaling(
+  alignment,
+  annotation,
+  cex = 1,
+  symbolsize = 1,
+  margins = 1,
+  addSpace = 0,
+  xlim = NULL,
+  ylim = NULL,
+  vsep2 = FALSE,
+  autoScale = FALSE,
+  minsize = 0.15,
+  ...
+)
+
+.drawPed(alignment, annotation, scaling)
+
+.annotatePed(
+  alignment,
+  annotation,
+  scaling,
+  font = NULL,
+  fam = NULL,
+  col = NULL,
+  colUnder = 1,
+  colInside = 1,
+  colAbove = 1,
+  cex.main = NULL,
+  font.main = NULL,
+  col.main = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plotmethods_+3A_x">x</code></td>
+<td>
+<p>A <code><a href="#topic+ped">ped()</a></code> object.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_plist">plist</code></td>
+<td>
+<p>Alignment list with format similar to
+<code><a href="kinship2.html#topic+align.pedigree">kinship2::align.pedigree()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_arrows">arrows</code></td>
+<td>
+<p>A logical (default = FALSE). If TRUE, the pedigree is plotted
+as a DAG, i.e., with arrows connecting parent-child pairs.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_twins">twins</code></td>
+<td>
+<p>A data frame with columns <code>id1</code>, <code>id2</code> and <code>code</code>, passed on to
+the <code>relation</code> parameter of <code><a href="kinship2.html#topic+plot.pedigree">kinship2::plot.pedigree()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_packed">packed</code>, <code id="plotmethods_+3A_width">width</code>, <code id="plotmethods_+3A_align">align</code></td>
+<td>
+<p>Parameters passed on to
+<code><a href="kinship2.html#topic+align.pedigree">kinship2::align.pedigree()</a></code>. Can usually be left untouched.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_spouseorder">spouseOrder</code></td>
+<td>
+<p>An optional vector (or list of vectors) indicating plot
+ordering for spouses. (This is converted into a matrix and forward as
+<code>hints</code>; see below.)</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_hints">hints</code></td>
+<td>
+<p>An optional list of hints passed on to
+<code><a href="kinship2.html#topic+align.pedigree">kinship2::align.pedigree()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_...">...</code></td>
+<td>
+<p>Further parameters passed between methods.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_title">title</code></td>
+<td>
+<p>The plot title. If NULL (default) or &rdquo;, no title is added to
+the plot.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_marker">marker</code></td>
+<td>
+<p>Either a vector of names or indices referring to markers
+attached to <code>x</code>, a <code>marker</code> object, or a list of such. The genotypes for
+the chosen markers are written below each individual in the pedigree, in
+the format determined by <code>sep</code> and <code>missing</code>. See also <code>showEmpty</code>. If NULL
+(the default), no genotypes are plotted.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_sep">sep</code></td>
+<td>
+<p>A character of length 1 separating alleles for diploid markers.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_missing">missing</code></td>
+<td>
+<p>The symbol (integer or character) for missing alleles.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_showempty">showEmpty</code></td>
+<td>
+<p>A logical, indicating if empty genotypes should be included.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_labs">labs</code></td>
+<td>
+<p>A vector or function controlling the individual labels in the
+plot. By default, <code>labels(x)</code> are used. See Details for valid formats.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_foldlabs">foldLabs</code></td>
+<td>
+<p>A number or function controlling the folding of long labels.
+If a number, line breaks are inserted at roughly this width, trying to
+break at break-friendly characters. If a function, this is applied to each
+label.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_trimlabs">trimLabs</code></td>
+<td>
+<p>A logical, by default TRUE. Removes line breaks and tabs from
+both ends of the labels (after adding genotypes, if <code>marker</code> is not NULL).</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_col">col</code></td>
+<td>
+<p>A vector or list specifying outline colours for the pedigree
+members. See Details for valid formats.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_fill">fill</code></td>
+<td>
+<p>A vector or list specifying fill/hatch colours for the pedigree
+members. See Details for valid formats. Note that if <code>fill</code> is unnamed, and
+either <code>aff</code> or <code>hatched</code> are given, then the fill colour is applied only
+to those.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_lty">lty</code>, <code id="plotmethods_+3A_lwd">lwd</code></td>
+<td>
+<p>Vectors or lists specifying linetype and width of pedigree
+symbol outlines. See Details for valid formats.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_hatched">hatched</code></td>
+<td>
+<p>A vector of labels identifying members whose plot symbols
+should be hatched.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_hatchdensity">hatchDensity</code></td>
+<td>
+<p>A number specifying the hatch density in lines per inch.
+Default: 25.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_aff">aff</code></td>
+<td>
+<p>A vector of labels identifying members whose plot symbols should
+be filled. (This is typically used in medical pedigrees to indicate
+affected members.)</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_carrier">carrier</code></td>
+<td>
+<p>A vector of labels identifying members whose plot symbols
+should be marked with a dot. (This is typically used in medical pedigrees
+to indicate unaffected carriers of the disease allele.)</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_deceased">deceased</code></td>
+<td>
+<p>A vector of labels indicating deceased pedigree members.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_starred">starred</code></td>
+<td>
+<p>A vector of labels indicating pedigree members that should be
+marked with a star in the pedigree plot.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_textannot">textAnnot</code></td>
+<td>
+<p>A list specifying further text annotation around or inside
+the pedigree symbols. See Details for more information.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_textinside">textInside</code>, <code id="plotmethods_+3A_textabove">textAbove</code></td>
+<td>
+<p>Character vectors of text to be printed inside or
+above pedigree symbols. [Soft deprecated; replaced by <code>textAnnot</code>.]</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_fouinb">fouInb</code></td>
+<td>
+<p>Either &quot;autosomal&quot; (default), &quot;x&quot; or NULL. If &quot;autosomal&quot; or
+&quot;x&quot;, inbreeding coefficients are added to the plot above the inbred
+founders. If NULL, or if no founders are inbred, nothing is added.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_alignment">alignment</code></td>
+<td>
+<p>List of alignment details, as returned by <code><a href="#topic+.pedAlignment">.pedAlignment()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_annotation">annotation</code></td>
+<td>
+<p>List of annotation details as returned by
+<code><a href="#topic+.pedAnnotation">.pedAnnotation()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_cex">cex</code></td>
+<td>
+<p>Expansion factor controlling font size. This also affects symbol
+sizes, which by default have the width of 2.5 characters. Default: 1.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_symbolsize">symbolsize</code></td>
+<td>
+<p>Expansion factor for pedigree symbols. Default: 1.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_margins">margins</code></td>
+<td>
+<p>A numeric indicating the plot margins. If a single number is
+given, it is recycled to length 4.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_addspace">addSpace</code></td>
+<td>
+<p>A numeric of length 4, indicating extra padding (in inches)
+around the pedigree inside the plot region. Default: 0.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_xlim">xlim</code>, <code id="plotmethods_+3A_ylim">ylim</code></td>
+<td>
+<p>Numeric vectors of length 2, used to set <code>par("usr")</code>
+explicitly. Rarely needed by end users.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_vsep2">vsep2</code></td>
+<td>
+<p>A logical; for internal use.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_autoscale">autoScale</code></td>
+<td>
+<p>A logical. It TRUE, an attempt is made to adjust <code>cex</code> so
+that the symbol dimensions are at least <code>minsize</code> inches. Default: FALSE.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_minsize">minsize</code></td>
+<td>
+<p>A positive number, by default 0.15. (See <code>autoScale</code>.)</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_scaling">scaling</code></td>
+<td>
+<p>List of scaling parameters as returned by <code><a href="#topic+.pedScaling">.pedScaling()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_font">font</code>, <code id="plotmethods_+3A_fam">fam</code></td>
+<td>
+<p>Arguments passed on to <code><a href="graphics.html#topic+text">text()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_colunder">colUnder</code>, <code id="plotmethods_+3A_colinside">colInside</code>, <code id="plotmethods_+3A_colabove">colAbove</code></td>
+<td>
+<p>Colour vectors.</p>
+</td></tr>
+<tr><td><code id="plotmethods_+3A_cex.main">cex.main</code>, <code id="plotmethods_+3A_col.main">col.main</code>, <code id="plotmethods_+3A_font.main">font.main</code></td>
+<td>
+<p>Parameters passed on to <code><a href="graphics.html#topic+title">title()</a></code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The workflow of <code>plot.ped(x, ...)</code> is approximately as follows:
+</p>
+<div class="sourceCode"><pre>
+# Calculate plot parameters
+
+align = .pedAlignment(x, ...)
+
+annot = .pedAnnotation(x, ...)
+
+scale = .pedScaling(align, annot, ...)
+
+# Produce plot
+
+.drawPed(align, annot, scale)
+
+.annotatePed(align, annot, scale)
+
+</pre></div>
+<p>The <code>labs</code> argument control the individual ID labels printed below the
+pedigree symbols. By default the output of <code>labels(x)</code> is used, but there are
+several alternative forms:
+</p>
+
+<ul>
+<li><p> If <code>labs</code> is a vector with nonempty intersection with <code>labels(x)</code>, only
+these individuals will be labelled. If the vector is named, then the names
+are used instead of the ID label. (See Examples.)
+</p>
+</li>
+<li><p> If <code>labs</code> is the word &quot;num&quot;, then all individuals are numerically
+labelled following the internal ordering.
+</p>
+</li>
+<li><p> Use <code>labs = NULL</code> to remove all labels.
+</p>
+</li>
+<li><p> If <code>labs</code> is a function, it is replaced with <code>labs(x)</code> and handled as
+above. (See Examples.)
+</p>
+</li></ul>
+
+<p>The argument <code>textAnnot</code> allows customised annotation around and inside each
+symbol. This takes a list of lists, whose names may include &quot;topleft&quot;,
+&quot;topright&quot;, &quot;left&quot;, &quot;right&quot;, &quot;bottomleft&quot;, &quot;bottom&quot;, &quot;bottomright&quot; and
+&quot;inside&quot;. Each inner list should contain a character vector as its first
+element (with the text to printed), followed by further arguments passed to
+<code><a href="graphics.html#topic+text">text()</a></code>. For example, <code>textAnnot = list(left = list(c(A = "1"), cex = 2))</code>
+prints a large number &quot;1&quot; to the left of individual A (if such an individual
+exists in the pedigree. See Examples.
+</p>
+<p>The arguments <code>col</code>, <code>fill</code>, <code>lty</code> and <code>lwd</code> can all be indicated in a number
+of ways:
+</p>
+
+<ul>
+<li><p> An unnamed vector. This will be recycled and applied to all members. For
+example, <code>lty = 2</code> gives everyone a dashed outline.
+</p>
+</li>
+<li><p> A named vector. Only pedigree members appearing in the names are affected.
+Example: <code>fill = c("1" = "red", foo = "blue")</code> fills individual <code>1</code> red and
+<code>foo</code> blue.
+</p>
+</li>
+<li><p> A list of ID vectors, where the list names indicate the parameter values.
+Example: <code>col = list(red = 1:2, blue = 3:5)</code>.
+</p>
+</li>
+<li><p> List entries may also be functions, taking the pedigree <code>x</code> as input and
+producing a vector of ID labels. The many built-in functions in
+<a href="#topic+ped_subgroups">ped_subgroups</a> are particularly handy here, e.g.: <code>fill = list(red = founders, blue = leaves)</code>.
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x = nuclearPed()
+
+align = .pedAlignment(x)
+annot = .pedAnnotation(x)
+scale = .pedScaling(align, annot)
+
+frame()
+drawPed(align, annot, scale)
 
 </code></pre>
 
@@ -5579,6 +5628,8 @@ plot(y, arrows = TRUE)
   missing = 0,
   sep = NULL,
   colSkip = NULL,
+  sexCodes = NULL,
+  addMissingFounders = FALSE,
   validate = TRUE,
   ...
 )
@@ -5635,9 +5686,9 @@ the remaining as unknown.</p>
 <tr><td><code id="readPed_+3A_marker_col">marker_col</code></td>
 <td>
 <p>Index vector indicating columns with marker alleles. If NA,
-all columns to the right of all pedigree columns are used. If <code>sep</code>
-(see below) is non-NULL, each column is interpreted as a genotype column
-and split into separate alleles with <code>strsplit(..., split = sep, fixed = TRUE)</code>.</p>
+all columns to the right of all pedigree columns are used. If <code>sep</code> (see
+below) is non-NULL, each column is interpreted as a genotype column and
+split into separate alleles with <code>strsplit(..., split = sep, fixed = TRUE)</code>.</p>
 </td></tr>
 <tr><td><code id="readPed_+3A_locusattributes">locusAttributes</code></td>
 <td>
@@ -5657,9 +5708,22 @@ and split into separate alleles with <code>strsplit(..., split = sep, fixed = TR
 names. If given, these columns are removed directly after <code>read.table()</code>,
 before any other processing.</p>
 </td></tr>
+<tr><td><code id="readPed_+3A_sexcodes">sexCodes</code></td>
+<td>
+<p>A list with optional entries &quot;male&quot;, &quot;female&quot; and &quot;unknown&quot;,
+indicating how non-default entries in the <code>sex</code> column should be
+interpreted. Default values: male = 1, female = 2, unknown = 0.</p>
+</td></tr>
+<tr><td><code id="readPed_+3A_addmissingfounders">addMissingFounders</code></td>
+<td>
+<p>A logical. If TRUE, any parent not included in the
+<code>id</code> column is added as a founder of corresponding sex. By default, missing
+founders result in an error.</p>
+</td></tr>
 <tr><td><code id="readPed_+3A_validate">validate</code></td>
 <td>
-<p>A logical indicating if the pedigree structure should be validated.</p>
+<p>A logical indicating if the pedigree structure should be
+validated.</p>
 </td></tr>
 <tr><td><code id="readPed_+3A_...">...</code></td>
 <td>
@@ -5743,13 +5807,19 @@ readPed(tf)
 ### Two trios in the same file
 trio2 = cbind(famid = rep(c("trio1", "trio2"), each = 3), rbind(trio, trio))
 
-# Without column names
-write.table(trio2, file = tf, row.names = FALSE)
+# With column names
+write.table(trio2, file = tf, col.names = TRUE, row.names = FALSE)
 readPed(tf)
 
-# With column names
+# Without column names
 write.table(trio2, file = tf, col.names = FALSE, row.names = FALSE)
-readPed(tf, famid = 1, id = 2, fid = 3, mid = 4, sex = 5)
+readPed(tf)
+
+### With non-standard `sex` codes
+trio3 = data.frame(id = 1:3, fid = c(0,0,1), mid = c(0,0,2),
+                   sex = c("male","female","?"))
+write.table(trio3, file = tf, row.names = FALSE)
+readPed(tf, sexCodes = list(male = "male", female = "female", unknown = "?"))
 
 # Cleanup
 unlink(tf)
@@ -6305,19 +6375,13 @@ malformed) <code><a href="#topic+ped">ped()</a></code> object, or its defining v
 </td></tr>
 <tr><td><code id="validatePed_+3A_id">id</code></td>
 <td>
-<p>A vector (numeric or character) of individual ID labels.</p>
+<p>A vector (coercible to character) of individual ID labels.</p>
 </td></tr>
-<tr><td><code id="validatePed_+3A_fid">fid</code></td>
+<tr><td><code id="validatePed_+3A_fid">fid</code>, <code id="validatePed_+3A_mid">mid</code></td>
 <td>
-<p>A vector of the same length as <code>id</code>, containing the labels of the
-fathers. In other words <code>fid[i]</code> is the father of <code>id[i]</code>, or 0 if <code>id[i]</code>
-is a founder.</p>
-</td></tr>
-<tr><td><code id="validatePed_+3A_mid">mid</code></td>
-<td>
-<p>A vector of the same length as <code>id</code>, containing the labels of the
-mothers. In other words <code>mid[i]</code> is the mother of <code>id[i]</code>, or 0 if <code>id[i]</code>
-is a founder.</p>
+<p>Vectors of the same length as <code>id</code>, naming the father and
+mother of each individual, respectively. Missing parents (i.e.,
+corresponding to founder individuals) may be entered as &quot;0&quot;, &quot;&quot; or NA.</p>
 </td></tr>
 <tr><td><code id="validatePed_+3A_sex">sex</code></td>
 <td>

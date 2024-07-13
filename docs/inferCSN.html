@@ -20,24 +20,34 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#inferCSN-package'><p>inferCSN: Inferring Cell-Specific Gene Regulatory Network</p></a></li>
 <li><a href='#acc.calculate'><p>ACC calculate</p></a></li>
+<li><a href='#as_matrix'><p>Attempts to turn a dgCMatrix into a dense matrix</p></a></li>
 <li><a href='#auc.calculate'><p>AUC value calculate</p></a></li>
 <li><a href='#calculate.gene.rank'><p>Calculate and rank TFs in network</p></a></li>
 <li><a href='#check.parameters'><p>Check input parameters</p></a></li>
 <li><a href='#coef.SRM_fit'><p>Extracts a specific solution in the regularization path</p></a></li>
-<li><a href='#contrast.networks'><p>contrast.networks</p></a></li>
-<li><a href='#dynamic.networks'><p>Plot of dynamic networks</p></a></li>
 <li><a href='#example_ground_truth'><p>Example ground truth data</p></a></li>
 <li><a href='#example_matrix'><p>Example matrix data</p></a></li>
-<li><a href='#filter.sort.matrix'><p>Filter and sort matrix</p></a></li>
+<li><a href='#example_meta_data'><p>Example meta data</p></a></li>
+<li><a href='#filter_sort_matrix'><p>Filter and sort matrix</p></a></li>
 <li><a href='#inferCSN'><p>Inferring Cell-Specific Gene Regulatory Network</p></a></li>
 <li><a href='#model.fit'><p>Fit a sparse regression model</p></a></li>
-<li><a href='#net.format'><p>Format weight table</p></a></li>
+<li><a href='#network_format'><p>Format weight table</p></a></li>
+<li><a href='#network_sift'><p>network_sift</p></a></li>
 <li><a href='#network.heatmap'><p>The heatmap of network</p></a></li>
+<li><a href='#normalization'><p>normalization</p></a></li>
+<li><a href='#parallelize_fun'><p>Apply function over a List or Vector</p></a></li>
+<li><a href='#plot_contrast_networks'><p>plot_contrast_networks</p></a></li>
+<li><a href='#plot_dynamic_networks'><p>plot_dynamic_networks</p></a></li>
+<li><a href='#plot_scatter'><p>plot_scatter</p></a></li>
+<li><a href='#plot_static_networks'><p>Plot of dynamic networks</p></a></li>
 <li><a href='#predict.SRM_fit'><p>Predict Response</p></a></li>
 <li><a href='#prepare.performance.data'><p>prepare.performance.data</p></a></li>
 <li><a href='#print.SRM_fit'><p>Prints a summary of model.fit</p></a></li>
+<li><a href='#r_square'><p><code class="reqn">R^2</code> (coefficient of determination)</p></a></li>
+<li><a href='#rse'><p>Relative Squared Error</p></a></li>
 <li><a href='#single.network'><p>Construct network for single gene</p></a></li>
 <li><a href='#sparse.regression'><p>Sparse regression model</p></a></li>
+<li><a href='#sse'><p>Sum of Squared Errors</p></a></li>
 <li><a href='#table.to.matrix'><p>Switch weight table to matrix</p></a></li>
 </ul>
 </div>
@@ -55,11 +65,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.1</td>
+<td>1.0.5</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-3-14</td>
+<td>2024-6-26</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -88,13 +98,14 @@ function processMathHTML() {
 <tr>
 <td>Imports:</td>
 <td>ComplexHeatmap, doParallel, dplyr, foreach, ggnetwork,
-ggplot2, ggraph, Matrix, methods, parallel, patchwork,
-progress, purrr, Rcpp, stats, utils</td>
+ggplot2, ggraph, Matrix, methods, parallel, patchwork, pbapply,
+purrr, Rcpp, RcppArmadillo, stats, utils</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>circlize, gtools, igraph, precrec, pROC, testthat (&ge; 3.0.0),
-tidygraph</td>
+<td>circlize, gtools, gganimate, ggExtra, ggpointdensity, ggpubr,
+igraph, network, plotly, precrec, pROC, testthat (&ge; 3.0.0),
+tidygraph, RColorBrewer, RTransferEntropy, viridis</td>
 </tr>
 <tr>
 <td>LinkingTo:</td>
@@ -130,7 +141,7 @@ tidygraph</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-15 06:50:23 UTC; mx</td>
+<td>2024-06-26 11:31:04 UTC; mx</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -143,7 +154,7 @@ tidygraph</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-15 07:00:02 UTC</td>
+<td>2024-06-26 12:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -192,14 +203,14 @@ tidygraph</td>
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>acc.calculate(weight_table, ground_truth)
+<pre><code class='language-R'>acc.calculate(network_table, ground_truth)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="acc.calculate_+3A_weight_table">weight_table</code></td>
+<tr><td><code id="acc.calculate_+3A_network_table">network_table</code></td>
 <td>
 <p>The weight data table of network</p>
 </td></tr>
@@ -218,12 +229,54 @@ tidygraph</td>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
+<pre><code class='language-R'>data("example_matrix")
 data("example_ground_truth")
-weight_table &lt;- inferCSN(example_matrix)
-acc &lt;- acc.calculate(weight_table, example_ground_truth)
-acc
+network_table &lt;- inferCSN(example_matrix)
+acc.calculate(network_table, example_ground_truth)
+</code></pre>
+
+<hr>
+<h2 id='as_matrix'>Attempts to turn a dgCMatrix into a dense matrix</h2><span id='topic+as_matrix'></span>
+
+<h3>Description</h3>
+
+<p>Attempts to turn a dgCMatrix into a dense matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>as_matrix(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="as_matrix_+3A_x">x</code></td>
+<td>
+<p>A matrix.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>sparse_matrix &lt;- Matrix::sparseMatrix(
+  i = sample(1:200, 50),
+  j = sample(1:200, 50),
+  x = rnorm(50),
+  dims = c(200, 200),
+  dimnames = list(
+    paste0("a", rep(1:200)),
+    paste0("b", rep(1:200))
+  )
+)
+
+identical(
+  as.matrix(sparse_matrix),
+  as_matrix(sparse_matrix)
+)
 </code></pre>
 
 <hr>
@@ -238,7 +291,7 @@ acc
 <h3>Usage</h3>
 
 <pre><code class='language-R'>auc.calculate(
-  weight_table,
+  network_table,
   ground_truth,
   plot = FALSE,
   line_color = "#1563cc",
@@ -250,7 +303,7 @@ acc
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="auc.calculate_+3A_weight_table">weight_table</code></td>
+<tr><td><code id="auc.calculate_+3A_network_table">network_table</code></td>
 <td>
 <p>The weight data table of network</p>
 </td></tr>
@@ -281,12 +334,10 @@ acc
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
+<pre><code class='language-R'>data("example_matrix")
 data("example_ground_truth")
-weight_table &lt;- inferCSN(example_matrix)
-auc &lt;- auc.calculate(weight_table, example_ground_truth, plot = TRUE)
-auc
+network_table &lt;- inferCSN(example_matrix)
+auc.calculate(network_table, example_ground_truth, plot = TRUE)
 </code></pre>
 
 <hr>
@@ -300,20 +351,33 @@ auc
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>calculate.gene.rank(weight_table, directed = FALSE)
+<pre><code class='language-R'>calculate.gene.rank(
+  network_table,
+  regulators = NULL,
+  targets = NULL,
+  directed = FALSE
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="calculate.gene.rank_+3A_weight_table">weight_table</code></td>
+<tr><td><code id="calculate.gene.rank_+3A_network_table">network_table</code></td>
 <td>
-<p>The weight data table of network</p>
+<p>The weight data table of network.</p>
+</td></tr>
+<tr><td><code id="calculate.gene.rank_+3A_regulators">regulators</code></td>
+<td>
+<p>Regulators list.</p>
+</td></tr>
+<tr><td><code id="calculate.gene.rank_+3A_targets">targets</code></td>
+<td>
+<p>Targets list.</p>
 </td></tr>
 <tr><td><code id="calculate.gene.rank_+3A_directed">directed</code></td>
 <td>
-<p>If GRN is directed or not</p>
+<p>If network is directed or not.</p>
 </td></tr>
 </table>
 
@@ -326,11 +390,10 @@ auc
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
-weight_table &lt;- inferCSN(example_matrix)
-ranks &lt;- calculate.gene.rank(weight_table)
-head(ranks)
+<pre><code class='language-R'>data("example_matrix")
+network_table &lt;- inferCSN(example_matrix)
+head(calculate.gene.rank(network_table))
+head(calculate.gene.rank(network_table, regulators = "g1"))
 </code></pre>
 
 <hr>
@@ -351,13 +414,14 @@ head(ranks)
   cross_validation,
   seed,
   n_folds,
-  k_folds,
+  percent_samples,
   r_threshold,
   regulators,
   targets,
   regulators_num,
   verbose,
-  cores
+  cores,
+  ...
 )
 </code></pre>
 
@@ -372,14 +436,14 @@ head(ranks)
 <tr><td><code id="check.parameters_+3A_penalty">penalty</code></td>
 <td>
 <p>The type of regularization.
-This can take either one of the following choices: &quot;L0&quot; and &quot;L0L2&quot;.
-For high-dimensional and sparse data, such as single-cell sequencing data, &quot;L0L2&quot; is more effective.</p>
+This can take either one of the following choices: <code>L0</code> and <code>L0L2</code>.
+For high-dimensional and sparse data, such as single-cell sequencing data, <code>L0L2</code> is more effective.</p>
 </td></tr>
 <tr><td><code id="check.parameters_+3A_algorithm">algorithm</code></td>
 <td>
 <p>The type of algorithm used to minimize the objective function.
-Currently &quot;CD&quot; and &quot;CDPSI&quot; are supported.
-The CDPSI algorithm may yield better results, but it also increases running time.</p>
+Currently <code>CD</code> and <code>CDPSI</code> are supported.
+The <code>CDPSI</code> algorithm may yield better results, but it also increases running time.</p>
 </td></tr>
 <tr><td><code id="check.parameters_+3A_cross_validation">cross_validation</code></td>
 <td>
@@ -393,25 +457,25 @@ The CDPSI algorithm may yield better results, but it also increases running time
 <td>
 <p>The number of folds for cross-validation.</p>
 </td></tr>
-<tr><td><code id="check.parameters_+3A_k_folds">k_folds</code></td>
+<tr><td><code id="check.parameters_+3A_percent_samples">percent_samples</code></td>
 <td>
-<p>The number of folds for sample split.</p>
+<p>The percent of all samples used for <code><a href="#topic+sparse.regression">sparse.regression</a></code>. Default set to 1.</p>
 </td></tr>
 <tr><td><code id="check.parameters_+3A_r_threshold">r_threshold</code></td>
 <td>
-<p>Threshold of R^2.</p>
+<p>Threshold of <code class="reqn">R^2</code> or correlation coefficient.</p>
 </td></tr>
 <tr><td><code id="check.parameters_+3A_regulators">regulators</code></td>
 <td>
-<p>Regulator genes.</p>
+<p>A character vector with the regulators to consider for CSN inference.</p>
 </td></tr>
 <tr><td><code id="check.parameters_+3A_targets">targets</code></td>
 <td>
-<p>Target genes.</p>
+<p>A character vector with the targets to consider for CSN inference.</p>
 </td></tr>
 <tr><td><code id="check.parameters_+3A_regulators_num">regulators_num</code></td>
 <td>
-<p>The number of non-zore coef, this value will affect the final performance.
+<p>The number of non-zore coefficients, this value will affect the final performance.
 The maximum support size at which to terminate the regularization path.
 Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as L0 regularization typically selects a small portion of non-zeros.</p>
 </td></tr>
@@ -421,14 +485,18 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 </td></tr>
 <tr><td><code id="check.parameters_+3A_cores">cores</code></td>
 <td>
-<p>CPU cores.</p>
+<p>Number of CPU cores used. Setting to parallelize the computation with <code><a href="foreach.html#topic+foreach">foreach</a></code>.</p>
+</td></tr>
+<tr><td><code id="check.parameters_+3A_...">...</code></td>
+<td>
+<p>Parameters for other methods.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>No return value, called for check input parameters
+<p>Not return value, called for check input parameters
 </p>
 
 <hr>
@@ -484,130 +552,6 @@ coef(object, lambda = NULL, gamma = NULL, ...)
 </p>
 
 <hr>
-<h2 id='contrast.networks'>contrast.networks</h2><span id='topic+contrast.networks'></span>
-
-<h3>Description</h3>
-
-<p>contrast.networks
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>contrast.networks(
-  weight_table,
-  degree_value = 0,
-  weight_value = 0,
-  legend_position = "bottom"
-)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="contrast.networks_+3A_weight_table">weight_table</code></td>
-<td>
-<p>The weight data table of network.</p>
-</td></tr>
-<tr><td><code id="contrast.networks_+3A_degree_value">degree_value</code></td>
-<td>
-<p>degree_value</p>
-</td></tr>
-<tr><td><code id="contrast.networks_+3A_weight_value">weight_value</code></td>
-<td>
-<p>weight_value</p>
-</td></tr>
-<tr><td><code id="contrast.networks_+3A_legend_position">legend_position</code></td>
-<td>
-<p>The position of legend.</p>
-</td></tr>
-</table>
-
-
-<h3>Value</h3>
-
-<p>Return a ggplot2 object
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
-weight_table &lt;- inferCSN(example_matrix)
-contrast.networks(weight_table[1:50, ])
-</code></pre>
-
-<hr>
-<h2 id='dynamic.networks'>Plot of dynamic networks</h2><span id='topic+dynamic.networks'></span>
-
-<h3>Description</h3>
-
-<p>Plot of dynamic networks
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>dynamic.networks(
-  weight_table,
-  regulators = NULL,
-  targets = NULL,
-  legend_position = "right"
-)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="dynamic.networks_+3A_weight_table">weight_table</code></td>
-<td>
-<p>The weight data table of network.</p>
-</td></tr>
-<tr><td><code id="dynamic.networks_+3A_regulators">regulators</code></td>
-<td>
-<p>Regulators list.</p>
-</td></tr>
-<tr><td><code id="dynamic.networks_+3A_targets">targets</code></td>
-<td>
-<p>Targets list.</p>
-</td></tr>
-<tr><td><code id="dynamic.networks_+3A_legend_position">legend_position</code></td>
-<td>
-<p>The position of legend.</p>
-</td></tr>
-</table>
-
-
-<h3>Value</h3>
-
-<p>A list of ggplot2 objects
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
-weight_table &lt;- inferCSN(example_matrix)
-dynamic.networks(
-  weight_table,
-  regulators = weight_table[1, 1]
-)
-dynamic.networks(
-  weight_table,
-  targets = weight_table[1, 1]
-)
-dynamic.networks(
-  weight_table,
-  regulators = weight_table[1, 1],
-  targets = weight_table[1, 2]
-)
-</code></pre>
-
-<hr>
 <h2 id='example_ground_truth'>Example ground truth data</h2><span id='topic+example_ground_truth'></span>
 
 <h3>Description</h3>
@@ -624,7 +568,15 @@ dynamic.networks(
 </p>
 
 <hr>
-<h2 id='filter.sort.matrix'>Filter and sort matrix</h2><span id='topic+filter.sort.matrix'></span>
+<h2 id='example_meta_data'>Example meta data</h2><span id='topic+example_meta_data'></span>
+
+<h3>Description</h3>
+
+<p>The data contains cells and pseudotime information.
+</p>
+
+<hr>
+<h2 id='filter_sort_matrix'>Filter and sort matrix</h2><span id='topic+filter_sort_matrix'></span>
 
 <h3>Description</h3>
 
@@ -634,22 +586,22 @@ dynamic.networks(
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>filter.sort.matrix(weight_matrix, regulators = NULL, targets = NULL)
+<pre><code class='language-R'>filter_sort_matrix(weight_matrix, regulators = NULL, targets = NULL)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="filter.sort.matrix_+3A_weight_matrix">weight_matrix</code></td>
+<tr><td><code id="filter_sort_matrix_+3A_weight_matrix">weight_matrix</code></td>
 <td>
 <p>The matrix of network weight.</p>
 </td></tr>
-<tr><td><code id="filter.sort.matrix_+3A_regulators">regulators</code></td>
+<tr><td><code id="filter_sort_matrix_+3A_regulators">regulators</code></td>
 <td>
 <p>Regulators list.</p>
 </td></tr>
-<tr><td><code id="filter.sort.matrix_+3A_targets">targets</code></td>
+<tr><td><code id="filter_sort_matrix_+3A_targets">targets</code></td>
 <td>
 <p>Targets list.</p>
 </td></tr>
@@ -666,12 +618,12 @@ dynamic.networks(
 
 <pre><code class='language-R'>library(inferCSN)
 data("example_matrix")
-weight_table &lt;- inferCSN(example_matrix)
-weight_matrix &lt;- table.to.matrix(weight_table)
-filter.sort.matrix(weight_matrix)[1:6, 1:6]
+network_table &lt;- inferCSN(example_matrix)
+weight_matrix &lt;- table.to.matrix(network_table)
+filter_sort_matrix(weight_matrix)[1:6, 1:6]
 
-filter.sort.matrix(
-  weight_matrix ,
+filter_sort_matrix(
+  weight_matrix,
   regulators = c("g1", "g2"),
   targets = c("g3", "g4")
 )
@@ -688,7 +640,22 @@ filter.sort.matrix(
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>inferCSN(object, ...)
+<pre><code class='language-R'>inferCSN(
+  object,
+  penalty = "L0",
+  algorithm = "CD",
+  cross_validation = FALSE,
+  seed = 1,
+  n_folds = 10,
+  percent_samples = 1,
+  r_threshold = 0,
+  regulators = NULL,
+  targets = NULL,
+  regulators_num = NULL,
+  cores = 1,
+  verbose = FALSE,
+  ...
+)
 
 ## S4 method for signature 'matrix'
 inferCSN(
@@ -698,13 +665,13 @@ inferCSN(
   cross_validation = FALSE,
   seed = 1,
   n_folds = 10,
-  k_folds = NULL,
+  percent_samples = 1,
   r_threshold = 0,
   regulators = NULL,
   targets = NULL,
   regulators_num = NULL,
-  verbose = FALSE,
   cores = 1,
+  verbose = FALSE,
   ...
 )
 
@@ -716,13 +683,13 @@ inferCSN(
   cross_validation = FALSE,
   seed = 1,
   n_folds = 10,
-  k_folds = NULL,
+  percent_samples = 1,
   r_threshold = 0,
   regulators = NULL,
   targets = NULL,
   regulators_num = NULL,
-  verbose = FALSE,
   cores = 1,
+  verbose = FALSE,
   ...
 )
 </code></pre>
@@ -733,23 +700,19 @@ inferCSN(
 <table>
 <tr><td><code id="inferCSN_+3A_object">object</code></td>
 <td>
-<p>Input object</p>
-</td></tr>
-<tr><td><code id="inferCSN_+3A_...">...</code></td>
-<td>
-<p>Arguments for other methods</p>
+<p>The input data for <code>inferCSN</code>.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_penalty">penalty</code></td>
 <td>
 <p>The type of regularization.
-This can take either one of the following choices: &quot;L0&quot; and &quot;L0L2&quot;.
-For high-dimensional and sparse data, such as single-cell sequencing data, &quot;L0L2&quot; is more effective.</p>
+This can take either one of the following choices: <code>L0</code> and <code>L0L2</code>.
+For high-dimensional and sparse data, such as single-cell sequencing data, <code>L0L2</code> is more effective.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_algorithm">algorithm</code></td>
 <td>
 <p>The type of algorithm used to minimize the objective function.
-Currently &quot;CD&quot; and &quot;CDPSI&quot; are supported.
-The CDPSI algorithm may yield better results, but it also increases running time.</p>
+Currently <code>CD</code> and <code>CDPSI</code> are supported.
+The <code>CDPSI</code> algorithm may yield better results, but it also increases running time.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_cross_validation">cross_validation</code></td>
 <td>
@@ -763,35 +726,39 @@ The CDPSI algorithm may yield better results, but it also increases running time
 <td>
 <p>The number of folds for cross-validation.</p>
 </td></tr>
-<tr><td><code id="inferCSN_+3A_k_folds">k_folds</code></td>
+<tr><td><code id="inferCSN_+3A_percent_samples">percent_samples</code></td>
 <td>
-<p>The number of folds for sample split.</p>
+<p>The percent of all samples used for <code><a href="#topic+sparse.regression">sparse.regression</a></code>. Default set to 1.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_r_threshold">r_threshold</code></td>
 <td>
-<p>Threshold of R^2.</p>
+<p>Threshold of <code class="reqn">R^2</code> or correlation coefficient.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_regulators">regulators</code></td>
 <td>
-<p>Regulator genes.</p>
+<p>A character vector with the regulators to consider for CSN inference.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_targets">targets</code></td>
 <td>
-<p>Target genes.</p>
+<p>A character vector with the targets to consider for CSN inference.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_regulators_num">regulators_num</code></td>
 <td>
-<p>The number of non-zore coef, this value will affect the final performance.
+<p>The number of non-zore coefficients, this value will affect the final performance.
 The maximum support size at which to terminate the regularization path.
 Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as L0 regularization typically selects a small portion of non-zeros.</p>
+</td></tr>
+<tr><td><code id="inferCSN_+3A_cores">cores</code></td>
+<td>
+<p>Number of CPU cores used. Setting to parallelize the computation with <code><a href="foreach.html#topic+foreach">foreach</a></code>.</p>
 </td></tr>
 <tr><td><code id="inferCSN_+3A_verbose">verbose</code></td>
 <td>
 <p>Print detailed information.</p>
 </td></tr>
-<tr><td><code id="inferCSN_+3A_cores">cores</code></td>
+<tr><td><code id="inferCSN_+3A_...">...</code></td>
 <td>
-<p>CPU cores.</p>
+<p>Parameters for other methods.</p>
 </td></tr>
 </table>
 
@@ -804,13 +771,12 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
-weight_table &lt;- inferCSN(example_matrix, verbose = TRUE)
-head(weight_table)
+<pre><code class='language-R'>data("example_matrix")
+network_table &lt;- inferCSN(example_matrix, verbose = TRUE)
+head(network_table)
 
-weight_table &lt;- inferCSN(example_matrix, verbose = TRUE, cores = 2)
-head(weight_table)
+network_table &lt;- inferCSN(example_matrix, cores = 2)
+head(network_table)
 </code></pre>
 
 <hr>
@@ -852,7 +818,8 @@ head(weight_table)
   excludeFirstK = 0,
   intercept = TRUE,
   lows = -Inf,
-  highs = Inf
+  highs = Inf,
+  ...
 )
 </code></pre>
 
@@ -871,18 +838,18 @@ head(weight_table)
 <tr><td><code id="model.fit_+3A_penalty">penalty</code></td>
 <td>
 <p>The type of regularization.
-This can take either one of the following choices: &quot;L0&quot; and &quot;L0L2&quot;.
-For high-dimensional and sparse data, such as single-cell sequencing data, &quot;L0L2&quot; is more effective.</p>
+This can take either one of the following choices: <code>L0</code> and <code>L0L2</code>.
+For high-dimensional and sparse data, such as single-cell sequencing data, <code>L0L2</code> is more effective.</p>
 </td></tr>
 <tr><td><code id="model.fit_+3A_algorithm">algorithm</code></td>
 <td>
 <p>The type of algorithm used to minimize the objective function.
-Currently &quot;CD&quot; and &quot;CDPSI&quot; are supported.
-The CDPSI algorithm may yield better results, but it also increases running time.</p>
+Currently <code>CD</code> and <code>CDPSI</code> are supported.
+The <code>CDPSI</code> algorithm may yield better results, but it also increases running time.</p>
 </td></tr>
 <tr><td><code id="model.fit_+3A_regulators_num">regulators_num</code></td>
 <td>
-<p>The number of non-zore coef, this value will affect the final performance.
+<p>The number of non-zore coefficients, this value will affect the final performance.
 The maximum support size at which to terminate the regularization path.
 Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as L0 regularization typically selects a small portion of non-zeros.</p>
 </td></tr>
@@ -978,6 +945,10 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 <td>
 <p>Upper bounds for coefficients</p>
 </td></tr>
+<tr><td><code id="model.fit_+3A_...">...</code></td>
+<td>
+<p>Parameters for other methods.</p>
+</td></tr>
 </table>
 
 
@@ -989,8 +960,7 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
+<pre><code class='language-R'>data("example_matrix")
 fit &lt;- model.fit(
 example_matrix[, -1],
 example_matrix[, 1]
@@ -999,7 +969,7 @@ head(coef(fit))
 </code></pre>
 
 <hr>
-<h2 id='net.format'>Format weight table</h2><span id='topic+net.format'></span>
+<h2 id='network_format'>Format weight table</h2><span id='topic+network_format'></span>
 
 <h3>Description</h3>
 
@@ -1009,26 +979,31 @@ head(coef(fit))
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>net.format(weight_table, regulators = NULL, targets = NULL, abs_weight = TRUE)
+<pre><code class='language-R'>network_format(
+  network_table,
+  regulators = NULL,
+  targets = NULL,
+  abs_weight = TRUE
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="net.format_+3A_weight_table">weight_table</code></td>
+<tr><td><code id="network_format_+3A_network_table">network_table</code></td>
 <td>
 <p>The weight data table of network.</p>
 </td></tr>
-<tr><td><code id="net.format_+3A_regulators">regulators</code></td>
+<tr><td><code id="network_format_+3A_regulators">regulators</code></td>
 <td>
 <p>Regulators list.</p>
 </td></tr>
-<tr><td><code id="net.format_+3A_targets">targets</code></td>
+<tr><td><code id="network_format_+3A_targets">targets</code></td>
 <td>
 <p>Targets list.</p>
 </td></tr>
-<tr><td><code id="net.format_+3A_abs_weight">abs_weight</code></td>
+<tr><td><code id="network_format_+3A_abs_weight">abs_weight</code></td>
 <td>
 <p>Logical value, whether to perform absolute value on weights,
 default set to 'TRUE', and when set 'abs_weight' to 'TRUE',
@@ -1045,28 +1020,182 @@ the output of weight table will create a new column named 'Interaction'.</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
-weight_table &lt;- inferCSN(example_matrix)
+<pre><code class='language-R'>data("example_matrix")
+network_table &lt;- inferCSN(example_matrix)
 
-net.format(
-  weight_table,
+network_format(
+  network_table,
   regulators = c("g1")
 )
-net.format(
-  weight_table,
+
+network_format(
+  network_table,
   regulators = c("g1"),
   abs_weight = FALSE
 )
 
-net.format(
-  weight_table,
+network_format(
+  network_table,
   targets = c("g3")
 )
-net.format(
-  weight_table,
+
+network_format(
+  network_table,
   regulators = c("g1", "g3"),
   targets = c("g3", "g5")
+)
+</code></pre>
+
+<hr>
+<h2 id='network_sift'>network_sift</h2><span id='topic+network_sift'></span>
+
+<h3>Description</h3>
+
+<p>network_sift
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>network_sift(
+  network_table,
+  matrix = NULL,
+  meta_data = NULL,
+  pseudotime_column = NULL,
+  method = c("entropy", "max"),
+  entropy_method = c("Shannon", "Renyi"),
+  effective_entropy = FALSE,
+  shuffles = 100,
+  entropy_nboot = 300,
+  history_length = 1,
+  entropy_p_value = 0.05,
+  cores = 1,
+  verbose = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="network_sift_+3A_network_table">network_table</code></td>
+<td>
+<p>network_table</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_matrix">matrix</code></td>
+<td>
+<p>The expression matrix.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_meta_data">meta_data</code></td>
+<td>
+<p>The meta data for cells or samples.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_pseudotime_column">pseudotime_column</code></td>
+<td>
+<p>The column of pseudotime.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_method">method</code></td>
+<td>
+<p>method The method used for filter edges. Could be choose <code>"entropy"</code> or <code>"max"</code>.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_entropy_method">entropy_method</code></td>
+<td>
+<p>If setting <code>'method'</code> to <code>'entropy'</code>,
+could be choose <code>"Shannon"</code> or <code>"Renyi"</code> to compute entropy.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_effective_entropy">effective_entropy</code></td>
+<td>
+<p>Logical value, using effective entropy to filter weights or not.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_shuffles">shuffles</code></td>
+<td>
+<p>The number of shuffles used to calculate the effective transfer entropy. Default is <code>'shuffles'</code> = 100.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_entropy_nboot">entropy_nboot</code></td>
+<td>
+<p>entropy_nboot</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_history_length">history_length</code></td>
+<td>
+<p>history_length</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_entropy_p_value">entropy_p_value</code></td>
+<td>
+<p>P value.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_cores">cores</code></td>
+<td>
+<p>Number of CPU cores used. Setting to parallelize the computation with <code><a href="foreach.html#topic+foreach">foreach</a></code>.</p>
+</td></tr>
+<tr><td><code id="network_sift_+3A_verbose">verbose</code></td>
+<td>
+<p>Print detailed information.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Filtered network table
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("example_matrix")
+data("example_ground_truth")
+network_table &lt;- inferCSN(example_matrix)
+network_table_filtered &lt;- network_sift(network_table)
+data("example_meta_data")
+network_table_filtered_entropy &lt;- network_sift(
+  network_table,
+  matrix = example_matrix,
+  meta_data = example_meta_data,
+  pseudotime_column = "pseudotime",
+  history_length = 2,
+  shuffles = 0,
+  entropy_nboot = 0
+)
+
+network.heatmap(
+  example_ground_truth[, 1:3],
+  heatmap_title = "Ground truth",
+  show_names = TRUE,
+  rect_color = "gray70"
+)
+network.heatmap(
+  network_table,
+  heatmap_title = "Raw",
+  show_names = TRUE,
+  rect_color = "gray70"
+)
+network.heatmap(
+  network_table_filtered,
+  heatmap_title = "Filtered",
+  show_names = TRUE,
+  rect_color = "gray70"
+)
+network.heatmap(
+  network_table_filtered_entropy,
+  heatmap_title = "Filtered by entropy",
+  show_names = TRUE,
+  rect_color = "gray70"
+)
+
+auc.calculate(
+  network_table,
+  example_ground_truth,
+  plot = TRUE
+)
+auc.calculate(
+  network_table_filtered,
+  example_ground_truth,
+  plot = TRUE
+)
+auc.calculate(
+  network_table_filtered_entropy,
+  example_ground_truth,
+  plot = TRUE
 )
 </code></pre>
 
@@ -1082,16 +1211,23 @@ net.format(
 <h3>Usage</h3>
 
 <pre><code class='language-R'>network.heatmap(
-  weight_table,
+  network_table,
   regulators = NULL,
   targets = NULL,
   switch_matrix = TRUE,
   show_names = FALSE,
+  heatmap_size_lock = TRUE,
   heatmap_size = 5,
   heatmap_height = NULL,
   heatmap_width = NULL,
   heatmap_title = NULL,
   heatmap_color = c("#1966ad", "white", "#bb141a"),
+  border_color = "gray",
+  rect_color = NA,
+  anno_width = 1,
+  anno_height = 1,
+  row_anno_type = NULL,
+  column_anno_type = NULL,
   legend_name = "Weight",
   row_title = "Regulators"
 )
@@ -1101,7 +1237,7 @@ net.format(
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="network.heatmap_+3A_weight_table">weight_table</code></td>
+<tr><td><code id="network.heatmap_+3A_network_table">network_table</code></td>
 <td>
 <p>The weight data table of network.</p>
 </td></tr>
@@ -1115,15 +1251,19 @@ net.format(
 </td></tr>
 <tr><td><code id="network.heatmap_+3A_switch_matrix">switch_matrix</code></td>
 <td>
-<p>Logical value, whether to weight data table to matrix.</p>
+<p>Logical value, default set to 'TRUE', whether to weight data table to matrix.</p>
 </td></tr>
 <tr><td><code id="network.heatmap_+3A_show_names">show_names</code></td>
 <td>
-<p>Logical value, whether to show names of row and column.</p>
+<p>Logical value, default set to 'FALSE', whether to show names of row and column.</p>
+</td></tr>
+<tr><td><code id="network.heatmap_+3A_heatmap_size_lock">heatmap_size_lock</code></td>
+<td>
+<p>Lock the size of heatmap.</p>
 </td></tr>
 <tr><td><code id="network.heatmap_+3A_heatmap_size">heatmap_size</code></td>
 <td>
-<p>The size of heatmap, default set to 5.</p>
+<p>Default set to 5. The size of heatmap.</p>
 </td></tr>
 <tr><td><code id="network.heatmap_+3A_heatmap_height">heatmap_height</code></td>
 <td>
@@ -1141,6 +1281,30 @@ net.format(
 <td>
 <p>Colors of heatmap.</p>
 </td></tr>
+<tr><td><code id="network.heatmap_+3A_border_color">border_color</code></td>
+<td>
+<p>Default set to 'gray'. Color of heatmap border.</p>
+</td></tr>
+<tr><td><code id="network.heatmap_+3A_rect_color">rect_color</code></td>
+<td>
+<p>Default set to 'NA'. Color of heatmap rect.</p>
+</td></tr>
+<tr><td><code id="network.heatmap_+3A_anno_width">anno_width</code></td>
+<td>
+<p>Width of annotation.</p>
+</td></tr>
+<tr><td><code id="network.heatmap_+3A_anno_height">anno_height</code></td>
+<td>
+<p>Height of annotation.</p>
+</td></tr>
+<tr><td><code id="network.heatmap_+3A_row_anno_type">row_anno_type</code></td>
+<td>
+<p>Default set to 'NULL'. c(&quot;boxplot&quot;, &quot;barplot&quot;, &quot;histogram&quot;, &quot;density&quot;, &quot;lines&quot;, &quot;points&quot;, &quot;horizon&quot;)</p>
+</td></tr>
+<tr><td><code id="network.heatmap_+3A_column_anno_type">column_anno_type</code></td>
+<td>
+<p>Default set to 'NULL'. c(&quot;boxplot&quot;, &quot;barplot&quot;, &quot;histogram&quot;, &quot;density&quot;, &quot;lines&quot;, &quot;points&quot;)</p>
+</td></tr>
 <tr><td><code id="network.heatmap_+3A_legend_name">legend_name</code></td>
 <td>
 <p>The name of legend.</p>
@@ -1154,16 +1318,15 @@ net.format(
 
 <h3>Value</h3>
 
-<p>Return a heatmap of ggplot2 object
+<p>Return a heatmap
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
+<pre><code class='language-R'>data("example_matrix")
 data("example_ground_truth")
-weight_table &lt;- inferCSN(example_matrix)
+network_table &lt;- inferCSN(example_matrix)
 
 p1 &lt;- network.heatmap(
   example_ground_truth[, 1:3],
@@ -1171,20 +1334,20 @@ p1 &lt;- network.heatmap(
   legend_name = "Ground truth"
 )
 p2 &lt;- network.heatmap(
-  weight_table,
+  network_table,
   heatmap_title = "inferCSN",
   legend_name = "inferCSN"
 )
 ComplexHeatmap::draw(p1 + p2)
 
 p3 &lt;- network.heatmap(
-  weight_table,
+  network_table,
   heatmap_title = "inferCSN",
   legend_name = "Weight1",
   heatmap_color = c("#20a485", "#410054", "#fee81f")
 )
 p4 &lt;- network.heatmap(
-  weight_table,
+  network_table,
   heatmap_title = "inferCSN",
   legend_name = "Weight2",
   heatmap_color = c("#20a485", "white", "#fee81f")
@@ -1192,31 +1355,532 @@ p4 &lt;- network.heatmap(
 ComplexHeatmap::draw(p3 + p4)
 
 network.heatmap(
-  weight_table,
-  heatmap_title = "inferCSN",
-  show_names = TRUE
+  network_table,
+  show_names = TRUE,
+  rect_color = "gray90",
+  row_anno_type = "density",
+  column_anno_type = "barplot"
 )
 
 network.heatmap(
-  weight_table,
+  network_table,
   regulators = c("g1", "g2"),
-  heatmap_title = "inferCSN",
   show_names = TRUE
 )
 
 network.heatmap(
-  weight_table,
+  network_table,
   targets = c("g1", "g2"),
-  heatmap_title = "inferCSN",
+  row_anno_type = "boxplot",
+  column_anno_type = "histogram",
   show_names = TRUE
 )
 
 network.heatmap(
-  weight_table,
+  network_table,
   regulators = c("g1", "g3", "g5"),
   targets = c("g3", "g6", "g9"),
-  heatmap_title = "inferCSN",
   show_names = TRUE
+)
+</code></pre>
+
+<hr>
+<h2 id='normalization'>normalization</h2><span id='topic+normalization'></span>
+
+<h3>Description</h3>
+
+<p>normalization
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>normalization(x, method = "max_min")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="normalization_+3A_x">x</code></td>
+<td>
+<p>A numeric vector.</p>
+</td></tr>
+<tr><td><code id="normalization_+3A_method">method</code></td>
+<td>
+<p>Method for normalization.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Normalized vector
+</p>
+
+<hr>
+<h2 id='parallelize_fun'>Apply function over a List or Vector</h2><span id='topic+parallelize_fun'></span>
+
+<h3>Description</h3>
+
+<p>Apply function over a List or Vector
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>parallelize_fun(x, fun, cores = 1, export_fun = NULL, verbose = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="parallelize_fun_+3A_x">x</code></td>
+<td>
+<p>A vector or list to apply over.</p>
+</td></tr>
+<tr><td><code id="parallelize_fun_+3A_fun">fun</code></td>
+<td>
+<p>The function to be applied to each element.</p>
+</td></tr>
+<tr><td><code id="parallelize_fun_+3A_cores">cores</code></td>
+<td>
+<p>cores.</p>
+</td></tr>
+<tr><td><code id="parallelize_fun_+3A_export_fun">export_fun</code></td>
+<td>
+<p>export_fun.</p>
+</td></tr>
+<tr><td><code id="parallelize_fun_+3A_verbose">verbose</code></td>
+<td>
+<p>Logical. Whether to print progress bar.
+Only works in sequential mode.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list.
+</p>
+
+<hr>
+<h2 id='plot_contrast_networks'>plot_contrast_networks</h2><span id='topic+plot_contrast_networks'></span>
+
+<h3>Description</h3>
+
+<p>plot_contrast_networks
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plot_contrast_networks(
+  network_table,
+  degree_value = 0,
+  weight_value = 0,
+  legend_position = "bottom"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot_contrast_networks_+3A_network_table">network_table</code></td>
+<td>
+<p>The weight data table of network.</p>
+</td></tr>
+<tr><td><code id="plot_contrast_networks_+3A_degree_value">degree_value</code></td>
+<td>
+<p>degree_value</p>
+</td></tr>
+<tr><td><code id="plot_contrast_networks_+3A_weight_value">weight_value</code></td>
+<td>
+<p>weight_value</p>
+</td></tr>
+<tr><td><code id="plot_contrast_networks_+3A_legend_position">legend_position</code></td>
+<td>
+<p>The position of legend.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Return a ggplot2 object
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("example_matrix")
+network_table &lt;- inferCSN(example_matrix)
+plot_contrast_networks(network_table[1:50, ])
+</code></pre>
+
+<hr>
+<h2 id='plot_dynamic_networks'>plot_dynamic_networks</h2><span id='topic+plot_dynamic_networks'></span>
+
+<h3>Description</h3>
+
+<p>plot_dynamic_networks
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plot_dynamic_networks(
+  network_table,
+  celltypes_order,
+  ntop = 10,
+  width = 6,
+  height = 6,
+  seed = 2024,
+  theme_type = "theme_void",
+  plot_type = "ggplot",
+  layout = "fruchtermanreingold",
+  nrow = 2,
+  title = NULL,
+  figure_save = FALSE,
+  figure_name = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot_dynamic_networks_+3A_network_table">network_table</code></td>
+<td>
+<p>network_table</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_celltypes_order">celltypes_order</code></td>
+<td>
+<p>celltypes_order</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_ntop">ntop</code></td>
+<td>
+<p>ntop</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_width">width</code></td>
+<td>
+<p>width</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_height">height</code></td>
+<td>
+<p>height</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_seed">seed</code></td>
+<td>
+<p>seed</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_theme_type">theme_type</code></td>
+<td>
+<p>theme_type</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_plot_type">plot_type</code></td>
+<td>
+<p>plot_type</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_layout">layout</code></td>
+<td>
+<p>layout</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_nrow">nrow</code></td>
+<td>
+<p>nrow</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_title">title</code></td>
+<td>
+<p>The title of figure.</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_figure_save">figure_save</code></td>
+<td>
+<p>figure_save</p>
+</td></tr>
+<tr><td><code id="plot_dynamic_networks_+3A_figure_name">figure_name</code></td>
+<td>
+<p>figure_name</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>ggplot object
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("example_matrix")
+network &lt;- inferCSN(example_matrix)[1:100, ]
+network$celltype &lt;- c(
+  rep("cluster5", 20),
+  rep("cluster1", 20),
+  rep("cluster3", 20),
+  rep("cluster2", 20),
+  rep("cluster6", 20)
+)
+
+celltypes_order &lt;- c(
+  "cluster5", "cluster3",
+  "cluster2", "cluster1",
+  "cluster6"
+)
+
+plot_dynamic_networks(
+  network,
+  celltypes_order = celltypes_order
+)
+
+plot_dynamic_networks(
+  network,
+  celltypes_order = celltypes_order[1:3]
+)
+
+## Not run: 
+# If setting `plot_type = "animate"` to plot and save `gif` figure,
+# please install `gifski` package first.
+plot_dynamic_networks(
+  network,
+  celltypes_order = celltypes_order,
+  plot_type = "animate"
+)
+
+## End(Not run)
+
+plot_dynamic_networks(
+  network,
+  celltypes_order = celltypes_order,
+  plot_type = "ggplotly"
+)
+</code></pre>
+
+<hr>
+<h2 id='plot_scatter'>plot_scatter</h2><span id='topic+plot_scatter'></span>
+
+<h3>Description</h3>
+
+<p>plot_scatter
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plot_scatter(
+  data,
+  smoothing_method = "lm",
+  group_colors = RColorBrewer::brewer.pal(9, "Set1"),
+  title_color = "black",
+  title = NULL,
+  col_title = NULL,
+  row_title = NULL,
+  legend_title = NULL,
+  legend_position = "bottom",
+  margins = "both",
+  marginal_type = NULL,
+  margins_size = 10,
+  compute_correlation = TRUE,
+  compute_correlation_method = "pearson",
+  keep_aspect_ratio = FALSE,
+  facet = FALSE,
+  se = FALSE,
+  pointdensity = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot_scatter_+3A_data">data</code></td>
+<td>
+<p>Input data</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_smoothing_method">smoothing_method</code></td>
+<td>
+<p>Method for smoothing curve, &quot;lm&quot; or &quot;loess&quot;.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_group_colors">group_colors</code></td>
+<td>
+<p>Colors for different groups.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_title_color">title_color</code></td>
+<td>
+<p>Color for the title.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_title">title</code></td>
+<td>
+<p>Main title for the plot.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_col_title">col_title</code></td>
+<td>
+<p>Title for the x-axis.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_row_title">row_title</code></td>
+<td>
+<p>Title for the y-axis.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_legend_title">legend_title</code></td>
+<td>
+<p>Title for the legend.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_legend_position">legend_position</code></td>
+<td>
+<p>The position of legend.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_margins">margins</code></td>
+<td>
+<p>The position of marginal figure (&quot;both&quot;, &quot;x&quot;, &quot;y&quot;).</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_marginal_type">marginal_type</code></td>
+<td>
+<p>The type of marginal figure (&quot;density&quot;, &quot;histogram&quot;, &quot;boxplot&quot;, &quot;violin&quot;, &quot;densigram&quot;).</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_margins_size">margins_size</code></td>
+<td>
+<p>The size of marginal figure, note the bigger size the smaller figure.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_compute_correlation">compute_correlation</code></td>
+<td>
+<p>Whether to compute and print correlation on the figure.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_compute_correlation_method">compute_correlation_method</code></td>
+<td>
+<p>Method to compute correlation (&quot;pearson&quot; or &quot;spearman&quot;).</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_keep_aspect_ratio">keep_aspect_ratio</code></td>
+<td>
+<p>Logical value, whether to set aspect ratio to 1:1.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_facet">facet</code></td>
+<td>
+<p>Faceting variable. If setting TRUE, all settings about margins will be inalidation.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_se">se</code></td>
+<td>
+<p>Display confidence interval around smooth.</p>
+</td></tr>
+<tr><td><code id="plot_scatter_+3A_pointdensity">pointdensity</code></td>
+<td>
+<p>Plot point density when only provide 1 cluster.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>ggplot object
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("example_matrix")
+test_data &lt;- data.frame(
+  example_matrix[1:200, c(1, 7)],
+  c = c(
+    rep("c1", 40),
+    rep("c2", 40),
+    rep("c3", 40),
+    rep("c4", 40),
+    rep("c5", 40)
+  )
+)
+
+p1 &lt;- plot_scatter(
+  test_data,
+  keep_aspect_ratio = TRUE
+)
+p2 &lt;- plot_scatter(
+  test_data,
+  marginal_type = "boxplot",
+  keep_aspect_ratio = TRUE
+)
+p1 + p2
+
+p3 &lt;- plot_scatter(
+  test_data,
+  facet = TRUE,
+  keep_aspect_ratio = TRUE
+)
+p3
+
+p4 &lt;- plot_scatter(
+  test_data[, 1:2],
+  marginal_type = "histogram",
+  keep_aspect_ratio = TRUE
+)
+p4
+</code></pre>
+
+<hr>
+<h2 id='plot_static_networks'>Plot of dynamic networks</h2><span id='topic+plot_static_networks'></span>
+
+<h3>Description</h3>
+
+<p>Plot of dynamic networks
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plot_static_networks(
+  network_table,
+  regulators = NULL,
+  targets = NULL,
+  legend_position = "right"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot_static_networks_+3A_network_table">network_table</code></td>
+<td>
+<p>The weight data table of network.</p>
+</td></tr>
+<tr><td><code id="plot_static_networks_+3A_regulators">regulators</code></td>
+<td>
+<p>Regulators list.</p>
+</td></tr>
+<tr><td><code id="plot_static_networks_+3A_targets">targets</code></td>
+<td>
+<p>Targets list.</p>
+</td></tr>
+<tr><td><code id="plot_static_networks_+3A_legend_position">legend_position</code></td>
+<td>
+<p>The position of legend.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of ggplot2 objects
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("example_matrix")
+network_table &lt;- inferCSN(example_matrix)
+plot_static_networks(
+  network_table,
+  regulators = network_table[1, 1]
+)
+plot_static_networks(
+  network_table,
+  targets = network_table[1, 1]
+)
+plot_static_networks(
+  network_table,
+  regulators = network_table[1, 1],
+  targets = network_table[1, 2]
 )
 </code></pre>
 
@@ -1293,14 +1957,14 @@ In case of logistic regression, probability values are returned
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>prepare.performance.data(weight_table, ground_truth)
+<pre><code class='language-R'>prepare.performance.data(network_table, ground_truth)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="prepare.performance.data_+3A_weight_table">weight_table</code></td>
+<tr><td><code id="prepare.performance.data_+3A_network_table">network_table</code></td>
 <td>
 <p>The weight data table of network</p>
 </td></tr>
@@ -1357,6 +2021,62 @@ print(x, ...)
 </p>
 
 <hr>
+<h2 id='r_square'><code class="reqn">R^2</code> (coefficient of determination)</h2><span id='topic+r_square'></span>
+
+<h3>Description</h3>
+
+<p><code class="reqn">R^2</code> (coefficient of determination)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>r_square(y_true, y_pred)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="r_square_+3A_y_true">y_true</code></td>
+<td>
+<p>A numeric vector with ground truth values.</p>
+</td></tr>
+<tr><td><code id="r_square_+3A_y_pred">y_pred</code></td>
+<td>
+<p>A numeric vector with predicted values.</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='rse'>Relative Squared Error</h2><span id='topic+rse'></span>
+
+<h3>Description</h3>
+
+<p>Relative Squared Error
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rse(y_true, y_pred)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="rse_+3A_y_true">y_true</code></td>
+<td>
+<p>A numeric vector with ground truth values.</p>
+</td></tr>
+<tr><td><code id="rse_+3A_y_pred">y_pred</code></td>
+<td>
+<p>A numeric vector with predicted values.</p>
+</td></tr>
+</table>
+
+<hr>
 <h2 id='single.network'>Construct network for single gene</h2><span id='topic+single.network'></span>
 
 <h3>Description</h3>
@@ -1375,11 +2095,12 @@ print(x, ...)
   seed = 1,
   penalty = "L0",
   algorithm = "CD",
-  regulators_num = NULL,
+  regulators_num = (ncol(matrix) - 1),
   n_folds = 10,
-  k_folds = NULL,
+  percent_samples = 1,
   r_threshold = 0,
-  verbose = FALSE
+  verbose = FALSE,
+  ...
 )
 </code></pre>
 
@@ -1393,11 +2114,11 @@ print(x, ...)
 </td></tr>
 <tr><td><code id="single.network_+3A_regulators">regulators</code></td>
 <td>
-<p>Regulator genes.</p>
+<p>A character vector with the regulators to consider for CSN inference.</p>
 </td></tr>
 <tr><td><code id="single.network_+3A_target">target</code></td>
 <td>
-<p>Target genes.</p>
+<p>Target gene.</p>
 </td></tr>
 <tr><td><code id="single.network_+3A_cross_validation">cross_validation</code></td>
 <td>
@@ -1410,18 +2131,18 @@ print(x, ...)
 <tr><td><code id="single.network_+3A_penalty">penalty</code></td>
 <td>
 <p>The type of regularization.
-This can take either one of the following choices: &quot;L0&quot; and &quot;L0L2&quot;.
-For high-dimensional and sparse data, such as single-cell sequencing data, &quot;L0L2&quot; is more effective.</p>
+This can take either one of the following choices: <code>L0</code> and <code>L0L2</code>.
+For high-dimensional and sparse data, such as single-cell sequencing data, <code>L0L2</code> is more effective.</p>
 </td></tr>
 <tr><td><code id="single.network_+3A_algorithm">algorithm</code></td>
 <td>
 <p>The type of algorithm used to minimize the objective function.
-Currently &quot;CD&quot; and &quot;CDPSI&quot; are supported.
-The CDPSI algorithm may yield better results, but it also increases running time.</p>
+Currently <code>CD</code> and <code>CDPSI</code> are supported.
+The <code>CDPSI</code> algorithm may yield better results, but it also increases running time.</p>
 </td></tr>
 <tr><td><code id="single.network_+3A_regulators_num">regulators_num</code></td>
 <td>
-<p>The number of non-zore coef, this value will affect the final performance.
+<p>The number of non-zore coefficients, this value will affect the final performance.
 The maximum support size at which to terminate the regularization path.
 Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as L0 regularization typically selects a small portion of non-zeros.</p>
 </td></tr>
@@ -1429,17 +2150,21 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 <td>
 <p>The number of folds for cross-validation.</p>
 </td></tr>
-<tr><td><code id="single.network_+3A_k_folds">k_folds</code></td>
+<tr><td><code id="single.network_+3A_percent_samples">percent_samples</code></td>
 <td>
-<p>The number of folds for sample split.</p>
+<p>The percent of all samples used for <code><a href="#topic+sparse.regression">sparse.regression</a></code>. Default set to 1.</p>
 </td></tr>
 <tr><td><code id="single.network_+3A_r_threshold">r_threshold</code></td>
 <td>
-<p>Threshold of R^2.</p>
+<p>Threshold of <code class="reqn">R^2</code> or correlation coefficient.</p>
 </td></tr>
 <tr><td><code id="single.network_+3A_verbose">verbose</code></td>
 <td>
 <p>Print detailed information.</p>
+</td></tr>
+<tr><td><code id="single.network_+3A_...">...</code></td>
+<td>
+<p>Parameters for other methods.</p>
 </td></tr>
 </table>
 
@@ -1452,8 +2177,7 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
+<pre><code class='language-R'>data("example_matrix")
 single_network &lt;- single.network(
   example_matrix,
   regulators = colnames(example_matrix),
@@ -1486,11 +2210,13 @@ single.network(
   seed = 1,
   penalty = "L0",
   algorithm = "CD",
-  regulators_num = NULL,
+  regulators_num = ncol(x),
   n_folds = 10,
-  k_folds = NULL,
+  percent_samples = 1,
   r_threshold = 0,
-  verbose = FALSE
+  computation_method = "cor",
+  verbose = FALSE,
+  ...
 )
 </code></pre>
 
@@ -1517,18 +2243,18 @@ single.network(
 <tr><td><code id="sparse.regression_+3A_penalty">penalty</code></td>
 <td>
 <p>The type of regularization.
-This can take either one of the following choices: &quot;L0&quot; and &quot;L0L2&quot;.
-For high-dimensional and sparse data, such as single-cell sequencing data, &quot;L0L2&quot; is more effective.</p>
+This can take either one of the following choices: <code>L0</code> and <code>L0L2</code>.
+For high-dimensional and sparse data, such as single-cell sequencing data, <code>L0L2</code> is more effective.</p>
 </td></tr>
 <tr><td><code id="sparse.regression_+3A_algorithm">algorithm</code></td>
 <td>
 <p>The type of algorithm used to minimize the objective function.
-Currently &quot;CD&quot; and &quot;CDPSI&quot; are supported.
-The CDPSI algorithm may yield better results, but it also increases running time.</p>
+Currently <code>CD</code> and <code>CDPSI</code> are supported.
+The <code>CDPSI</code> algorithm may yield better results, but it also increases running time.</p>
 </td></tr>
 <tr><td><code id="sparse.regression_+3A_regulators_num">regulators_num</code></td>
 <td>
-<p>The number of non-zore coef, this value will affect the final performance.
+<p>The number of non-zore coefficients, this value will affect the final performance.
 The maximum support size at which to terminate the regularization path.
 Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as L0 regularization typically selects a small portion of non-zeros.</p>
 </td></tr>
@@ -1536,17 +2262,25 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 <td>
 <p>The number of folds for cross-validation.</p>
 </td></tr>
-<tr><td><code id="sparse.regression_+3A_k_folds">k_folds</code></td>
+<tr><td><code id="sparse.regression_+3A_percent_samples">percent_samples</code></td>
 <td>
-<p>The number of folds for sample split.</p>
+<p>The percent of all samples used for <code><a href="#topic+sparse.regression">sparse.regression</a></code>. Default set to 1.</p>
 </td></tr>
 <tr><td><code id="sparse.regression_+3A_r_threshold">r_threshold</code></td>
 <td>
-<p>Threshold of R^2.</p>
+<p>Threshold of <code class="reqn">R^2</code> or correlation coefficient.</p>
+</td></tr>
+<tr><td><code id="sparse.regression_+3A_computation_method">computation_method</code></td>
+<td>
+<p>The method used to compute <code>r</code>.</p>
 </td></tr>
 <tr><td><code id="sparse.regression_+3A_verbose">verbose</code></td>
 <td>
 <p>Print detailed information.</p>
+</td></tr>
+<tr><td><code id="sparse.regression_+3A_...">...</code></td>
+<td>
+<p>Parameters for other methods.</p>
 </td></tr>
 </table>
 
@@ -1559,14 +2293,40 @@ Recommend setting this to a small fraction of min(n,p) (e.g. 0.05 * min(n,p)) as
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
-coefficients &lt;- sparse.regression(
+<pre><code class='language-R'>data("example_matrix")
+sparse.regression(
   example_matrix[, -1],
   example_matrix[, 1]
 )
-coefficients
 </code></pre>
+
+<hr>
+<h2 id='sse'>Sum of Squared Errors</h2><span id='topic+sse'></span>
+
+<h3>Description</h3>
+
+<p>Sum of Squared Errors
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>sse(y_true, y_pred)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="sse_+3A_y_true">y_true</code></td>
+<td>
+<p>A numeric vector with ground truth values.</p>
+</td></tr>
+<tr><td><code id="sse_+3A_y_pred">y_pred</code></td>
+<td>
+<p>A numeric vector with predicted values.</p>
+</td></tr>
+</table>
 
 <hr>
 <h2 id='table.to.matrix'>Switch weight table to matrix</h2><span id='topic+table.to.matrix'></span>
@@ -1579,14 +2339,14 @@ coefficients
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>table.to.matrix(weight_table, regulators = NULL, targets = NULL)
+<pre><code class='language-R'>table.to.matrix(network_table, regulators = NULL, targets = NULL)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="table.to.matrix_+3A_weight_table">weight_table</code></td>
+<tr><td><code id="table.to.matrix_+3A_network_table">network_table</code></td>
 <td>
 <p>The weight data table of network.</p>
 </td></tr>
@@ -1609,15 +2369,14 @@ coefficients
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(inferCSN)
-data("example_matrix")
-weight_table &lt;- inferCSN(example_matrix)
-head(weight_table)
+<pre><code class='language-R'>data("example_matrix")
+network_table &lt;- inferCSN(example_matrix)
+head(network_table)
 
-table.to.matrix(weight_table)[1:6, 1:6]
+table.to.matrix(network_table)[1:6, 1:6]
 
 table.to.matrix(
-  weight_table,
+  network_table,
   regulators = c("g1", "g2"),
   targets = c("g3", "g4")
 )

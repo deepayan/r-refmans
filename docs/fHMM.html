@@ -36,6 +36,7 @@ function processMathHTML() {
 <li><a href='#fHMM_parameters'><p>Set and check model parameters</p></a></li>
 <li><a href='#fHMM_sdds'><p>Define state-dependent distributions</p></a></li>
 <li><a href='#fit_model'><p>Model fitting</p></a></li>
+<li><a href='#get_initial_values'><p>Initialization of numerical likelihood optimization</p></a></li>
 <li><a href='#ll_hmm'><p>Log-likelihood function of an (H)HMM</p></a></li>
 <li><a href='#nLL_hhmm'><p>Negative log-likelihood function of an HHMM</p></a></li>
 <li><a href='#nLL_hmm'><p>Negative log-likelihood function of an HMM</p></a></li>
@@ -52,7 +53,6 @@ function processMathHTML() {
 <li><a href='#reorder_states'><p>Reorder estimated states</p></a></li>
 <li><a href='#set_controls'><p>Define and validate model specifications</p></a></li>
 <li><a href='#sim_model_2gamma'><p>Simulated 2-state HMM with gamma distributions</p></a></li>
-<li><a href='#sim_model_4lnorm'><p>Simulated 4-state HMM with log-normal distributions</p></a></li>
 <li><a href='#simulate_hmm'><p>Simulate data</p></a></li>
 <li><a href='#simulate_observations'><p>Simulate state-dependent observations</p></a></li>
 <li><a href='#spx'><p>Standard &amp; Poor’s 500 (S&amp;P 500) index data</p></a></li>
@@ -75,15 +75,18 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.2.2</td>
+<td>1.3.1</td>
 </tr>
 <tr>
 <td>Description:</td>
 <td>Fitting (hierarchical) hidden Markov models to financial data
     via maximum likelihood estimation. See Oelschläger, L. and Adam, T.
-    "Detecting bearish and bullish markets in financial time series using 
-    hierarchical hidden Markov models" (2021, Statistical Modelling) 
-    &lt;<a href="https://doi.org/10.1177%2F1471082X211034048">doi:10.1177/1471082X211034048</a>&gt; for a reference.</td>
+    "Detecting Bearish and Bullish Markets in Financial Time Series Using 
+    Hierarchical Hidden Markov Models" (2021, Statistical Modelling) 
+    &lt;<a href="https://doi.org/10.1177%2F1471082X211034048">doi:10.1177/1471082X211034048</a>&gt; for a reference on the method. A user guide 
+    is provided by the accompanying software paper "fHMM: Hidden Markov Models 
+    for Financial Time Series in R", Oelschläger, L., Adam, T., and Michels, R.
+    (2024, Journal of Statistical Software)  &lt;<a href="https://doi.org/10.18637%2Fjss.v109.i09">doi:10.18637/jss.v109.i09</a>&gt;.</td>
 </tr>
 <tr>
 <td>Language:</td>
@@ -112,7 +115,7 @@ function processMathHTML() {
 <tr>
 <td>Imports:</td>
 <td>checkmate, cli, foreach, graphics, grDevices, MASS, oeli (&ge;
-0.3.0), padr, progress, Rcpp, stats, utils</td>
+0.3.0), padr, pracma, progress, Rcpp, stats, utils</td>
 </tr>
 <tr>
 <td>LinkingTo:</td>
@@ -149,7 +152,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-24 19:37:38 UTC; Oelschlaeger</td>
+<td>2024-05-31 08:21:51 UTC; Lennart Oelschläger</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -169,7 +172,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-24 21:20:03 UTC</td>
+<td>2024-05-31 13:30:13 UTC</td>
 </tr>
 </table>
 <hr>
@@ -179,7 +182,7 @@ function processMathHTML() {
 
 <p><img src="../help/figures/logo.png" style='float: right' alt='logo' width='120' />
 </p>
-<p>Fitting (hierarchical) hidden Markov models to financial data via maximum likelihood estimation. See Oelschläger, L. and Adam, T. &quot;Detecting bearish and bullish markets in financial time series using hierarchical hidden Markov models&quot; (2021, Statistical Modelling) <a href="https://doi.org/10.1177/1471082X211034048">doi:10.1177/1471082X211034048</a> for a reference.
+<p>Fitting (hierarchical) hidden Markov models to financial data via maximum likelihood estimation. See Oelschläger, L. and Adam, T. &quot;Detecting Bearish and Bullish Markets in Financial Time Series Using Hierarchical Hidden Markov Models&quot; (2021, Statistical Modelling) <a href="https://doi.org/10.1177/1471082X211034048">doi:10.1177/1471082X211034048</a> for a reference on the method. A user guide is provided by the accompanying software paper &quot;fHMM: Hidden Markov Models for Financial Time Series in R&quot;, Oelschläger, L., Adam, T., and Michels, R. (2024, Journal of Statistical Software) <a href="https://doi.org/10.18637/jss.v109.i09">doi:10.18637/jss.v109.i09</a>.
 </p>
 
 
@@ -468,12 +471,6 @@ dax &lt;- download_data(
 system.file("extdata", "dax.csv", package = "fHMM")
 </pre>
 
-
-<h3>Source</h3>
-
-<p><a href="https://finance.yahoo.com/quote/%5EGDAXI">https://finance.yahoo.com/quote/%5EGDAXI</a>
-</p>
-
 <hr>
 <h2 id='dax_model_2n'>DAX 2-state HMM with normal distributions</h2><span id='topic+dax_model_2n'></span>
 
@@ -503,20 +500,23 @@ demonstration purpose.
 </p>
 <pre>
 controls &lt;- set_controls(
-  states = 2,
-  sdds   = "t(df = normal)",
-  data   = list(
-    file        = dax,
-    date_column = "Date",
-    data_column = "Close",
-    logreturns  = TRUE,
-    from        = "2000-01-03",
-    to          = "2022-12-31"
-  ),
-  fit    = list(runs = 100)
+states = 2,
+sdds   = "normal",
+data   = list(
+  file        = dax,
+  date_column = "Date",
+  data_column = "Close",
+  logreturns  = TRUE,
+  from        = "2000-01-03",
+  to          = "2022-12-31"
+),
+fit    = list("runs" = 10, "gradtol" = 1e-6, "steptol" = 1e-6)
 )
 dax_data &lt;- prepare_data(controls)
-dax_model_2n &lt;- fit_model(dax_data)
+dax_model_2n &lt;- fit_model(dax_data, seed = 1)
+dax_model_2n &lt;- decode_states(dax_model_2n)
+dax_model_2n &lt;- compute_residuals(dax_model_2n)
+summary(dax_model_2n)
 </pre>
 
 <hr>
@@ -558,10 +558,18 @@ controls &lt;- set_controls(
     from        = "2000-01-03",
     to          = "2022-12-31"
   ),
-  fit    = list(runs = 200)
+  fit    = list(
+    runs        = 100, 
+    iterlim     = 300,
+    gradtol     = 1e-6,
+    steptol     = 1e-6
+  )
 )
 dax_data &lt;- prepare_data(controls)
-dax_model_3t &lt;- fit_model(dax_data)
+dax_model_3t &lt;- fit_model(dax_data, seed = 1, ncluster = 10)
+dax_model_3t &lt;- decode_states(dax_model_3t)
+dax_model_3t &lt;- compute_residuals(dax_model_3t)
+summary(dax_model_3t)
 </pre>
 
 <hr>
@@ -605,11 +613,17 @@ controls &lt;- set_controls(
     logreturns = c(TRUE, TRUE)
   ),
   fit       = list(
-    runs = 200
+    runs       = 200, 
+    iterlim    = 300,
+    gradtol    = 1e-6,
+    steptol    = 1e-6
   )
 )
 dax_vw_data &lt;- prepare_data(controls)
-dax_vw_model &lt;- fit_model(dax_vw_data)
+dax_vw_model &lt;- fit_model(dax_vw_data, seed = 1, ncluster = 10)
+dax_vw_model &lt;- decode_states(dax_vw_model)
+dax_vw_model &lt;- compute_residuals(dax_vw_model)
+summary(dax_vw_model)
 </pre>
 
 <hr>
@@ -1110,7 +1124,7 @@ contains details about the fitted (hierarchical) Hidden Markov model.
   ll,
   lls,
   gradient,
-  hessian,
+  inverse_fisher,
   decoding
 )
 
@@ -1179,9 +1193,9 @@ predict(object, ahead = 5, alpha = 0.05, ...)
 <td>
 <p>A <code>numeric</code> vector, the gradient at the optimum.</p>
 </td></tr>
-<tr><td><code id="fHMM_model_+3A_hessian">hessian</code></td>
+<tr><td><code id="fHMM_model_+3A_inverse_fisher">inverse_fisher</code></td>
 <td>
-<p>A <code>matrix</code>, the Hessian at the optimum.</p>
+<p>A <code>numeric</code> vector, the inverse Fisher information for each parameter.</p>
 </td></tr>
 <tr><td><code id="fHMM_model_+3A_decoding">decoding</code></td>
 <td>
@@ -1290,9 +1304,10 @@ in more detail below:
 
 <p>Either none, all, or selected elements can be specified.
 </p>
-<p>Unspecified parameters are set to their default values, see below.
+<p>Unspecified parameters are set to their default values.
 </p>
-<p>Specifications in <code>controls</code> override individual specifications.</p>
+<p>Important: Specifications in <code>controls</code> always override individual
+specifications.</p>
 </td></tr>
 <tr><td><code id="fHMM_parameters_+3A_hierarchy">hierarchy</code></td>
 <td>
@@ -1566,14 +1581,29 @@ set to <code>NULL</code>.
 
 <h3>Description</h3>
 
-<p>This function fits a HMM to <code><a href="#topic+fHMM_data">fHMM_data</a></code> via numerical likelihood
+<p>This function fits a hidden Markov model via numerical likelihood
 maximization.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>fit_model(data, ncluster = 1, seed = NULL, verbose = TRUE, init = NULL)
+<pre><code class='language-R'>fit_model(
+  data,
+  controls = data[["controls"]],
+  fit = list(),
+  runs = 10,
+  origin = FALSE,
+  accept = 1:3,
+  gradtol = 0.01,
+  iterlim = 100,
+  print.level = 0,
+  steptol = 0.01,
+  ncluster = 1,
+  seed = NULL,
+  verbose = TRUE,
+  initial_estimate = NULL
+)
 </code></pre>
 
 
@@ -1584,34 +1614,184 @@ maximization.
 <td>
 <p>An object of class <code><a href="#topic+fHMM_data">fHMM_data</a></code>.</p>
 </td></tr>
+<tr><td><code id="fit_model_+3A_controls">controls</code></td>
+<td>
+<p>Either a <code>list</code> or an object of class <code>fHMM_controls</code>.
+</p>
+<p>The <code>list</code> can contain the following elements, which are described
+in more detail below:
+</p>
+
+<ul>
+<li> <p><code>hierarchy</code>, defines an hierarchical HMM,
+</p>
+</li>
+<li> <p><code>states</code>, defines the number of states,
+</p>
+</li>
+<li> <p><code>sdds</code>, defines the state-dependent distributions,
+</p>
+</li>
+<li> <p><code>horizon</code>, defines the time horizon,
+</p>
+</li>
+<li> <p><code>period</code>, defines a flexible, periodic fine-scale time horizon,
+</p>
+</li>
+<li> <p><code>data</code>, a <code>list</code> of controls that define the data,
+</p>
+</li>
+<li> <p><code>fit</code>, a <code>list</code> of controls that define the model fitting
+</p>
+</li></ul>
+
+<p>Either none, all, or selected elements can be specified.
+</p>
+<p>Unspecified parameters are set to their default values.
+</p>
+<p>Important: Specifications in <code>controls</code> always override individual
+specifications.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_fit">fit</code></td>
+<td>
+<p>A <code>list</code> of controls specifying the model fitting.
+</p>
+<p>The <code>list</code> can contain the following elements, which are described
+in more detail below:
+</p>
+
+<ul>
+<li> <p><code>runs</code>, defines the number of numerical optimization runs,
+</p>
+</li>
+<li> <p><code>origin</code>, defines initialization at the true parameters,
+</p>
+</li>
+<li> <p><code>accept</code>, defines the set of accepted optimization runs,
+</p>
+</li>
+<li> <p><code>gradtol</code>, defines the gradient tolerance,
+</p>
+</li>
+<li> <p><code>iterlim</code>, defines the iteration limit,
+</p>
+</li>
+<li> <p><code>print.level</code>, defines the level of printing,
+</p>
+</li>
+<li> <p><code>steptol</code>, defines the minimum allowable relative step length.
+</p>
+</li></ul>
+
+<p>Either none, all, or selected elements can be specified.
+</p>
+<p>Unspecified parameters are set to their default values, see below.
+</p>
+<p>Specifications in <code>fit</code> override individual specifications.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_runs">runs</code></td>
+<td>
+<p>An <code>integer</code>, setting the number of randomly initialized
+optimization runs of the model likelihood from which the best one is selected
+as the final model.
+</p>
+<p>By default, <code>runs = 10</code>.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_origin">origin</code></td>
+<td>
+<p>Only relevant for simulated data, i.e., if the <code>data</code> control is
+<code>NA</code>.
+</p>
+<p>In this case, a <code>logical</code>. If <code>origin = TRUE</code> the optimization is
+initialized at the true parameter values.
+This sets <code>run = 1</code> and <code>accept = 1:5</code>.
+</p>
+<p>By default, <code>origin = FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_accept">accept</code></td>
+<td>
+<p>An <code>integer</code> (vector), specifying which optimization runs are
+accepted based on the output code of <code><a href="stats.html#topic+nlm">nlm</a></code>.
+</p>
+<p>By default, <code>accept = 1:3</code>.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_gradtol">gradtol</code></td>
+<td>
+<p>A positive <code>numeric</code> value, specifying the gradient tolerance, passed on
+to <code><a href="stats.html#topic+nlm">nlm</a></code>.
+</p>
+<p>By default, <code>gradtol = 0.01</code>.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_iterlim">iterlim</code></td>
+<td>
+<p>A positive <code>integer</code> value, specifying the iteration limit, passed on
+to <code><a href="stats.html#topic+nlm">nlm</a></code>.
+</p>
+<p>By default, <code>iterlim = 100</code>.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_print.level">print.level</code></td>
+<td>
+<p>One of <code>0</code>, <code>1</code>, and <code>2</code> to control the verbosity of the
+numerical likelihood optimization, passed on to <code><a href="stats.html#topic+nlm">nlm</a></code>.
+</p>
+<p>By default, <code>print.level = 0</code>.</p>
+</td></tr>
+<tr><td><code id="fit_model_+3A_steptol">steptol</code></td>
+<td>
+<p>A positive <code>numeric</code> value, specifying the step tolerance, passed on
+to <code><a href="stats.html#topic+nlm">nlm</a></code>.
+</p>
+<p>By default, <code>gradtol = 0.01</code>.</p>
+</td></tr>
 <tr><td><code id="fit_model_+3A_ncluster">ncluster</code></td>
 <td>
-<p>Set the number of clusters for parallelization.
-By default, <code>ncluster = 1</code>.</p>
+<p>Set the number of clusters for parallel optimization runs to reduce
+optimization time.
+By default, <code>ncluster = 1</code> (no clustering).</p>
 </td></tr>
 <tr><td><code id="fit_model_+3A_seed">seed</code></td>
 <td>
-<p>Set a seed for the sampling of initial values.
+<p>Set a seed for the generation of initial values.
 No seed by default.</p>
 </td></tr>
 <tr><td><code id="fit_model_+3A_verbose">verbose</code></td>
 <td>
 <p>Set to <code>TRUE</code> to print progress messages.</p>
 </td></tr>
-<tr><td><code id="fit_model_+3A_init">init</code></td>
+<tr><td><code id="fit_model_+3A_initial_estimate">initial_estimate</code></td>
 <td>
-<p>Optionally an object of class <code>parUncon</code> for initialization. This can
-for example be the estimate of a previously fitted model <code>model</code>, i.e.
-the element <code>model$estimate</code>. The initial values are computed via
-<code>replicate(n, jitter(init, amount = 1), simplify = FALSE)</code>,
-where <code>n &lt;- data$controls$fit$runs</code>.</p>
+<p>Optionally defines an initial estimate for the numerical likelihood
+optimization. Good initial estimates can improve the optimization process.
+Can be:
+</p>
+
+<ul>
+<li> <p><code>NULL</code> (the default), in this case
+</p>
+
+<ul>
+<li><p> applies a heuristic to calculate a good initial estimate
+</p>
+</li>
+<li><p> or uses the true parameter values (if available and
+<code>data$controls$origin</code> is <code>TRUE</code>)
+</p>
+</li></ul>
+
+</li>
+<li><p> or an object of class <code>parUncon</code> (i.e., a <code>numeric</code> of
+unconstrained model parameters), for example the estimate of a
+previously fitted model (i.e. the element <code>model$estimate</code>).
+</p>
+</li></ul>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>The function is parallelized if <code>ncluster &gt; 1</code>.
+<p>Multiple optimization runs starting from different initial values are
+computed in parallel if <code>ncluster &gt; 1</code>.
 </p>
 
 
@@ -1625,8 +1805,10 @@ where <code>n &lt;- data$controls$fit$runs</code>.</p>
 
 <pre><code class='language-R'>### 2-state HMM with normal distributions
 
-# define model
-controls &lt;- set_controls(states = 2, sdds = "normal", horizon = 100, runs = 20)
+# set specifications
+controls &lt;- set_controls(
+  states = 2, sdds = "normal", horizon = 100, runs = 10
+)
 
 # define parameters
 parameters &lt;- fHMM_parameters(controls, mu = c(-1, 1), seed = 1)
@@ -1643,11 +1825,91 @@ plot(model, "sdds")
 
 # decode states
 model &lt;- decode_states(model)
+plot(model, "ts")
 
 # predict
 predict(model, ahead = 5)
 
 </code></pre>
+
+<hr>
+<h2 id='get_initial_values'>Initialization of numerical likelihood optimization</h2><span id='topic+get_initial_values'></span>
+
+<h3>Description</h3>
+
+<p>This helper function generates a set of initial values for the numerical
+optimization of the model likelihood function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_initial_values(
+  data,
+  ncluster = 1,
+  seed = NULL,
+  verbose = TRUE,
+  initial_estimate = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="get_initial_values_+3A_data">data</code></td>
+<td>
+<p>An object of class <code><a href="#topic+fHMM_data">fHMM_data</a></code>.</p>
+</td></tr>
+<tr><td><code id="get_initial_values_+3A_ncluster">ncluster</code></td>
+<td>
+<p>Set the number of clusters for parallel optimization runs to reduce
+optimization time.
+By default, <code>ncluster = 1</code> (no clustering).</p>
+</td></tr>
+<tr><td><code id="get_initial_values_+3A_seed">seed</code></td>
+<td>
+<p>Set a seed for the generation of initial values.
+No seed by default.</p>
+</td></tr>
+<tr><td><code id="get_initial_values_+3A_verbose">verbose</code></td>
+<td>
+<p>Set to <code>TRUE</code> to print progress messages.</p>
+</td></tr>
+<tr><td><code id="get_initial_values_+3A_initial_estimate">initial_estimate</code></td>
+<td>
+<p>Optionally defines an initial estimate for the numerical likelihood
+optimization. Good initial estimates can improve the optimization process.
+Can be:
+</p>
+
+<ul>
+<li> <p><code>NULL</code> (the default), in this case
+</p>
+
+<ul>
+<li><p> applies a heuristic to calculate a good initial estimate
+</p>
+</li>
+<li><p> or uses the true parameter values (if available and
+<code>data$controls$origin</code> is <code>TRUE</code>)
+</p>
+</li></ul>
+
+</li>
+<li><p> or an object of class <code>parUncon</code> (i.e., a <code>numeric</code> of
+unconstrained model parameters), for example the estimate of a
+previously fitted model (i.e. the element <code>model$estimate</code>).
+</p>
+</li></ul>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A <code>list</code>, where each element is an object of class <code>parUncon</code>.
+</p>
 
 <hr>
 <h2 id='ll_hmm'>Log-likelihood function of an (H)HMM</h2><span id='topic+ll_hmm'></span>
@@ -1741,9 +2003,10 @@ in more detail below:
 
 <p>Either none, all, or selected elements can be specified.
 </p>
-<p>Unspecified parameters are set to their default values, see below.
+<p>Unspecified parameters are set to their default values.
 </p>
-<p>Specifications in <code>controls</code> override individual specifications.</p>
+<p>Important: Specifications in <code>controls</code> always override individual
+specifications.</p>
 </td></tr>
 <tr><td><code id="ll_hmm_+3A_hierarchy">hierarchy</code></td>
 <td>
@@ -1987,7 +2250,12 @@ optimization.
 
 <pre><code class='language-R'>par2parUncon(par, controls, use_parameter_labels = TRUE)
 
-parUncon2parCon(parUncon, controls, use_parameter_labels = TRUE)
+parUncon2parCon(
+  parUncon,
+  controls,
+  use_parameter_labels = TRUE,
+  numerical_safeguard = FALSE
+)
 
 parCon2par(parCon, controls, use_parameter_labels = TRUE)
 
@@ -1995,7 +2263,12 @@ par2parCon(par, controls, use_parameter_labels = TRUE)
 
 parCon2parUncon(parCon, controls, use_parameter_labels = TRUE)
 
-parUncon2par(parUncon, controls, use_parameter_labels = TRUE)
+parUncon2par(
+  parUncon,
+  controls,
+  use_parameter_labels = TRUE,
+  numerical_safeguard = FALSE
+)
 
 muCon2muUncon(muCon, link, prefix = "muUncon_", use_parameter_labels = TRUE)
 
@@ -2010,18 +2283,24 @@ sigmaCon2sigmaUncon(
 sigmaUncon2sigmaCon(
   sigmaUncon,
   prefix = "sigmaCon_",
-  use_parameter_labels = TRUE
+  use_parameter_labels = TRUE,
+  numerical_safeguard = FALSE
 )
 
 dfCon2dfUncon(dfCon, prefix = "dfUncon_", use_parameter_labels = TRUE)
 
-dfUncon2dfCon(dfUncon, prefix = "dfCon_", use_parameter_labels = TRUE)
+dfUncon2dfCon(
+  dfUncon,
+  prefix = "dfCon_",
+  use_parameter_labels = TRUE,
+  numerical_safeguard = FALSE
+)
 
 Gamma2gammasCon(
   Gamma,
-  shift = 0.001,
   prefix = "gammasCon_",
-  use_parameter_labels = TRUE
+  use_parameter_labels = TRUE,
+  numerical_safeguard = FALSE
 )
 
 Gamma2gammasUncon(Gamma, prefix = "gammasUncon_", use_parameter_labels = TRUE)
@@ -2039,14 +2318,16 @@ gammasUncon2Gamma(
   gammasUncon,
   dim,
   prefix = "state_",
-  use_parameter_labels = TRUE
+  use_parameter_labels = TRUE,
+  numerical_safeguard = FALSE
 )
 
 gammasUncon2gammasCon(
   gammasUncon,
   dim,
   prefix = "gammasCon_",
-  use_parameter_labels = TRUE
+  use_parameter_labels = TRUE,
+  numerical_safeguard = FALSE
 )
 </code></pre>
 
@@ -2092,9 +2373,10 @@ in more detail below:
 
 <p>Either none, all, or selected elements can be specified.
 </p>
-<p>Unspecified parameters are set to their default values, see below.
+<p>Unspecified parameters are set to their default values.
 </p>
-<p>Specifications in <code>controls</code> override individual specifications.</p>
+<p>Important: Specifications in <code>controls</code> always override individual
+specifications.</p>
 </td></tr>
 <tr><td><code id="parameter_transformations_+3A_use_parameter_labels">use_parameter_labels</code></td>
 <td>
@@ -2123,6 +2405,22 @@ with identified and unconstrained model parameters in the following order:
 <li><p> fine-scale parameters for each coarse-scale state, in the same order (if any)
 </p>
 </li></ol>
+</td></tr>
+<tr><td><code id="parameter_transformations_+3A_numerical_safeguard">numerical_safeguard</code></td>
+<td>
+<p>Either <code>TRUE</code> or <code>FALSE</code>, determining whether to apply the
+following small corrections to boundary parameters to improve numerical
+performance when calculating and optimizing the likelihood function:
+</p>
+
+<ul>
+<li><p> transition probabilities equal to 0 or 1 are shifted towards the center
+by <code>1e-3</code>
+</p>
+</li>
+<li><p> standard deviations and degrees of freedom are bounded above by <code>100</code>
+</p>
+</li></ul>
 </td></tr>
 <tr><td><code id="parameter_transformations_+3A_parcon">parCon</code></td>
 <td>
@@ -2167,11 +2465,6 @@ function.</p>
 <tr><td><code id="parameter_transformations_+3A_dfcon">dfCon</code>, <code id="parameter_transformations_+3A_dfuncon">dfUncon</code></td>
 <td>
 <p>A vector of (un-) constrained degrees of freedom.</p>
-</td></tr>
-<tr><td><code id="parameter_transformations_+3A_shift">shift</code></td>
-<td>
-<p>A small, positive <code>numeric</code> for shifting boundary probabilities.
-By default, <code>shift = 1e-3</code>.</p>
 </td></tr>
 <tr><td><code id="parameter_transformations_+3A_gammascon">gammasCon</code>, <code id="parameter_transformations_+3A_gammasuncon">gammasUncon</code></td>
 <td>
@@ -2684,7 +2977,7 @@ comparison to true parameters or the interpretation of states.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>reorder_states(x, state_order)
+<pre><code class='language-R'>reorder_states(x, state_order = "mean")
 </code></pre>
 
 
@@ -2697,7 +2990,15 @@ comparison to true parameters or the interpretation of states.
 </td></tr>
 <tr><td><code id="reorder_states_+3A_state_order">state_order</code></td>
 <td>
-<p>A vector or a matrix which determines the new ordering.
+<p>Either
+</p>
+
+<ul>
+<li> <p><code>"mean"</code>, in which case the states are ordered according to the means
+of the state-dependent distributions,
+</p>
+</li>
+<li><p> or a vector (or a matrix) which determines the new ordering:
 </p>
 
 <ul>
@@ -2706,7 +3007,7 @@ be a vector of length <code>x$data$controls$states</code> with integer
 values from <code>1</code> to <code>x$data$controls$states</code>. If the old
 state number <code>x</code> should be the new state number <code>y</code>, put
 the value <code>x</code> at the position <code>y</code> of <code>state_order</code>.
-E.g. for a 2-state HMM, specifying <code>state_order = c(2,1)</code> swaps
+E.g. for a 2-state HMM, specifying <code>state_order = c(2, 1)</code> swaps
 the states.
 </p>
 </li>
@@ -2717,9 +3018,12 @@ coarse-scale states with the logic as described above. For each row,
 the elements from second to last position order the fine-scale states
 of the coarse-scale state specified by the first element. E.g. for an
 HHMM with 2 coarse-scale and 2 fine-scale states, specifying
-<code>state_order = matrix(c(2,1,2,1,1,2),2,3)</code> swaps the
-coarse-scale states and the fine-scale states of coarse-scale state 2.
+<code>state_order = matrix(c(2, 1, 2, 1, 1, 2), 2, 3)</code> swaps the
+coarse-scale states and the fine-scale states connected to
+coarse-scale state 2.
 </p>
+</li></ul>
+
 </li></ul>
 </td></tr>
 </table>
@@ -2733,7 +3037,7 @@ coarse-scale states and the fine-scale states of coarse-scale state 2.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>reorder_states(dax_model_3t, state_order = 3:1)
+<pre><code class='language-R'>dax_model_3t_reordered &lt;- reorder_states(dax_model_3t, state_order = 3:1)
 
 </code></pre>
 
@@ -2764,13 +3068,13 @@ coarse-scale states and the fine-scale states of coarse-scale state 2.
   logreturns = if (!hierarchy) FALSE else c(FALSE, FALSE),
   merge = function(x) mean(x),
   fit = list(),
-  runs = 100,
+  runs = 10,
   origin = FALSE,
   accept = 1:3,
-  gradtol = 1e-06,
-  iterlim = 200,
+  gradtol = 0.01,
+  iterlim = 100,
   print.level = 0,
-  steptol = 1e-06
+  steptol = 0.01
 )
 
 validate_controls(controls)
@@ -2819,9 +3123,10 @@ in more detail below:
 
 <p>Either none, all, or selected elements can be specified.
 </p>
-<p>Unspecified parameters are set to their default values, see below.
+<p>Unspecified parameters are set to their default values.
 </p>
-<p>Specifications in <code>controls</code> override individual specifications.</p>
+<p>Important: Specifications in <code>controls</code> always override individual
+specifications.</p>
 </td></tr>
 <tr><td><code id="set_controls_+3A_hierarchy">hierarchy</code></td>
 <td>
@@ -3095,11 +3400,12 @@ in more detail below:
 optimization runs of the model likelihood from which the best one is selected
 as the final model.
 </p>
-<p>By default, <code>runs = 100</code>.</p>
+<p>By default, <code>runs = 10</code>.</p>
 </td></tr>
 <tr><td><code id="set_controls_+3A_origin">origin</code></td>
 <td>
-<p>Only relevant for simulated data, i.e., if <code>data</code> is <code>NA</code>.
+<p>Only relevant for simulated data, i.e., if the <code>data</code> control is
+<code>NA</code>.
 </p>
 <p>In this case, a <code>logical</code>. If <code>origin = TRUE</code> the optimization is
 initialized at the true parameter values.
@@ -3119,14 +3425,14 @@ accepted based on the output code of <code><a href="stats.html#topic+nlm">nlm</a
 <p>A positive <code>numeric</code> value, specifying the gradient tolerance, passed on
 to <code><a href="stats.html#topic+nlm">nlm</a></code>.
 </p>
-<p>By default, <code>gradtol = 1e-6</code>.</p>
+<p>By default, <code>gradtol = 0.01</code>.</p>
 </td></tr>
 <tr><td><code id="set_controls_+3A_iterlim">iterlim</code></td>
 <td>
 <p>A positive <code>integer</code> value, specifying the iteration limit, passed on
 to <code><a href="stats.html#topic+nlm">nlm</a></code>.
 </p>
-<p>By default, <code>iterlim = 200</code>.</p>
+<p>By default, <code>iterlim = 100</code>.</p>
 </td></tr>
 <tr><td><code id="set_controls_+3A_print.level">print.level</code></td>
 <td>
@@ -3140,7 +3446,7 @@ numerical likelihood optimization, passed on to <code><a href="stats.html#topic+
 <p>A positive <code>numeric</code> value, specifying the step tolerance, passed on
 to <code><a href="stats.html#topic+nlm">nlm</a></code>.
 </p>
-<p>By default, <code>gradtol = 1e-6</code>.</p>
+<p>By default, <code>gradtol = 0.01</code>.</p>
 </td></tr>
 <tr><td><code id="set_controls_+3A_x">x</code>, <code id="set_controls_+3A_object">object</code></td>
 <td>
@@ -3201,7 +3507,7 @@ set_controls(
   sdds      = c("t", "t"),
   file      = c(               
     system.file("extdata", "dax.csv", package = "fHMM"),
-    system.file("extdata", "vw.csv", package = "fHMM")
+    system.file("extdata", "dax.csv", package = "fHMM")
   ),
   date_column = c("Date", "Date"), 
   data_column = c("Close", "Close"),
@@ -3241,52 +3547,19 @@ controls &lt;- set_controls(
   states  = 2,
   sdds    = "gamma(mu = 1|2)",
   horizon = 200,
-  fit     = list(runs = 50)
+  runs    = 10
 )
 pars &lt;- fHMM_parameters(
-  controls = controls, 
+  controls = controls,
   Gamma = matrix(c(0.9, 0.2, 0.1, 0.8), nrow = 2),
-  sigma = c(0.5, 1)
+  sigma = c(0.5, 1),
+  seed = 1
 )
 data_sim &lt;- prepare_data(controls, true_parameters = pars, seed = 1)
 sim_model_2gamma &lt;- fit_model(data_sim, seed = 1)
-</pre>
-
-<hr>
-<h2 id='sim_model_4lnorm'>Simulated 4-state HMM with log-normal distributions</h2><span id='topic+sim_model_4lnorm'></span>
-
-<h3>Description</h3>
-
-<p>A pre-computed 4-state HMM with state-dependent log-normal distributions
-on <code>1000</code> simulated observations.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>data("sim_model_4lnorm")
-</code></pre>
-
-
-<h3>Format</h3>
-
-<p>An object of class <code><a href="#topic+fHMM_model">fHMM_model</a></code>.
-</p>
-
-
-<h3>Details</h3>
-
-<p>The model was estimated via:
-</p>
-<pre>
-controls &lt;- set_controls(
-  states  = 4,
-  sdds    = "lognormal",
-  horizon = 1000,
-  fit     = list(runs = 50)
-)
-data_sim &lt;- prepare_data(controls, seed = 1)
-sim_model_4lnorm &lt;- fit_model(data_sim, seed = 1)
+sim_model_2gamma &lt;- decode_states(sim_model_2gamma)
+sim_model_2gamma &lt;- compute_residuals(sim_model_2gamma)
+summary(sim_model_2gamma)
 </pre>
 
 <hr>
@@ -3350,9 +3623,10 @@ in more detail below:
 
 <p>Either none, all, or selected elements can be specified.
 </p>
-<p>Unspecified parameters are set to their default values, see below.
+<p>Unspecified parameters are set to their default values.
 </p>
-<p>Specifications in <code>controls</code> override individual specifications.</p>
+<p>Important: Specifications in <code>controls</code> always override individual
+specifications.</p>
 </td></tr>
 <tr><td><code id="simulate_hmm_+3A_hierarchy">hierarchy</code></td>
 <td>
@@ -3628,17 +3902,6 @@ spx &lt;- download_data(
   to = "2022-12-31"    # last observation
 )
 </pre>
-<p>The data is also available as <code>.csv</code> file via:
-</p>
-<pre>
-system.file("extdata", "spx.csv", package = "fHMM")
-</pre>
-
-
-<h3>Source</h3>
-
-<p><a href="https://finance.yahoo.com/quote/%5EGSPC">https://finance.yahoo.com/quote/%5EGSPC</a>
-</p>
 
 <hr>
 <h2 id='unemp'>Unemployment rate data USA</h2><span id='topic+unemp'></span>
@@ -3710,25 +3973,32 @@ from 1970 to 2020 for demonstration purpose.
 </p>
 <pre>
 controls &lt;- set_controls(
-  hierarchy = TRUE,
-  states    = c(3, 2),
-  sdds      = c("t", "t"),
-  period    = "m",
-  data      = list(
-    file       = list(unemp, spx),
-    date_column = c("date", "Date"),
-    data_column = c("rate_diff", "Close"),
-    from       = "1970-01-01",
-    to         = "2020-01-01",
-    logreturns = c(FALSE, TRUE)
-  ),
-  fit       = list(
-    runs    = 200,
-    iterlim = 300
-  )
+ hierarchy = TRUE,
+ states    = c(3, 2),
+ sdds      = c("t", "t"),
+ period    = "m",
+ data      = list(
+   file        = list(unemp, spx),
+   date_column = c("date", "Date"),
+   data_column = c("rate_diff", "Close"),
+   from        = "1970-01-01",
+   to          = "2020-01-01",
+   logreturns  = c(FALSE, TRUE)
+ ),
+ fit       = list(
+   runs        = 50, 
+   iterlim     = 1000,
+   gradtol     = 1e-6,
+   steptol     = 1e-6
+ )
 )
 unemp_spx_data &lt;- prepare_data(controls)
-unemp_spx_model_3_2 &lt;- fit_model(unemp_spx_data)
+unemp_spx_model_3_2 &lt;- fit_model(unemp_spx_data, seed = 1, ncluster = 25)
+unemp_spx_model_3_2 &lt;- decode_states(unemp_spx_model_3_2)
+unemp_spx_model_3_2 &lt;- compute_residuals(unemp_spx_model_3_2)
+summary(unemp_spx_model_3_2)
+state_order &lt;- matrix(c(3, 2, 1, 2, 2, 2, 1, 1, 1), 3, 3)
+unemp_spx_model_3_2 &lt;- reorder_states(unemp_spx_model_3_2, state_order)
 </pre>
 
 <hr>
@@ -3787,17 +4057,6 @@ vw &lt;- download_data(
   to = "2022-12-31"    # last observation
 )
 </pre>
-<p>The data is also available as <code>.csv</code> file via:
-</p>
-<pre>
-system.file("extdata", "vw.csv", package = "fHMM")
-</pre>
-
-
-<h3>Source</h3>
-
-<p><a href="https://finance.yahoo.com/quote/vow3.de">https://finance.yahoo.com/quote/vow3.de</a>
-</p>
 
 </main>
 

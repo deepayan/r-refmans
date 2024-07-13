@@ -20,6 +20,7 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#betamertree'><p>Beta Mixed-Effects Regression Trees</p></a></li>
 <li><a href='#coef.glmertree'><p>Obtaining Fixed-Effects Coefficient Estimates of (Generalized) Linear Mixed Model Trees</p></a></li>
+<li><a href='#cv.glmertree'><p>Cross Validation of (Generalized) Linear Mixed Model Trees</p></a></li>
 <li><a href='#DepressionDemo'><p>Artificial depression treatment dataset</p></a></li>
 <li><a href='#glmertree'><p>(Generalized) Linear Mixed Model Trees</p></a></li>
 <li><a href='#GrowthCurveDemo'><p>Artificial dataset for partitioning of linear growth curve models</p></a></li>
@@ -37,11 +38,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-09-07</td>
+<td>2024-09-07</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2-4</td>
+<td>0.2-5</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -60,7 +61,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>vcd, lattice, betareg, glmmTMB</td>
+<td>vcd, lattice, betareg, glmmTMB, lmerTest</td>
 </tr>
 <tr>
 <td>LazyData:</td>
@@ -80,7 +81,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-07 22:17:03 UTC; fokkemam</td>
+<td>2024-06-27 18:07:58 UTC; User</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -97,7 +98,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-09 08:10:06 UTC</td>
+<td>2024-06-28 06:30:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -211,8 +212,6 @@ See <code><a href="partykit.html#topic+mob_control">mob_control</a></code> docum
 
 <h3>Details</h3>
 
-<p>Experimental function.
-</p>
 <p>Function betamertree aims to learn a tree where each terminal node is associated with
 different fixed-effects regression coefficients, while adjusting for global 
 random effects (such as a random intercept). It is a generalization of the ideas
@@ -321,6 +320,14 @@ with the random effects, specified with the <code>joint</code> argument.</p>
 with Generalized Linear Mixed-Effects Model Trees&rdquo;. Behavior Research 
 Methods, 50(5), 2016-2034. <a href="https://doi.org/10.3758/s13428-017-0971-x">doi:10.3758/s13428-017-0971-x</a>
 </p>
+<p>Fokkema M, Edbrooke-Childs J &amp; Wolpert M (2021). &ldquo;Generalized linear mixed-model 
+(GLMM) trees: A flexible decision-tree method for multilevel and longitudinal data.&rdquo; 
+Psychotherapy Research, 31(3), 329-341. <a href="https://doi.org/10.1080/10503307.2020.1785037">doi:10.1080/10503307.2020.1785037</a>
+</p>
+<p>Fokkema M &amp; Zeileis A (2024). Subgroup detection in linear growth curve models with 
+generalized linear mixed model (GLMM) trees. Behavior Research Methods. 
+<a href="https://doi.org/10.3758/s13428-024-02389-1">doi:10.3758/s13428-024-02389-1</a>
+</p>
 
 
 <h3>See Also</h3>
@@ -346,10 +353,10 @@ ReadingSkills$gr &lt;- factor(rep(letters[1:5], length.out = nrow(ReadingSkills)
 betamer_form &lt;- accuracy ~ iq | gr | dyslexia + x1 + x2 + x3
 bmertree &lt;- betamertree(betamer_form, data = ReadingSkills, minsize = 10)
 VarCorr(bmertree)
+ranef(bmertree)
 fixef(bmertree)
 coef(bmertree)
 plot(bmertree)
-plot(bmertree, type = "simple")
 predict(bmertree, newdata = ReadingSkills[1:5,])
 predict(bmertree) ## see ?predict.glmmmTMB for other arguments that can be passed
 residuals(bmertree) ## see ?residuals.glmmmTMB for other arguments that can be passed
@@ -462,6 +469,142 @@ gt &lt;- glmertree(depression_bin ~ treatment | (age + (1|cluster)) |
 coef(gt, which = "tree") # default behaviour
 coef(gt, which = "global")
 
+</code></pre>
+
+<hr>
+<h2 id='cv.glmertree'>Cross Validation of (Generalized) Linear Mixed Model Trees</h2><span id='topic+cv.glmertree'></span><span id='topic+cv.lmertree'></span>
+
+<h3>Description</h3>
+
+<p>Performs cross-validation of a model-based recursive partition based on (generalized)
+linear mixed models. Using the tree or subgroup structure estimated from a training dataset,
+the full mixed-effects model parameters are re-estimated using a new set of test observations,
+providing valid computation of standard errors and valid inference. The approach is inspired
+by Athey &amp; Imbens (2016), and &quot;enables the construction of valid confidence intervals [...] whereby 
+one sample is used to construct the partition and another to estimate [...] effects for each 
+subpopulation.&quot;
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>cv.lmertree(tree, newdata, reference = NULL, omit.intercept = FALSE, ...)
+
+cv.glmertree(tree, newdata, reference = NULL, omit.intercept = FALSE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="cv.glmertree_+3A_tree">tree</code></td>
+<td>
+<p>An object of class <code>lmertree</code> or <code>glmertree</code> that was fitted on 
+a set of training data.</p>
+</td></tr>
+<tr><td><code id="cv.glmertree_+3A_newdata">newdata</code></td>
+<td>
+<p>A <code>data.frame</code> containing a new set of observations on the same
+variables that were used to fit <code>tree</code>.</p>
+</td></tr>
+<tr><td><code id="cv.glmertree_+3A_reference">reference</code></td>
+<td>
+<p>Numeric or character scalar, indicating the number of the terminal node of 
+which the intercept should be taken as a reference for intercepts in all other nodes. 
+If <code>NULL</code>, the default of taking the first terminal node's intercept as the reference category
+will be used. If the interest is in testing significance of differences between the different
+nodes intercepts, this can be overruled by specifying the number of the terminal node
+that should be used as the reference category.</p>
+</td></tr>
+<tr><td><code id="cv.glmertree_+3A_omit.intercept">omit.intercept</code></td>
+<td>
+<p>Logical scalar, indicating whether the intercept should be omitted from the model.
+The default (<code>FALSE</code>) includes the intercept of the first terminal node as the intercept and allows
+for significance testing of the differences between the first and the other terminal node's intercepts.
+Specifying <code>TRUE</code> will test the value of each terminal node's intercept against zero.</p>
+</td></tr>
+<tr><td><code id="cv.glmertree_+3A_...">...</code></td>
+<td>
+<p>Not currently used.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The approach is inspired
+by Athey &amp; Imbens (2016), and &quot;enables the construction of valid confidence intervals [...] whereby 
+one sample is used to construct the partition and another to estimate [...] effects for each 
+subpopulation.&quot;</p>
+
+
+<h3>Value</h3>
+
+<p>An object of with classes <code>lmertree</code> and <code>cv.lmertree</code>, or <code>glmertree</code> and <code>cv.glmertree</code>. It is the original (g)lmertree specified by argument <code>tree</code>, but the parametric model model estimated based on the data specified by argument <code>newdata</code>. The default S3 methods for classes <code>lmertree</code> and <code>glmertree</code> can be used to inspect the results: <code>plot</code>, <code>predict</code>, <code>coef</code>, <code>fixef</code>, <code>ranef</code> and <code>VarCorr</code>. In addition, there is a dedicated <code>summary</code> method for classes <code>cv.lmertree</code> and <code>cv.glmertree</code>, which prints valid parameter estimates and standard errors, resulting from <code><a href="lme4.html#topic+summary.merMod">summary.merMod</a></code>. For objects of clas <code>cv.lmertree</code>, hypothesis tests (i.e., p-values) can be obtained by loading package <code>lmerTest</code> PRIOR to loading package(s) <code>glmertree</code> (and <code>lme4</code>), see examples.
+</p>
+
+
+<h3>References</h3>
+
+<p>Athey S &amp; Imbens G (2016). Recursive partitioning for heterogeneous causal effects. 
+&ldquo;Proceedings of the National Academy of Sciences, 113(27), 7353-7360.&rdquo;
+<a href="https://doi.org/10.1073/pnas.1510489113">doi:10.1073/pnas.1510489113</a>
+</p>
+<p>Fokkema M, Smits N, Zeileis A, Hothorn T, Kelderman H (2018).
+&ldquo;Detecting Treatment-Subgroup Interactions in Clustered Data
+with Generalized Linear Mixed-Effects Model Trees&rdquo;. Behavior Research 
+Methods, 50(5), 2016-2034. <a href="https://doi.org/10.3758/s13428-017-0971-x">doi:10.3758/s13428-017-0971-x</a>
+</p>
+<p>Fokkema M, Edbrooke-Childs J &amp; Wolpert M (2021). &ldquo;Generalized linear mixed-model 
+(GLMM) trees: A flexible decision-tree method for multilevel and longitudinal data.&rdquo; 
+Psychotherapy Research, 31(3), 329-341. <a href="https://doi.org/10.1080/10503307.2020.1785037">doi:10.1080/10503307.2020.1785037</a>
+</p>
+<p>Fokkema M &amp; Zeileis A (2024). Subgroup detection in linear growth curve models with 
+generalized linear mixed model (GLMM) trees. Behavior Research Methods. 
+<a href="https://doi.org/10.3758/s13428-024-02389-1">doi:10.3758/s13428-024-02389-1</a>
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="lme4.html#topic+lmer">lmer</a></code>, <code><a href="lme4.html#topic+glmer">glmer</a></code>,
+<code><a href="#topic+lmertree">lmertree</a></code>, <code><a href="#topic+glmertree">glmertree</a></code>, 
+<code><a href="lme4.html#topic+summary.merMod">summary.merMod</a></code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+
+require("lmerTest") ## load BEFORE lme4 and glmertree to obtain hypothesis tests / p-values
+
+## Create artificial training and test datasets
+set.seed(42)
+train &lt;- sample(1:nrow(DepressionDemo), size = 200, replace = TRUE)
+test &lt;- sample(1:nrow(DepressionDemo), size = 200, replace = TRUE)
+
+## Fit tree on training data
+tree1 &lt;- lmertree(depression ~ treatment | cluster | age + anxiety + duration,
+                 data = DepressionDemo[train, ])
+                 
+## Obtain honest estimates of parameters and standard errors using test data
+tree2 &lt;- cv.lmertree(tree1, newdata = DepressionDemo[test, ])
+tree3 &lt;- cv.lmertree(tree1, newdata = DepressionDemo[test, ], 
+                     reference = 7, omit.intercept = TRUE)
+
+summary(tree2)
+summary(tree3)
+
+coef(tree1)
+coef(tree2)
+coef(tree3)
+
+plot(tree1, which = "tree")
+plot(tree2, which = "tree")
+plot(tree3, which = "tree")
+
+predict(tree1, newdata = DepressionDemo[1:5, ])
+predict(tree2, newdata = DepressionDemo[1:5, ])
 </code></pre>
 
 <hr>
@@ -790,13 +933,23 @@ with the random effects, specified with the <code>joint</code> argument.</p>
 with Generalized Linear Mixed-Effects Model Trees&rdquo;. Behavior Research 
 Methods, 50(5), 2016-2034. <a href="https://doi.org/10.3758/s13428-017-0971-x">doi:10.3758/s13428-017-0971-x</a>
 </p>
+<p>Fokkema M, Edbrooke-Childs J &amp; Wolpert M (2021). &ldquo;Generalized linear mixed-model 
+(GLMM) trees: A flexible decision-tree method for multilevel and longitudinal data.&rdquo; 
+Psychotherapy Research, 31(3), 329-341. <a href="https://doi.org/10.1080/10503307.2020.1785037">doi:10.1080/10503307.2020.1785037</a>
+</p>
+<p>Fokkema M &amp; Zeileis A (2024). Subgroup detection in linear growth curve models with 
+generalized linear mixed model (GLMM) trees. Behavior Research Methods. 
+<a href="https://doi.org/10.3758/s13428-024-02389-1">doi:10.3758/s13428-024-02389-1</a>
+</p>
 
 
 <h3>See Also</h3>
 
-<p><code><a href="lme4.html#topic+lmer">lmer</a></code>, <code><a href="lme4.html#topic+glmer">glmer</a></code>,
-<code><a href="partykit.html#topic+lmtree">lmtree</a></code>, <code><a href="partykit.html#topic+glmtree">glmtree</a></code>, 
-<code><a href="#topic+plot.lmertree">plot.lmertree</a></code>, <code><a href="#topic+plot.glmertree">plot.glmertree</a></code></p>
+<p><code><a href="#topic+plot.lmertree">plot.lmertree</a></code>, <code><a href="#topic+plot.glmertree">plot.glmertree</a></code>,
+<code><a href="#topic+cv.lmertree">cv.lmertree</a></code>, <code><a href="#topic+cv.glmertree">cv.glmertree</a></code>,
+<code><a href="#topic+GrowthCurveDemo">GrowthCurveDemo</a></code>,
+<code><a href="lme4.html#topic+lmer">lmer</a></code>, <code><a href="lme4.html#topic+glmer">glmer</a></code>,
+<code><a href="partykit.html#topic+lmtree">lmtree</a></code>, <code><a href="partykit.html#topic+glmtree">glmtree</a></code></p>
 
 
 <h3>Examples</h3>
@@ -900,6 +1053,14 @@ best included as predictors in the node-specific regression model. E.g.:
 <code>y ~ time + timevarying_cov | person | x1 + x2 + x3 + x4</code>.</p>
 
 
+<h3>References</h3>
+
+<p>Fokkema M &amp; Zeileis A (2024). Subgroup detection in linear growth curve models with 
+generalized linear mixed model (GLMM) trees. Behavior Research Methods. 
+<a href="https://doi.org/10.3758/s13428-024-02389-1">doi:10.3758/s13428-024-02389-1</a>
+</p>
+
+
 <h3>See Also</h3>
 
 <p><code><a href="#topic+lmertree">lmertree</a></code>, <code><a href="#topic+glmertree">glmertree</a></code></p>
@@ -990,6 +1151,14 @@ values indicate poorer outcome.</p>
 sample of $N = 3,739$ young people who received treatment at one of 13 
 mental-health service providers in the UK. Note that the data were 
 artificially generated and do not reflect actual empirical findings.
+</p>
+
+
+<h3>References</h3>
+
+<p>Fokkema M, Edbrooke-Childs J &amp; Wolpert M (2021). &ldquo;Generalized linear mixed-model 
+(GLMM) trees: A flexible decision-tree method for multilevel and longitudinal data.&rdquo; 
+Psychotherapy Research, 31(3), 329-341. <a href="https://doi.org/10.1080/10503307.2020.1785037">doi:10.1080/10503307.2020.1785037</a>
 </p>
 
 

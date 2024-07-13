@@ -57,8 +57,10 @@ for 20 Amino Acids</a></li>
 <li><a href='#AAWHIM'><p>WHIM Descriptors for 20 Amino Acids calculated by Dragon</p></a></li>
 <li><a href='#acc'><p>Auto Cross Covariance (ACC) for Generating Scales-Based Descriptors</p>
 of the Same Length</a></li>
-<li><a href='#crossSetSim'><p>Parallellized Protein Sequence Similarity Calculation Between Two Sets</p>
+<li><a href='#crossSetSim'><p>Parallel Protein Sequence Similarity Calculation Between Two Sets</p>
 Based on Sequence Alignment (In-Memory Version)</a></li>
+<li><a href='#crossSetSimDisk'><p>Parallel Protein Sequence Similarity Calculation Between Two Sets</p>
+Based on Sequence Alignment (Disk-Based Version)</a></li>
 <li><a href='#extractAAC'><p>Amino Acid Composition Descriptor</p></a></li>
 <li><a href='#extractAPAAC'><p>Amphiphilic Pseudo Amino Acid Composition (APseAAC) Descriptor</p></a></li>
 <li><a href='#extractBLOSUM'><p>BLOSUM and PAM Matrix-Derived Descriptors</p></a></li>
@@ -100,9 +102,9 @@ with Gap Support</a></li>
 <li><a href='#OptAA3d'><p>OptAA3d.sdf - 20 Amino Acids Optimized with MOE 2011.10 (Semiempirical AM1)</p></a></li>
 <li><a href='#parGOSim'><p>Protein Similarity Calculation based on Gene Ontology</p>
 (GO) Similarity</a></li>
-<li><a href='#parSeqSim'><p>Parallellized Protein Sequence Similarity Calculation Based on</p>
+<li><a href='#parSeqSim'><p>Parallel Protein Sequence Similarity Calculation Based on</p>
 Sequence Alignment (In-Memory Version)</a></li>
-<li><a href='#parSeqSimDisk'><p>Parallellized Protein Sequence Similarity Calculation Based on</p>
+<li><a href='#parSeqSimDisk'><p>Parallel Protein Sequence Similarity Calculation Based on</p>
 Sequence Alignment (Disk-Based Version)</a></li>
 <li><a href='#protcheck'><p>Protein sequence amino acid type sanity check</p></a></li>
 <li><a href='#protseg'><p>Protein Sequence Segmentation/Partition</p></a></li>
@@ -119,7 +121,7 @@ Sequence Alignment (Disk-Based Version)</a></li>
 <table>
 <tr>
 <td>Version:</td>
-<td>1.7-0</td>
+<td>1.7-1</td>
 </tr>
 <tr>
 <td>Title:</td>
@@ -176,7 +178,7 @@ org.Hs.eg.db</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -184,7 +186,7 @@ org.Hs.eg.db</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-30 06:19:21 UTC; nanx</td>
+<td>2024-04-20 03:12:46 UTC; nanx</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -204,7 +206,7 @@ org.Hs.eg.db</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-30 07:00:02 UTC</td>
+<td>2024-04-20 03:42:34 UTC</td>
 </tr>
 </table>
 <hr>
@@ -936,12 +938,12 @@ acc(mat, lag)
 </code></pre>
 
 <hr>
-<h2 id='crossSetSim'>Parallellized Protein Sequence Similarity Calculation Between Two Sets
+<h2 id='crossSetSim'>Parallel Protein Sequence Similarity Calculation Between Two Sets
 Based on Sequence Alignment (In-Memory Version)</h2><span id='topic+crossSetSim'></span>
 
 <h3>Description</h3>
 
-<p>Parallellized calculation of protein sequence similarity based on
+<p>Parallel calculation of protein sequence similarity based on
 sequence alignment between two sets of protein sequences.
 </p>
 
@@ -953,6 +955,8 @@ sequence alignment between two sets of protein sequences.
   protlist2,
   type = "local",
   cores = 2,
+  batches = 1,
+  verbose = FALSE,
   submat = "BLOSUM62",
   gap.opening = 10,
   gap.extension = 4
@@ -985,8 +989,21 @@ where <code>"global"</code> represents Needleman-Wunsch global alignment;
 <tr><td><code id="crossSetSim_+3A_cores">cores</code></td>
 <td>
 <p>Integer. The number of CPU cores to use for parallel execution,
-default is <code>2</code>. Users can use the <code>detectCores()</code> function
-in the <code>parallel</code> package to see how many cores they could use.</p>
+default is <code>2</code>. Users can use the <code>availableCores()</code> function
+in the parallelly package to see how many cores they could use.</p>
+</td></tr>
+<tr><td><code id="crossSetSim_+3A_batches">batches</code></td>
+<td>
+<p>Integer. How many batches should we split the
+similarity computations into. This is useful when you have a large
+number of protein sequences, enough number of CPU cores, but not
+enough RAM to compute and fit all the similarities
+into a single batch. Defaults to 1.</p>
+</td></tr>
+<tr><td><code id="crossSetSim_+3A_verbose">verbose</code></td>
+<td>
+<p>Print the computation progress?
+Useful when <code>batches &gt; 1</code>.</p>
 </td></tr>
 <tr><td><code id="crossSetSim_+3A_submat">submat</code></td>
 <td>
@@ -1024,7 +1041,7 @@ gap by 1. Defaults to 4.</p>
 
 <pre><code class='language-R'>## Not run: 
 
-# Be careful when testing this since it involves parallelisation
+# Be careful when testing this since it involves parallelization
 # and might produce unpredictable results in some environments
 
 library("Biostrings")
@@ -1048,6 +1065,150 @@ print(psimmat)
 # s4_again 0.04921696 0.12124217 1.00000000
 # s5       0.03943488 0.06391103 0.05714638
 # s1_again 1.00000000 0.11825938 0.04921696
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='crossSetSimDisk'>Parallel Protein Sequence Similarity Calculation Between Two Sets
+Based on Sequence Alignment (Disk-Based Version)</h2><span id='topic+crossSetSimDisk'></span>
+
+<h3>Description</h3>
+
+<p>Parallel calculation of protein sequence similarity based on
+sequence alignment between two sets of protein sequences.
+This version offloads the partial results in each batch to the
+hard drive and merges the results together in the end, which
+reduces the memory usage.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>crossSetSimDisk(
+  protlist1,
+  protlist2,
+  cores = 2,
+  batches = 1,
+  path = tempdir(),
+  verbose = FALSE,
+  type = "local",
+  submat = "BLOSUM62",
+  gap.opening = 10,
+  gap.extension = 4
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="crossSetSimDisk_+3A_protlist1">protlist1</code></td>
+<td>
+<p>A length <code>n</code> list containing <code>n</code> protein sequences,
+each component of the list is a character string, storing one protein
+sequence. Unknown sequences should be represented as <code>""</code>.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_protlist2">protlist2</code></td>
+<td>
+<p>A length <code>n</code> list containing <code>m</code> protein sequences,
+each component of the list is a character string, storing one protein
+sequence. Unknown sequences should be represented as <code>""</code>.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_cores">cores</code></td>
+<td>
+<p>Integer. The number of CPU cores to use for parallel execution,
+default is <code>2</code>. Users can use the <code>availableCores()</code> function
+in the parallelly package to see how many cores they could use.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_batches">batches</code></td>
+<td>
+<p>Integer. How many batches should we split the pairwise
+similarity computations into. This is useful when you have a large
+number of protein sequences, enough number of CPU cores, but not
+enough RAM to compute and fit all the pairwise similarities
+into a single batch. Defaults to 1.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_path">path</code></td>
+<td>
+<p>Directory for caching the results in each batch.
+Defaults to the temporary directory.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_verbose">verbose</code></td>
+<td>
+<p>Print the computation progress?
+Useful when <code>batches &gt; 1</code>.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_type">type</code></td>
+<td>
+<p>Type of alignment, default is <code>"local"</code>,
+can be <code>"global"</code> or <code>"local"</code>,
+where <code>"global"</code> represents Needleman-Wunsch global alignment;
+<code>"local"</code> represents Smith-Waterman local alignment.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_submat">submat</code></td>
+<td>
+<p>Substitution matrix, default is <code>"BLOSUM62"</code>,
+can be one of <code>"BLOSUM45"</code>, <code>"BLOSUM50"</code>, <code>"BLOSUM62"</code>,
+<code>"BLOSUM80"</code>, <code>"BLOSUM100"</code>, <code>"PAM30"</code>,
+<code>"PAM40"</code>, <code>"PAM70"</code>, <code>"PAM120"</code>, or <code>"PAM250"</code>.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_gap.opening">gap.opening</code></td>
+<td>
+<p>The cost required to open a gap of any length
+in the alignment. Defaults to 10.</p>
+</td></tr>
+<tr><td><code id="crossSetSimDisk_+3A_gap.extension">gap.extension</code></td>
+<td>
+<p>The cost to extend the length of an existing
+gap by 1. Defaults to 4.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A <code>n</code> x <code>m</code> similarity matrix.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Nan Xiao &lt;<a href="https://nanx.me">https://nanx.me</a>&gt;
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code><a href="#topic+crossSetSim">crossSetSim</a></code> for the in-memory version.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+
+# Be careful when testing this since it involves parallelization
+# and might produce unpredictable results in some environments
+
+library("Biostrings")
+library("foreach")
+library("doParallel")
+
+s1 &lt;- readFASTA(system.file("protseq/P00750.fasta", package = "protr"))[[1]]
+s2 &lt;- readFASTA(system.file("protseq/P08218.fasta", package = "protr"))[[1]]
+s3 &lt;- readFASTA(system.file("protseq/P10323.fasta", package = "protr"))[[1]]
+s4 &lt;- readFASTA(system.file("protseq/P20160.fasta", package = "protr"))[[1]]
+s5 &lt;- readFASTA(system.file("protseq/Q9NZP8.fasta", package = "protr"))[[1]]
+
+set.seed(1010)
+plist1 &lt;- as.list(c(s1, s2, s3, s4, s5)[sample(1:5, 100, replace = TRUE)])
+plist2 &lt;- as.list(c(s1, s2, s3, s4, s5)[sample(1:5, 100, replace = TRUE)])
+psimmat &lt;- crossSetSimDisk(
+  plist1, plist2,
+  cores = 2, batches = 10, verbose = TRUE,
+  type = "local", submat = "BLOSUM62"
+)
 
 ## End(Not run)
 </code></pre>
@@ -4240,12 +4401,12 @@ parGOSim(genelist, type = "gene", ont = "BP", measure = "Wang")
 </code></pre>
 
 <hr>
-<h2 id='parSeqSim'>Parallellized Protein Sequence Similarity Calculation Based on
+<h2 id='parSeqSim'>Parallel Protein Sequence Similarity Calculation Based on
 Sequence Alignment (In-Memory Version)</h2><span id='topic+parSeqSim'></span>
 
 <h3>Description</h3>
 
-<p>Parallellized calculation of protein sequence similarity based on
+<p>Parallel calculation of protein sequence similarity based on
 sequence alignment.
 </p>
 
@@ -4277,20 +4438,21 @@ sequence. Unknown sequences should be represented as <code>""</code>.</p>
 <tr><td><code id="parSeqSim_+3A_cores">cores</code></td>
 <td>
 <p>Integer. The number of CPU cores to use for parallel execution,
-default is <code>2</code>. Users can use the <code>detectCores()</code> function
-in the <code>parallel</code> package to see how many cores they could use.</p>
+default is <code>2</code>. Users can use the <code>availableCores()</code> function
+in the parallelly package to see how many cores they could use.</p>
 </td></tr>
 <tr><td><code id="parSeqSim_+3A_batches">batches</code></td>
 <td>
 <p>Integer. How many batches should we split the pairwise
 similarity computations into. This is useful when you have a large
 number of protein sequences, enough number of CPU cores, but not
-enough RAM to compute and hold all the pairwise similarities
-in a single batch. Defaults to 1.</p>
+enough RAM to compute and fit all the pairwise similarities
+into a single batch. Defaults to 1.</p>
 </td></tr>
 <tr><td><code id="parSeqSim_+3A_verbose">verbose</code></td>
 <td>
-<p>Print the computation progress?</p>
+<p>Print the computation progress?
+Useful when <code>batches &gt; 1</code>.</p>
 </td></tr>
 <tr><td><code id="parSeqSim_+3A_type">type</code></td>
 <td>
@@ -4341,7 +4503,7 @@ gap by 1. Defaults to 4.</p>
 
 <pre><code class='language-R'>## Not run: 
 
-# Be careful when testing this since it involves parallelisation
+# Be careful when testing this since it involves parallelization
 # and might produce unpredictable results in some environments
 
 library("Biostrings")
@@ -4360,14 +4522,14 @@ plist &lt;- list(s1, s2, s3, s4, s5)
 </code></pre>
 
 <hr>
-<h2 id='parSeqSimDisk'>Parallellized Protein Sequence Similarity Calculation Based on
+<h2 id='parSeqSimDisk'>Parallel Protein Sequence Similarity Calculation Based on
 Sequence Alignment (Disk-Based Version)</h2><span id='topic+parSeqSimDisk'></span>
 
 <h3>Description</h3>
 
-<p>Parallellized calculation of protein sequence similarity based on
+<p>Parallel calculation of protein sequence similarity based on
 sequence alignment.
-This version caches the partial results in each batch to the
+This version offloads the partial results in each batch to the
 hard drive and merges the results together in the end, which
 reduces the memory usage.
 </p>
@@ -4401,16 +4563,16 @@ sequence. Unknown sequences should be represented as <code>""</code>.</p>
 <tr><td><code id="parSeqSimDisk_+3A_cores">cores</code></td>
 <td>
 <p>Integer. The number of CPU cores to use for parallel execution,
-default is <code>2</code>. Users can use the <code>detectCores()</code> function
-in the <code>parallel</code> package to see how many cores they could use.</p>
+default is <code>2</code>. Users can use the <code>availableCores()</code> function
+in the parallelly package to see how many cores they could use.</p>
 </td></tr>
 <tr><td><code id="parSeqSimDisk_+3A_batches">batches</code></td>
 <td>
 <p>Integer. How many batches should we split the pairwise
 similarity computations into. This is useful when you have a large
 number of protein sequences, enough number of CPU cores, but not
-enough RAM to compute and hold all the pairwise similarities
-in a single batch. Defaults to 1.</p>
+enough RAM to compute and fit all the pairwise similarities
+into a single batch. Defaults to 1.</p>
 </td></tr>
 <tr><td><code id="parSeqSimDisk_+3A_path">path</code></td>
 <td>
@@ -4419,7 +4581,8 @@ Defaults to the temporary directory.</p>
 </td></tr>
 <tr><td><code id="parSeqSimDisk_+3A_verbose">verbose</code></td>
 <td>
-<p>Print the computation progress?</p>
+<p>Print the computation progress?
+Useful when <code>batches &gt; 1</code>.</p>
 </td></tr>
 <tr><td><code id="parSeqSimDisk_+3A_type">type</code></td>
 <td>
@@ -4470,7 +4633,7 @@ gap by 1. Defaults to 4.</p>
 
 <pre><code class='language-R'>## Not run: 
 
-# Be careful when testing this since it involves parallelisation
+# Be careful when testing this since it involves parallelization
 # and might produce unpredictable results in some environments
 
 library("Biostrings")

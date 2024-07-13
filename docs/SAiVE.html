@@ -52,7 +52,11 @@ Publications</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.4</td>
+<td>1.0.6</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2024-05-03 12:30:16 UTC</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -102,7 +106,7 @@ terra, utils, VSURF</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -110,7 +114,7 @@ terra, utils, VSURF</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-07 03:58:32 UTC; g_del</td>
+<td>2024-05-02 23:20:35 UTC; g_del</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -125,10 +129,6 @@ terra, utils, VSURF</td>
 <tr>
 <td>Repository:</td>
 <td>CRAN</td>
-</tr>
-<tr>
-<td>Date/Publication:</td>
-<td>2024-02-07 18:20:05 UTC</td>
 </tr>
 </table>
 <hr>
@@ -242,8 +242,9 @@ terra, utils, VSURF</td>
   threshold,
   vector = NULL,
   save_path = NULL,
+  n.cores = NULL,
   force_update_wbt = FALSE,
-  n.cores = NULL
+  silent_wbt = TRUE
 )
 </code></pre>
 
@@ -261,26 +262,30 @@ terra, utils, VSURF</td>
 </td></tr>
 <tr><td><code id="createStreams_+3A_vector">vector</code></td>
 <td>
-<p>Output file specifications. NULL for no vector file saved to disk, &quot;gpkg&quot; for a geopackage file, &quot;shp&quot; for a shapefile.</p>
+<p>Output file specifications. NULL for no vector file at all; &quot;env&quot; for only a variable returned to the R environment; or, to return to environment and save to disk, &quot;gpkg&quot; for a geopackage file, &quot;shp&quot; for a shapefile.</p>
 </td></tr>
 <tr><td><code id="createStreams_+3A_save_path">save_path</code></td>
 <td>
 <p>An optional path in which to save the newly created stream network. If left NULL will save it in the same directory as the provided DEM or, if the DEM is a terra object, return only terra objects.</p>
 </td></tr>
+<tr><td><code id="createStreams_+3A_n.cores">n.cores</code></td>
+<td>
+<p>The maximum number of cores to use. Leave NULL to use all cores minus 1.</p>
+</td></tr>
 <tr><td><code id="createStreams_+3A_force_update_wbt">force_update_wbt</code></td>
 <td>
 <p>Whitebox Tools is by default only downloaded if it cannot be found on the computer, and no check are performed to ensure the local version is current. Set to TRUE if you know that there is a new version and you would like to use it.</p>
 </td></tr>
-<tr><td><code id="createStreams_+3A_n.cores">n.cores</code></td>
+<tr><td><code id="createStreams_+3A_silent_wbt">silent_wbt</code></td>
 <td>
-<p>The maximum number of cores to use. Leave NULL to use all cores minus 1.</p>
+<p>Should Whitebox tools messages be suppressed? This function prints messages to the console already but these messages can be useful if you need to do some debugging.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>This function is essentially a convenient wrapper around three WhiteboxTools geospatial tools: <code><a href="whitebox.html#topic+wbt_d8_flow_accumulation">whitebox::wbt_d8_flow_accumulation()</a></code>, <code><a href="whitebox.html#topic+wbt_d8_pointer">whitebox::wbt_d8_pointer()</a></code>, and <code><a href="whitebox.html#topic+wbt_extract_streams">whitebox::wbt_extract_streams()</a></code>
+<p>This function is essentially a convenient wrapper around three WhiteboxTools geospatial tools (<code><a href="whitebox.html#topic+wbt_d8_flow_accumulation">whitebox::wbt_d8_flow_accumulation()</a></code>, <code><a href="whitebox.html#topic+wbt_d8_pointer">whitebox::wbt_d8_pointer()</a></code>, and <code><a href="whitebox.html#topic+wbt_extract_streams">whitebox::wbt_extract_streams()</a></code>) and some terra functions to convert rasters to vector files.
 </p>
 
 
@@ -318,7 +323,7 @@ terra::plot(res$streams_derived)
 </p>
 <p>Hydro-processes a DEM, creating flow accumulation, direction, and streams rasters, and (optionally) delineates watersheds above one or more points using <a href="https://www.whiteboxgeo.com/">Whitebox Tools</a>. To facilitate this task in areas with poor quality/low resolution DEMs, can &quot;burn-in&quot; a stream network to the DEM to ensure proper stream placement (see details). Many time-consuming raster operations are performed, so the function will attempt to use existing rasters if they are present in the same path as the base DEM and named according to the function's naming conventions. In practice, this means that only the first run of the function needs to be very time consuming. See details for more information.
 </p>
-<p>NOTE 1: This tool can be slow to execute, and will use a lot of memory. Be patient, it might take several hours with a large DEM.
+<p>NOTE 1: This tool can be slow to execute and will use a lot of memory. Be patient, it might take several hours with a large DEM.
 </p>
 <p>NOTE 2: ESRI shapefiles, on which the Whitebox Tools functions depend, truncate column names to 10 characters. You may want to save and re-assign column names to the output terra object after this function has run.
 </p>
@@ -331,19 +336,21 @@ terra::plot(res$streams_derived)
 <h3>Usage</h3>
 
 <pre><code class='language-R'>drainageBasins(
-  save_path,
   DEM,
   streams = NULL,
   breach_dist = 10000,
   threshold = 500,
   overwrite = FALSE,
+  projection = NULL,
   points = NULL,
   points_name_col = NULL,
-  projection = NULL,
+  save_path = NULL,
   snap = "nearest",
   snap_dist = 200,
+  burn_dist = 10,
+  n.cores = NULL,
   force_update_wbt = FALSE,
-  n.cores = NULL
+  silent_wbt = TRUE
 )
 </code></pre>
 
@@ -351,10 +358,6 @@ terra::plot(res$streams_derived)
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="drainageBasins_+3A_save_path">save_path</code></td>
-<td>
-<p>The directory where you want the output shapefiles saved.</p>
-</td></tr>
 <tr><td><code id="drainageBasins_+3A_dem">DEM</code></td>
 <td>
 <p>The path to a DEM including extension from which to delineate watersheds/catchments. Must be in .tif format. Derived layers such as flow accumulation, flow direction, and streams will inherit the DEM coordinate reference system.</p>
@@ -375,17 +378,21 @@ terra::plot(res$streams_derived)
 <td>
 <p>If applicable, should rasters present in the same directory as the DEM be overwritten? This will also force the recalculation of derived layers.</p>
 </td></tr>
+<tr><td><code id="drainageBasins_+3A_projection">projection</code></td>
+<td>
+<p>Optionally, a projection string in the form &quot;epsg:3579&quot; (find them <a href="https://epsg.io/">here</a>). The derived watersheds and point output layers will use this projection. If NULL the projection of the points will be used.</p>
+</td></tr>
 <tr><td><code id="drainageBasins_+3A_points">points</code></td>
 <td>
 <p>The path to the points shapefile (extension .shp) containing the points from which to build watersheds. The attribute of each point will be attached to the newly-created drainage polygons. Leave NULL (along with related parameters) to only process the DEM without defining watersheds.</p>
 </td></tr>
 <tr><td><code id="drainageBasins_+3A_points_name_col">points_name_col</code></td>
 <td>
-<p>The name of the column in the points shapefile containing names to assign to the watersheds. Duplicates <em>are</em> allowed, and are labelled with the suffix _duplicate and a number for duplicates 2+.</p>
+<p>The name of the column in the points shapefile containing names to assign to the watersheds. Duplicates <em>are</em> allowed, and are labelled with the suffix _duplicate and a number for duplicates 2 +.</p>
 </td></tr>
-<tr><td><code id="drainageBasins_+3A_projection">projection</code></td>
+<tr><td><code id="drainageBasins_+3A_save_path">save_path</code></td>
 <td>
-<p>Optionally, a projection string in the form &quot;epsg:3579&quot; (find them <a href="https://epsg.io/">here</a>). The derived watersheds and point output layers will use this projection. If NULL the projection of the points will be used.</p>
+<p>The directory where you want the output shapefiles saved.</p>
 </td></tr>
 <tr><td><code id="drainageBasins_+3A_snap">snap</code></td>
 <td>
@@ -395,13 +402,21 @@ terra::plot(res$streams_derived)
 <td>
 <p>The search radius within which to snap points to streams. Snapping method depends on 'snap' parameter. Note that distance units will match the projection, so probably best to work on a meter grid.</p>
 </td></tr>
-<tr><td><code id="drainageBasins_+3A_force_update_wbt">force_update_wbt</code></td>
+<tr><td><code id="drainageBasins_+3A_burn_dist">burn_dist</code></td>
 <td>
-<p>Whitebox Tools is by default only downloaded if it cannot be found on the computer, and no check are performed to ensure the local version is current. Set to TRUE if you know that there is a new version and you would like to use it.</p>
+<p>If specifying a streams layer polyline layer, the number of DEM units to depress the DEM along the stream trace.</p>
 </td></tr>
 <tr><td><code id="drainageBasins_+3A_n.cores">n.cores</code></td>
 <td>
 <p>The maximum number of cores to use. Leave NULL to use all cores minus 1.</p>
+</td></tr>
+<tr><td><code id="drainageBasins_+3A_force_update_wbt">force_update_wbt</code></td>
+<td>
+<p>Whitebox Tools is by default only downloaded if it cannot be found on the computer, and no check are performed to ensure the local version is current. Set to TRUE if you know that there is a new version and you would like to use it.</p>
+</td></tr>
+<tr><td><code id="drainageBasins_+3A_silent_wbt">silent_wbt</code></td>
+<td>
+<p>Should Whitebox tools messages be suppressed? This function prints messages to the console already but these messages can be useful if you need to do some debugging.</p>
 </td></tr>
 </table>
 
@@ -414,7 +429,7 @@ terra::plot(res$streams_derived)
 
 <h4>Creating derived raster layers without defining watersheds</h4>
 
-<p>This function can be run without having any specific point above which to define a watershed. This can come in handy if you need to know where the synthetic streams raster will end up to ensure that your defined watershed pour points do not end up on the wrong stream branch, or if you simply want to front-load work while you work on defining the watershed pour points. To do this, leave the parameter 'points' and associated parameters as <code>NULL</code>.
+<p>This function can be run without having any specific point above which to define a watershed. This can come in handy if you need to know where the synthetic streams raster will end up to ensure that your defined watershed pour points do not end up on the wrong stream branch, or if you simply want to front-load work while you work on defining the watershed pour points. To do this, leave the parameter <code>points</code> and associated parameters as <code>NULL</code>.
 </p>
 
 
@@ -523,7 +538,8 @@ terra::plot(basins$delineated_basins)
   burn_dist = 10,
   save_path = NULL,
   n.cores = NULL,
-  force_update_wbt = FALSE
+  force_update_wbt = FALSE,
+  silent_wbt = TRUE
 )
 </code></pre>
 
@@ -558,6 +574,10 @@ terra::plot(basins$delineated_basins)
 <tr><td><code id="hydroProcess_+3A_force_update_wbt">force_update_wbt</code></td>
 <td>
 <p>Whitebox Tools is by default only downloaded if it cannot be found on the computer, and no check are performed to ensure the local version is current. Set to TRUE if you know that there is a new version and you would like to use it.</p>
+</td></tr>
+<tr><td><code id="hydroProcess_+3A_silent_wbt">silent_wbt</code></td>
+<td>
+<p>Should Whitebox tools messages be suppressed? This function prints messages to the console already but these messages can be useful if you need to do some debugging.</p>
 </td></tr>
 </table>
 
@@ -797,13 +817,15 @@ modelMatch("ranger", similarity = 0.8)
 
 <h3>Description</h3>
 
-<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt='[Stable]' /></a>
 </p>
 <p>Function to facilitate the prediction of spatial variables using machine learning, including the selection of a particular model and/or model parameters from several user-defined options. Both classification and regression is supported, though please ensure that the models passed to the parameter <code>methods</code> are suitable.
 </p>
 <p>Note that you may need to acquiesce to installing supplementary packages, depending on the model types chosen and whether or not these have been run before; this function may not be 'set and forget'.
 </p>
-<p>It is possible to specify multiple model types (the <code>methods</code> argument) as well as model-specific parameters (the <code>trainControl</code> parameter) if you wish to test multiple options and select the best one. To facilitate model type selection, refer to function <code><a href="#topic+modelMatch">modelMatch()</a></code>.
+<p>It is possible to specify multiple machine learning methods (the <code>methods</code> parameter) as well as method-specific parameters (the <code>trainControl</code> parameter) if you wish to test multiple options and select the best one. To facilitate method selection, refer to function <code><a href="#topic+modelMatch">modelMatch()</a></code>. If you are unsure of the best model to use, you can use the <code>fastCompare</code> parameter to quickly compare models and select the best one based on accuracy. If you wish to use a single model and/or trainControl object, you can pass a single string to <code>methods</code> and a single trainControl object to <code>trainControl</code>.
+</p>
+<p>Warning options are changed for this function only to show all warnings as they occur and reset back to their original state upon function completion (a test is done first to ensure it can be reset). This is to ensure that any warnings when running models are shown in sequence with the messages indicating the progress of the function, especially when running multiple models and/or trainControl options.
 </p>
 
 
@@ -816,6 +838,7 @@ modelMatch("ranger", similarity = 0.8)
   trainControl,
   methods,
   fastCompare = TRUE,
+  fastFraction = NULL,
   thinFeatures = TRUE,
   predict = FALSE,
   n.cores = NULL,
@@ -841,15 +864,19 @@ modelMatch("ranger", similarity = 0.8)
 </td></tr>
 <tr><td><code id="spatPredict_+3A_traincontrol">trainControl</code></td>
 <td>
-<p>Parameters used to control training of the machine learning model, created with <code><a href="caret.html#topic+trainControl">caret::trainControl()</a></code>. Passed to the <code>trControl</code> parameter of <code><a href="caret.html#topic+train">caret::train()</a></code>. If specifying multiple model types in <code>methods</code> you can use a single <code>trainControl</code> which will apply to all <code>methods</code>, or pass multiple variations to this argument as a list with names matching the names of <code>methods</code> (one element for each model specified in methods).</p>
+<p>Parameters used to control training of the machine learning model, created with <code><a href="caret.html#topic+trainControl">caret::trainControl()</a></code>. Passed to the <code>trControl</code> parameter of <code><a href="caret.html#topic+train">caret::train()</a></code>. If specifying multiple methods in <code>methods</code> you can use a single <code>trainControl</code> which will apply to all <code>methods</code>, or pass multiple variations to this argument as a list with names matching the names of <code>methods</code> (one element for each model specified in methods).</p>
 </td></tr>
 <tr><td><code id="spatPredict_+3A_methods">methods</code></td>
 <td>
-<p>A string specifying one or more classification/regression model(s) to use. Passed to the <code>method</code> parameter of <code><a href="caret.html#topic+train">caret::train()</a></code>. If specifying more than one method they will all be passed to <code><a href="caret.html#topic+resamples">caret::resamples()</a></code> to compare model performance. Then, if <code>predict = TRUE</code>, the model with the highest accuracy will be selected to predict the raster surface across the exent of <code>features</code>. A different <code>trainControl</code> parameter can be used for each model in <code>methods</code>.</p>
+<p>A string specifying one or more classification/regression methods(s) to use. Passed to the <code>method</code> parameter of <code><a href="caret.html#topic+train">caret::train()</a></code>. If specifying more than one method they will all be passed to <code><a href="caret.html#topic+resamples">caret::resamples()</a></code> to compare method performance. Then, if <code>predict = TRUE</code>, the method with the highest overall accuracy will be selected to predict the raster surface across the exent of <code>features</code>. A different <code>trainControl</code> parameter can be used for each method in <code>methods</code>.</p>
 </td></tr>
 <tr><td><code id="spatPredict_+3A_fastcompare">fastCompare</code></td>
 <td>
-<p>If specifying multiple model types in <code>methods</code> or one model with multiple different <code>trainControl</code> objects, should the points in <code>outcome</code> be sub-sampled for the model comparison step? The selected model will be trained on the full <code>outcome</code> data set after selection. TRUE/FALSE. This only applies if <code>methods</code> is length &gt; 3 and if <code>outcome</code> has more than 4000 rows.</p>
+<p>If specifying multiple methods in <code>methods</code> or one method with multiple <code>trainControl</code> objects, should the points in <code>outcome</code> be sub-sampled for the comparison step? The selected method will be trained on the full <code>outcome</code> data set after selection. This only applies if <code>methods</code> is length &gt; 3, with behavior further modified by fastFraction.</p>
+</td></tr>
+<tr><td><code id="spatPredict_+3A_fastfraction">fastFraction</code></td>
+<td>
+<p>The fraction of points to use for the method comparison step (final training and testing is always done on the full data set) if <code>fastCompare</code> is TRUE and multiple methods . Default NULL ranges from 1 for 5000 or fewer points to 0.1 for 50 000 or more points. You can also set this to any value between 0 and 1 to override this behavior.</p>
 </td></tr>
 <tr><td><code id="spatPredict_+3A_thinfeatures">thinFeatures</code></td>
 <td>
@@ -857,7 +884,7 @@ modelMatch("ranger", similarity = 0.8)
 </td></tr>
 <tr><td><code id="spatPredict_+3A_predict">predict</code></td>
 <td>
-<p>TRUE will apply the selected model to the full extent of <code>features</code> and return a raster saved to <code>save_path</code>.</p>
+<p>TRUE will apply the trained model to the full extent of <code>features</code> and return a raster saved to <code>save_path</code>.</p>
 </td></tr>
 <tr><td><code id="spatPredict_+3A_n.cores">n.cores</code></td>
 <td>
@@ -878,25 +905,35 @@ modelMatch("ranger", similarity = 0.8)
 
 <h3>Value</h3>
 
-<p>A list with three to five elements: the outcome of the VSURF variable selection process, details of the fitted model, model performance statistics, model performance comparison (if methods includes more than one model), and the final predicted raster (if predict = TRUE). If applicable, the predicted raster is written to disk.
+<p>If passing only one method to the <code>method</code> argument: the outcome of the VSURF variable selection process (if <code>thinFeatures</code> is TRUE), the training and testing data.frames, the fitted model, model performance statistics, and the final predicted raster (if <code>predict</code> = TRUE).
+</p>
+<p>If passing multiple methods to the <code>method</code> argument: the outcome of the VSURF variable selection process (if <code>thinFeatures</code> is TRUE), the training and testing data.frames, character vectors for failed methods, methods which generated a warning, and what those errors and warnings were,  model performance comparison (if methods includes more than one method), the selected method, the trained model performance statistics, and the final predicted raster (if <code>predict</code> = TRUE).
+</p>
+<p>In either case, the predicted raster is written to disk if <code>save_path</code> is specified.
+</p>
+
+
+<h3>Model testing, comparison, and reported metrics</h3>
+
+<p>After extracting raster values at <em>n</em> points from the <code>features</code> rasters the point values are split spatially into training and testing sets along a 70/30 split. This is accomplished by creating a grid (1000*1000) of polygons over the extent of the points and randomly assigning polygons to training or testing sets. Points within these polygons are then assigned to the corresponding set, ensuring that the training and testing sets are spatially independent.
+</p>
+
+
+<h3>Method for selecting the best model:</h3>
+
+<p>When specifying multiple model types in<code>methods</code>, each model type and <code>trainControl</code> pair (if <code>trainControl</code> is a list of length equal to <code>methods</code>) is run using <code><a href="caret.html#topic+train">caret::train()</a></code>. To speed things up you can use <code>fastCompare</code> = TRUE. Models are then compared on their 'accuracy' metric as output by <code><a href="caret.html#topic+resamples">caret::resamples()</a></code> when run on the testing partition, and the highest-performing model is selected. If <code>fastCompare</code> is TRUE, this model is then run on the complete data set provided in <code>outcome</code>. Model statistics are returned upon function completion, which allows the user to select their own 'best performing' model based on other criteriaif desired.
 </p>
 
 
 <h3>Balancing classes in outcome (dependent) variable</h3>
 
-<p>Models can be biased if they are given significantly more points in one outcome class vs others, and best practice is to even out the number of points in each class. If extracting point values from a vector or raster object, a simple way to do that is by using the &quot;strata&quot; parameter if using <code><a href="terra.html#topic+sample">terra::spatSample()</a></code>. If working directly from points, <code><a href="caret.html#topic+downSample">caret::downSample()</a></code> and <code><a href="caret.html#topic+downSample">caret::upSample()</a></code> can be used. See <a href="https://topepo.github.io/caret/subsampling-for-class-imbalances.html">this link</a> for more information.
+<p>Models can be biased if they are given significantly more points in one outcome class vs others, and best practice is to even out the number of points in each class. If extracting point values from a vector or raster object and passing a points vector object to this function, a simple way to do that is by using the &quot;strata&quot; parameter if using <code><a href="terra.html#topic+sample">terra::spatSample()</a></code>. If working directly from points, <code><a href="caret.html#topic+downSample">caret::downSample()</a></code> and <code><a href="caret.html#topic+downSample">caret::upSample()</a></code> can be used. See <a href="https://topepo.github.io/caret/subsampling-for-class-imbalances.html">this link</a> for more information. Note that if passing a polygons object to this function stratified random sampling will automatically be performed.
 </p>
 
 
 <h3>Classification or regression</h3>
 
 <p>Whether this function treats your inputs as a classification or regression problem depends on the class attached to the outcome variable. A class <code>factor</code> will be treated as a classification problem while all other classes will be treated as regression problems.
-</p>
-
-
-<h3>Method for selecting the best model:</h3>
-
-<p>When specifying multiple model types in<code>methods</code>, each model type and <code>trainControl</code> pair (if <code>trainControl</code> is a list of length equal to <code>methods</code>) is run using <code><a href="caret.html#topic+train">caret::train()</a></code>. To speed things up you can use <code>fastCompare</code> = TRUE. Models are then compared on their 'accuracy' metric as output by <code><a href="caret.html#topic+resamples">caret::resamples()</a></code>, and the highest-performing model is selected. If <code>fastCompare</code> is TRUE, this model is then run on the complete data set provided in <code>outcome</code>. Model statistics are returned upon function completion, which allows the user to select their own 'best performing' model based on other criteria.
 </p>
 
 
@@ -909,8 +946,11 @@ modelMatch("ranger", similarity = 0.8)
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-
 # These examples can take a while to run!
+
+# Install packages underpinning examples
+rlang::check_installed("ranger", reason = "required to run example.")
+rlang::check_installed("Rborist", reason = "required to run example.")
 
 # Single model, single trainControl
 
@@ -931,7 +971,8 @@ result &lt;- spatPredict(features = c(aspect, solrad, slope),
   poly_sample = 100,
   trainControl = trainControl,
   methods = "ranger",
-  n.cores = 2)
+  n.cores = 2,
+  predict = TRUE)
 
 terra::plot(result$prediction)
 
@@ -961,7 +1002,8 @@ result &lt;- spatPredict(features = c(aspect, solrad, slope),
   poly_sample = 100,
   trainControl = trainControl,
   methods = c("ranger", "Rborist"),
-  n.cores = 2)
+  n.cores = 2,
+  predict = TRUE)
 
 terra::plot(result$prediction)
 
@@ -1086,13 +1128,15 @@ res &lt;- thinFeatures(permafrost, "Type", n.cores = 2)
 
 <h3>Description</h3>
 
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt='[Stable]' /></a>
+</p>
 <p>Checks for the existence of WhiteboxTools in its default directory and installs it if necessary or if <code>force = TRUE</code>.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>wbtCheck(force = FALSE)
+<pre><code class='language-R'>wbtCheck(force = FALSE, silent)
 </code></pre>
 
 
@@ -1102,6 +1146,10 @@ res &lt;- thinFeatures(permafrost, "Type", n.cores = 2)
 <tr><td><code id="wbtCheck_+3A_force">force</code></td>
 <td>
 <p>Set TRUE to force update of WhiteboxTools binaries.</p>
+</td></tr>
+<tr><td><code id="wbtCheck_+3A_silent">silent</code></td>
+<td>
+<p>TRUE to suppress console messages other than those explaining that Whitebox Tools binaries are being installed.</p>
 </td></tr>
 </table>
 

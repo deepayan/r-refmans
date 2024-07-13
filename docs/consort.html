@@ -27,6 +27,7 @@ function processMathHTML() {
 <li><a href='#build_grviz'><p>Build consort diagram</p></a></li>
 <li><a href='#connect_box'><p>Connect grob box with arrow.</p></a></li>
 <li><a href='#consort_plot'><p>Self generating consort diagram</p></a></li>
+<li><a href='#dispos.data'><p>Demo clinical trial disposition data</p></a></li>
 <li><a href='#gen_text'><p>Generate label and bullet points</p></a></li>
 <li><a href='#get_coords'><p>Get the coordinates of the textbox object</p></a></li>
 <li><a href='#move_box'><p>Move a box grob</p></a></li>
@@ -48,7 +49,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.2.1</td>
+<td>1.2.2</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -92,12 +93,20 @@ stringi</td>
 <td>3</td>
 </tr>
 <tr>
+<td>Depends:</td>
+<td>R (&ge; 3.5.0)</td>
+</tr>
+<tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>no</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-22 18:27:34 UTC; alimd</td>
+<td>2024-06-03 21:06:34 UTC; alimd</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -109,16 +118,12 @@ stringi</td>
 <td>Alim Dayim &lt;ad938@cam.ac.uk&gt;</td>
 </tr>
 <tr>
-<td>Depends:</td>
-<td>R (&ge; 3.5.0)</td>
-</tr>
-<tr>
 <td>Repository:</td>
 <td>CRAN</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-22 19:40:02 UTC</td>
+<td>2024-06-04 13:40:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -433,7 +438,13 @@ will be automatically calculated if the coordinates not provided.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>add_split(prev_box, txt, text_width = NULL, ...)
+<pre><code class='language-R'>add_split(
+  prev_box,
+  txt,
+  just = c("center", "left", "right"),
+  text_width = NULL,
+  ...
+)
 </code></pre>
 
 
@@ -448,6 +459,10 @@ will be automatically calculated if the coordinates not provided.
 <td>
 <p>Text in the node. If the 'prev_box' is a horizontally aligned multiple
 nodes, a vector of with the same length must be provided.</p>
+</td></tr>
+<tr><td><code id="add_split_+3A_just">just</code></td>
+<td>
+<p>The justification for the text: left, center or right.</p>
 </td></tr>
 <tr><td><code id="add_split_+3A_text_width">text_width</code></td>
 <td>
@@ -705,6 +720,7 @@ connect_box(fg1, fg2, connect = "bl", type = "p")
   side_box,
   allocation = NULL,
   labels = NULL,
+  kickoff_sidebox = TRUE,
   cex = 0.8,
   text_width = NULL
 )
@@ -721,7 +737,10 @@ connect_box(fg1, fg2, connect = "bl", type = "p")
 <tr><td><code id="consort_plot_+3A_orders">orders</code></td>
 <td>
 <p>A named vector or a list, names as the variable in the dataset
-and values as labels in the box. The order of the diagram will be based on this.</p>
+and values as labels in the box. The order of the diagram will be based on this.
+A list can be used to report multiple variable in a single node, the first 
+variable in a list element will be used to report the total and the exact items
+will be summarised for the remaining variable. This is limitted to non-side box.</p>
 </td></tr>
 <tr><td><code id="consort_plot_+3A_side_box">side_box</code></td>
 <td>
@@ -731,13 +750,21 @@ box will be the subset of the missing values of these variables.</p>
 <tr><td><code id="consort_plot_+3A_allocation">allocation</code></td>
 <td>
 <p>Name of the grouping/treatment variable (optional), the
-diagram will split into branches on this variables forward.</p>
+diagram will split into branches on this variables forward. For a factorial 
+design, with two splits for example, a character vector with a maximum of 
+length two can be provided. The extra box will be skipped if the values
+in the <code>orders</code> blank.</p>
 </td></tr>
 <tr><td><code id="consort_plot_+3A_labels">labels</code></td>
 <td>
 <p>Named vector, names is the location of the terminal node. The
 position location should plus 1 after the allocation variables if the allocation
 is defined.</p>
+</td></tr>
+<tr><td><code id="consort_plot_+3A_kickoff_sidebox">kickoff_sidebox</code></td>
+<td>
+<p>remove (default) the side box observations from the 
+following counting.</p>
 </td></tr>
 <tr><td><code id="consort_plot_+3A_cex">cex</code></td>
 <td>
@@ -780,77 +807,79 @@ vertical node.
 
 <pre><code class='language-R'>
 ## Prepare test data
-set.seed(1001)
-N &lt;- 300
+data(dispos.data)
 
-trialno &lt;- sample(c(1000:2000), N)
-exc1 &lt;- rep(NA, N)
-exc1[sample(1:N, 15)] &lt;- sample(c("Sample not collected", "MRI not collected", "Other"),
-  15,
-  replace = TRUE, prob = c(0.4, 0.4, 0.2)
-)
-
-induc &lt;- rep(NA, N)
-induc[is.na(exc1)] &lt;- trialno[is.na(exc1)]
-
-exc2 &lt;- rep(NA, N)
-exc2[sample(1:N, 20)] &lt;- sample(c(
-  "Sample not collected", "Dead",
-  "Other"
-), 20,
-replace = TRUE,
-prob = c(0.4, 0.4, 0.2)
-)
-exc2[is.na(induc)] &lt;- NA
-
-exc &lt;- ifelse(is.na(exc2), exc1, exc2)
-
-arm &lt;- rep(NA, N)
-arm[is.na(exc)] &lt;- sample(c("Conc", "Seq"), sum(is.na(exc)), replace = TRUE)
-arm3 &lt;- sample(c("Trt A", "Trt B", "Trt C"), N, replace = TRUE)
-arm3[is.na(arm)] &lt;- NA
-
-fow1 &lt;- rep(NA, N)
-fow1[!is.na(arm)] &lt;- sample(c("Withdraw", "Discontinued", "Death", "Other", NA),
-  sum(!is.na(arm)),
-  replace = TRUE,
-  prob = c(0.05, 0.05, 0.05, 0.05, 0.8)
-)
-fow2 &lt;- rep(NA, N)
-fow2[!is.na(arm) &amp; is.na(fow1)] &lt;- sample(c("Protocol deviation", "Outcome missing", NA),
-  sum(!is.na(arm) &amp; is.na(fow1)),
-  replace = TRUE,
-  prob = c(0.05, 0.05, 0.9)
-)
-
-
-df &lt;- data.frame(trialno, exc1, induc, exc2, exc, arm, arm3, fow1, fow2)
-rm(trialno, exc1, induc, exc2, exc, arm, arm3, fow1, fow2, N)
-
-## Multiple phase
-p &lt;- consort_plot(
-  data = df,
-  order = list(
-    trialno = "Population",
-    exc1 = "Excluded",
-    induc = "Induction",
-    exc2 = "Excluded",
-    arm3 = "Randomized patient",
-    fow1 = "Lost of Follow-up",
-    trialno = "Finished Followup",
-    fow2 = "Not evaluable",
-    trialno = "Final Analysis"
-  ),
-  side_box = c("exc1", "exc2", "fow1", "fow2"),
-  allocation = "arm3",
-  labels = c(
-    "1" = "Screening", "2" = "Month 4",
-    "3" = "Randomization", "5" = "Month 24",
-    "6" = "End of study"
-  ),
-  cex = 0.7
-)
+df &lt;- dispos.data[!dispos.data$arm3 %in% "Trt C", ]
+p &lt;- consort_plot(data = df,
+                  orders = list(c(trialno = "Population"),
+                                c(exclusion = "Excluded"),
+                                c(arm     = "Randomized patient"),
+                                c(arm3     = "", 
+                                  subjid_notdosed="Participants not treated"),
+                                c(followup    = "Pariticpants planned for follow-up",
+                                  lost_followup = "Reason for tot followed"),
+                                c(assessed = "Assessed for final outcome"),
+                                c(no_value = "Reason for not assessed"),
+                                c(mitt = "Included in the mITT analysis")),
+                  side_box = c("exclusion", "no_value"),
+                  allocation = c("arm", "arm3"),
+                  labels = c("1" = "Screening", "2" = "Randomization",
+                             "5" = "Follow-up", "7" = "Final analysis"),
+                  cex = 0.7)
 </code></pre>
+
+<hr>
+<h2 id='dispos.data'>Demo clinical trial disposition data</h2><span id='topic+dispos.data'></span>
+
+<h3>Description</h3>
+
+<p>This is a demo data to demonstrate the use of the package. One row per
+participant. Participants who are excluded should provide a reason, missing
+otherwise.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>dispos.data
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 300 rows and 11 columns:
+</p>
+
+<dl>
+<dt>trialno</dt><dd><p>Participants ID of the participants</p>
+</dd>
+<dt>exclusion1, exclusion2</dt><dd><p>Exclusion reason before and after induction</p>
+</dd>
+<dt>induction</dt><dd><p>Participants ID of the participants who are included in the induction
+phase, an extra treatment before randomisation.</p>
+</dd>
+<dt>exclusion</dt><dd><p>Exclusion reason before randomisation, including before and after
+induction</p>
+</dd>
+<dt>arm, arm3</dt><dd><p>Arms pariticipants randomised to.</p>
+</dd>
+<dt>sbujid_dosed</dt><dd><p>Participants ID of the participants who had at least one dose of 
+the protocol treatment.</p>
+</dd>
+<dt>subjid_notdosed</dt><dd><p>Reason for participants not dosed.</p>
+</dd>
+<dt>followup</dt><dd><p>Participants ID planned for follow-up.</p>
+</dd>
+<dt>lost_followup</dt><dd><p>Reason for participants not dosed.</p>
+</dd>
+<dt>assessed</dt><dd><p>Participants ID participants attended assessment.</p>
+</dd>
+<dt>no_value</dt><dd><p>Reason for participants missing final assessment.</p>
+</dd>
+<dt>mitt</dt><dd><p>Participants ID included in the mITT analysis.</p>
+</dd>
+</dl>
+
 
 <hr>
 <h2 id='gen_text'>Generate label and bullet points</h2><span id='topic+gen_text'></span>

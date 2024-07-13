@@ -23,6 +23,7 @@ function processMathHTML() {
 <li><a href='#callNonmemDirect'><p>Generate system command to call Nonmem directly</p></a></li>
 <li><a href='#checkTimes'><p>Test if file modification times indicate that Nonmem models should</p>
 be re-run</a></li>
+<li><a href='#cleanStrings'><p>Drop spaces and odd characters</p></a></li>
 <li><a href='#dt2mat'><p>Convert a data.table of parameter estimates to a matrix</p></a></li>
 <li><a href='#dtapply'><p>Apply function and return a data.table</p></a></li>
 <li><a href='#findUpdated'><p>Filter control streams to only those updated since last run</p></a></li>
@@ -33,22 +34,25 @@ be re-run</a></li>
 <li><a href='#NMexec'><p>Execute Nonmem and archive input data with model files</p></a></li>
 <li><a href='#NMexecDirectory'><p>Execute Nonmem inside a dedicated directory</p></a></li>
 <li><a href='#NMgenPNM'><p>Generate PNM file for sge clusters</p></a></li>
-<li><a href='#NMreadCov'><p>Read in data file</p></a></li>
 <li><a href='#NMreadSim'><p>Read simulation results based on NMsim's track of model runs</p></a></li>
 <li><a href='#NMreadSimModTab'><p>Read simulation results from rds objects and/or NMsimModTab objects</p></a></li>
 <li><a href='#NMreadSimModTabOne'><p>Read simulation results from an rds or a NMsimModTab object</p></a></li>
 <li><a href='#NMreadSimRes'><p>Read simulation results from data.frames or fst files</p></a></li>
 <li><a href='#NMreadSimResOne'><p>read one sim element. This will be run in lapply in NMreadSim.</p></a></li>
 <li><a href='#NMreplaceInits'><p>Replace initial values in Nonmem control stream</p></a></li>
+<li><a href='#NMseed'><p>Add seed string to simulation model data.table</p></a></li>
 <li><a href='#NMsim'><p>Simulate from an estimated Nonmem model</p></a></li>
 <li><a href='#NMsim_asis'><p>Simulation method that uses the provided control stream as is</p></a></li>
 <li><a href='#NMsim_default'><p>Transform an estimated Nonmem model into a simulation control</p>
 stream</a></li>
-<li><a href='#NMsim_known'><p>Known subject simulation method</p></a></li>
+<li><a href='#NMsim_EBE'><p>Use emperical Bayes estimates to simulate re-using ETAs</p></a></li>
+<li><a href='#NMsim_known'><p>NMsim_known is an old name for NMsim_EBE()</p></a></li>
 <li><a href='#NMsim_typical'><p>Typical subject simiulation method</p></a></li>
 <li><a href='#NMsim_VarCov'><p>Simulate with parameter values sampled from a covariance step</p></a></li>
 <li><a href='#NMsimCheckMod'><p>Check a simulation control streams for things that can cause trouble in NMsim</p></a></li>
 <li><a href='#NMupdateInits'><p>Create new Nonmem control stream with updated initial parameter values</p></a></li>
+<li><a href='#padZeros'><p>pad zeros on integers</p></a></li>
+<li><a href='#readParsWide'><p>Parameter data from csv</p></a></li>
 <li><a href='#simpleCharArg'><p>Check that a variable is a single character string meeting specified requirements</p></a></li>
 <li><a href='#simPopEtas'><p>Generate a population based on a Nonmem model</p></a></li>
 <li><a href='#unNMsimModTab'><p>Remove NMsimModTab class and discard NMsimModTab meta data</p></a></li>
@@ -70,7 +74,7 @@ stream</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.0</td>
+<td>0.1.1</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -86,7 +90,7 @@ stream</a></li>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -94,7 +98,7 @@ stream</a></li>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>data.table, NMdata (&ge; 0.1.3), R.utils, MASS, fst, xfun</td>
+<td>data.table, NMdata (&ge; 0.1.5), R.utils, MASS, fst, xfun</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -123,12 +127,11 @@ tidyvpc</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-22 03:36:46 UTC; philipde</td>
+<td>2024-07-03 11:47:24 UTC; philipde</td>
 </tr>
 <tr>
 <td>Author:</td>
-<td>Philip Delff [aut, cre],
-  Matthew Fidler [ctb] (Co-author on NMreadCov)</td>
+<td>Philip Delff [aut, cre]</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -136,7 +139,7 @@ tidyvpc</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-22 08:00:05 UTC</td>
+<td>2024-07-03 12:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -209,26 +212,34 @@ EVID. You may have to reorder for your specific needs.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(data.table)
-## Users should not use setDTthreads. This is for CRAN to only use 1 core.
-data.table::setDTthreads(1) 
-(doses1 &lt;- NMcreateDoses(TIME=c(0,12,24,36),AMT=c(2,1)))
+<pre><code class='language-R'>(doses1 &lt;- NMcreateDoses(TIME=c(0,12,24,36),AMT=c(2,1)))
 addEVID2(doses1,time.sim=seq(0,28,by=4),CMT=2)
 
 ## two named compartments
 dt.doses &lt;- NMcreateDoses(TIME=c(0,12),AMT=10,CMT=1)
 seq.time &lt;- c(0,4,12,24)
-dt.cmt &lt;- data.table(CMT=c(2,3),analyte=c("parent","metabolite"))
+dt.cmt &lt;- data.frame(CMT=c(2,3),analyte=c("parent","metabolite"))
 res &lt;- addEVID2(dt.doses,time.sim=seq.time,CMT=dt.cmt)
 
 ## Separate sampling schemes depending on covariate values
-dt.doses &lt;- NMcreateDoses(TIME=data.table(regimen=c("SD","MD","MD"),TIME=c(0,0,12)),AMT=10,CMT=1)
+dt.doses &lt;- NMcreateDoses(TIME=data.frame(regimen=c("SD","MD","MD"),TIME=c(0,0,12)),AMT=10,CMT=1)
 
-seq.time.sd &lt;- data.table(regimen="SD",TIME=seq(0,6))
-seq.time.md &lt;- data.table(regimen="MD",TIME=c(0,4,12,24))
+seq.time.sd &lt;- data.frame(regimen="SD",TIME=seq(0,6))
+seq.time.md &lt;- data.frame(regimen="MD",TIME=c(0,4,12,24))
 seq.time &lt;- rbind(seq.time.sd,seq.time.md)
-
 addEVID2(dt.doses,time.sim=seq.time,CMT=2)
+
+## an observed sample scheme and additional simulation times
+df.doses &lt;- NMcreateDoses(TIME=0,AMT=50,addl=list(ADDL=2,II=24))
+dense &lt;- c(seq(1,3,by=.1),4:6,seq(8,12,by=4),18,24)
+trough &lt;- seq(0,3*24,by=24)
+sim.extra &lt;- seq(0,(24*3),by=2)
+time.all &lt;- c(dense,dense+24*3,trough,sim.extra)
+time.all &lt;- sort(unique(time.all))
+dt.sample &lt;- data.frame(TIME=time.all)
+dt.sample$isobs &lt;- as.numeric(dt.sample$TIME%in%c(dense,trough))
+dat.sim &lt;- addEVID2(dt.doses,time.sim=dt.sample,CMT=2)
+
 </code></pre>
 
 <hr>
@@ -448,6 +459,38 @@ that Nonmem does not write the time zone, so you have to pass
 that to checkTimes if this is wanted.</p>
 </td></tr>
 </table>
+
+<hr>
+<h2 id='cleanStrings'>Drop spaces and odd characters</h2><span id='topic+cleanStrings'></span>
+
+<h3>Description</h3>
+
+<p>Drop spaces and odd characters
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>cleanStrings(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="cleanStrings_+3A_x">x</code></td>
+<td>
+<p>a string to clean</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>NMsim:::cleanStrings("e w% # ff!l3:t,3?.csv")
+NMsim:::cleanStrings("3!?:#;&lt;&gt;=, {}|=g+&amp;-
+.csv")
+</code></pre>
 
 <hr>
 <h2 id='dt2mat'>Convert a data.table of parameter estimates to a matrix</h2><span id='topic+dt2mat'></span>
@@ -1071,53 +1114,6 @@ stored.</p>
 </p>
 
 <hr>
-<h2 id='NMreadCov'>Read in data file</h2><span id='topic+NMreadCov'></span>
-
-<h3>Description</h3>
-
-<p>Read in data file
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>NMreadCov(file, ...)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="NMreadCov_+3A_file">file</code></td>
-<td>
-<p>The .cov covariance Nonmem matrix file to read</p>
-</td></tr>
-<tr><td><code id="NMreadCov_+3A_...">...</code></td>
-<td>
-<p>Passed to fread</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>This function is taken from nonmem2rx::nmcov which was
-based on function from NMdata.
-</p>
-
-
-<h3>Value</h3>
-
-<p>A matrix with covariance step from NONMEM
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Philip Delff and Matthew L. Fidler
-</p>
-
-<hr>
 <h2 id='NMreadSim'>Read simulation results based on NMsim's track of model runs</h2><span id='topic+NMreadSim'></span>
 
 <h3>Description</h3>
@@ -1128,7 +1124,15 @@ based on function from NMdata.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>NMreadSim(x, check.time = FALSE, dir.sims, wait = FALSE, quiet = FALSE, as.fun)
+<pre><code class='language-R'>NMreadSim(
+  x,
+  check.time = FALSE,
+  dir.sims,
+  wait = FALSE,
+  quiet = FALSE,
+  progress,
+  as.fun
+)
 </code></pre>
 
 
@@ -1138,7 +1142,7 @@ based on function from NMdata.
 <tr><td><code id="NMreadSim_+3A_x">x</code></td>
 <td>
 <p>Path to the simulation-specific rds file generated by
-NMsim, typically called 'NMsim_paths.rds'. Can also be a table
+NMsim, typically called 'NMsim_MetaData.rds'. Can also be a table
 of simulation runs as stored in 'rds' files by 'NMsim'. The
 latter should almost never be used.</p>
 </td></tr>
@@ -1153,12 +1157,12 @@ preserve the file modification times. Becasue of that,
 <tr><td><code id="NMreadSim_+3A_dir.sims">dir.sims</code></td>
 <td>
 <p>By default, 'NMreadSim' will use information about
-the relative path from the results table file ('_paths.rds')
+the relative path from the results table file ('_MetaData.rds')
 to the Nonmem simulation results. If these paths have changed,
 or for other reasons this doesn't work, you can use the
 'dir.sims' argument to specify where to find the Nonmem
 simulation results. If an '.fst' file was already generated
-and is found next to the '_paths.rds', the path to the Nonmem
+and is found next to the '_MetaData.rds', the path to the Nonmem
 simulation results is not used.</p>
 </td></tr>
 <tr><td><code id="NMreadSim_+3A_wait">wait</code></td>
@@ -1175,6 +1179,13 @@ generated.  Default is not to wait.</p>
 <td>
 <p>Turn off some messages about what is going on?
 Default is to report the messages.</p>
+</td></tr>
+<tr><td><code id="NMreadSim_+3A_progress">progress</code></td>
+<td>
+<p>Track progress? Default is 'TRUE' if 'quiet' is
+FALSE and more than one model is being read. The progress
+tracking is based on the number of models completed/read, not
+the status of the individual models.</p>
 </td></tr>
 <tr><td><code id="NMreadSim_+3A_as.fun">as.fun</code></td>
 <td>
@@ -1210,6 +1221,7 @@ NMdataConf.</p>
   wait = FALSE,
   skip.missing = FALSE,
   quiet = FALSE,
+  progress,
   as.fun
 )
 </code></pre>
@@ -1221,7 +1233,7 @@ NMdataConf.</p>
 <tr><td><code id="NMreadSimModTab_+3A_x">x</code></td>
 <td>
 <p>Path to the simulation-specific rds file generated by
-NMsim, typically called 'NMsim_paths.rds'. Can also be a table
+NMsim, typically called 'NMsim_MetaData.rds'. Can also be a table
 of simulation runs as stored in 'rds' files by 'NMsim'. The
 latter should almost never be used.</p>
 </td></tr>
@@ -1236,12 +1248,12 @@ preserve the file modification times. Becasue of that,
 <tr><td><code id="NMreadSimModTab_+3A_dir.sims">dir.sims</code></td>
 <td>
 <p>By default, 'NMreadSim' will use information about
-the relative path from the results table file ('_paths.rds')
+the relative path from the results table file ('_MetaData.rds')
 to the Nonmem simulation results. If these paths have changed,
 or for other reasons this doesn't work, you can use the
 'dir.sims' argument to specify where to find the Nonmem
 simulation results. If an '.fst' file was already generated
-and is found next to the '_paths.rds', the path to the Nonmem
+and is found next to the '_MetaData.rds', the path to the Nonmem
 simulation results is not used.</p>
 </td></tr>
 <tr><td><code id="NMreadSimModTab_+3A_wait">wait</code></td>
@@ -1258,6 +1270,13 @@ generated.  Default is not to wait.</p>
 <td>
 <p>Turn off some messages about what is going on?
 Default is to report the messages.</p>
+</td></tr>
+<tr><td><code id="NMreadSimModTab_+3A_progress">progress</code></td>
+<td>
+<p>Track progress? Default is 'TRUE' if 'quiet' is
+FALSE and more than one model is being simulated. The progress
+tracking is based on the number of models completed, not the
+status of the individual models.</p>
 </td></tr>
 <tr><td><code id="NMreadSimModTab_+3A_as.fun">as.fun</code></td>
 <td>
@@ -1287,6 +1306,7 @@ NMdataConf.</p>
   wait = FALSE,
   quiet = FALSE,
   skip.missing = FALSE,
+  progress,
   as.fun
 )
 </code></pre>
@@ -1306,12 +1326,12 @@ preserve the file modification times. Becasue of that,
 <tr><td><code id="NMreadSimModTabOne_+3A_dir.sims">dir.sims</code></td>
 <td>
 <p>By default, 'NMreadSim' will use information about
-the relative path from the results table file ('_paths.rds')
+the relative path from the results table file ('_MetaData.rds')
 to the Nonmem simulation results. If these paths have changed,
 or for other reasons this doesn't work, you can use the
 'dir.sims' argument to specify where to find the Nonmem
 simulation results. If an '.fst' file was already generated
-and is found next to the '_paths.rds', the path to the Nonmem
+and is found next to the '_MetaData.rds', the path to the Nonmem
 simulation results is not used.</p>
 </td></tr>
 <tr><td><code id="NMreadSimModTabOne_+3A_wait">wait</code></td>
@@ -1328,6 +1348,13 @@ generated.  Default is not to wait.</p>
 <td>
 <p>Turn off some messages about what is going on?
 Default is to report the messages.</p>
+</td></tr>
+<tr><td><code id="NMreadSimModTabOne_+3A_progress">progress</code></td>
+<td>
+<p>Track progress? Default is 'TRUE' if 'quiet' is
+FALSE and more than one model is being read. The progress
+tracking is based on the number of models completed/read, not
+the status of the individual models.</p>
 </td></tr>
 <tr><td><code id="NMreadSimModTabOne_+3A_as.fun">as.fun</code></td>
 <td>
@@ -1435,6 +1462,57 @@ NMreplaceInits to run at all.</p>
 </p>
 
 <hr>
+<h2 id='NMseed'>Add seed string to simulation model data.table</h2><span id='topic+NMseed'></span>
+
+<h3>Description</h3>
+
+<p>This is an internal NMsim function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NMseed(models, nseeds, dist, values, fun.seed = seedFunDefault)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NMseed_+3A_models">models</code></td>
+<td>
+<p>A data.frame containing model paths etc as created
+by <code>NMsim()</code>.</p>
+</td></tr>
+<tr><td><code id="NMseed_+3A_nseeds">nseeds</code></td>
+<td>
+<p>Number of seeds in each simulation control
+stream. Default is to match length of dist.</p>
+</td></tr>
+<tr><td><code id="NMseed_+3A_dist">dist</code></td>
+<td>
+<p>Distribution of random sources. These character
+strings will be pasted directly into the Nonem control streams
+after the seed values. Default is &quot;&quot; which means one normal
+distribution. <code>dist=c("","UNIFORM")</code> will give two seeds
+with random sources following a normal and a uniform
+distribution.</p>
+</td></tr>
+<tr><td><code id="NMseed_+3A_values">values</code></td>
+<td>
+<p>Optionally, seed values. This can be a data.frame
+with as many columns as random sources.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An updated data.table with simulation model information
+including seed strings.
+</p>
+
+<hr>
 <h2 id='NMsim'>Simulate from an estimated Nonmem model</h2><span id='topic+NMsim'></span>
 
 <h3>Description</h3>
@@ -1456,15 +1534,18 @@ get the most out of this.
   dir.sims,
   name.sim,
   order.columns = TRUE,
+  file.ext = NULL,
   script = NULL,
   subproblems = NULL,
   reuse.results = FALSE,
-  seed,
+  seed.R,
+  seed.nm,
   args.psn.execute,
   table.vars,
   table.options,
   text.sim = "",
   method.sim = NMsim_default,
+  typical = FALSE,
   execute = TRUE,
   sge = FALSE,
   nc = 1,
@@ -1473,12 +1554,13 @@ get the most out of this.
   method.update.inits,
   create.dirs = TRUE,
   dir.psn,
-  list.sections,
+  modify.model,
   sim.dir.from.scratch = TRUE,
   col.row,
   args.NMscanData,
   path.nonmem = NULL,
-  nmquiet = FALSE,
+  nmquiet = TRUE,
+  progress,
   as.fun,
   suffix.sim,
   text.table,
@@ -1486,8 +1568,12 @@ get the most out of this.
   dir.res,
   file.res,
   wait,
+  auto.dv = TRUE,
   quiet = FALSE,
   check.mod = TRUE,
+  seed,
+  list.sections,
+  format.data.complete = "rds",
   ...
 )
 </code></pre>
@@ -1499,14 +1585,16 @@ get the most out of this.
 <tr><td><code id="NMsim_+3A_file.mod">file.mod</code></td>
 <td>
 <p>Path(s) to the input control stream(s) to run the
-simulation on. The outpult control stream is for now assumed
-to be stored next to the input control stream and ending in
-.lst instead of .mod. The .ext file must also be present. If
+simulation on. The output control stream is for now assumed to
+be stored next to the input control stream and ending in .lst
+instead of .mod. The .ext file must also be present. If
 simulating known subjects, the .phi is necessary too.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_data">data</code></td>
 <td>
-<p>The simulation data as a data.frame.</p>
+<p>The simulation data as a <code>data.frame</code> or a list
+of <code>data.frame</code>s. If a list, the model(s) will be run on
+each of the data sets in the list.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_dir.sims">dir.sims</code></td>
 <td>
@@ -1523,8 +1611,18 @@ suffix. A short string describing the sim is recommended like
 <tr><td><code id="NMsim_+3A_order.columns">order.columns</code></td>
 <td>
 <p>reorder columns by calling
-NMdata::NMorderColumns before saving dataset and running
-simulations? Default is TRUE.</p>
+<code>NMdata::NMorderColumns</code> before saving dataset and
+running simulations? Default is TRUE.</p>
+</td></tr>
+<tr><td><code id="NMsim_+3A_file.ext">file.ext</code></td>
+<td>
+<p>Optionally provide a parameter estimate file from
+Nonmem. This is normally not needed since 'NMsim' will by
+default use the ext file stored next to the input control
+stream (replacing the file name extension with '.ext'). If
+using method.update.inits=&quot;psn&quot;, this argument cannot be
+used. If you want provide parameters to be used for the
+simulation, look at the 'ext' argument to 'NMsim_VarCov'.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_script">script</code></td>
 <td>
@@ -1533,9 +1631,10 @@ stamping of dataset so results can be traced back to code.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_subproblems">subproblems</code></td>
 <td>
-<p>Number of subproblems to use as SUBPROBLEMS in
-$SIMULATION block in Nonmem. The default is subproblem=0 which
-means not to use SUBPROBLEMS.</p>
+<p>Number of subproblems to use as
+<code>SUBPROBLEMS</code> in <code>$SIMULATION</code> block in Nonmem. The
+default is subproblem=0 which means not to use
+<code>SUBPROBLEMS</code>.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_reuse.results">reuse.results</code></td>
 <td>
@@ -1543,13 +1642,35 @@ means not to use SUBPROBLEMS.</p>
 they be used? If TRUE and reading the results fail, the
 simulations will still be rerun.</p>
 </td></tr>
-<tr><td><code id="NMsim_+3A_seed">seed</code></td>
+<tr><td><code id="NMsim_+3A_seed.r">seed.R</code></td>
 <td>
-<p>Seed to pass to Nonmem. Default is to draw one betwen
+<p>A value passed to <code>set.seed()</code>. It may be
+better use <code>seed.R</code> rather than calling <code>set.seed()</code>
+manually because the seed can then be captured and stored by
+<code>NMsim()</code> for reproducibility. See <code>seed.nm</code> for
+finer control of the seeds that are used in the Nonmem control
+streams.</p>
+</td></tr>
+<tr><td><code id="NMsim_+3A_seed.nm">seed.nm</code></td>
+<td>
+<p>Control Nonmem seeds. If a numeric, a vector or a
+'data.frame', these are used as the the seed values (a single
+value or vector will be recycled so make sure the dimesnsions
+are right, the number of columns in a <code>data.frame</code> will
+dictate the number of seeds in each Nonmem control stream. Use
+a list with elements 'values', and 'dist' and others for
+detailed control of the random sources. See <code>?NMseed</code> for
+details on what arguments can be passed this way.
+</p>
+<p>Default is to draw seeds betwen
 0 and 2147483647 (the values supported by Nonmem) for each
 simulation. You can pass a function that will be evaluated
-(say to choose a different pool of seeds to draw from). In
-case type.sim=known, seed is not used and will be set to 1.</p>
+(say to choose a different pool of seeds to draw from).
+</p>
+<p>To avoid changing an exisiting seed in a control stream, use
+<code>seed.nm="asis"</code>.
+</p>
+<p>In case <code>method.sim=NMsim_EBE</code>, seeds are not used.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_args.psn.execute">args.psn.execute</code></td>
 <td>
@@ -1598,6 +1719,11 @@ step. See details section on oter methods, and see examples
 and especially vignettes on how to use the different provided
 methods.</p>
 </td></tr>
+<tr><td><code id="NMsim_+3A_typical">typical</code></td>
+<td>
+<p>Run with all ETAs fixed to zero? Technically all ETAs=0 is obtained by replacing
+<code>$OMEGA</code> by a zero matrix. Default is FALSE.</p>
+</td></tr>
 <tr><td><code id="NMsim_+3A_execute">execute</code></td>
 <td>
 <p>Execute the simulation or only prepare it?
@@ -1630,7 +1756,7 @@ transform, the contents must be the function to apply.</p>
 PSN's execute), and &quot;direct&quot; (just run Nonmem directly and
 dump all the temporary files). &quot;nmsim&quot; has advantages over
 &quot;psn&quot; that makes it the only supported method when
-type.sim=&quot;NMsim_known&quot;. &quot;psn&quot; has the simple advantage that
+type.sim=&quot;NMsim_EBE&quot;. &quot;psn&quot; has the simple advantage that
 the path to nonmem does not have to be specified if &quot;execute&quot;
 is in the system search path. So as long as you know where
 your Nonmem executable is, &quot;nmsim&quot; is recommended. The default
@@ -1638,18 +1764,40 @@ is &quot;nmsim&quot; if path.nonmem is specified, and &quot;psn&quot; if not.</p
 </td></tr>
 <tr><td><code id="NMsim_+3A_method.update.inits">method.update.inits</code></td>
 <td>
-<p>The initial estimates must be updated
-from the estimated model before running the simulation. NMsim
-supports two ways of doing this: &quot;psn&quot; which uses PSN's
-&quot;update_inits&quot;, and &quot;nmsim&quot; which uses a simple internal
-method. The advantage of &quot;psn&quot; is it keeps comments in the
-control stream and is a method known to many. The advantages
-of &quot;nmsim&quot; are it does not require PSN, and that it is very
-robust. &quot;nmsim&quot; fixes the whole OMEGA and SIGMA matrices as
-single blocks making the $OMEGA and $SIGMA sections of the
-control streams less easy to read. On the other hand, this
-method is robust because it avoids any interpretation of BLOCK
-structure or other code in the control streams.</p>
+<p>The initial values of all parameters
+are by updated from the estimated model before running the
+simulation. NMsim can do this with a native function or use
+PSN to do it - or the step can be skipped to not update the
+values. The possible values are
+</p>
+
+<ul>
+<li><p>&quot;psn&quot;
+uses PSN's &quot;update_inits&quot;. Requires a functioning PSN
+installation and possibly that <code>dir.psn</code> is correctly
+set. The advantages of this method are that it keeps comments
+in the control stream and that it is a method known to many.
+</p>
+</li>
+<li><p>&quot;nmsim&quot;
+Uses a simple internal method to update the parameter values
+based on the ext file.  The advantages of &quot;nmsim&quot; are it does not
+require PSN, and that it does not rely on code-interpretation for generation of simulation control streams. &quot;nmsim&quot; fixes the whole
+OMEGA and SIGMA matrices as single blocks making the $OMEGA and
+$SIGMA sections of the control streams less easy to read. On the
+other hand, this method is robust because it avoids any
+interpretation of BLOCK structure or other code in the control
+streams.
+</p>
+</li>
+<li><p>&quot;none&quot; Do nothing. This is useful if the model to simulate
+has not been estimated but parameter values have been manually put
+into the respective sections in the control stream.
+</p>
+<p>On linux/mac, The default is to use &quot;PSN&quot; if found. On Windows, &quot;nmsim&quot;
+is the default.
+</p>
+</li></ul>
 </td></tr>
 <tr><td><code id="NMsim_+3A_create.dirs">create.dirs</code></td>
 <td>
@@ -1665,15 +1813,14 @@ system's search path. So if you can run 'execute' and
 need to specify this unless you want to explicitly use a
 specific installation of PSN on your system.</p>
 </td></tr>
-<tr><td><code id="NMsim_+3A_list.sections">list.sections</code></td>
+<tr><td><code id="NMsim_+3A_modify.model">modify.model</code></td>
 <td>
 <p>Named list of additional control stream
 section edits. Note, these can be functions that define how to
 edit sections. This is an advanced feature which is not needed
 to run most simulations. It is however powerful for some types
 of analyses, like modifying parameter values. See vignettes
-for further information. Documentation still under
-development.</p>
+for further information.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_sim.dir.from.scratch">sim.dir.from.scratch</code></td>
 <td>
@@ -1722,7 +1869,14 @@ Nonmem, or ask a colleague.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_nmquiet">nmquiet</code></td>
 <td>
-<p>Silent messages from Nonmem.</p>
+<p>Silent messages from Nonmem. The default is 'TRUE'.</p>
+</td></tr>
+<tr><td><code id="NMsim_+3A_progress">progress</code></td>
+<td>
+<p>Track progress? Default is 'TRUE' if 'quiet' is
+FALSE and more than one model is being simulated. The progress
+tracking is based on the number of models completed, not the
+status of the individual models.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_as.fun">as.fun</code></td>
 <td>
@@ -1765,13 +1919,16 @@ simulation results.</p>
 <tr><td><code id="NMsim_+3A_file.res">file.res</code></td>
 <td>
 <p>Path to an rds file that will contain a table of
-the simulated models. This is useful for subsequently
-retrieving all the results using 'NMreadSim()'. The default is
-to create a file called 'NMsim_paths.rds' under the model
-simulation directory. However, if multiple models are
-simulated, this will result in multiple rds files. Specifying
-a path ensures that one rds file containing information about
-all simulated models will be created.</p>
+the simulated models and other metadata. This is needed for
+subsequently retrieving all the results using
+'NMreadSim()'. The default is to create a file called
+'NMsim_..._MetaData.rds' under the <code>dir.res</code> directory
+where ... is based on the model name. However, if multiple
+models (<code>file.mod</code>) are simulated, this will result in
+multiple rds files. Specifying a path ensures that one rds
+file containing information about all simulated models will be
+created. Notice if <code>file.res</code> is supplied, <code>dir.res</code>
+is not used.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_wait">wait</code></td>
 <td>
@@ -1783,10 +1940,18 @@ files to read will be returned. Pass them through
 'NMreadSim()' (which also supports waiting for the simulations
 to finish).</p>
 </td></tr>
+<tr><td><code id="NMsim_+3A_auto.dv">auto.dv</code></td>
+<td>
+<p>Add a column called 'DV' to simulation data sets if
+a column of that name is not found? Nonmem is generally
+dependent on a 'DV' column in input data but this is typically
+uninformative in simulation data sets and hence easily
+forgotten when generating simulation data sets.</p>
+</td></tr>
 <tr><td><code id="NMsim_+3A_quiet">quiet</code></td>
 <td>
 <p>If TRUE, messages from what is going on will be
-suppressed to the extend implemented.</p>
+suppressed.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_check.mod">check.mod</code></td>
 <td>
@@ -1795,6 +1960,24 @@ that may cause issues for simulation. Default is 'TRUE', and
 it is only recommended to disable this if you are fully aware
 of such a feature of your control stream, you know how it
 impacts simulation, and you want to get rid of warnings.</p>
+</td></tr>
+<tr><td><code id="NMsim_+3A_seed">seed</code></td>
+<td>
+<p>Deprecated. See <code>seed.R</code> and <code>seed.nm</code>.</p>
+</td></tr>
+<tr><td><code id="NMsim_+3A_list.sections">list.sections</code></td>
+<td>
+<p>Deprecated. Use modify.model instead.</p>
+</td></tr>
+<tr><td><code id="NMsim_+3A_format.data.complete">format.data.complete</code></td>
+<td>
+<p>For development purposes - users do
+not need this argument. Controls what format the complete
+input data set is saved in.  Possible values are 'rds'
+(default), 'fst' (experimental) and 'csv'. 'fst' may be faster
+and use less disk space but factor levels may be lost from
+input data to output data. 'csv' will also lead to loss of
+additional information such as factor levels.</p>
 </td></tr>
 <tr><td><code id="NMsim_+3A_...">...</code></td>
 <td>
@@ -1806,20 +1989,20 @@ impacts simulation, and you want to get rid of warnings.</p>
 <h3>Details</h3>
 
 <p>Loosely speaking, the argument <code>method.sim</code> defines
-_what_ NMsim will do, <code>method.executes</code> define _how_ it
+_what_ NMsim will do, <code>method.execute</code> define _how_ it
 does it. <code>method.sim</code> takes a function that converts an
 estimation control stream into whatever should be
 run. Features like replacing '$INPUT', '$DATA', '$TABLE', and
 handling seeds are NMsim features that are done in addition to
-the <code>method.sim</code>. Also the <code>list.sections</code> argument
+the <code>method.sim</code>. Also the <code>modeify.model</code> argument
 is handled in addition to the <code>method.sim</code>. The
 <code>subproblems</code> and <code>seed</code> arguments are available to
 all methods creating a <code>$SIMULATION</code> section.
 </p>
 <p>Notice, the following functions are internally available to
-'NMsim' so you can run them by say <code>method.sim=NMsim_known</code>
+'NMsim' so you can run them by say <code>method.sim=NMsim_EBE</code>
 without quotes. To see the code of that method, type
-<code>NMsim_known</code>.
+<code>NMsim_EBE</code>.
 </p>
 
 <ul>
@@ -1834,31 +2017,38 @@ more. Use this for instance if you already created a simulation
 on different data sets.
 </p>
 </li>
-<li> <p><code>NMsim_typical</code> Like <code>NMsim_default</code> but with all
-ETAs=0, giving a &quot;typical subject&quot; simulation. Do not confuse this
-with a &quot;reference subject&quot; simulation which has to do with
-covariate values. Technically all ETAs=0 is obtained by replacing
-<code>$OMEGA</code> by a zero matrix.
+<li> <p><code>NMsim_typical</code> Deprecated. Use <code>typical=TRUE</code> instead. 
 </p>
 </li>
-<li> <p><code>NMsim_known</code> Simulates _known_ subjects, meaning that
-it reuses ETA values from estimation run. This is what is refered
-to as emperical Bayes estimates. The .phi file from the estimation
-run must be found next to the .lst file from the estimation.This
-means that ID values in the (simulation) input data must be ID
-values that were used in the estimation too. Runs an
-<code>$ESTIMATION MAXEVAL=0</code> but pulls in ETAs for the ID's found
-in data. No <code>$SIMULATION</code> step is run which may affect how
-for instance residual variability is simulated, if at all.
+<li> <p><code>NMsim_EBE</code> Simulates _known_ ETAs. By default, the ETA
+values are automatically taken from the estimation run. This is
+what is refered to as emperical Bayes estimates, hence the name of
+the method &quot;NMsim_EBE&quot;. However, the user can also provide a
+different '.phi' file which may contain simulated ETA values (see
+the 'file.phi' argument). ID values in the simulation data set
+must match ID values in the phi file for this step to work. If
+refering to estimated subjects, the .phi file from the estimation
+run must be found next to the .lst file from the estimation with
+the same file name stem (say 'run1.lst' and 'run1.phi'). Again, ID
+values in the (simulation) input data must be ID values that were
+used in the estimation too. The method Runs an <code>$ESTIMATION
+MAXEVAL=0</code> but pulls in ETAs for the ID's found in data. No
+<code>$SIMULATION</code> step is run which unfortunately means no
+residual error will be simulated.
 </p>
 </li>
 <li> <p><code>NMsim_VarCov</code> Like <code>NMsim_default</code> but '$THETA',
 '$OMEGA', and 'SIGMA' are drawn from distribution estimated in
 covariance step. This means that a successful covariance step must
-be available from the estimation. In case the simulation leads to
-negative diagonal elements in $OMEGA and $SIGMA, those values are
-truncated at zero. For simulation with parameter variability based
-on bootstrap results, use <code>NMsim_default</code>.
+be available from the estimation. NB. A multivariate normal
+distribution is used for all parameters, including '$OMEGA' and
+'$SIGMA' which is not the correct way to do this. In case the
+simulation leads to negative diagonal elements in $OMEGA and
+$SIGMA, those values are truncated at zero. This method is only
+valid for simulation of '$THETA' variability. The method accepts a
+table of parameter values that can be produced with other tools
+than 'NMsim'. For simulation with parameter variability based on
+bootstrap results, use <code>NMsim_default</code>.
 </p>
 </li></ul>
 
@@ -1979,51 +2169,51 @@ resulting control stream is not written to file.</p>
 </p>
 
 <hr>
-<h2 id='NMsim_known'>Known subject simulation method</h2><span id='topic+NMsim_known'></span>
+<h2 id='NMsim_EBE'>Use emperical Bayes estimates to simulate re-using ETAs</h2><span id='topic+NMsim_EBE'></span>
 
 <h3>Description</h3>
 
-<p>Simulates _known_ subjects, meaning that it reuses ETA values from
-estimation run. This is what is refered to as emperical Bayes
-estimates. The .phi file from the estimation run must be found
+<p>Simulation reusing ETA values from
+estimation run or otherwise specified ETA values. For observed subjects, this is refered to as emperical Bayes
+estimates (EBE). The .phi file from the estimation run must be found
 next to the .lst file from the estimation.This means that ID
 values in the (simulation) input data must be ID values that were
 used in the estimation too. Runs an <code>$ESTIMATION MAXEVAL=0</code>
 but pulls in ETAs for the ID's found in data. No
 <code>$SIMULATION</code> step is run which may affect how for instance
-residual variability is simulated, if at all.
+residual variability is simulated, if at all. You can also specify a different <code>.phi</code> file which can be a simulation result.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>NMsim_known(file.sim, file.mod, data.sim, file.phi, return.text = FALSE)
+<pre><code class='language-R'>NMsim_EBE(file.sim, file.mod, data.sim, file.phi, return.text = FALSE)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="NMsim_known_+3A_file.sim">file.sim</code></td>
+<tr><td><code id="NMsim_EBE_+3A_file.sim">file.sim</code></td>
 <td>
 <p>See <code>?NMsim</code>.</p>
 </td></tr>
-<tr><td><code id="NMsim_known_+3A_file.mod">file.mod</code></td>
+<tr><td><code id="NMsim_EBE_+3A_file.mod">file.mod</code></td>
 <td>
 <p>See <code>?NMsim</code>.</p>
 </td></tr>
-<tr><td><code id="NMsim_known_+3A_data.sim">data.sim</code></td>
+<tr><td><code id="NMsim_EBE_+3A_data.sim">data.sim</code></td>
 <td>
 <p>See <code>?NMsim</code>.</p>
 </td></tr>
-<tr><td><code id="NMsim_known_+3A_file.phi">file.phi</code></td>
+<tr><td><code id="NMsim_EBE_+3A_file.phi">file.phi</code></td>
 <td>
 <p>A phi file to take the known subjects from. The
 default is to replace the filename extension on file.mod with
 .phi. A different .phi file would be used if you want to reuse
 subjects simulated in a previous simulation.</p>
 </td></tr>
-<tr><td><code id="NMsim_known_+3A_return.text">return.text</code></td>
+<tr><td><code id="NMsim_EBE_+3A_return.text">return.text</code></td>
 <td>
 <p>If TRUE, just the text will be returned, and
 resulting control stream is not written to file.</p>
@@ -2035,6 +2225,36 @@ resulting control stream is not written to file.</p>
 
 <p>Path to simulation control stream
 </p>
+
+
+<h3>See Also</h3>
+
+<p>simPopEtas
+</p>
+
+<hr>
+<h2 id='NMsim_known'>NMsim_known is an old name for NMsim_EBE()</h2><span id='topic+NMsim_known'></span>
+
+<h3>Description</h3>
+
+<p>NMsim_known is an old name for NMsim_EBE()
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NMsim_known(...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NMsim_known_+3A_...">...</code></td>
+<td>
+<p>Everything passed to NMsim_EBE()</p>
+</td></tr>
+</table>
 
 <hr>
 <h2 id='NMsim_typical'>Typical subject simiulation method</h2><span id='topic+NMsim_typical'></span>
@@ -2100,7 +2320,7 @@ results, use <code>NMsim_default</code>.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>NMsim_VarCov(file.sim, file.mod, data.sim, nsims = 1)
+<pre><code class='language-R'>NMsim_VarCov(file.sim, file.mod, data.sim, nsims, ext, write.ext = NULL)
 </code></pre>
 
 
@@ -2123,6 +2343,16 @@ results, use <code>NMsim_default</code>.
 <td>
 <p>Number of replications wanted. The default is 1. If
 greater, multiple control streams will be generated.</p>
+</td></tr>
+<tr><td><code id="NMsim_VarCov_+3A_ext">ext</code></td>
+<td>
+<p>Parameter values in long format as created by
+'readParsWide' and 'NMdata::NMreadExt'.</p>
+</td></tr>
+<tr><td><code id="NMsim_VarCov_+3A_write.ext">write.ext</code></td>
+<td>
+<p>If supplied, a path to an rds file where the
+parameter values used for simulation will be saved.</p>
 </td></tr>
 </table>
 
@@ -2167,7 +2397,7 @@ greater, multiple control streams will be generated.</p>
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>NMupdateInits(file.mod, newfile, fix)
+<pre><code class='language-R'>NMupdateInits(file.mod, file.ext, newfile, fix)
 </code></pre>
 
 
@@ -2178,21 +2408,177 @@ greater, multiple control streams will be generated.</p>
 <td>
 <p>The control stream to update. Will not be edited.</p>
 </td></tr>
+<tr><td><code id="NMupdateInits_+3A_file.ext">file.ext</code></td>
+<td>
+</td></tr>
 <tr><td><code id="NMupdateInits_+3A_newfile">newfile</code></td>
 <td>
 <p>New file to generate</p>
 </td></tr>
 <tr><td><code id="NMupdateInits_+3A_fix">fix</code></td>
 <td>
-<p>Fix the values? Probably only TRUE is supported.</p>
+<p>Fix the values? Probably only TRUE is supported. Passed to <code>NMreplaceInits()</code>.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>The resulting control stream contents as text
+<p>The resulting control stream path(s)
 </p>
+
+<hr>
+<h2 id='padZeros'>pad zeros on integers</h2><span id='topic+padZeros'></span>
+
+<h3>Description</h3>
+
+<p>pad zeros on integers
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>padZeros(x, nchars)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="padZeros_+3A_x">x</code></td>
+<td>
+<p>integers to pad. They can be coded as characters already.</p>
+</td></tr>
+<tr><td><code id="padZeros_+3A_nchars">nchars</code></td>
+<td>
+<p>Optional specification of length of character
+strings to return. If not supplied, characters will be padded
+to match length of max value in x.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A character vector
+</p>
+
+<hr>
+<h2 id='readParsWide'>Parameter data from csv</h2><span id='topic+readParsWide'></span>
+
+<h3>Description</h3>
+
+<p>Reads output table from simpar and returns a long format
+data.table. This is the same format as returned by NMreadExt()
+which can be used by NMsim.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>readParsWide(
+  data,
+  col.model = NULL,
+  strings.par.type = c(THETA = "^T.*", OMEGA = "^O.*", SIGMA = "^S."),
+  as.fun
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="readParsWide_+3A_data">data</code></td>
+<td>
+<p>A data.frame or a path to a delimited file to be read
+using 'data.table::fread'.</p>
+</td></tr>
+<tr><td><code id="readParsWide_+3A_col.model">col.model</code></td>
+<td>
+<p>Name of the model counter, default is &quot;model&quot;. If
+the provided name is not found in data, it will be created as
+a row counter. Why needed? Each row in data represents a set
+of parameters, i.e. a model. In the long format result, each
+model will have multiple rows. Hence, a model identifier is
+needed to distinguish between models in results.</p>
+</td></tr>
+<tr><td><code id="readParsWide_+3A_strings.par.type">strings.par.type</code></td>
+<td>
+<p>Defines how column names get associated
+with THETA, OMEGA, and SIGMA. Default is to look for &quot;T&quot;, &quot;O&quot;,
+or &quot;S&quot; as starting letter. If customizing, make sure each no
+column name will be matched by more than one criterion.</p>
+</td></tr>
+<tr><td><code id="readParsWide_+3A_as.fun">as.fun</code></td>
+<td>
+<p>The default is to return data as a data.frame. Pass
+a function (say <code>tibble::as_tibble</code>) in as.fun to convert to
+something else. If data.tables are wanted, use
+as.fun=&quot;data.table&quot;. The default can be configured using
+NMdataConf.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The wide data format read by 'readParsWide' is not a Nonmem
+format. It is used to bridge output from other tools such as
+simpar, and potentially PSN. 
+</p>
+<p>This function reads a data that is &quot;wide&quot; in parameters - it has a
+column for each parameter, and one row per parameter set or
+&quot;model&quot;. It returns a data set that is &quot;long&quot; in model and
+parameters. The long format contains
+</p>
+
+<ul>
+<li><p> id.model.par The unique model-parameter identifier. The row-identifier.
+</p>
+</li>
+<li><p> model Model identifier. 
+</p>
+</li>
+<li><p> par.type (&quot;THETA&quot;, &quot;OMEGA&quot;, &quot;SIGMA&quot;)
+</p>
+</li>
+<li><p> i and j indexes for the parameters (j is NA for par.type==&quot;THETA&quot;).
+</p>
+</li>
+<li><p> value The parameter value 
+</p>
+</li>
+<li><p> parameter Nonmem-style parameter names. THETA1, OMEGA(1,1) etc. Notice the inconsistent naming of THETA vs others.
+</p>
+</li>
+<li><p> name.wide The column name in the wide data where this value was taken
+</p>
+</li></ul>
+
+<p>The columns or &quot;measure variables&quot; from which to read values  are
+specified as three regular expressions, called THETA, OMEGA, and SIGMA. The default three regular expressions will associate a column name starting with &quot;T&quot; with THETAs, while &quot;O&quot; or &quot;S&quot; followed by anything means &quot;OMEGA&quot; or &quot;SIGMA&quot;.
+</p>
+<p>readParsWide extracts i and j indexes from sequences of digits in the column names. TH.1 would be TETA1, SG1.1 is SIGMA(1,1).
+</p>
+
+
+<h3>Value</h3>
+
+<p>a long-format data.frame of model parameters
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+tab.ext &lt;- readParsCsv("simpartab.csv")
+## or
+tab.simpar &lt;- fread("simpartab.csv")
+tab.ext &lt;- readParsCsv(tab.simpar)
+NMsim(...,method.sim=NMsim_VarCov,tab.ext=tab.ext)
+
+## End(Not run)
+</code></pre>
 
 <hr>
 <h2 id='simpleCharArg'>Check that a variable is a single character string meeting specified requirements</h2><span id='topic+simpleCharArg'></span>

@@ -18,8 +18,6 @@ function processMathHTML() {
 <h1>Package {movieROC}</h1>
 <h2>Contents</h2>
 <ul class="menu">
-<li><a href='#biROC'>
-<p>Build a ROC curve for a bivariate marker</p></a></li>
 <li><a href='#gROC'>
 <p>Build a ROC curve for a univariate marker</p></a></li>
 <li><a href='#gROC_param'>
@@ -33,18 +31,18 @@ function processMathHTML() {
 <li><a href='#movieROC2_densities'>
 <p>Create a video with the building procedure of the smooth ROC curve estimate</p></a></li>
 <li><a href='#multiROC'>
-<p>Build a ROC curve for a multivariate marker with dimension higher than two</p></a></li>
+<p>Build a ROC curve for a multivariate marker with dimension <code class="reqn">p</code></p></a></li>
 <li><a href='#plot'>
 <p>Plot an ROC curve</p></a></li>
+<li><a href='#plot_buildROC'>
+<p>Plot the building procedure of the ROC curve</p></a></li>
 <li><a href='#plot_densities'>
 <p>Plot density function estimates for controls and cases</p></a></li>
 <li><a href='#plot_densityROC'>
 <p>Plot standard smooth ROC curve estimate</p></a></li>
-<li><a href='#plot.buildROC'>
-<p>Plot the building procedure of the ROC curve</p></a></li>
-<li><a href='#plot.funregions'>
+<li><a href='#plot_funregions'>
 <p>Plot the transformation function used for the marker</p></a></li>
-<li><a href='#plot.regions'>
+<li><a href='#plot_regions'>
 <p>Plot the classification regions underlying a ROC curve</p></a></li>
 <li><a href='#predict'>
 <p>Predict the classification regions for a particular specificity</p></a></li>
@@ -66,25 +64,21 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.0</td>
+<td>0.1.1</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Visualization of decision rules for binary classification and Receiver Operating Characteristic (ROC) curve estimation under different generalizations:
+<td>Visualization of decision rules for binary classification and Receiver Operating Characteristic (ROC) curve estimation under different generalizations proposed in the literature:
   - making the classification subsets flexible to cover those scenarios where both extremes of the
   marker are associated with a higher risk of being positive, considering two thresholds 
-  (gROC curve);
-  - transforming the marker by a function either defined by the user or resulting from a logistic 
-  regression model (hROC curve);
-  - considering a linear transformation with some fixed parameters introduced by the user, 
-  dynamic parameters or empirically maximizing TPR for each FPR for a bivariate marker.
-  Also a quadratic transformation with particular coefficients or a function fitted by a logistic 
-  regression model can be considered (biROC curve);
-  - considering a linear transformation with some fixed parameters introduced by the user, 
-  dynamic parameters or a function fitted by a logistic regression model (multiROC curve).
-  The classification regions behind each point of the ROC curve are displayed in both fixed 
-  graphics (plot.buildROC(), plot.regions() or plot.funregions() function) or videos (movieROC() 
-  function).</td>
+  (gROC() function);
+  - transforming the marker by a proper function trying to improve the classification performance 
+  (hROC() function);
+  - when dealing with multivariate markers, considering a proper transformation to univariate space 
+  trying to maximize the resulting AUC of the TPR for each FPR (multiROC() function).
+  The classification regions behind each point of the ROC curve are displayed in both static 
+  graphics (plot_buildROC(), plot_regions() or plot_funregions() function) or 
+  videos (movieROC() function).</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -93,6 +87,10 @@ function processMathHTML() {
 <tr>
 <td>Encoding:</td>
 <td>UTF-8</td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/perezsonia/movieROC/issues">https://github.com/perezsonia/movieROC/issues</a></td>
 </tr>
 <tr>
 <td>Imports:</td>
@@ -112,8 +110,12 @@ ks, zoo</td>
 <td>no</td>
 </tr>
 <tr>
-<td>Packaged:</td>
-<td>2024-02-04 11:43:03 UTC; sonia</td>
+<td>Suggests:</td>
+<td>R.rsp</td>
+</tr>
+<tr>
+<td>VignetteBuilder:</td>
+<td>R.rsp</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -129,202 +131,14 @@ ks, zoo</td>
 <td>CRAN</td>
 </tr>
 <tr>
+<td>Packaged:</td>
+<td>2024-06-27 19:03:55 UTC; sonia</td>
+</tr>
+<tr>
 <td>Date/Publication:</td>
-<td>2024-02-05 20:40:02 UTC</td>
+<td>2024-06-28 07:40:02 UTC</td>
 </tr>
 </table>
-<hr>
-<h2 id='biROC'>
-Build a ROC curve for a bivariate marker
-</h2><span id='topic+biROC'></span><span id='topic+biROC.default'></span>
-
-<h3>Description</h3>
-
-<p>This is one of the main functions of the movieROC package.
-It builds a bivariate ROC curve by considering one of these methods:
-i) fitting a binary logistic regression model with a particular combination
-(fixed by the user) of the two components on the right-hand side,
-ii) linear combinations with fixed parameters,
-iii) linear combinations with dynamic parameters, or
-iv) quadratic combinations with fixed parameters.
-It returns a &lsquo;biroc&rsquo; object, a list of class &lsquo;biroc&rsquo;.
-This object can be <code>print</code>ed or <code>plot</code>ted. It may be also passed to
-<code><a href="#topic+plot.buildROC">plot.buildROC</a></code> and <code><a href="#topic+movieROC">movieROC</a></code> function.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>biROC(X, D, ...)
-## Default S3 method:
-biROC(X, D, method = c("lrm", "fixedLinear", "fixedQuadratic",
-        "dynamicEmpirical", "dynamicMeisner", "kernelOptimal"),
-    formula.lrm = "D ~ X.1 + I(X.1^2) + X.2 + I(X.2^2) + I(X.1*X.2)",
-    stepModel = TRUE, methodLinear = c("coefLinear", "SuLiu", "PepeThompson",
-      "logistic", "minmax"), coefLinear = c(1, 1), coefQuadratic = c(1, 1, 0, 1, 1),
-    K = 201, alpha = 0.5, approxh = 0.5, multiplier = 2,
-    kernelOptimal.H = c("Hbcv", "Hscv", "Hpi", "Hns", "Hlscv", "Hbcv.diag",
-        "Hscv.diag", "Hpi.diag", "Hlscv.diag"), eps = sqrt(.Machine$double.eps),
-    verbose = FALSE, ...)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="biROC_+3A_x">X</code></td>
-<td>
-
-<p>Matrix (dimension <code class="reqn">n \times 2</code>) of marker values where <code class="reqn">n</code> is the sample size.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_d">D</code></td>
-<td>
-
-<p>Vector of response values. Two levels; if more, the two first ones are used.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_method">method</code></td>
-<td>
-
-<p>Method used to build the classification regions. One of <code>"lrm"</code> (fitting a binary logistic regression model by the input parameter <code>formula</code> computed by using the <code>lrm</code> function in the <code>rms</code> package), <code>"fixedLinear"</code> (linear frontiers with fixed parameters given in <code>coefLinear</code>), <code>"fixedQuadratic"</code> (quadratic frontiers with fixed parameters given in <code>coefQuadratic</code>), <code>"dynamicMeisner"</code> (linear frontiers with dynamic parameters reported by Meisner et al. (2021) method  computed by using the <code>maxTPR</code> function in the <a href="https://CRAN.R-project.org/package=maxTPR"><span class="pkg">maxTPR</span></a> package), <code>"dynamicEmpirical"</code> (linear frontiers with dynamic parameters reported by the empirical method), or <code>"kernelOptimal"</code> (estimating optimal transformation based on bivariate kernel density estimation by Martínez-Camblor et al. (2021) using the <code>kde</code> function in the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package). Default: <code>"lrm"</code>.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_formula.lrm">formula.lrm</code></td>
-<td>
-
-<p>If <code>method = "lrm"</code>, the transformation employed in the right-hand side of the logistic regression model (in terms of <code>X.1</code>, <code>X.2</code> and <code>D</code>). Default: quadratic formula.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_stepmodel">stepModel</code></td>
-<td>
-
-<p>If TRUE and <code>method = "lrm"</code>, a model selection is performed based on the AIC (Akaike information criterion) in a stepwise algorithm (see <code>step</code> function for more information). Default: TRUE.
-</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_methodlinear">methodLinear</code></td>
-<td>
-
-<p>If <code>method = "fixedLinear"</code>, method used to build the classification regions. One of <code>"coefLinear"</code> (particular fixed coefficients in <code>coefLinear</code>), <code>"SuLiu"</code> (Su and Liu, 1993), <code>"PepeThompson"</code> (Pepe and Thompson, 2000), <code>"logistic"</code> (logistic regression model), <code>"minmax"</code> (Liu et al., 2011). Default: <code>"coefLinear"</code>.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_coeflinear">coefLinear</code></td>
-<td>
-
-<p>If <code>method = "fixedLinear"</code> and <code>methodLinear = "coefLinear"</code>, a vector of length 2 with the coefficients <code class="reqn">\beta_1</code> and <code class="reqn">\beta_2</code> used to <code class="reqn">\mathcal{L}_{\boldsymbol{\beta}}(\boldsymbol{X}) = \beta_1 X_1 +\beta_2 X_2</code>. Default: <code class="reqn">(1,1)</code>.
-</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_coefquadratic">coefQuadratic</code></td>
-<td>
-
-<p>If <code>method = "fixedQuadratic"</code>, a vector of length 5 with coefficients <code class="reqn">\beta_1, \dots, \beta_5</code> used to <code class="reqn">\mathcal{Q}_{\boldsymbol{\beta}}(\boldsymbol{X}) = \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_1 X_2 + \beta_4 X_1^2 + \beta_5 X_2^2</code>. Default: <code class="reqn">(1,1,0,1,1)</code>.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_k">K</code></td>
-<td>
-
-<p>If <code>method = "dynamicEmpirical"</code>, the number of equally spaced <code class="reqn">\alpha \in (-1,1)</code> studied. Default: 201.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_alpha">alpha</code>, <code id="biROC_+3A_approxh">approxh</code>, <code id="biROC_+3A_multiplier">multiplier</code></td>
-<td>
-
-<p>If <code>method = "dynamicMeisner"</code>, input parameters used in the <code>maxTPR</code> function of the <a href="https://CRAN.R-project.org/package=maxTPR"><span class="pkg">maxTPR</span></a> package. Default: <code>alpha = 0.5</code>, <code>approxh = 0.5</code> and <code>multiplier = 2</code>.
-</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_kerneloptimal.h">kernelOptimal.H</code></td>
-<td>
-
-<p>If <code>method = "kernelOptimal"</code>, the bandwidth matrix <code>H</code> used in the <code>kde</code> function of the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package. Default: <code>"Hbcv"</code> (biased cross-validation (BCV) bandwidth matrix selector for bivariate data).
-</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_eps">eps</code></td>
-<td>
-
-<p>Epsilon value to consider. Default: <code>sqrt(.Machine$double.eps)</code>.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_verbose">verbose</code></td>
-<td>
-
-<p>If TRUE, a progress bar is displayed for computationally intensive methods. Default: FALSE.</p>
-</td></tr>
-<tr><td><code id="biROC_+3A_...">...</code></td>
-<td>
-
-<p>Other parameters to be passed. Not used.</p>
-</td></tr>
-</table>
-
-
-<h3>Value</h3>
-
-<p>A list of class &lsquo;biroc&rsquo; with the following fields:
-</p>
-<table>
-<tr><td><code>controls</code>, <code>cases</code></td>
-<td>
-<p>Marker values of negative and positive subjects, respectively.</p>
-</td></tr>
-<tr><td><code>levels</code></td>
-<td>
-<p>Levels of response values.</p>
-</td></tr>
-<tr><td><code>t</code></td>
-<td>
-<p>Vector of false-positive rates.</p>
-</td></tr>
-<tr><td><code>roc</code></td>
-<td>
-<p>Vector of values of the ROC curve for <code>t</code>.</p>
-</td></tr>
-<tr><td><code>auc</code></td>
-<td>
-<p>Area under the curve estimate.</p>
-</td></tr>
-<tr><td><code>Z</code></td>
-<td>
-<p>If <code>method = "lrm"</code>, <code>"fixedLinear"</code>, <code>"fixedQuadratic"</code>, or <code>"kernelOptimal"</code>, resulting
-univariate marker values.</p>
-</td></tr>
-<tr><td><code>c</code></td>
-<td>
-<p>If <code>method = "lrm"</code>, <code>"fixedLinear"</code>, <code>"fixedQuadratic"</code>, or <code>"kernelOptimal"</code>, vector of final
-marker thresholds resulting in (<code>t</code>, <code>roc</code>).</p>
-</td></tr>
-<tr><td><code>CoefTable</code></td>
-<td>
-<p>If <code>method = "dynamicMeisner"</code> or <code>"dynamicEmpirical"</code>, a list of length equal to length of vector <code>t</code>. Each element of the list keeps the linear coefficients (<code>coef</code>), threshold for such linear combination (<code>c</code>), the corresponding point in the ROC curve (<code>t</code>, <code>roc</code>), the resulting univariate marker values (<code>Z</code>) and a matrix of dimension 100 <code class="reqn">\times</code> 100 with the marker values over a grid of (<code class="reqn">X_1</code>, <code class="reqn">X_2</code>) bivariate values (<code>f</code>).</p>
-</td></tr>
-</table>
-
-
-<h3>References</h3>
-
-<p>J. Q. Su and J. S. Liu. (1993) &ldquo;Linear combinations of multiple diagnostic markers&rdquo;. <em>Journal of the American Statistical Association</em>, <b>88</b>(424): 1350–1355. DOI: <a href="https://doi.org/10.1080/01621459.1993.10476417">doi:10.1080/01621459.1993.10476417</a>.
-</p>
-<p>M. S. Pepe and M. L. Thompson (2000) &ldquo;Combining diagnostic test results to increase accuracy&rdquo;. <em>Biostatistics</em>, <b>1</b>
-(2):123–140. DOI: <a href="https://doi.org/10.1093/biostatistics/1.2.123">doi:10.1093/biostatistics/1.2.123</a>.
-</p>
-<p>C. Liu, A. Liu, and S. Halabi (2011) &ldquo;A min–max combination of biomarkers to improve diagnostic accuracy&rdquo;. <em>Statistics in Medicine</em>, <b>30</b>(16): 2005–2014. DOI: <a href="https://doi.org/10.1002/sim.4238">doi:10.1002/sim.4238</a>.
-</p>
-<p>P. Martínez-Camblor, S. Pérez-Fernández, and S. Díaz-Coto (2021) &ldquo;Optimal classification scores based on multivariate marker transformations&rdquo;. <em>AStA Advances in Statistical Analysis</em>, <b>105</b>(4): 581–599. DOI: <a href="https://doi.org/10.1007/s10182-020-00388-z">doi:10.1007/s10182-020-00388-z</a>.
-</p>
-<p>A. Meisner, M. Carone, M. S. Pepe, and K. F. Kerr (2021) &ldquo;Combining biomarkers by maximizing the true positive rate for a fixed false positive rate&rdquo;. <em>Biometrical Journal</em>, 63(6): 1223–1240. DOI: <a href="https://doi.org/10.1002/bimj.202000210">doi:10.1002/bimj.202000210</a>.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>data(HCC)
-
-# ROC curve for genes 20202438 and 18384097 to identify tumor by 4 different methods:
-X &lt;- cbind(HCC$cg20202438, HCC$cg18384097); D &lt;- HCC$tumor
-## 1. Linear combinations with fixed parameters by Pepe and Thompson (2000)
-biROC(X, D, method = "fixedLinear", methodLinear = "PepeThompson")
-## 2.Linear combinations with dynamic parameters by Meisner et al. (2021)
-
-### Time consuming
-biROC(X, D, method = "dynamicMeisner")
-
-## 3. Logistic regression model with quadratic formula by default
-biROC(X, D)
-## 4. Optimal transformation with multivariate KDE by Martínez-Camblor et al. (2021)
-biROC(X, D, method = "kernelOptimal")
-</code></pre>
-
 <hr>
 <h2 id='gROC'>
 Build a ROC curve for a univariate marker
@@ -335,10 +149,10 @@ Build a ROC curve for a univariate marker
 <p>This is one of the main functions of the movieROC package.
 It builds a univariate ROC curve (standard or general) and returns a
 &lsquo;groc&rsquo; object, a list of class &lsquo;groc&rsquo;.
-This object can be <code>print</code>ed, <code>plot</code>ted, or <code>predict</code>ed
+This object can be <code><a href="base.html#topic+print">print</a></code>ed, <code><a href="#topic+plot">plot</a></code>ted, or <code><a href="#topic+predict">predict</a></code>ed
 for a particular point. It may be also passed to other functions:
-<code><a href="#topic+plot.regions">plot.regions</a></code>, <code><a href="#topic+plot.buildROC">plot.buildROC</a></code>, <code><a href="#topic+movieROC">movieROC</a></code>,
-<code><a href="#topic+plot_densities">plot_densities</a></code>, and <code><a href="#topic+plot_densityROC">plot_densityROC</a></code>.
+<code><a href="#topic+plot_regions">plot_regions</a>()</code>, <code><a href="#topic+plot_buildROC">plot_buildROC</a>()</code>, <code><a href="#topic+movieROC">movieROC</a>()</code>,
+<code><a href="#topic+plot_densities">plot_densities</a>()</code>, and <code><a href="#topic+plot_densityROC">plot_densityROC</a>()</code>.
 </p>
 
 
@@ -380,7 +194,7 @@ or <code>"both2"</code> (<code class="reqn">\mathcal{R}_{g'}(\cdot)</code>). Def
 <td>
 
 <p>If TRUE (and <code>restric = TRUE</code>), the computation of the optimal gROC curve
-under restriction <em>(C)</em> is performed by using Floyd's algorithm. Default: TRUE.</p>
+under restriction <em>(C)</em> is performed by using Floyd's algorithm (Floyd, 1962), implemented in the <code>allShortestPaths()</code> function in the <a href="https://CRAN.R-project.org/package=e1071"><span class="pkg">e1071</span></a> package. Default: TRUE.</p>
 </td></tr>
 <tr><td><code id="gROC_+3A_t0">t0</code></td>
 <td>
@@ -469,6 +283,22 @@ if <code>side = "both" | "both2"</code>.</p>
 false-positive rate, <code class="reqn">FPR \in \{ 0, 1/m, \dots, 1 \}</code>.</p>
 </td></tr>
 </table>
+
+
+<h3>Dependencies</h3>
+
+<p>If <code>side = "both"</code> and <code>optim = TRUE</code>, the <code>allShortesPaths()</code> function in the <a href="https://CRAN.R-project.org/package=e1071"><span class="pkg">e1071</span></a> package is used. Also the <code>combinations()</code> function in <a href="https://CRAN.R-project.org/package=gtools"><span class="pkg">gtools</span></a> and <code>%[]%</code> in <span class="pkg">intrval</span>.
+</p>
+
+
+<h3>References</h3>
+
+<p>P. Martínez-Camblor, N. Corral, C. Rey, J. Pascual, and E. Cernuda-Morollón (2017) &ldquo;Receiver operating characteristic curve generalization for non-monotone relationships&rdquo;. <em>Statistical Methods in Medical Research</em>, <b>26</b>(1):113–123. DOI: <a href="https://doi.org/10.1177/0962280214541095">doi:10.1177/0962280214541095</a>.
+</p>
+<p>S. Pérez-Fernández, P. Martínez-Camblor, P. Filzmoser, and N. Corral (2021). &ldquo;Visualizing the decision rules behind the ROC curves: understanding the classification process&rdquo;. <em>AStA Advances in Statistical Analysis</em>, <b>105</b>(1):135-161. DOI: <a href="https://doi.org/10.1007/s10182-020-00385-2">doi:10.1007/s10182-020-00385-2</a>.
+</p>
+<p>R. W. Floyd (1962) &ldquo;Algorithm 97: Shortest path&rdquo;. <em>Communications of the ACM</em>, <b>5</b>: 345–345. DOI: <a href="https://doi.org/10.1145/367766.368168">doi:10.1145/367766.368168</a>.
+</p>
 
 
 <h3>Examples</h3>
@@ -604,6 +434,12 @@ and <code class="reqn">x^U</code> are symmetrical.</p>
 </table>
 
 
+<h3>References</h3>
+
+<p>P. Martínez-Camblor and J. C. Pardo-Fernández (2019) &ldquo;Parametric estimates for the receiver operating characteristic curve generalization for non-monotone relationships&rdquo;. <em>Statistical Methods in Medical Research</em>, <b>28</b>(7): 2032–2048. DOI: <a href="https://doi.org/10.1177/0962280217747009">doi:10.1177/0962280217747009</a>.
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>data(HCC)
@@ -668,9 +504,9 @@ Build a ROC curve for a transformation of a univariate marker
 <p>This is one of the main functions of the movieROC package. 
 It builds a univariate ROC curve for a transformed marker <code class="reqn">h(X)</code> 
 and returns a &lsquo;hroc&rsquo; object, a list of class &lsquo;hroc&rsquo;. 
-This object can be <code>print</code>ed, <code>plot</code>ted, or <code>predict</code>ed
+This object can be <code><a href="base.html#topic+print">print</a></code>ed, <code><a href="#topic+plot">plot</a></code>ted, or <code><a href="#topic+predict">predict</a></code>ed
 for a particular point. It may be also passed to  
-<code><a href="#topic+plot.funregions">plot.funregions</a></code> and <code><a href="#topic+plot.regions">plot.regions</a></code> functions.
+<code><a href="#topic+plot_funregions">plot_funregions</a>()</code> and <code><a href="#topic+plot_regions">plot_regions</a>()</code> functions.
 </p>
 
 
@@ -678,8 +514,8 @@ for a particular point. It may be also passed to
 
 <pre><code class='language-R'>hROC(X, D, ...)
 ## Default S3 method:
-hROC(X, D, type = c("lrm", "h.fun", "overfitting"), 
-    formula.lrm = "D ~ pol(X,3)", h.fun = function(x) {x}, 
+hROC(X, D, type = c("lrm", "overfitting", "kernel", "h.fun"), 
+    formula.lrm = "D ~ pol(X,3)", h.fun = function(x) {x},  kernel.h = 1,
     plot.h = FALSE, plot.roc = FALSE, new.window = FALSE, 
     main = NULL, xlab = "x", ylab = "h(x)", xaxis = TRUE, ...)
 </code></pre>
@@ -701,11 +537,12 @@ hROC(X, D, type = c("lrm", "h.fun", "overfitting"),
 <tr><td><code id="hROC_+3A_type">type</code></td>
 <td>
 
-<p>Type of transformation considered. One of <code>"lrm"</code> (a binary logistic 
-regression is computed by using <code>lrm</code> function in <code>rms</code> package), 
+<p>Type of transformation considered. One of 
+<code>"lrm"</code> (a binary logistic regression is computed by using <code>lrm()</code> function in <a href="https://CRAN.R-project.org/package=rms"><span class="pkg">rms</span></a> package), 
+<code>"kernel"</code> (the transformation included in Martínez-Camblor et al. (2021) estimated by the kernel density approach),
+<code>"overfitting"</code> (the overfitting transformation, <code class="reqn">\hat{h}_{of}(\cdot)</code> is taken), or
 <code>"h.fun"</code> (the transformation indicated in the input parameter <code>h.fun</code> 
-is considered) or <code>"overfitting"</code> (the overfitting transformation, 
-<code class="reqn">\ell_{of}(\cdot)</code> is taken). Default: <code>"lrm"</code>.</p>
+is considered). Default: <code>"lrm"</code>.</p>
 </td></tr>
 <tr><td><code id="hROC_+3A_formula.lrm">formula.lrm</code></td>
 <td>
@@ -713,6 +550,12 @@ is considered) or <code>"overfitting"</code> (the overfitting transformation,
 <p>If <code>type = "lrm"</code>, the transformation employed in the right-hand side 
 of the logistic regression model (in terms of <code>X</code> and <code>D</code>). 
 Default: <code>'D ~ pol(X, 3)'</code>.</p>
+</td></tr>
+<tr><td><code id="hROC_+3A_kernel.h">kernel.h</code></td>
+<td>
+
+<p>If <code>type = "kernel"</code>, the bandwidth used for the kernel density estimation by using the <code>density()</code> function in <span class="pkg">stats</span> package. Default: 1.
+</p>
 </td></tr>
 <tr><td><code id="hROC_+3A_h.fun">h.fun</code></td>
 <td>
@@ -762,6 +605,19 @@ Default: <code>function(x){x}</code>.</p>
 </table>
 
 
+<h3>Details</h3>
+
+<p>A theoretical and practical discussion about the <code>type</code> of transformation considered and its basis may be found in Martínez-Camblor et al. (2019) and Martínez-Camblor et al. (2021).
+</p>
+<p>The overfitting function estimate is defined as follows:
+</p>
+<p style="text-align: center;"><code class="reqn">\hat{h}_{of}(x) = \sum_{i=1}^{n_1} I(x = y_i) + \sum_{i=1}^{n_2} \dfrac{\#(\xi = z_i)}{\#(\xi = z_i) + \#(\chi = z_i)} I(x = z_i)</code>
+</p>
+
+<p>where <code class="reqn">I(A)</code> denotes the indicator function (which takes the value 1 if <code class="reqn">A</code> is true and 0 otherwise), <code class="reqn">\#(B)</code> is the cardinal of the subset <code class="reqn">B</code>, <code class="reqn">\{y_1, \dots, y_{n_1}\} \subseteq \left\{ \xi_1, \dots, \xi_n \right\}</code> are the positive sample values without ties and <code class="reqn">\{z_1, \dots, z_{n_2}\} \subseteq \left\{ \xi_1, \dots, \xi_n \right\}</code> are the positive sample values with ties with any negative sample value. Classification based on this transformation is the optimal one in the AUC sense, but the resulting decision rules cannot be extended to any other sample.
+</p>
+
+
 <h3>Value</h3>
 
 <p>A list of class &lsquo;hroc&rsquo; with the following fields: 
@@ -790,6 +646,20 @@ Default: <code>function(x){x}</code>.</p>
 </table>
 
 
+<h3>Dependencies</h3>
+
+<p>If <code>type = "lrm"</code>, the <code>lrm()</code> function in the <a href="https://CRAN.R-project.org/package=rms"><span class="pkg">rms</span></a> package is used. This library is also loaded to consider special transformation functions such as <code>pol()</code> and <code>rcs()</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>P. Martínez-Camblor, S. Pérez-Fernández, and S. Díaz-Coto (2019) &ldquo;Improving the biomarker diagnostic capacity via functional transformations&rdquo;. <em>Journal of Applied Statistics</em>, <b>46</b>(9): 1550–1566. DOI: <a href="https://doi.org/10.1080/02664763.2018.1554628">doi:10.1080/02664763.2018.1554628</a>.
+</p>
+<p>P. Martínez-Camblor, S. Pérez-Fernández, and S. Díaz-Coto (2021) &ldquo;Optimal classification scores based on multivariate marker transformations&rdquo;. <em>AStA Advances in Statistical Analysis</em>, <b>105</b>(4): 581–599. DOI: <a href="https://doi.org/10.1007/s10182-020-00388-z">doi:10.1007/s10182-020-00388-z</a>.
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>data(HCC)
@@ -803,35 +673,27 @@ hROC(X, D, formula.lrm = "D ~ rcs(X,8)")
 ## 3. Overfitting transformation for this particular sample
 hROC(X, D, type = "overfitting")
 ## 4. Optimal transformation in terms of likelihood ratio 
-##    by kernel density estimation with bandwidth h=3
-EstDensTransf_FUN &lt;- function(X, D, h = 1){
-  D &lt;- as.factor(D)
-  controls &lt;- X[D == levels(D)[1]]; dens_controls &lt;- density(controls, adjust = h)
-  cases &lt;- X[D == levels(D)[2]]; dens_cases &lt;- density(cases, adjust = h)
-  dens_controls_FUN &lt;- approxfun(dens_controls$x, dens_controls$y, rule = 0)
-  dens_cases_FUN &lt;- approxfun(dens_cases$x, dens_cases$y, rule = 0)
-  function(x) dens_cases_FUN(x)/(dens_controls_FUN(x) + dens_cases_FUN(x))
-}
-hROC(X, D, type = "h.fun", h.fun = function(x) EstDensTransf_FUN(X, D, h = 3)(x))
+##    by kernel density estimation with bandwidth 3
+hROC(X, D, type = "kernel", kernel.h = 3)
 </code></pre>
 
 <hr>
 <h2 id='movieROC'>
 Create a video with the building procedure of the ROC curve
-</h2><span id='topic+movieROC'></span><span id='topic+movieROC.groc'></span><span id='topic+movieROC.biroc'></span><span id='topic+movieROC.multiroc'></span>
+</h2><span id='topic+movieROC'></span><span id='topic+movieROC.groc'></span><span id='topic+movieROC.multiroc'></span>
 
 <h3>Description</h3>
 
 <p>Save a video as a GIF illustrating the construction of the ROC curve. Particularly, for each
 element in vector <code>fpr</code> (optional input parameter), the function executed is
 </p>
-<p>- for &lsquo;groc&rsquo; and &lsquo;biroc&rsquo; objects:
+<p>- for &lsquo;groc&rsquo; objects:
 </p>
-<p><code>plot.buildROC(obj, FPR = fpr[i], build.process = TRUE,...)</code>;
+<p><code>plot_buildROC(obj, FPR = fpr[i], build.process = TRUE,...)</code>;
 </p>
 <p>- for &lsquo;multiroc&rsquo; objects:
 </p>
-<p><code>plot.buildROC(obj, FPR = fpr[i], build.process = TRUE, display.method, displayOV,...)</code>
+<p><code>plot_buildROC(obj, FPR = fpr[i], build.process = TRUE, display.method, displayOV,...)</code>
 </p>
 
 
@@ -847,14 +709,6 @@ movieROC(x, fpr = NULL, h = c(1,1), histogram = FALSE, breaks = 15,
   xlim = NULL, ylim = NULL, cex.point = 1.5, lwd.curve = 2, mar = NULL,
   lim.density = 0.01, col.controlscases = c("#485C99", "#8F3D52"),
   col.curve = "black", col.threshold = "#FCBA04", verbose = FALSE, ...)
-## S3 method for class 'biroc'
-movieROC(x, fpr = NULL, border = TRUE, completeROC = FALSE,
-  videobar = TRUE, file = "animation1.gif", save = TRUE, legends = FALSE,
-  tpause = 1, interval = 0.2, ani.width, ani.height, xlab = "X1", ylab = "X2",
-  cex = 0.8, cex.lab = 1.5, cex.axis = 1.5, cex.main = 2,
-  alpha.points = 1, alpha.contour = 0.25, lwd.curve = 2, lty.curve = 1,
-  lf = NULL, col.controlscases = c('#485C99','#8F3D52'),
-  col.curve = 'black', col.threshold = '#FCBA04', verbose = FALSE, ...)
 ## S3 method for class 'multiroc'
 movieROC(x, fpr = NULL, display.method = c("PCA", "OV"),
   displayOV = c(1,2), border = TRUE, completeROC = FALSE, videobar = TRUE,
@@ -873,7 +727,7 @@ movieROC(x, fpr = NULL, display.method = c("PCA", "OV"),
 <tr><td><code id="movieROC_+3A_x">x</code></td>
 <td>
 
-<p>An ROC curve object from the <span class="pkg">movieROC</span> package. Possible classes are: &lsquo;groc&rsquo; (output of <code>gROC</code> function), &lsquo;biroc&rsquo; (output of <code>biROC</code> function), and &lsquo;multiroc&rsquo; (output of <code>multiROC</code> function).</p>
+<p>An ROC curve object from the <span class="pkg">movieROC</span> package. Possible classes are: &lsquo;groc&rsquo; (output of <code><a href="#topic+gROC">gROC</a>()</code> function) and &lsquo;multiroc&rsquo; (output of <code><a href="#topic+multiROC">multiROC</a>()</code> function).</p>
 </td></tr>
 <tr><td><code id="movieROC_+3A_fpr">fpr</code></td>
 <td>
@@ -883,7 +737,7 @@ movieROC(x, fpr = NULL, display.method = c("PCA", "OV"),
 <tr><td><code id="movieROC_+3A_h">h</code></td>
 <td>
 
-<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
+<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density()</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
 </td></tr>
 <tr><td><code id="movieROC_+3A_histogram">histogram</code></td>
 <td>
@@ -1033,7 +887,7 @@ movieROC(x, fpr = NULL, display.method = c("PCA", "OV"),
 <tr><td><code id="movieROC_+3A_...">...</code></td>
 <td>
 
-<p>Other parameters to be passed to the <code>saveGIF</code> function in <a href="https://CRAN.R-project.org/package=animation"><span class="pkg">animation</span></a> package.</p>
+<p>Other parameters to be passed to the <code>saveGIF()</code> function in <a href="https://CRAN.R-project.org/package=animation"><span class="pkg">animation</span></a> package.</p>
 </td></tr>
 </table>
 
@@ -1044,6 +898,12 @@ movieROC(x, fpr = NULL, display.method = c("PCA", "OV"),
 </p>
 
 
+<h3>Dependencies</h3>
+
+<p>If <code>save = TRUE</code> (by default), the <code>saveGIF()</code> function in the <a href="https://CRAN.R-project.org/package=animation"><span class="pkg">animation</span></a> package is used.
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>data(HCC)
@@ -1051,8 +911,7 @@ movieROC(x, fpr = NULL, display.method = c("PCA", "OV"),
 # Standard ROC curve for gene 20202438
 roc_cg20202438 &lt;- gROC(X = HCC$cg20202438, D = HCC$tumor, side = "right")
 
-### Do not change the \code{save} parameter to save the video in a GIF
-### with the name "video_cg20202438":
+### The video will be saved as a GIF with the name "video_cg20202438"
 movieROC(roc_cg20202438, file = "video_cg20202438.gif", save = FALSE)
 
 # Multivariate ROC curve for genes 0202438, 18384097, and 03515901
@@ -1060,13 +919,11 @@ multiroc_PT &lt;- multiROC(X = cbind(HCC$cg20202438, HCC$cg18384097, HCC$cg03515
     D = HCC$tumor, method = "fixedLinear", methodLinear = "PepeThompson")
 
 # Two first components from PCA:
-### Do not change the \code{save} parameter to save the video in a GIF
-### with the name "video_multiroc_pca":
+### The video will be saved as a GIF with the name "video_multiroc_pca"
 movieROC(multiroc_PT, file = "video_multiroc_pca.gif", save = FALSE)
 
 
-### Do not change the \code{save} parameter to save the video in a GIF
-### with the name "video_multiroc_orig":
+### The video will be saved as a GIF with the name "video_multiroc_orig"
 movieROC(multiroc_PT, display.method = "OV", displayOV = c(1,3),
     file = "video_multiroc_orig.gif", cex = 1.2, xlab = "Gene 20202438",
     ylab = "Gene 03515901", lwd.curve = 4, save = FALSE)
@@ -1080,7 +937,7 @@ Create a video with the building procedure of the smooth ROC curve estimate
 
 <h3>Description</h3>
 
-<p>This function tracks the construction of the standard ROC curve (right- or left-sided, depending on the <code>side</code> of the object of class &lsquo;groc&rsquo; included) resulting from the kernel density function estimation for controls and cases. Four graphics are displayed: top-left, the kernel density estimates; top-right, the resulting ROC curve; bottom-left, boxplots and points for controls and cases and classification subset in gray color; bottom-right, classification subsets for every FPR until the current one. It makes use of the <code><a href="#topic+plot_densityROC">plot_densityROC</a></code> function for each screenshot.
+<p>This function tracks the construction of the standard ROC curve (right- or left-sided, depending on the <code>side</code> of the object of class &lsquo;groc&rsquo; included) resulting from the kernel density function estimation for controls and cases. Four graphics are displayed: top-left, the kernel density estimates; top-right, the resulting ROC curve; bottom-left, boxplots and points for controls and cases and classification subset in gray color; bottom-right, classification subsets for every FPR until the current one. It makes use of the <code><a href="#topic+plot_densityROC">plot_densityROC</a>()</code> function for each screenshot.
 </p>
 
 
@@ -1104,7 +961,7 @@ Create a video with the building procedure of the smooth ROC curve estimate
 <tr><td><code id="movieROC2_densities_+3A_h">h</code></td>
 <td>
 
-<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
+<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density()</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
 </td></tr>
 <tr><td><code id="movieROC2_densities_+3A_cut.off">cut.off</code></td>
 <td>
@@ -1114,7 +971,7 @@ Create a video with the building procedure of the smooth ROC curve estimate
 <tr><td><code id="movieROC2_densities_+3A_save">save</code></td>
 <td>
 
-<p>If TRUE, video is saved as a GIF by using the <code>saveGIF</code> function in <a href="https://CRAN.R-project.org/package=animation"><span class="pkg">animation</span></a> package. Default: TRUE.</p>
+<p>If TRUE, video is saved as a GIF by using the <code>saveGIF()</code> function in <a href="https://CRAN.R-project.org/package=animation"><span class="pkg">animation</span></a> package. Default: TRUE.</p>
 </td></tr>
 <tr><td><code id="movieROC2_densities_+3A_completeroc">completeROC</code></td>
 <td>
@@ -1175,6 +1032,12 @@ Create a video with the building procedure of the smooth ROC curve estimate
 </p>
 
 
+<h3>Dependencies</h3>
+
+<p>If <code>save = TRUE</code> (by default), the <code>saveGIF()</code> function in the <a href="https://CRAN.R-project.org/package=animation"><span class="pkg">animation</span></a> package is used.
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>data(HCC)
@@ -1182,14 +1045,13 @@ Create a video with the building procedure of the smooth ROC curve estimate
 # Standard ROC curve for gene 20202438
 roc_cg20202438 &lt;- gROC(X = HCC$cg20202438, D = HCC$tumor)
 
-### Do not change the \code{save} parameter to save the video in a GIF
-### with the name "video_cg20202438_smooth":
+### The video will be saved as a GIF with the name "video_cg20202438_smooth"
 movieROC2_densities(roc_cg20202438, file = "video_cg20202438_smooth.gif", save = FALSE)
 </code></pre>
 
 <hr>
 <h2 id='multiROC'>
-Build a ROC curve for a multivariate marker with dimension higher than two
+Build a ROC curve for a multivariate marker with dimension <code class="reqn">p</code>
 </h2><span id='topic+multiROC'></span><span id='topic+multiROC.default'></span>
 
 <h3>Description</h3>
@@ -1199,10 +1061,12 @@ It builds a multivariate ROC curve by considering one of these methods:
 i) fitting a binary logistic regression model with a particular combination
 (fixed by the user) of the two components on the right-hand side,
 ii) linear combinations with fixed parameters, or
-iii) linear combinations with dynamic parameters.
+iii) linear combinations with dynamic parameters, or
+iv) estimating optimal transformation based on kernel density estimation, or
+v) quadratic combinations with fixed parameters (if <code class="reqn">p=2</code>).
 It returns a &lsquo;multiroc&rsquo; object, a list of class &lsquo;multiroc&rsquo;.
-This object can be <code>print</code>ed or <code>plot</code>ted. It may be also passed to
-<code><a href="#topic+plot.buildROC">plot.buildROC</a></code> and <code><a href="#topic+movieROC">movieROC</a></code> function.
+This object can be <code><a href="base.html#topic+print">print</a></code>ed or <code><a href="#topic+plot">plot</a></code>ted. It may be also 
+passed to <code><a href="#topic+plot_buildROC">plot_buildROC</a>()</code> and <code><a href="#topic+movieROC">movieROC</a>()</code> function.
 </p>
 
 
@@ -1210,13 +1074,16 @@ This object can be <code>print</code>ed or <code>plot</code>ted. It may be also 
 
 <pre><code class='language-R'>multiROC(X, D, ...)
 ## Default S3 method:
-multiROC(X, D, method = c("lrm", "fixedLinear",
-        "dynamicMeisner", "kernelOptimal"),
+multiROC(X, D, 
+    method = c("lrm", "fixedLinear", "fixedQuadratic", "dynamicEmpirical", 
+                "dynamicMeisner", "kernelOptimal"),
     formula.lrm = "D ~ X.1 + I(X.1^2) + X.2 + I(X.2^2) + I(X.1*X.2)",
-    stepModel = TRUE, coefLinear = rep(1, ncol(X)),
-    methodLinear = c("coefLinear", "SuLiu", "PepeThompson", "logistic", "minmax"),
-    alpha = 0.5, approxh = 0.5, multiplier = 2, kernelOptimal.H =
-        c("Hpi", "Hscv", "Hns", "Hlscv", "Hscv.diag", "Hpi.diag", "Hlscv.diag"),
+    stepModel = TRUE, 
+    methodLinear = c("coefLinear", "SuLiu", "PepeThompson", "logistic", "minmax"), 
+    coefLinear = rep(1,ncol(X)), coefQuadratic = c(1,1,0,1,1), 
+    K = 201, alpha = 0.5, approxh = 0.5, multiplier = 2, 
+    kernelOptimal.H = c("Hbcv", "Hscv", "Hpi", "Hns", "Hlscv", "Hbcv.diag", 
+                        "Hscv.diag", "Hpi.diag", "Hlscv.diag"), 
     eps = sqrt(.Machine$double.eps), verbose = FALSE, ...)
 </code></pre>
 
@@ -1237,7 +1104,7 @@ multiROC(X, D, method = c("lrm", "fixedLinear",
 <tr><td><code id="multiROC_+3A_method">method</code></td>
 <td>
 
-<p>Method used to build the classification regions. One of <code>"lrm"</code> (fitting a binary logistic regression model by the input parameter <code>formula</code>), <code>"fixedLinear"</code> (linear frontiers with fixed parameters given in <code>coefLinear</code>), <code>"dynamicMeisner"</code> (linear frontiers with dynamic parameters reported by Meisner et al. (2021) method), or <code>"kernelOptimal"</code> (estimating optimal transformation based on bivariate kernel density estimation by Martínez-Camblor et al. (2021) using the <code>kde</code> function in the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package). Default: <code>"lrm"</code>.</p>
+<p>Method used to build the classification regions. One of <code>"lrm"</code> (fitting a binary logistic regression model by the input parameter <code>formula</code>), <code>"fixedLinear"</code> (linear frontiers with fixed parameters given in <code>coefLinear</code> or estimated by the method in <code>methodLinear</code>), <code>"fixedQuadratic"</code> (quadratic frontiers with fixed parameters given in <code>coefQuadratic</code>, only available for <code class="reqn">p=2</code>), <code>"dynamicMeisner"</code> (linear frontiers with dynamic parameters reported by Meisner et al. (2021) method), <code>"dynamicEmpirical"</code> (linear frontiers with dynamic parameters reported by the empirical method, only available for <code class="reqn">p=2</code>), or <code>"kernelOptimal"</code> (estimating optimal transformation based on bivariate kernel density estimation by Martínez-Camblor et al. (2021) using the <code>kde()</code> function in the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package). Default: <code>"lrm"</code>.</p>
 </td></tr>
 <tr><td><code id="multiROC_+3A_formula.lrm">formula.lrm</code></td>
 <td>
@@ -1247,27 +1114,37 @@ multiROC(X, D, method = c("lrm", "fixedLinear",
 <tr><td><code id="multiROC_+3A_stepmodel">stepModel</code></td>
 <td>
 
-<p>If TRUE and <code>method = "lrm"</code>, a model selection is performed based on the AIC (Akaike information criterion) in a stepwise algorithm (see <code>step</code> function for more information). Default: TRUE.</p>
-</td></tr>
-<tr><td><code id="multiROC_+3A_coeflinear">coefLinear</code></td>
-<td>
-
-<p>If <code>method = "fixedLinear"</code> and <code>methodLinear = "coefLinear"</code>, a vector of length <code class="reqn">p</code> with the coefficients <code class="reqn">\beta_i</code> (<code class="reqn">i \in  \{1, \dots, p\}</code>) used to <code class="reqn">\mathcal{L}_{\boldsymbol{\beta}}(\boldsymbol{X}) = \beta_1 X_1 + \dots + \beta_p X_p</code>. Default: <code class="reqn">(1,\dots,1)</code>.</p>
+<p>If TRUE and <code>method = "lrm"</code>, a model selection is performed based on the AIC (Akaike information criterion) in a stepwise algorithm (see <code>step()</code> function in <span class="pkg">stats</span> package for more information). Default: TRUE.</p>
 </td></tr>
 <tr><td><code id="multiROC_+3A_methodlinear">methodLinear</code></td>
 <td>
 
 <p>If <code>method = "fixedLinear"</code>, method used to build the classification regions. One of <code>"coefLinear"</code> (particular fixed coefficients in <code>coefLinear</code>), <code>"SuLiu"</code> (Su and Liu, 1993), <code>"PepeThompson"</code> (Pepe and Thompson, 2000), <code>"logistic"</code> (logistic regression model), <code>"minmax"</code> (Liu et al., 2011). Default: <code>"coefLinear"</code>.</p>
 </td></tr>
+<tr><td><code id="multiROC_+3A_coeflinear">coefLinear</code></td>
+<td>
+
+<p>If <code>method = "fixedLinear"</code> and <code>methodLinear = "coefLinear"</code>, a vector of length <code class="reqn">p</code> with the coefficients <code class="reqn">\beta_i</code> (<code class="reqn">i \in  \{1, \dots, p\}</code>) used to <code class="reqn">\mathcal{L}_{\boldsymbol{\beta}}(\boldsymbol{X}) = \beta_1 X_1 + \dots + \beta_p X_p</code>. Default: <code class="reqn">(1,\dots,1)</code>.</p>
+</td></tr>
+<tr><td><code id="multiROC_+3A_coefquadratic">coefQuadratic</code></td>
+<td>
+
+<p>If <code>method = "fixedQuadratic"</code>, a vector of length 5 with coefficients <code class="reqn">\beta_1, \dots, \beta_5</code> used to <code class="reqn">\mathcal{Q}_{\boldsymbol{\beta}}(\boldsymbol{X}) = \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_1 X_2 + \beta_4 X_1^2 + \beta_5 X_2^2</code>. Default: <code class="reqn">(1,1,0,1,1)</code>.</p>
+</td></tr>
 <tr><td><code id="multiROC_+3A_alpha">alpha</code>, <code id="multiROC_+3A_approxh">approxh</code>, <code id="multiROC_+3A_multiplier">multiplier</code></td>
 <td>
 
-<p>If <code>method = "dynamicMeisner"</code>, input parameters used in the <code>maxTPR</code> function of the <a href="https://CRAN.R-project.org/package=maxTPR"><span class="pkg">maxTPR</span></a> package. Default: <code>alpha = 0.5</code>, <code>approxh = 0.5</code> and <code>multiplier = 2</code>.</p>
+<p>If <code>method = "dynamicMeisner"</code>, input parameters used in the <code>maxTPR()</code> function of the <span class="pkg">maxTPR</span> package (internally integrated because the library is no longer available in CRAN). Default: <code>alpha = 0.5</code>, <code>approxh = 0.5</code> and <code>multiplier = 2</code>.</p>
+</td></tr>
+<tr><td><code id="multiROC_+3A_k">K</code></td>
+<td>
+
+<p>If <code>method = "dynamicEmpirical"</code>, the number of equally spaced <code class="reqn">\alpha \in (-1,1)</code> studied. Default: 201.</p>
 </td></tr>
 <tr><td><code id="multiROC_+3A_kerneloptimal.h">kernelOptimal.H</code></td>
 <td>
 
-<p>If <code>method = "kernelOptimal"</code>, the bandwidth matrix <code>H</code> used in the <code>kde</code> function of the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package. Default: <code>"Hpi"</code> (plug-in bandwidth selector).</p>
+<p>If <code>method = "kernelOptimal"</code>, the bandwidth matrix <code>H</code> used in the <code>kde()</code> function of the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package. Default: <code>"Hbcv"</code> (biased cross-validation (BCV) bandwidth matrix selector for bivariate data) if <code class="reqn">p = 2</code>, <code>"Hpi"</code> (plug-in bandwidth selector) if <code class="reqn">p &gt; 2</code>.</p>
 </td></tr>
 <tr><td><code id="multiROC_+3A_eps">eps</code></td>
 <td>
@@ -1314,19 +1191,25 @@ multiROC(X, D, method = c("lrm", "fixedLinear",
 </td></tr>
 <tr><td><code>Z</code></td>
 <td>
-<p>If <code>method = "lrm"</code>, <code>"fixedLinear"</code>, or <code>"kernelOptimal"</code>, resulting
-univariate marker values.</p>
+<p>If <code>method</code> <code class="reqn">\neq</code> <code>"dynamicMeisner"</code> and <code>method</code> <code class="reqn">\neq</code> <code>"dynamicEmpirical"</code>, resulting univariate marker values.</p>
 </td></tr>
 <tr><td><code>c</code></td>
 <td>
-<p>If <code>method = "lrm"</code>, <code>"fixedLinear"</code>, or <code>"kernelOptimal"</code>, vector of final
-marker thresholds resulting in (<code>t</code>, <code>roc</code>).</p>
+<p>If <code>method</code> <code class="reqn">\neq</code> <code>"dynamicMeisner"</code> and <code>method</code> <code class="reqn">\neq</code> <code>"dynamicEmpirical"</code>, vector of final marker thresholds resulting in (<code>t</code>, <code>roc</code>).</p>
 </td></tr>
 <tr><td><code>CoefTable</code></td>
 <td>
 <p>If <code>method = "dynamicMeisner"</code> or <code>"dynamicEmpirical"</code>, a list of length equal to length of vector <code>t</code>. Each element of the list keeps the linear coefficients (<code>coef</code>), threshold for such linear combination (<code>c</code>), the corresponding point in the ROC curve (<code>t</code>, <code>roc</code>), the resulting univariate marker values (<code>Z</code>) and a matrix of dimension 100 <code class="reqn">\times</code> 100 with the marker values over a grid of (<code class="reqn">X_1</code>, <code class="reqn">X_2</code>) bivariate values (<code>f</code>).</p>
 </td></tr>
 </table>
+
+
+<h3>Dependencies</h3>
+
+<p>If <code>method = "lrm"</code>, the <code>glm()</code> function in the <span class="pkg">stats</span> package is used.
+</p>
+<p>If <code>method = "kernelOptimal"</code>, the <code>kde()</code> function in the <a href="https://CRAN.R-project.org/package=ks"><span class="pkg">ks</span></a> package is used.
+</p>
 
 
 <h3>References</h3>
@@ -1348,13 +1231,24 @@ marker thresholds resulting in (<code>t</code>, <code>roc</code>).</p>
 
 <pre><code class='language-R'>data(HCC)
 
-# ROC curve for genes 20202438, 18384097, and 03515901 to identify tumor
+# ROC curve for genes 20202438 and 18384097 (p=2) to identify tumor by 4 different methods:
+X &lt;- cbind(HCC$cg20202438, HCC$cg18384097); D &lt;- HCC$tumor
+## 1. Linear combinations with fixed parameters by Pepe and Thompson (2000)
+multiROC(X, D, method = "fixedLinear", methodLinear = "PepeThompson")
+## 2.Linear combinations with dynamic parameters by Meisner et al. (2021)
+### Time consuming
+multiROC(X, D, method = "dynamicMeisner")
+## 3. Logistic regression model with quadratic formula by default
+multiROC(X, D)
+## 4. Optimal transformation with multivariate KDE by Martínez-Camblor et al. (2021)
+multiROC(X, D, method = "kernelOptimal")
+
+# ROC curve for genes 20202438, 18384097, and 03515901 (p=3) to identify tumor
 # by 4 different methods:
 X &lt;- cbind(HCC$cg20202438, HCC$cg18384097, HCC$cg03515901); D &lt;- HCC$tumor
 ## 1. Linear combinations with fixed parameters by Pepe and Thompson (2000)
 multiROC(X, D, method = "fixedLinear", methodLinear = "PepeThompson")
 ## 2.Linear combinations with dynamic parameters by Meisner et al. (2021)
-
 ### Time consuming
 multiROC(X, D, method = "dynamicMeisner")
 ## 3. Logistic regression model with quadratic formula by default
@@ -1366,11 +1260,11 @@ multiROC(X, D, method = "kernelOptimal")
 <hr>
 <h2 id='plot'>
 Plot an ROC curve
-</h2><span id='topic+plot'></span><span id='topic+plot.groc'></span><span id='topic+plot.hroc'></span><span id='topic+plot.biroc'></span><span id='topic+plot.multiroc'></span>
+</h2><span id='topic+plot'></span><span id='topic+plot.groc'></span><span id='topic+plot.hroc'></span><span id='topic+plot.multiroc'></span>
 
 <h3>Description</h3>
 
-<p>This is one of the core functions of the movieROC package. It displays the empirical ROC curve estimate from an object of class &lsquo;groc&rsquo;, &lsquo;hroc&rsquo;, &lsquo;biroc&rsquo; , or &lsquo;multiroc&rsquo;.
+<p>This is one of the core functions of the movieROC package. It displays the empirical ROC curve estimate from an object of class &lsquo;groc&rsquo;, &lsquo;hroc&rsquo;, or &lsquo;multiroc&rsquo;.
 </p>
 
 
@@ -1384,8 +1278,6 @@ plot(x, xlim = c(0, 1), ylim = c(0, 1), lwd = 3,
 plot(x, type = 'S', xlim = c(0,1), ylim = c(0,1), 
   lwd = 3, xlab = "False-Positive Rate", ylab = "True-Positive Rate", 
   main = "ROC Curve", cex.lab = 1.25, cex.main = 1.5, new = TRUE, ...)
-## S3 method for class 'biroc'
-plot(x, ...)
 ## S3 method for class 'multiroc'
 plot(x, ...)
 </code></pre>
@@ -1397,7 +1289,7 @@ plot(x, ...)
 <tr><td><code id="plot_+3A_x">x</code></td>
 <td>
 
-<p>An ROC curve object from movieROC package. Possible classes are: &lsquo;groc&rsquo; (output of <code>gROC</code> function), &lsquo;hroc&rsquo; (output of <code>hROC</code> function), &lsquo;biroc&rsquo; (output of <code>biROC</code> function), and &lsquo;multiroc&rsquo; (output of <code>multiROC</code> function).</p>
+<p>An ROC curve object from movieROC package. Possible classes are: &lsquo;groc&rsquo; (output of <code><a href="#topic+gROC">gROC</a>()</code> function), &lsquo;hroc&rsquo; (output of <code><a href="#topic+hROC">hROC</a>()</code> function), and &lsquo;multiroc&rsquo; (output of <code><a href="#topic+multiROC">multiROC</a>()</code> function).</p>
 </td></tr>
 <tr><td><code id="plot_+3A_xlim">xlim</code>, <code id="plot_+3A_ylim">ylim</code></td>
 <td>
@@ -1464,7 +1356,7 @@ legend("topleft", legend = c("Right-sided", "Left-sided", "Transformed marker"),
 
 # ROC curve estimate for genes 20202438 and 18384097 to simultaneously identify tumor
 # by a logistic regression model with quadratic formula
-biroc &lt;- biROC(X = cbind(HCC$cg20202438, HCC$cg18384097), D = HCC$tumor)
+biroc &lt;- multiROC(X = cbind(HCC$cg20202438, HCC$cg18384097), D = HCC$tumor)
 plot(biroc)
 legend("bottomright", paste("AUC = ", format(biroc$auc, digits = 3)))
 
@@ -1474,6 +1366,257 @@ multiroc &lt;- multiROC(X = cbind(HCC$cg20202438, HCC$cg18384097, HCC$cg03515901
     D = HCC$tumor, method = "fixedLinear", methodLinear = "PepeThompson")
 plot(multiroc)
 legend("bottomright", paste("AUC = ", format(multiroc$auc, digits = 3)))
+</code></pre>
+
+<hr>
+<h2 id='plot_buildROC'>
+Plot the building procedure of the ROC curve
+</h2><span id='topic+plot_buildROC'></span><span id='topic+plot_buildROC.groc'></span><span id='topic+plot_buildROC.multiroc'></span>
+
+<h3>Description</h3>
+
+<p>This function tracks the ROC curve. It plots two graphics in the same figure:
+right, the empirical ROC curve estimate; left, classification subset for a 
+particular FPR or threshold(s) for the marker (threshold only for object of class &lsquo;groc&rsquo;).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'groc'
+plot_buildROC(x, FPR = NULL, C = NULL, XL = NULL, XU = NULL, h = c(1,1), 
+    histogram = FALSE, breaks = 15, reduce = TRUE, build.process = FALSE, 
+    completeROC = FALSE, new.window = FALSE, legends = FALSE, type = 's', 
+    cex.point = 1.5, lwd.curve = 2, mar = NULL, lim.density = 0.01, xlim = NULL, 
+    ylim = NULL, cex.lab = 1.5, cex.axis = 1.5, cex.main = 2, xlab = "Marker", 
+    main.density = "Density functions", col.controlscases = c('#485C99','#8F3D52'), 
+    col.threshold = '#FCBA04', col.curve = 'black', eps = sqrt(.Machine$double.eps), 
+    ...)
+## S3 method for class 'multiroc'
+plot_buildROC(x, FPR = 0.15, display.method = c("PCA", "OV"), 
+    displayOV = c(1,2), build.process = FALSE, completeROC = TRUE, 
+    new = FALSE, new.window = FALSE, border = FALSE, cutoff = TRUE, legends = FALSE, 
+    type = 's', col.controlscases = c('#485C99','#8F3D52'), 
+    col.threshold = '#FCBA04', col.curve = 'black', cex.point = 1.5, 
+    alpha.points = .75, alpha.contour = 0.25, lwd.curve = 2, lty.curve = 1, 
+    cex = 0.8, cex.lab = 1.5, cex.axis = 1.5, cex.main = 2, xlab = NULL, ylab = NULL, 
+    lf = NULL, eps = sqrt(.Machine$double.eps), ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot_buildROC_+3A_x">x</code></td>
+<td>
+
+<p>An ROC curve object from movieROC package. Possible classes are: &lsquo;groc&rsquo; (output of <code><a href="#topic+gROC">gROC</a>()</code> function) and &lsquo;multiroc&rsquo; (output of <code><a href="#topic+multiROC">multiROC</a>()</code> function).</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_fpr">FPR</code></td>
+<td>
+
+<p>False-positive rate for which the left plot is computed. Default: 0.15.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_c">C</code></td>
+<td>
+
+<p>Marker cutoff for which the left plot is computed. Only available for a &lsquo;groc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_xl">XL</code>, <code id="plot_buildROC_+3A_xu">XU</code></td>
+<td>
+
+<p>Marker cutoffs for which the left plot is computed. Only available for object of class &lsquo;groc&rsquo; with <code>side = "both"</code> or <code>"both2"</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_h">h</code></td>
+<td>
+
+<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density()</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_histogram">histogram</code></td>
+<td>
+
+<p>If TRUE, histograms are displayed on the left instead of kernel density estimates. Default: FALSE. Only available for a &lsquo;groc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_breaks">breaks</code></td>
+<td>
+
+<p>If <code>histogram = TRUE</code>, number of breaks used for the histograms. Default: 15.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_reduce">reduce</code></td>
+<td>
+
+<p>If FALSE, two extra graphics are displayed at the bottom (see Details for more information). Default: TRUE. Only available for a &lsquo;groc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_build.process">build.process</code></td>
+<td>
+
+<p>If FALSE, the whole ROC curve is displayed; otherwise, if <code>completeROC = TRUE</code>, the portion of the ROC curve until the fixed FPR is highlighted in black and the rest is shown in gray. Default: FALSE.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_completeroc">completeROC</code></td>
+<td>
+
+<p>If <code>build.process = TRUE</code>, a logical value indicating if the whole ROC curve should be displayed in light gray or not. Default: FALSE for &lsquo;groc&rsquo; object; TRUE for &lsquo;multiroc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_new.window">new.window</code>, <code id="plot_buildROC_+3A_new">new</code></td>
+<td>
+
+<p>If TRUE, graphics are displayed in a new window. Default: FALSE. <code>new</code> not available for object of class &lsquo;groc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_legends">legends</code></td>
+<td>
+
+<p>If TRUE, a legend with colors meaning is displayed on the left graphic and the AUC is shown on the right graphic. Default: FALSE.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_type">type</code>, <code id="plot_buildROC_+3A_lty.curve">lty.curve</code>, <code id="plot_buildROC_+3A_lwd.curve">lwd.curve</code>, <code id="plot_buildROC_+3A_col.curve">col.curve</code></td>
+<td>
+
+<p>The line type, width and color for ROC curve. Default: <code>type = "s"</code> (stair steps), <code>lty.curve = 1</code> (solid), <code>lwd.curve = 2</code> and <code>col.curve = "black"</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_cex.lab">cex.lab</code>, <code id="plot_buildROC_+3A_cex.axis">cex.axis</code>, <code id="plot_buildROC_+3A_cex.main">cex.main</code></td>
+<td>
+
+<p>The magnification to be used for labels, axis annotation and main titles, respectively, relative to the current setting of <code>cex</code>. Default: <code>cex.lab = 1.5, cex.axis = 1.5, cex.main = 2</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_cex">cex</code></td>
+<td>
+
+<p>A numerical value giving the amount by which plotting text and symbols should be magnified relative to the default. Default: 0.8. Not available for object of class &lsquo;groc&rsquo; (<code>cex=1</code> in this case).</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_cex.point">cex.point</code></td>
+<td>
+
+<p>The magnification to be used for the particular point on the ROC curve and its text, relative to the current setting of <code>cex</code>. Default: <code>cex.point = 1.5</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_xlim">xlim</code>, <code id="plot_buildROC_+3A_ylim">ylim</code></td>
+<td>
+
+<p>Range for x- and y-axis on the left plot. Only available for a &lsquo;groc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_lim.density">lim.density</code></td>
+<td>
+
+<p>If <code>xlim</code> is <code>NULL</code>, lower limit for the density estimate to compute the range for the x-axis on the left plot. Default: 0.01. Only available for a &lsquo;groc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_xlab">xlab</code>, <code id="plot_buildROC_+3A_ylab">ylab</code></td>
+<td>
+
+<p>Label for x- and y-axis on the left plot. <code>ylab</code> not available for object of class &lsquo;groc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_main.density">main.density</code></td>
+<td>
+
+<p>Title for the left plot. Only available for a &lsquo;groc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_col.controlscases">col.controlscases</code></td>
+<td>
+
+<p>Vector of length 2 with the color used to control and case group, respectively. Default: <code>c('#485C99','#8F3D52')</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_col.threshold">col.threshold</code></td>
+<td>
+
+<p>Color for the chosen point. Default: <code>"FCBA04"</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_mar">mar</code></td>
+<td>
+
+<p>A numerical vector of the form c(bottom, left, top, right) which gives the number of lines of margin to be specified on the four sides of the plot. Only available for a &lsquo;groc&rsquo; object.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_eps">eps</code></td>
+<td>
+
+<p>Epsilon value to consider. Default: <code>sqrt(.Machine$double.eps)</code>.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_border">border</code></td>
+<td>
+
+<p>If TRUE, a border for the classification subsets is drawn. Default: FALSE for &lsquo;multiroc&rsquo; object (TRUE if <code class="reqn">p=2</code>). Not available for object of class &lsquo;groc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_cutoff">cutoff</code></td>
+<td>
+
+<p>If TRUE, the cutoff value for the resulting univariate marker is displayed on the right plot (ROC curve). Default: TRUE. Not available for object of class &lsquo;groc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_alpha.points">alpha.points</code>, <code id="plot_buildROC_+3A_alpha.contour">alpha.contour</code></td>
+<td>
+
+<p>Number in [0,1] modifying the opacity alpha of the color for the points and classification region. The <code>adjustcolor()</code> function in <span class="pkg">grDevices</span> package is used. Default: <code>alpha.points = 0.75, alpha.contour = 0.25</code>. Not available for object of class &lsquo;groc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_lf">lf</code></td>
+<td>
+
+<p>Epsilon value for steps. Not used. Not available for object of class &lsquo;groc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_display.method">display.method</code></td>
+<td>
+
+<p>Method to display the marker values from a &lsquo;multiroc&rsquo; object on the left plot. Methods available: <code>"OV"</code> (projected over two selected components of the marker indicated in <code>displayOV</code>), or <code>"PCA"</code> (projected over the two principal components from a Principal Component Analysis). Default: <code>"PCA"</code>. Only available for object of class &lsquo;multiroc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_displayov">displayOV</code></td>
+<td>
+
+<p>If <code>display.method = "OV"</code>, the two components of the marker used to project the marker values on the left plot. Default: <code>c(1,2)</code> (two first components). Only available for object of class &lsquo;multiroc&rsquo;.</p>
+</td></tr>
+<tr><td><code id="plot_buildROC_+3A_...">...</code></td>
+<td>
+
+<p>Other parameters to be passed. Not used.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>- For univariate ROC curves:
+</p>
+<p>It plots two graphics in the same figure:
+left, density function estimates for the marker in both populations with the areas 
+corresponding to FPR and TPR colored (blue and red, respectively) for a particular 
+FPR or threshold(s) for the marker; right, the empirical ROC curve estimate. 
+</p>
+<p>For an object of class &lsquo;groc&rsquo;, if the input parameter <code>reduce = FALSE</code>, 
+two more graphics are displayed at the bottom: 
+left, boxplots for the marker distribution in both populations;  
+right, classification subsets for every false-positive rate (grey color by default).
+</p>
+<p>- For multivariate ROC curves:
+</p>
+<p>Plot two graphics in the same figure: right, the ROC curve highlighting the point and the
+threshold for the resulting univariate marker; left, scatterplot with the marker values for controls (blue color) and cases (red color), and the classification subset (in gold color) reporting the false-positive rate selected by the user (if <code>FPR</code> is not <code>NULL</code>).
+</p>
+<p>If <code>build.process = FALSE</code>, the whole ROC curve is displayed; otherwise, if <code>completeROC = TRUE</code>, 
+the portion of the ROC curve until the fixed FPR is highlighted in black and the rest is
+shown in gray, while if <code>completeROC = FALSE</code>, only the first portion of the curve is illustrated.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A plot of the building procedure of the ROC curve with the selected graphical parameters
+</p>
+
+
+<h3>Dependencies</h3>
+
+<p>If <code>method = "kernelOptimal"</code> in a &lsquo;multiroc&rsquo; object, the <code>na.locf()</code> function in the <a href="https://CRAN.R-project.org/package=zoo"><span class="pkg">zoo</span></a> package is used.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(HCC)
+
+# Standard ROC curve for gene 20202438
+roc_cg20202438 &lt;- gROC(X = HCC$cg20202438, D = HCC$tumor, side = "right")
+plot_buildROC(roc_cg20202438)
+plot_buildROC(roc_cg20202438, C = .77, build.process = TRUE, reduce = FALSE)
+
+# Multivariate ROC curve for genes 0202438, 18384097, and 03515901
+multiroc_PT &lt;- multiROC(X = cbind(HCC$cg20202438, HCC$cg18384097, HCC$cg03515901), 
+    D = HCC$tumor, method = "fixedLinear", methodLinear = "PepeThompson")
+plot_buildROC(multiroc_PT, cex = 1.2, lwd.curve = 4) # Two first components from PCA
+plot_buildROC(multiroc_PT, display.method = "OV", displayOV = c(1,3), 
+    cex = 1.2, xlab = "Gene 20202438", ylab = "Gene 03515901", lwd.curve = 4)
 </code></pre>
 
 <hr>
@@ -1509,7 +1652,7 @@ Plot density function estimates for controls and cases
 <tr><td><code id="plot_densities_+3A_h">h</code></td>
 <td>
 
-<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
+<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density()</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
 </td></tr>
 <tr><td><code id="plot_densities_+3A_histogram">histogram</code></td>
 <td>
@@ -1629,7 +1772,7 @@ Plot standard smooth ROC curve estimate
 <tr><td><code id="plot_densityROC_+3A_h">h</code></td>
 <td>
 
-<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
+<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density()</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
 </td></tr>
 <tr><td><code id="plot_densityROC_+3A_c">C</code></td>
 <td>
@@ -1654,7 +1797,7 @@ Plot standard smooth ROC curve estimate
 <tr><td><code id="plot_densityROC_+3A_rel.tol">rel.tol</code></td>
 <td>
 
-<p>Relative accuracy requested for the <code>integrate</code> function from <span class="pkg">stats</span> package. Default: 0.001.</p>
+<p>Relative accuracy requested for the <code>integrate()</code> function from <span class="pkg">stats</span> package. Default: 0.001.</p>
 </td></tr>
 <tr><td><code id="plot_densityROC_+3A_par.specify">par.specify</code></td>
 <td>
@@ -1699,268 +1842,13 @@ plot_densityROC(roc_cg20202438, h = c(2,2))
 </code></pre>
 
 <hr>
-<h2 id='plot.buildROC'>
-Plot the building procedure of the ROC curve
-</h2><span id='topic+plot.buildROC'></span><span id='topic+plot.buildROC.groc'></span><span id='topic+plot.buildROC.biroc'></span><span id='topic+plot.buildROC.multiroc'></span>
-
-<h3>Description</h3>
-
-<p>This function tracks the ROC curve. It plots two graphics in the same figure:
-right, the empirical ROC curve estimate; left, classification subset for a 
-particular FPR or threshold(s) for the marker (threshold only for object of class &lsquo;groc&rsquo;).
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>## S3 method for class 'buildROC'
-plot(x, ...)
-## S3 method for class 'groc'
-plot.buildROC(x, FPR = NULL, C = NULL, XL = NULL, XU = NULL, h = c(1,1), 
-    histogram = FALSE, breaks = 15, reduce = TRUE, build.process = FALSE, 
-    completeROC = FALSE, new.window = FALSE, legends = FALSE, type = 's', 
-    cex.point = 1.5, lwd.curve = 2, mar = NULL, lim.density = 0.01, xlim = NULL, 
-    ylim = NULL, cex.lab = 1.5, cex.axis = 1.5, cex.main = 2, xlab = "Marker", 
-    main.density = "Density functions", col.controlscases = c('#485C99','#8F3D52'), 
-    col.threshold = '#FCBA04', col.curve = 'black', eps = sqrt(.Machine$double.eps), 
-    ...)
-## S3 method for class 'biroc'
-plot.buildROC(x, FPR = 0.15, build.process = FALSE, completeROC = TRUE, 
-    new = FALSE, new.window = FALSE, border = TRUE, cutoff = TRUE, 
-    legends = FALSE, type = 's', col.controlscases = c('#485C99','#8F3D52'), 
-    col.threshold = '#FCBA04', col.curve = 'black', cex.point = 1.5, 
-    alpha.points = .75, alpha.contour = 0.25, lwd.curve = 2, lty.curve = 1, 
-    cex = 0.8, cex.lab = 1.5, cex.axis = 1.5, cex.main = 2, xlab = "X1", ylab = "X2", 
-    lf = NULL, eps = sqrt(.Machine$double.eps), ...)
-## S3 method for class 'multiroc'
-plot.buildROC(x, FPR = 0.15, display.method = c("PCA", "OV"), 
-    displayOV = c(1,2), build.process = FALSE, completeROC = TRUE, 
-    new = FALSE, new.window = FALSE, border = FALSE, cutoff = TRUE, legends = FALSE, 
-    type = 's', col.controlscases = c('#485C99','#8F3D52'), 
-    col.threshold = '#FCBA04', col.curve = 'black', cex.point = 1.5, 
-    alpha.points = .75, alpha.contour = 0.25, lwd.curve = 2, lty.curve = 1, 
-    cex = 0.8, cex.lab = 1.5, cex.axis = 1.5, cex.main = 2, xlab = NULL, ylab = NULL, 
-    lf = NULL, eps = sqrt(.Machine$double.eps), ...)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="plot.buildROC_+3A_x">x</code></td>
-<td>
-
-<p>An ROC curve object from movieROC package. Possible classes are: &lsquo;groc&rsquo; (output of <code>gROC</code> function), &lsquo;biroc&rsquo; (output of <code>biROC</code> function), and &lsquo;multiroc&rsquo; (output of <code>multiROC</code> function).</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_fpr">FPR</code></td>
-<td>
-
-<p>False-positive rate for which the left plot is computed. Default: 0.15.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_c">C</code></td>
-<td>
-
-<p>Marker cutoff for which the left plot is computed. Only available for a &lsquo;groc&rsquo; object.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_xl">XL</code>, <code id="plot.buildROC_+3A_xu">XU</code></td>
-<td>
-
-<p>Marker cutoffs for which the left plot is computed. Only available for object of class &lsquo;groc&rsquo; with <code>side = "both"</code> or <code>"both2"</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_h">h</code></td>
-<td>
-
-<p>A vector of length 2 with the bandwidth used to compute kernel density estimation for controls and cases, respectively. See <code>adjust</code> parameter in <code>density</code> function from <span class="pkg">stats</span> package. Default: <code>h = c(1,1)</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_histogram">histogram</code></td>
-<td>
-
-<p>If TRUE, histograms are displayed on the left instead of kernel density estimates. Default: FALSE. Only available for a &lsquo;groc&rsquo; object.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_breaks">breaks</code></td>
-<td>
-
-<p>If <code>histogram = TRUE</code>, number of breaks used for the histograms. Default: 15.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_reduce">reduce</code></td>
-<td>
-
-<p>If FALSE, two extra graphics are displayed at the bottom (see Details for more information). Default: TRUE. Only available for a &lsquo;groc&rsquo; object.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_build.process">build.process</code></td>
-<td>
-
-<p>If FALSE, the whole ROC curve is displayed; otherwise, if <code>completeROC = TRUE</code>, the portion of the ROC curve until the fixed FPR is highlighted in black and the rest is shown in gray. Default: FALSE.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_completeroc">completeROC</code></td>
-<td>
-
-<p>If <code>build.process = TRUE</code>, a logical value indicating if the whole ROC curve should be displayed in light gray or not. Default: FALSE for &lsquo;groc&rsquo; object; TRUE for &lsquo;biroc&rsquo; and &lsquo;multiroc&rsquo; objects.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_new.window">new.window</code>, <code id="plot.buildROC_+3A_new">new</code></td>
-<td>
-
-<p>If TRUE, graphics are displayed in a new window. Default: FALSE. <code>new</code> not available for object of class &lsquo;groc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_legends">legends</code></td>
-<td>
-
-<p>If TRUE, a legend with colors meaning is displayed on the left graphic and the AUC is shown on the right graphic. Default: FALSE.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_type">type</code>, <code id="plot.buildROC_+3A_lty.curve">lty.curve</code>, <code id="plot.buildROC_+3A_lwd.curve">lwd.curve</code>, <code id="plot.buildROC_+3A_col.curve">col.curve</code></td>
-<td>
-
-<p>The line type, width and color for ROC curve. Default: <code>type = "s"</code> (stair steps), <code>lty.curve = 1</code> (solid), <code>lwd.curve = 2</code> and <code>col.curve = "black"</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_cex.lab">cex.lab</code>, <code id="plot.buildROC_+3A_cex.axis">cex.axis</code>, <code id="plot.buildROC_+3A_cex.main">cex.main</code></td>
-<td>
-
-<p>The magnification to be used for labels, axis annotation and main titles, respectively, relative to the current setting of <code>cex</code>. Default: <code>cex.lab = 1.5, cex.axis = 1.5, cex.main = 2</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_cex">cex</code></td>
-<td>
-
-<p>A numerical value giving the amount by which plotting text and symbols should be magnified relative to the default. Default: 0.8. Not available for object of class &lsquo;groc&rsquo; (<code>cex=1</code> in this case).</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_cex.point">cex.point</code></td>
-<td>
-
-<p>The magnification to be used for the particular point on the ROC curve and its text, relative to the current setting of <code>cex</code>. Default: <code>cex.point = 1.5</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_xlim">xlim</code>, <code id="plot.buildROC_+3A_ylim">ylim</code></td>
-<td>
-
-<p>Range for x- and y-axis on the left plot. Only available for a &lsquo;groc&rsquo; object.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_lim.density">lim.density</code></td>
-<td>
-
-<p>If <code>xlim</code> is <code>NULL</code>, lower limit for the density estimate to compute the range for the x-axis on the left plot. Default: 0.01. Only available for a &lsquo;groc&rsquo; object.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_xlab">xlab</code>, <code id="plot.buildROC_+3A_ylab">ylab</code></td>
-<td>
-
-<p>Label for x- and y-axis on the left plot. <code>ylab</code> not available for object of class &lsquo;groc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_main.density">main.density</code></td>
-<td>
-
-<p>Title for the left plot. Only available for a &lsquo;groc&rsquo; object.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_col.controlscases">col.controlscases</code></td>
-<td>
-
-<p>Vector of length 2 with the color used to control and case group, respectively. Default: <code>c('#485C99','#8F3D52')</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_col.threshold">col.threshold</code></td>
-<td>
-
-<p>Color for the chosen point. Default: <code>"FCBA04"</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_mar">mar</code></td>
-<td>
-
-<p>A numerical vector of the form c(bottom, left, top, right) which gives the number of lines of margin to be specified on the four sides of the plot. Only available for a &lsquo;groc&rsquo; object.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_eps">eps</code></td>
-<td>
-
-<p>Epsilon value to consider. Default: <code>sqrt(.Machine$double.eps)</code>.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_border">border</code></td>
-<td>
-
-<p>If TRUE, a border for the classification subsets is drawn. Default: TRUE for &lsquo;biroc&rsquo; object and FALSE for &lsquo;multiroc&rsquo; object. Not available for object of class &lsquo;groc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_cutoff">cutoff</code></td>
-<td>
-
-<p>If TRUE, the cutoff value for the resulting univariate marker is displayed on the right plot (ROC curve). Default: TRUE. Not available for object of class &lsquo;groc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_alpha.points">alpha.points</code>, <code id="plot.buildROC_+3A_alpha.contour">alpha.contour</code></td>
-<td>
-
-<p>Number in [0,1] modifying the opacity alpha of the color for the points and classification region. The <code>adjustcolor</code> function in <span class="pkg">grDevices</span> package is used. Default: <code>alpha.points = 0.75, alpha.contour = 0.25</code>. Not available for object of class &lsquo;groc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_lf">lf</code></td>
-<td>
-
-<p>Epsilon value for steps. Not used. Not available for object of class &lsquo;groc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_display.method">display.method</code></td>
-<td>
-
-<p>Method to display the marker values from a &lsquo;multiroc&rsquo; object on the left plot. Methods available: <code>"OV"</code> (projected over two selected components of the marker indicated in <code>displayOV</code>), or <code>"PCA"</code> (projected over the two principal components from a Principal Component Analysis). Default: <code>"PCA"</code>. Only available for object of class &lsquo;multiroc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_displayov">displayOV</code></td>
-<td>
-
-<p>If <code>display.method = "OV"</code>, the two components of the marker used to project the marker values on the left plot. Default: <code>c(1,2)</code> (two first components). Only available for object of class &lsquo;multiroc&rsquo;.</p>
-</td></tr>
-<tr><td><code id="plot.buildROC_+3A_...">...</code></td>
-<td>
-
-<p>Other parameters to be passed. Not used.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>- For univariate ROC curves:
-</p>
-<p>It plots two graphics in the same figure:
-left, density function estimates for the marker in both populations with the areas 
-corresponding to FPR and TPR colored (blue and red, respectively) for a particular 
-FPR or threshold(s) for the marker; right, the empirical ROC curve estimate. 
-</p>
-<p>For an object of class &lsquo;groc&rsquo;, if the input parameter <code>reduce = FALSE</code>, 
-two more graphics are displayed at the bottom: 
-left, boxplots for the marker distribution in both populations;  
-right, classification subsets for every false-positive rate (grey color by default).
-</p>
-<p>- For multivariate ROC curves:
-</p>
-<p>Plot two graphics in the same figure: right, the ROC curve highlighting the point and the
-threshold for the resulting univariate marker; left, scatterplot with the marker values for controls (blue color) and cases (red color), and the classification subset (in gold color) reporting the false-positive rate selected by the user (if <code>FPR</code> is not <code>NULL</code>).
-</p>
-<p>If <code>build.process = FALSE</code>, the whole ROC curve is displayed; otherwise, if <code>completeROC = TRUE</code>, 
-the portion of the ROC curve until the fixed FPR is highlighted in black and the rest is
-shown in gray, while if <code>completeROC = FALSE</code>, only the first portion of the curve is illustrated.
-</p>
-
-
-<h3>Value</h3>
-
-<p>A plot of the building procedure of the ROC curve with the selected graphical parameters
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>data(HCC)
-
-# Standard ROC curve for gene 20202438
-roc_cg20202438 &lt;- gROC(X = HCC$cg20202438, D = HCC$tumor, side = "right")
-plot.buildROC(roc_cg20202438)
-plot.buildROC(roc_cg20202438, C = .77, build.process = TRUE, reduce = FALSE)
-
-# Multivariate ROC curve for genes 0202438, 18384097, and 03515901
-multiroc_PT &lt;- multiROC(X = cbind(HCC$cg20202438, HCC$cg18384097, HCC$cg03515901), 
-    D = HCC$tumor, method = "fixedLinear", methodLinear = "PepeThompson")
-plot.buildROC(multiroc_PT, cex = 1.2, lwd.curve = 4) # Two first components from PCA
-plot.buildROC(multiroc_PT, display.method = "OV", displayOV = c(1,3), 
-    cex = 1.2, xlab = "Gene 20202438", ylab = "Gene 03515901", lwd.curve = 4)
-</code></pre>
-
-<hr>
-<h2 id='plot.funregions'>
+<h2 id='plot_funregions'>
 Plot the transformation function used for the marker
-</h2><span id='topic+plot.funregions'></span><span id='topic+plot.funregions.hroc'></span>
+</h2><span id='topic+plot_funregions'></span><span id='topic+plot_funregions.hroc'></span><span id='topic+plot_funregions.groc'></span>
 
 <h3>Description</h3>
 
-<p>This function plots the transformation function used for the marker for an object of class &lsquo;hroc&rsquo;.
+<p>This function plots the transformation function used for the marker for an object of class &lsquo;hroc&rsquo; or class &lsquo;groc&rsquo; (this one is only allowed for objects with self-contained classification subsets).
 Over this graphic, the classification region for a particular FPR chosen by the user is displayed in blue color.
 If the user specifies a second FPR (<code>FPR2</code>), the classification region is displayed on the same graphic in red color.
 </p>
@@ -1968,10 +1856,11 @@ If the user specifies a second FPR (<code>FPR2</code>), the classification regio
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>## S3 method for class 'funregions'
-plot(x, ...)
-## S3 method for class 'hroc'
-plot.funregions(x, FPR = 0.15, FPR2 = NULL, 
+<pre><code class='language-R'>## S3 method for class 'hroc'
+plot_funregions(x, FPR = 0.15, FPR2 = NULL, 
+  plot.subsets = TRUE, new.window = FALSE, main = NULL, ylim = NULL, ...)
+## S3 method for class 'groc'
+plot_funregions(x, FPR = 0.15, FPR2 = NULL, 
   plot.subsets = TRUE, new.window = FALSE, main = NULL, ylim = NULL, ...)
 </code></pre>
 
@@ -1979,42 +1868,42 @@ plot.funregions(x, FPR = 0.15, FPR2 = NULL,
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="plot.funregions_+3A_x">x</code></td>
+<tr><td><code id="plot_funregions_+3A_x">x</code></td>
 <td>
 
-<p>An object of class &lsquo;hroc&rsquo;.</p>
+<p>An object of class &lsquo;hroc&rsquo; or &lsquo;groc&rsquo;.</p>
 </td></tr>
-<tr><td><code id="plot.funregions_+3A_fpr">FPR</code></td>
+<tr><td><code id="plot_funregions_+3A_fpr">FPR</code></td>
 <td>
 
 <p>False-positive rate used to display the classification region in blue. Default: 0.15.</p>
 </td></tr>
-<tr><td><code id="plot.funregions_+3A_fpr2">FPR2</code></td>
+<tr><td><code id="plot_funregions_+3A_fpr2">FPR2</code></td>
 <td>
 
 <p>Other false-positive rate used to display the classification region in red. Default: none.</p>
 </td></tr>
-<tr><td><code id="plot.funregions_+3A_plot.subsets">plot.subsets</code></td>
+<tr><td><code id="plot_funregions_+3A_plot.subsets">plot.subsets</code></td>
 <td>
 
 <p>If TRUE, the classification subsets are displayed. Otherwise, only the transformation function. Default: TRUE.</p>
 </td></tr>
-<tr><td><code id="plot.funregions_+3A_new.window">new.window</code></td>
+<tr><td><code id="plot_funregions_+3A_new.window">new.window</code></td>
 <td>
 
 <p>If TRUE, graphics are displayed in a new window. Default: FALSE.</p>
 </td></tr>
-<tr><td><code id="plot.funregions_+3A_main">main</code></td>
+<tr><td><code id="plot_funregions_+3A_main">main</code></td>
 <td>
 
 <p>Title for the plot.</p>
 </td></tr>
-<tr><td><code id="plot.funregions_+3A_ylim">ylim</code></td>
+<tr><td><code id="plot_funregions_+3A_ylim">ylim</code></td>
 <td>
 
 <p>Range for the y-axis.</p>
 </td></tr>
-<tr><td><code id="plot.funregions_+3A_...">...</code></td>
+<tr><td><code id="plot_funregions_+3A_...">...</code></td>
 <td>
 
 <p>Other parameters to be passed. Not used.</p>
@@ -2034,14 +1923,14 @@ plot.funregions(x, FPR = 0.15, FPR2 = NULL,
 
 hroc_cg18384097 &lt;- hROC(X = HCC$cg18384097, D = HCC$tumor, 
     formula.lrm = "D ~ rcs(X,8)") 
-plot.funregions(hroc_cg18384097)
-plot.funregions(hroc_cg18384097, FPR = .1, FPR2 = .5)
+plot_funregions(hroc_cg18384097)
+plot_funregions(hroc_cg18384097, FPR = .1, FPR2 = .5)
 </code></pre>
 
 <hr>
-<h2 id='plot.regions'>
+<h2 id='plot_regions'>
 Plot the classification regions underlying a ROC curve
-</h2><span id='topic+plot.regions'></span><span id='topic+plot.regions.groc'></span><span id='topic+plot.regions.hroc'></span>
+</h2><span id='topic+plot_regions'></span><span id='topic+plot_regions.groc'></span><span id='topic+plot_regions.hroc'></span>
 
 <h3>Description</h3>
 
@@ -2054,17 +1943,15 @@ for every false-positive rate (grey color by default); right, 90º rotated ROC c
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>## S3 method for class 'regions'
-plot(x, ...)
-## S3 method for class 'groc'
-plot.regions(x, FPR = 0.15, plot.roc = TRUE, plot.auc = FALSE, 
+<pre><code class='language-R'>## S3 method for class 'groc'
+plot_regions(x, FPR = 0.15, plot.roc = TRUE, plot.auc = FALSE, 
   col = c("white", "grey"), col.FPR = "blue", lwd = 2, new.window = TRUE, 
   type.plotroc = "s", xlim = NULL, mar = c(5, 6, 4, 0.25), 
   cex.lab = 1.5, cex.axis = 1.5, cex.main = 1.75, main = NULL, 
   xlab = "", ylab = "False-Positive Rate", main.plotroc = "ROC curve", 
   legend = TRUE, cex.legend = 1, ...)
 ## S3 method for class 'hroc'
-plot.regions(x, FPR = 0.15, plot.roc = TRUE, plot.auc = FALSE, 
+plot_regions(x, FPR = 0.15, plot.roc = TRUE, plot.auc = FALSE, 
   col = c('white','grey'), col.FPR = 'blue', lwd = 2, new.window = TRUE, 
   type.plotroc = 's', xlim = NULL, mar = c(5,6,4,0.25), 
   cex.lab = 1.5, cex.axis = 1.5, cex.main = 1.75, main = NULL, 
@@ -2076,89 +1963,89 @@ plot.regions(x, FPR = 0.15, plot.roc = TRUE, plot.auc = FALSE,
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="plot.regions_+3A_x">x</code></td>
+<tr><td><code id="plot_regions_+3A_x">x</code></td>
 <td>
 
 <p>An ROC curve object from a univariate marker. Possible classes are: &lsquo;groc&rsquo; (output of <code>gROC</code> function) and &lsquo;hroc&rsquo; (output of <code>hROC</code> function),</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_fpr">FPR</code></td>
+<tr><td><code id="plot_regions_+3A_fpr">FPR</code></td>
 <td>
 
 <p>False-positive rate to be highlighted, both on the ROC curve (right plot) and classification subset (left plot). Default: 0.15.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_plot.roc">plot.roc</code></td>
+<tr><td><code id="plot_regions_+3A_plot.roc">plot.roc</code></td>
 <td>
 
 <p>If TRUE, the ROC curve is displayed. Default: TRUE.
 </p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_plot.auc">plot.auc</code></td>
+<tr><td><code id="plot_regions_+3A_plot.auc">plot.auc</code></td>
 <td>
 
 <p>If TRUE, the AUC is displayed on the plot of the bottomleft corner of the ROC curve plot. Default: FALSE.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_col">col</code></td>
+<tr><td><code id="plot_regions_+3A_col">col</code></td>
 <td>
 
 <p>Vector of length 2 with colors used for outside and inside of classification subsets, respectively. Default: <code>c("white", "grey")</code>.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_col.fpr">col.FPR</code></td>
+<tr><td><code id="plot_regions_+3A_col.fpr">col.FPR</code></td>
 <td>
 
 <p>Color used to highlight the <code>FPR</code> chose. Default: <code>"blue"</code>.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_type.plotroc">type.plotroc</code>, <code id="plot.regions_+3A_lwd">lwd</code></td>
+<tr><td><code id="plot_regions_+3A_type.plotroc">type.plotroc</code>, <code id="plot_regions_+3A_lwd">lwd</code></td>
 <td>
 
 <p>Line type and width for the ROC curve. Default: <code>type.plotroc = "s", lwd = 2</code>.
 </p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_new.window">new.window</code></td>
+<tr><td><code id="plot_regions_+3A_new.window">new.window</code></td>
 <td>
 
 <p>If TRUE, graphics are displayed in a new window. Default: TRUE.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_xlim">xlim</code></td>
+<tr><td><code id="plot_regions_+3A_xlim">xlim</code></td>
 <td>
 
 <p>Range for x-axis on the left plot. Default: range of the marker values.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_mar">mar</code></td>
+<tr><td><code id="plot_regions_+3A_mar">mar</code></td>
 <td>
 
 <p>A numerical vector of the form c(bottom, left, top, right) which gives the number of lines of margin to be specified on the four sides of the plot.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_cex.lab">cex.lab</code>, <code id="plot.regions_+3A_cex.axis">cex.axis</code>, <code id="plot.regions_+3A_cex.main">cex.main</code></td>
+<tr><td><code id="plot_regions_+3A_cex.lab">cex.lab</code>, <code id="plot_regions_+3A_cex.axis">cex.axis</code>, <code id="plot_regions_+3A_cex.main">cex.main</code></td>
 <td>
 
 <p>The magnification to be used for labels, axis annotation and main titles, respectively, relative to the current setting of <code>cex</code>. Default: <code>cex.lab = 1.5, cex.axis = 1.5, cex.main = 1.75</code>.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_xlab">xlab</code>, <code id="plot.regions_+3A_ylab">ylab</code></td>
+<tr><td><code id="plot_regions_+3A_xlab">xlab</code>, <code id="plot_regions_+3A_ylab">ylab</code></td>
 <td>
 
 <p>Label for x- and y-axis on the left plot.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_main">main</code>, <code id="plot.regions_+3A_main.plotroc">main.plotroc</code></td>
+<tr><td><code id="plot_regions_+3A_main">main</code>, <code id="plot_regions_+3A_main.plotroc">main.plotroc</code></td>
 <td>
 
 <p>Title for the left and the right plot, respectively.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_legend">legend</code></td>
+<tr><td><code id="plot_regions_+3A_legend">legend</code></td>
 <td>
 
 <p>If TRUE, a legend with the meaning of colors is displayed on the left plot. Default: TRUE.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_cex.legend">cex.legend</code></td>
+<tr><td><code id="plot_regions_+3A_cex.legend">cex.legend</code></td>
 <td>
 
 <p>The magnification to be used for legend, relative to the current setting of <code>cex</code>. Default: 1.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_verbose">verbose</code></td>
+<tr><td><code id="plot_regions_+3A_verbose">verbose</code></td>
 <td>
 
 <p>If TRUE, a progress bar is displayed. Default: FALSE.</p>
 </td></tr>
-<tr><td><code id="plot.regions_+3A_...">...</code></td>
+<tr><td><code id="plot_regions_+3A_...">...</code></td>
 <td>
 
 <p>Other parameters to be passed. Not used.</p>
@@ -2177,14 +2064,14 @@ plot.regions(x, FPR = 0.15, plot.roc = TRUE, plot.auc = FALSE,
 <pre><code class='language-R'>data(HCC)
 # 1. Standard ROC curve
 roc_cg18384097 &lt;- gROC(X = HCC$cg18384097, D = HCC$tumor)
-plot.regions(roc_cg18384097, plot.auc = TRUE)
+plot_regions(roc_cg18384097, plot.auc = TRUE)
 # 2. gROC curve
 groc_cg18384097 &lt;- gROC(X = HCC$cg18384097, D = HCC$tumor, side = "both")
-plot.regions(groc_cg18384097, plot.auc = TRUE)
+plot_regions(groc_cg18384097, plot.auc = TRUE)
 # 3. hROC curve with a restricted cubic splines transformation
 hroc_cg18384097 &lt;- hROC(X = HCC$cg18384097, D = HCC$tumor, 
     formula.lrm = "D ~ rcs(X,8)") 
-plot.regions(hroc_cg18384097, plot.auc = TRUE)
+plot_regions(hroc_cg18384097, plot.auc = TRUE)
 </code></pre>
 
 <hr>
@@ -2273,7 +2160,7 @@ predict(hroc_cg18384097, FPR = 0.5)
 <hr>
 <h2 id='print'>
 Print an ROC curve object
-</h2><span id='topic+print.groc'></span><span id='topic+print.hroc'></span><span id='topic+print.biroc'></span><span id='topic+print.multiroc'></span>
+</h2><span id='topic+print.groc'></span><span id='topic+print.hroc'></span><span id='topic+print.multiroc'></span>
 
 <h3>Description</h3>
 
@@ -2287,8 +2174,6 @@ Print an ROC curve object
 print(x, ...)
 ## S3 method for class 'hroc'
 print(x, ...)
-## S3 method for class 'biroc'
-print(x, ...)
 ## S3 method for class 'multiroc'
 print(x, ...)
 </code></pre>
@@ -2301,7 +2186,7 @@ print(x, ...)
 <td>
 
 <p>An ROC curve object from the <span class="pkg">movieROC</span> package. Possible classes are: 
-&lsquo;groc&rsquo; (output of <code>gROC</code> function), &lsquo;hroc&rsquo; (output of <code>hROC</code> function), &lsquo;biroc&rsquo; (output of <code>biROC</code> function), and &lsquo;multiroc&rsquo; (output of <code>multiROC</code> function).</p>
+&lsquo;groc&rsquo; (output of <code><a href="#topic+gROC">gROC</a>()</code> function), &lsquo;hroc&rsquo; (output of <code><a href="#topic+hROC">hROC</a>()</code> function), and &lsquo;multiroc&rsquo; (output of <code><a href="#topic+multiROC">multiROC</a>()</code> function).</p>
 </td></tr>
 <tr><td><code id="print_+3A_...">...</code></td>
 <td>
@@ -2320,7 +2205,7 @@ print(x, ...)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## See examples for gROC, hROC, biROC and multiROC function
+<pre><code class='language-R'>## See examples for gROC(), hROC(), and multiROC() function
 </code></pre>
 
 </main>

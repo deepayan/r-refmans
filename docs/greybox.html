@@ -21,6 +21,7 @@ function processMathHTML() {
 <li><a href='#greybox'><p>Grey box</p></a></li>
 <li><a href='#accuracy.greybox'><p>Error measures for an estimated model</p></a></li>
 <li><a href='#actuals'><p>Function extracts the actual values from the function</p></a></li>
+<li><a href='#adi'><p>Automatic Demand Identifier</p></a></li>
 <li><a href='#AICc'><p>Corrected Akaike's Information Criterion and Bayesian Information Criterion</p></a></li>
 <li><a href='#alm'><p>Augmented Linear Model</p></a></li>
 <li><a href='#association'><p>Measures of association</p></a></li>
@@ -67,6 +68,7 @@ function processMathHTML() {
 <li><a href='#stepwise'><p>Stepwise selection of regressors</p></a></li>
 <li><a href='#tableplot'><p>Construct a plot for categorical variable</p></a></li>
 <li><a href='#temporaldummy'><p>Dummy variables for provided seasonality type</p></a></li>
+<li><a href='#timeboot'><p>Time series bootstrap</p></a></li>
 <li><a href='#xregExpander'><p>Exogenous variables expander</p></a></li>
 <li><a href='#xregMultiplier'><p>Exogenous variables cross-products</p></a></li>
 <li><a href='#xregTransformer'><p>Exogenous variables transformer</p></a></li>
@@ -86,11 +88,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.0.0</td>
+<td>2.0.1</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-09-15</td>
+<td>2024-06-18</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -143,7 +145,7 @@ rmarkdown, knitr</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -159,7 +161,7 @@ rmarkdown, knitr</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-15 16:22:47 UTC; config</td>
+<td>2024-06-19 12:53:06 UTC; config</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -170,7 +172,7 @@ rmarkdown, knitr</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
-<td>Ivan Svetunkov &lt;ivan@svetunkov.ru&gt;</td>
+<td>Ivan Svetunkov &lt;ivan@svetunkov.com&gt;</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -178,7 +180,7 @@ rmarkdown, knitr</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-16 05:50:05 UTC</td>
+<td>2024-06-19 15:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -226,6 +228,14 @@ sample size.
 </li>
 <li> <p><a href="#topic+pAIC">pAIC</a>, <a href="#topic+pAICc">pAICc</a>, <a href="#topic+pBIC">pBIC</a>,
 <a href="#topic+pBICc">pBICc</a> - point versions of respective information criteria.
+</p>
+</li>
+<li> <p><a href="#topic+coefbootstrap">coefbootstrap</a> - Method that uses a simple implementation of the
+case resampling to get bootstrapped estimates of parameters of the model.
+</p>
+</li>
+<li> <p><a href="#topic+timeboot">timeboot</a> - Bootstrap inspired by the meboot package, that creates
+bootstraped series based on the provided one.
 </p>
 </li>
 <li> <p><a href="#topic+determination">determination</a> - Coefficients of determination between different
@@ -454,6 +464,100 @@ actuals(ourModel)
 </code></pre>
 
 <hr>
+<h2 id='adi'>Automatic Demand Identifier</h2><span id='topic+adi'></span>
+
+<h3>Description</h3>
+
+<p>The function applies several models on the provided time series and identifies what
+type of demand it is based on an information criterion.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>adi(y, ic = c("AICc", "AIC", "BICc", "BIC"), level = 0.99)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="adi_+3A_y">y</code></td>
+<td>
+<p>The vector of the data.</p>
+</td></tr>
+<tr><td><code id="adi_+3A_ic">ic</code></td>
+<td>
+<p>Information criterion to use.</p>
+</td></tr>
+<tr><td><code id="adi_+3A_level">level</code></td>
+<td>
+<p>The confidence level used in stockouts identification.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>In the first step, function creates inter-demand intervals and fits a model with LOWESS
+of it assuming Geometric distribution. The outliers from this model are treated as
+potential stock outs.
+</p>
+<p>In the second step, the function creates explanatory variables based on LOWESS of the
+original data, then applies Normal, Normal + Bernoulli models and selects the one that
+has the lowest IC. Based on that, it decides what type of demand the data corresponds
+to: regular or intermittent. Finally, if the data is count, the function will identify
+that.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Class &quot;adi&quot; is returned, which contains:
+</p>
+
+<ul>
+<li><p> y - The original data;
+</p>
+</li>
+<li><p> models - All fitted models;
+</p>
+</li>
+<li><p> ICs - Values of information criteria;
+</p>
+</li>
+<li><p> type - The type of the identified demand;
+</p>
+</li>
+<li><p> stockouts - List with start and end ids of potential stockouts;
+</p>
+</li>
+<li><p> new - Binary showing whether the data start with the abnormal number of zeroes.
+Must be a new product then;
+</p>
+</li>
+<li><p> obsolete - Binary showing whether the data ends with the abnormal number of zeroes.
+Must be product that was discontinued (obsolete).
+</p>
+</li></ul>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Ivan Svetunkov, <a href="mailto:ivan@svetunkov.ru">ivan@svetunkov.ru</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Data from Poisson distribution
+y &lt;- rpois(120, 0.7)
+adi(y)
+
+</code></pre>
+
+<hr>
 <h2 id='AICc'>Corrected Akaike's Information Criterion and Bayesian Information Criterion</h2><span id='topic+AICc'></span><span id='topic+BICc'></span>
 
 <h3>Description</h3>
@@ -581,8 +685,8 @@ BICc(ourModel)
 <pre><code class='language-R'>alm(formula, data, subset, na.action, distribution = c("dnorm", "dlaplace",
   "ds", "dgnorm", "dlogis", "dt", "dalaplace", "dlnorm", "dllaplace", "dls",
   "dlgnorm", "dbcnorm", "dinvgauss", "dgamma", "dexp", "dfnorm", "drectnorm",
-  "dpois", "dnbinom", "dbeta", "dlogitnorm", "plogis", "pnorm"),
-  loss = c("likelihood", "MSE", "MAE", "HAM", "LASSO", "RIDGE"),
+  "dpois", "dnbinom", "dgeom", "dbeta", "dlogitnorm", "plogis", "pnorm"),
+  loss = c("likelihood", "MSE", "MAE", "HAM", "LASSO", "RIDGE", "ROLE"),
   occurrence = c("none", "plogis", "pnorm"), scale = NULL, orders = c(0,
   0, 0), parameters = NULL, fast = FALSE, ...)
 </code></pre>
@@ -629,23 +733,28 @@ be:
 </p>
 
 <ul>
-<li> <p><code>likelihood</code> - the model is estimated via the maximisation of the
+<li> <p><code>"likelihood"</code> - the model is estimated via the maximisation of the
 likelihood of the function specified in <code>distribution</code>;
 </p>
 </li>
-<li> <p><code>MSE</code> (Mean Squared Error),
+<li> <p><code>"MSE"</code> (Mean Squared Error),
 </p>
 </li>
-<li> <p><code>MAE</code> (Mean Absolute Error),
+<li> <p><code>"MAE"</code> (Mean Absolute Error),
 </p>
 </li>
-<li> <p><code>HAM</code> (Half Absolute Moment),
+<li> <p><code>"HAM"</code> (Half Absolute Moment),
 </p>
 </li>
-<li> <p><code>LASSO</code> - use LASSO to shrink the parameters of the model;
+<li> <p><code>"LASSO"</code> - use LASSO to shrink the parameters of the model;
 </p>
 </li>
-<li> <p><code>RIDGE</code> - use RIDGE to shrink the parameters of the model;
+<li> <p><code>"RIDGE"</code> - use RIDGE to shrink the parameters of the model;
+</p>
+</li>
+<li> <p><code>"ROLE"</code> - &quot;RObust Likelihood Estimator&quot;, which uses trimmed mean in the
+calculation of scale and likelihood. A separate parameter <code>trim</code> can be provided
+in ellipsis. If not provided, the default value is 0.05;
 </p>
 </li></ul>
 
@@ -748,7 +857,7 @@ the parameters for that part should follow the parameters for location;
 </p>
 </li>
 <li> <p><code>algorithm</code> - the algorithm to use in optimisation
-(<code>"NLOPT_LN_SBPLX"</code> by default);
+(<code>"NLOPT_LN_NELDERMEAD"</code> by default);
 </p>
 </li>
 <li> <p><code>maxeval</code> - maximum number of evaluations to carry out. Default is 40 per
@@ -906,9 +1015,9 @@ scale, then an object of class &quot;scale&quot; will be returned.
 <li><p> distribution - distribution used in the estimation,
 </p>
 </li>
-<li><p> logLik - log-likelihood of the model. Only returned, when <code>loss="likelihood"</code>
-and in several other special cases of distribution and loss combinations (e.g. <code>loss="MSE"</code>,
-distribution=&quot;dnorm&quot;),
+<li><p> logLik - log-likelihood of the model. Only returned, when <code>loss="likelihood"</code> or
+<code>loss="ROLE"</code> and in several special cases of distribution and loss
+combinations (e.g. <code>loss="MSE"</code>, distribution=&quot;dnorm&quot;),
 </p>
 </li>
 <li><p> loss - the type of the loss function used in the estimation,
@@ -1464,16 +1573,16 @@ Chi-Squared test with the null hypothesis of independence of the two variables.
 </p>
 
 <ul>
-<li><p>valueThe value of Cramer's V;
+<li><p> value - The value of Cramer's V;
 </p>
 </li>
-<li><p>statisticThe value of Chi squared statistic associated with the Cramer's V;
+<li><p> statistic - The value of Chi squared statistic associated with the Cramer's V;
 </p>
 </li>
-<li><p>p.valueThe p-value of Chi squared test associated with the Cramer's V;
+<li><p> p.value - The p-value of Chi squared test associated with the Cramer's V;
 </p>
 </li>
-<li><p>dfThe number of degrees of freedom from the test.
+<li><p> df - The number of degrees of freedom from the test.
 </p>
 </li></ul>
 
@@ -1722,7 +1831,7 @@ logarithms.</p>
 
 <p>The distribution has the following density function:
 </p>
-<p>f(y) = y^lambda-1 1/sqrt(2 pi) exp(-((y^lambda-1)/lambda -mu)^2 / (2 sigma^2))
+<p>f(y) = y^(lambda-1) 1/sqrt(2 pi) exp(-((y^lambda-1)/lambda -mu)^2 / (2 sigma^2))
 </p>
 <p>Both <code>pbcnorm</code> and <code>qbcnorm</code> are returned for the lower
 tail of the distribution.
@@ -3599,9 +3708,9 @@ on all the other provided data.
 <pre><code class='language-R'>lmCombine(data, ic = c("AICc", "AIC", "BIC", "BICc"), bruteforce = FALSE,
   silent = TRUE, formula = NULL, subset = NULL,
   distribution = c("dnorm", "dlaplace", "ds", "dgnorm", "dlogis", "dt",
-  "dalaplace", "dlnorm", "dllaplace", "dls", "dlgnorm", "dbcnorm", "dfnorm",
-  "dinvgauss", "dgamma", "dpois", "dnbinom", "dlogitnorm", "plogis", "pnorm"),
-  parallel = FALSE, ...)
+  "dalaplace", "dlnorm", "dllaplace", "dls", "dlgnorm", "dbcnorm", "dinvgauss",
+  "dgamma", "dexp", "dfnorm", "drectnorm", "dpois", "dnbinom", "dbeta",
+  "dlogitnorm", "plogis", "pnorm"), parallel = FALSE, ...)
 </code></pre>
 
 
@@ -4055,19 +4164,19 @@ parameters are equal to zero), the associated p-value and the degrees of freedom
 </p>
 
 <ul>
-<li><p>valueThe value of the coefficient;
+<li><p> value - The value of the coefficient;
 </p>
 </li>
-<li><p>statisticThe value of F-statistics associated with the parameter;
+<li><p> statistic - The value of F-statistics associated with the parameter;
 </p>
 </li>
-<li><p>p.valueThe p-value of F-statistics associated with the parameter;
+<li><p> p.value - The p-value of F-statistics associated with the parameter;
 </p>
 </li>
-<li><p>df.residualThe number of degrees of freedom for the residuals;
+<li><p> df.residual - The number of degrees of freedom for the residuals;
 </p>
 </li>
-<li><p>dfThe number of degrees of freedom for the data.
+<li><p> df - The number of degrees of freedom for the data.
 </p>
 </li></ul>
 
@@ -4287,7 +4396,7 @@ and <a href="#topic+hm">hm</a>.
 </p>
 </li>
 <li><p> Svetunkov, I. (2017). Naughty APEs and the quest for the holy grail.
-<a href="https://forecasting.svetunkov.ru/en/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/">https://forecasting.svetunkov.ru/en/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/</a>
+<a href="https://openforecast.org/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/">https://openforecast.org/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/</a>
 </p>
 </li>
 <li><p> Fildes R. (1992). The evaluation of
@@ -4490,7 +4599,7 @@ can be useful when dealing with intermittent data.</p>
 
 <ul>
 <li><p> Svetunkov, I. (2017). Naughty APEs and the quest for the holy grail.
-<a href="https://forecasting.svetunkov.ru/en/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/">https://forecasting.svetunkov.ru/en/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/</a>
+<a href="https://openforecast.org/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/">https://openforecast.org/2017/07/29/naughty-apes-and-the-quest-for-the-holy-grail/</a>
 </p>
 </li>
 <li><p> Fildes R. (1992). The evaluation of
@@ -4648,7 +4757,8 @@ bounds based on that is flagged as outliers.</p>
 </td></tr>
 <tr><td><code id="outlierdummy_+3A_type">type</code></td>
 <td>
-<p>Type of residuals to use: either standardised or studentised.</p>
+<p>Type of residuals to use: either standardised or studentised. Ignored
+if count distributions used.</p>
 </td></tr>
 </table>
 
@@ -4678,7 +4788,11 @@ specified by user.
 <li><p> level - the confidence level used in the process;
 </p>
 </li>
-<li><p> type - the type of the residuals used.
+<li><p> type - the type of the residuals used;
+</p>
+</li>
+<li><p> errors - the errors used in the detection. In case of count distributions,
+probabilities are returned.
 </p>
 </li></ul>
 
@@ -5001,10 +5115,10 @@ plot(x, which = c(1, 2, 4, 6), level = 0.95,
 <li><p> Fitted over time;
 </p>
 </li>
-<li><p> Standardised residuals vs Time;
+<li><p> Standardised residuals over observations;
 </p>
 </li>
-<li><p> Studentised residuals vs Time;
+<li><p> Studentised residuals over observations;
 </p>
 </li>
 <li><p> ACF of the residuals;
@@ -5013,7 +5127,7 @@ plot(x, which = c(1, 2, 4, 6), level = 0.95,
 <li><p> PACF of the residuals;
 </p>
 </li>
-<li><p> Cook's distance over time with 0.5, 0.75 and 0.95 quantile lines from Fisher's distribution;
+<li><p> Cook's distance over observations with 0.5, 0.75 and 0.95 quantile lines from Fisher's distribution;
 </p>
 </li>
 <li><p> Absolute standardised residuals vs Fitted;
@@ -5171,7 +5285,7 @@ plot(ourModel, c(1:14))
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>pointLik(object, ...)
+<pre><code class='language-R'>pointLik(object, log = TRUE, ...)
 </code></pre>
 
 
@@ -5181,6 +5295,10 @@ plot(ourModel, c(1:14))
 <tr><td><code id="pointLik_+3A_object">object</code></td>
 <td>
 <p>Time series model.</p>
+</td></tr>
+<tr><td><code id="pointLik_+3A_log">log</code></td>
+<td>
+<p>Whether to take logarithm of likelihoods.</p>
 </td></tr>
 <tr><td><code id="pointLik_+3A_...">...</code></td>
 <td>
@@ -5596,37 +5714,37 @@ variables:
 </p>
 
 <ul>
-<li><p>meanMean values for each method.
+<li><p> mean Mean values for each method.
 </p>
 </li>
-<li><p>intervalConfidence intervals for each method.
+<li><p> interval Confidence intervals for each method.
 </p>
 </li>
-<li><p>vlinesCoordinates used for outplot=&quot;l&quot;, marking the groups of methods.
+<li><p> vlines Coordinates used for outplot=&quot;l&quot;, marking the groups of methods.
 </p>
 </li>
-<li><p>groupsThe table containing the groups. <code>TRUE</code> - methods are in the
+<li><p> groups The table containing the groups. <code>TRUE</code> - methods are in the
 same group, <code>FALSE</code> - they are not.
 </p>
 </li>
-<li><p>methodsSimilar to <code>group</code> parameter, but with a slightly different
+<li><p> methods Similar to <code>group</code> parameter, but with a slightly different
 presentation.
 </p>
 </li>
-<li><p>p.valuep-value for the test of the significance of the model. This is the
+<li><p> p.value p-value for the test of the significance of the model. This is the
 value from the F test of the linear regression.
 </p>
 </li>
-<li><p>levelConfidence level.
+<li><p> level Confidence level.
 </p>
 </li>
-<li><p>modellm model produced for the calculation of the intervals.
+<li><p> model lm model produced for the calculation of the intervals.
 </p>
 </li>
-<li><p>outplotStyle of the plot to produce.
+<li><p> outplot Style of the plot to produce.
 </p>
 </li>
-<li><p>selectThe selected variable to highlight.
+<li><p> select The selected variable to highlight.
 </p>
 </li></ul>
 
@@ -6108,9 +6226,9 @@ than step() function from &lsquo;stats&rsquo; package.
   df = NULL, formula = NULL, subset = NULL, method = c("pearson",
   "kendall", "spearman"), distribution = c("dnorm", "dlaplace", "ds",
   "dgnorm", "dlogis", "dt", "dalaplace", "dlnorm", "dllaplace", "dls",
-  "dlgnorm", "dbcnorm", "dfnorm", "dinvgauss", "dgamma", "dpois", "dnbinom",
-  "dlogitnorm", "plogis", "pnorm"), occurrence = c("none", "plogis",
-  "pnorm"), ...)
+  "dlgnorm", "dbcnorm", "dinvgauss", "dgamma", "dexp", "dfnorm", "drectnorm",
+  "dpois", "dnbinom", "dbeta", "dlogitnorm", "plogis", "pnorm"),
+  occurrence = c("none", "plogis", "pnorm"), ...)
 </code></pre>
 
 
@@ -6478,6 +6596,125 @@ temporaldummy(x)
 # Generate matrix with monthly dummies for a zoo object
 x &lt;- as.Date("2003-01-01")+0:99
 temporaldummy(x, type="month", of="year", h=10)
+
+</code></pre>
+
+<hr>
+<h2 id='timeboot'>Time series bootstrap</h2><span id='topic+timeboot'></span>
+
+<h3>Description</h3>
+
+<p>The function implements a bootstrap inspired by the Maximum Entropy Bootstrap
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>timeboot(y, nsim = 100, intermittent = c("yes", "no"),
+  type = c("additive", "multiplicative"), kind = c("nonparametric",
+  "parametric"), lag = frequency(y), scale = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="timeboot_+3A_y">y</code></td>
+<td>
+<p>The original time series</p>
+</td></tr>
+<tr><td><code id="timeboot_+3A_nsim">nsim</code></td>
+<td>
+<p>Number of iterations (simulations) to run.</p>
+</td></tr>
+<tr><td><code id="timeboot_+3A_intermittent">intermittent</code></td>
+<td>
+<p>Whether to treat the demand as intermittent or not.</p>
+</td></tr>
+<tr><td><code id="timeboot_+3A_type">type</code></td>
+<td>
+<p>Type of bootstrap to use. <code>"additive"</code> means that the randomness is
+added, while <code>"multiplicative"</code> implies the multiplication.</p>
+</td></tr>
+<tr><td><code id="timeboot_+3A_kind">kind</code></td>
+<td>
+<p>A kind of the bootstrap to do: nonparametric or parametric. The latter
+relies on the normal distribution, while the former uses the empirical distribution of
+differences of the data.</p>
+</td></tr>
+<tr><td><code id="timeboot_+3A_lag">lag</code></td>
+<td>
+<p>The lag to use in the calculation of differences. Should be 1 for non-seasonal
+data.</p>
+</td></tr>
+<tr><td><code id="timeboot_+3A_scale">scale</code></td>
+<td>
+<p>Scale (sd) to use in the normal distribution. Estimated as mean absolute
+differences of the data if omitted.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function implements the following algorithm:
+</p>
+<p>1. Sort the data in the ascending order, recording the original order of elements;
+2. Take first differences of the sorted series and sort them;
+3. Create contingency table based on the differences and take the cumulative sum
+of it. This way we end up with an empirical CDF of differences;
+4. Generate random numbers from the uniform distribution between 0 and 1;
+5. Get the differences that correspond to the random numbers (randomly extract
+empirical quantiles). This way we take the empirical density into account when
+selecting the differences;
+6. Add the random differences to the sorted series from (1) to get a new time series;
+7. Sort the new time series in the ascending order;
+8. Reorder (7) based on the initial order of series.
+</p>
+<p>If the multiplicative bootstrap is used then logarithms of the sorted series
+are used and at the very end, the exponent of the resulting data is taken. This way the
+discrepancies in the data have similar scale no matter what the level of the original
+series is. In case of the additive bootstrap, the trended series will be noisier when
+the level of series is low.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns:
+</p>
+
+<ul>
+<li> <p><code>call</code> - the call that was used originally;
+</p>
+</li>
+<li> <p><code>data</code> - the original data used in the function;
+</p>
+</li>
+<li> <p><code>boot</code> - the matrix with the new series in columns and observations in rows.
+</p>
+</li>
+<li> <p><code>type</code> - type of the bootstrap used.</p>
+</li></ul>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Ivan Svetunkov, <a href="mailto:ivan@svetunkov.ru">ivan@svetunkov.ru</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Vinod HD, López-de-Lacalle J (2009). &quot;Maximum Entropy Bootstrap for Time Series:
+The meboot R Package.&quot; Journal of Statistical Software, 29(5), 1–19. <a href="https://doi.org/10.18637/jss.v029.i05">doi:10.18637/jss.v029.i05</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>timeboot(AirPassengers) |&gt; plot()
 
 </code></pre>
 

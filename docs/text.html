@@ -72,9 +72,11 @@ If only y1 is provided a t-test is computed, between the absolute error from yha
 <li><a href='#textTokenize'><p>Tokenize according to different huggingface transformers</p></a></li>
 <li><a href='#textTopics'><p>This function creates and trains a BERTopic model (based on bertopic python packaged) on a</p>
 text-variable in a tibble/data.frame. (EXPERIMENTAL)</a></li>
+<li><a href='#textTopicsReduce'><p>textTopicsReduce (EXPERIMENTAL)</p></a></li>
 <li><a href='#textTopicsTest'><p>This function tests the relationship between a single topic or all topics and a</p>
 variable of interest. Available tests include correlation, t-test, linear regression,
 binary regression, and ridge regression. (EXPERIMENTAL - under development)</a></li>
+<li><a href='#textTopicsTree'><p>textTopicsTest (EXPERIMENTAL) to get the hierarchical topic tree</p></a></li>
 <li><a href='#textTopicsWordcloud'><p>This functions plots wordclouds of topics from a Topic Model based on their significance</p>
 determined by a linear or binary regression</a></li>
 <li><a href='#textTrain'><p>Train word embeddings to a numeric (ridge regression) or categorical (random forest) variable.</p></a></li>
@@ -109,7 +111,7 @@ Natural Language Processing and Machine Learning</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.2.0</td>
+<td>1.2.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -161,7 +163,7 @@ overlapping</td>
 <tr>
 <td>Suggests:</td>
 <td>knitr, rmarkdown, testthat, rio, glmnet, randomForest, covr,
-xml2, ranger, utils, ggwordcloud</td>
+xml2, ranger, utils, ggwordcloud, reactable</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -177,7 +179,7 @@ xml2, ranger, utils, ggwordcloud</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-13 19:05:47 UTC; oscarkjell</td>
+<td>2024-04-22 13:55:16 UTC; oscarkjell</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -198,7 +200,7 @@ xml2, ranger, utils, ggwordcloud</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-13 20:51:36 UTC</td>
+<td>2024-04-23 00:00:03 UTC</td>
 </tr>
 </table>
 <hr>
@@ -1328,6 +1330,8 @@ similarity_scores &lt;- textDistanceNorm(
   max_token_to_sentence = 4,
   tokenizer_parallelism = FALSE,
   device = "cpu",
+  hg_gated = FALSE,
+  hg_token = Sys.getenv("HUGGINGFACE_TOKEN", unset = ""),
   logging_level = "error",
   ...
 )
@@ -1374,13 +1378,16 @@ across each column; or &quot;concatenate&quot;, which links  together each word 
 </td></tr>
 <tr><td><code id="textEmbed_+3A_aggregation_from_tokens_to_texts">aggregation_from_tokens_to_texts</code></td>
 <td>
-<p>(string)  Aggregates to the individual text (i.e., the aggregation of
-all tokens/words given to the transformer).</p>
+<p>(string) Method to carry out the aggregation among the word embeddings
+for the words/tokens, including &quot;min&quot;, &quot;max&quot; and &quot;mean&quot; which takes the minimum, maximum or mean across each column;
+or &quot;concatenate&quot;, which links together each layer of the word embedding to one long row (default = &quot;mean&quot;). If set to NULL, embeddings are not
+aggregated.</p>
 </td></tr>
 <tr><td><code id="textEmbed_+3A_aggregation_from_tokens_to_word_types">aggregation_from_tokens_to_word_types</code></td>
 <td>
 <p>(string) Aggregates to the word type (i.e., the individual words)
-rather than texts.</p>
+rather than texts. If set to &quot;individually&quot;, then duplicate words are not aggregated, (i.e, the context of individual
+is preserved). (default = NULL).</p>
 </td></tr>
 <tr><td><code id="textEmbed_+3A_keep_token_embeddings">keep_token_embeddings</code></td>
 <td>
@@ -1421,6 +1428,17 @@ switching to embedding text sentence by sentence.</p>
 <td>
 <p>Name of device to use: 'cpu', 'gpu', 'gpu:k' or 'mps'/'mps:k' for MacOS, where k is a
 specific device number such as 'mps:1'.</p>
+</td></tr>
+<tr><td><code id="textEmbed_+3A_hg_gated">hg_gated</code></td>
+<td>
+<p>Set to TRUE if the accessed model is gated.</p>
+</td></tr>
+<tr><td><code id="textEmbed_+3A_hg_token">hg_token</code></td>
+<td>
+<p>The token needed to access the gated model.
+Create a token from the ['Settings' page](https://huggingface.co/settings/tokens) of
+the Hugging Face website. An an environment variable HUGGINGFACE_TOKEN can
+be set to avoid the need to enter the token each time.</p>
 </td></tr>
 <tr><td><code id="textEmbed_+3A_logging_level">logging_level</code></td>
 <td>
@@ -1535,12 +1553,12 @@ or &quot;concatenate&quot;, which links together each layer of the word embeddin
 <tr><td><code id="textEmbedLayerAggregation_+3A_tokens_select">tokens_select</code></td>
 <td>
 <p>(character) Option to only select embeddings linked to specific tokens
-such as &quot;[CLS]&quot; and &quot;[SEP]&quot; (default NULL).</p>
+in the textEmbedLayerAggregation() phase such as &quot;[CLS]&quot; and &quot;[SEP]&quot; (default NULL).</p>
 </td></tr>
 <tr><td><code id="textEmbedLayerAggregation_+3A_tokens_deselect">tokens_deselect</code></td>
 <td>
-<p>(character) Option to deselect embeddings linked to specific tokens
-such as &quot;[CLS]&quot; and &quot;[SEP]&quot; (default NULL).</p>
+<p>(character) Option to deselect embeddings linked to specific tokens in
+the textEmbedLayerAggregation() phase such as &quot;[CLS]&quot; and &quot;[SEP]&quot; (default NULL).</p>
 </td></tr>
 </table>
 
@@ -1602,6 +1620,8 @@ in a given dataframe.
   tokenizer_parallelism = FALSE,
   model_max_length = NULL,
   max_token_to_sentence = 4,
+  hg_gated = FALSE,
+  hg_token = Sys.getenv("HUGGINGFACE_TOKEN", unset = ""),
   logging_level = "error",
   sort = TRUE
 )
@@ -1674,6 +1694,17 @@ transformer model (default the value stored for the associated model).</p>
 <td>
 <p>(numeric) Maximum number of tokens in a string to handle before
 switching to embedding text sentence by sentence. (default= 4)</p>
+</td></tr>
+<tr><td><code id="textEmbedRawLayers_+3A_hg_gated">hg_gated</code></td>
+<td>
+<p>Set to TRUE if the accessed model is gated.</p>
+</td></tr>
+<tr><td><code id="textEmbedRawLayers_+3A_hg_token">hg_token</code></td>
+<td>
+<p>The token needed to access the gated model.
+Create a token from the ['Settings' page](https://huggingface.co/settings/tokens) of
+the Hugging Face website. An an environment variable HUGGINGFACE_TOKEN can
+be set to avoid the need to enter the token each time.</p>
 </td></tr>
 <tr><td><code id="textEmbedRawLayers_+3A_logging_level">logging_level</code></td>
 <td>
@@ -2027,6 +2058,7 @@ textFineTuneDomain(text_data)
   past_index = -1,
   set_seed = 2022,
   label_names = NULL,
+  pytorch_mps_high_watermark_ratio = FALSE,
   tokenizer_parallelism = FALSE,
   ...
 )
@@ -2107,6 +2139,13 @@ the next training step under the keyword argument mems.</p>
 <tr><td><code id="textFineTuneTask_+3A_label_names">label_names</code></td>
 <td>
 <p>label name in case of classification; e.g., label_names = c(&quot;female&quot;, &quot;male&quot;).</p>
+</td></tr>
+<tr><td><code id="textFineTuneTask_+3A_pytorch_mps_high_watermark_ratio">pytorch_mps_high_watermark_ratio</code></td>
+<td>
+<p>Set to TRUE to solve error
+RuntimeError: MPS backend out of memory.Use PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 to disable upper limit for
+memory allocations (may cause system failure). Monitor System Resources: If you decide to adjust this setting,
+closely monitor your system's resource usage to ensure it does not become unstable.</p>
 </td></tr>
 <tr><td><code id="textFineTuneTask_+3A_tokenizer_parallelism">tokenizer_parallelism</code></td>
 <td>
@@ -2277,7 +2316,11 @@ None: default way, where no particular strategy is applied.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>textModelLayers(target_model)
+<pre><code class='language-R'>textModelLayers(
+  target_model,
+  hg_gated = FALSE,
+  hg_token = Sys.getenv("HUGGINGFACE_TOKEN", unset = "")
+)
 </code></pre>
 
 
@@ -2287,6 +2330,17 @@ None: default way, where no particular strategy is applied.
 <tr><td><code id="textModelLayers_+3A_target_model">target_model</code></td>
 <td>
 <p>(string) The name of the model to know the number of layers of.</p>
+</td></tr>
+<tr><td><code id="textModelLayers_+3A_hg_gated">hg_gated</code></td>
+<td>
+<p>Set to TRUE if the accessed model is gated.</p>
+</td></tr>
+<tr><td><code id="textModelLayers_+3A_hg_token">hg_token</code></td>
+<td>
+<p>The token needed to access the gated model.
+Create a token from the ['Settings' page](https://huggingface.co/settings/tokens) of
+the Hugging Face website. An an environment variable HUGGINGFACE_TOKEN can
+be set to avoid the need to enter the token each time.</p>
 </td></tr>
 </table>
 
@@ -3151,9 +3205,13 @@ new scores or classes from embeddings or text using textPredict.
   threshold = NULL,
   show_texts = FALSE,
   device = "cpu",
-  user_id = NULL,
+  participant_id = NULL,
+  save_embeddings = TRUE,
+  save_dir = "wd",
+  save_name = "textPredict",
   story_id = NULL,
-  dataset = NULL,
+  dataset_to_merge_predictions = NULL,
+  previous_sentence = FALSE,
   ...
 )
 </code></pre>
@@ -3167,11 +3225,12 @@ new scores or classes from embeddings or text using textPredict.
 <p>(character or r-object) model_info has three options. 1: R model object
 (e.g, saved output from textTrain). 2:link to github-model
 (e.g, &quot;https://github.com/CarlViggo/pretrained_swls_model/raw/main/trained_github_model_logistic.RDS&quot;).
-3: Path to a model stored locally (e.g, &quot;path/to/your/model&quot;).</p>
+3: Path to a model stored locally (e.g, &quot;path/to/your/model&quot;). Information about accessble models
+can be found at: <a href="https://r-text.org/articles/pre_trained_models.html">r-text.org</a>.</p>
 </td></tr>
 <tr><td><code id="textPredict_+3A_word_embeddings">word_embeddings</code></td>
 <td>
-<p>(tibble) Embeddings from e.g., textEmbed(). If you're using a pretrained model,
+<p>(tibble) Embeddings from e.g., textEmbed(). If you're using a pre-trained model,
 then texts and embeddings cannot be submitted simultaneously (default = NULL).</p>
 </td></tr>
 <tr><td><code id="textPredict_+3A_texts">texts</code></td>
@@ -3213,21 +3272,41 @@ If the model already exists in your work-directory, it will automatically be loa
 <p>Name of device to use: 'cpu', 'gpu', 'gpu:k' or 'mps'/'mps:k' for MacOS, where k is a
 specific device number such as 'mps:1'.</p>
 </td></tr>
-<tr><td><code id="textPredict_+3A_user_id">user_id</code></td>
+<tr><td><code id="textPredict_+3A_participant_id">participant_id</code></td>
 <td>
-<p>(list) user_id associates sentences with their writers. User_id must be defined when
-calculating implicit motives. (default = NULL)  shown (default = FALSE).</p>
+<p>(list) Vector of participant-ids. Specify this for getting person level scores
+(i.e., summed sentence probabilities to the person level corrected for word count). (default = NULL)</p>
+</td></tr>
+<tr><td><code id="textPredict_+3A_save_embeddings">save_embeddings</code></td>
+<td>
+<p>(boolean) If set to TRUE, embeddings will be saved with a unique identifier, and
+will be automatically opened next time textPredict is run with the same text. (default = TRUE)</p>
+</td></tr>
+<tr><td><code id="textPredict_+3A_save_dir">save_dir</code></td>
+<td>
+<p>(character) Directory to save embeddings. (default = &quot;wd&quot; (i.e, work-directory))</p>
+</td></tr>
+<tr><td><code id="textPredict_+3A_save_name">save_name</code></td>
+<td>
+<p>(character) Name of the saved embeddings (will be combined with a unique identifier).
+(default = &quot;&quot;). Obs: If no save_name is provided, and model_info is a character, then save_name will be set
+to model_info.</p>
 </td></tr>
 <tr><td><code id="textPredict_+3A_story_id">story_id</code></td>
 <td>
-<p>(list) story_id associates sentences with their stories. If story_id is defined,
-then the mean of the current and previous
-word-embedding per story-id will be calculated. (default = NULL)</p>
+<p>(vector) Vector of story-ids. Specify this to get story level scores (i.e., summed sentence
+probabilities corrected for word count). When there is both story_id and participant_id indicated, the function
+returns a list including both story level and person level prediction corrected for word count. (default = NULL)</p>
 </td></tr>
-<tr><td><code id="textPredict_+3A_dataset">dataset</code></td>
+<tr><td><code id="textPredict_+3A_dataset_to_merge_predictions">dataset_to_merge_predictions</code></td>
 <td>
-<p>(R-object, tibble) Insert your data here to integrate predictions to dataset,
+<p>(R-object, tibble) Insert your data here to integrate predictions to your dataset,
 (default = NULL).</p>
+</td></tr>
+<tr><td><code id="textPredict_+3A_previous_sentence">previous_sentence</code></td>
+<td>
+<p>If set to TRUE, word-embeddings will be averaged over the current and previous
+sentence per story-id. For this, both participant-id and story-id must be specified.</p>
 </td></tr>
 <tr><td><code id="textPredict_+3A_...">...</code></td>
 <td>
@@ -3258,7 +3337,7 @@ text_to_predict &lt;- "I am not in harmony in my life as much as I would like to
 
 # Example 1: (predict using pre-made embeddings and an R model-object)
 prediction1 &lt;- textPredict(
-  trained_model,
+  model_info = trained_model,
   word_embeddings_4$texts$satisfactiontexts
 )
 
@@ -3282,15 +3361,14 @@ prediction4 &lt;- textPredict(
 
 # Create example dataset
 implicit_motive_data &lt;- dplyr::mutate(.data = Language_based_assessment_data_8,
-user_id = row_number())
+participant_id = dplyr::row_number())
 
-# Code implicit motives. (In this example, person_class will be NaN due to the absence of
-# sentences classified as 'power')
+# Code implicit motives.
 implicit_motives &lt;- textPredict(
   texts = implicit_motive_data$satisfactiontexts,
-  model_info = "power",
-  user_id = implicit_motive_data$user_id,
-  dataset = implicit_motive_data
+  model_info = "implicit_power_roberta_large_L23_v1",
+  participant_id = implicit_motive_data$participant_id,
+  dataset_to_merge_predictions = implicit_motive_data
 )
 
 # Examine results
@@ -4199,7 +4277,7 @@ locate and use an existing installation automatically, or download and
 install one if none exists.
 </p>
 <p>For Windows, automatic installation of miniconda installation is not currently
-available, so the user will need to
+available, so the user will need to install
 <a href="https://conda.io/projects/conda/en/latest/user-guide/install/index.html">miniconda
 (or Anaconda) manually</a>.
 </p>
@@ -4225,8 +4303,9 @@ and path to it (such as &quot;/usr/local/bin/python3.9&quot; for Mac and Linux.)
 
 textrpp_install_virtualenv(
   rpp_version = c("torch==2.0.0", "transformers==4.19.2", "numpy", "pandas", "nltk"),
-  python_path = "/usr/local/bin/python3.9",
+  python_path = NULL,
   pip_version = NULL,
+  bin = "python3",
   envname = "textrpp_virtualenv",
   prompt = TRUE
 )
@@ -4275,7 +4354,7 @@ package manager with conda-forge channel will be used for installing rpp.</p>
 </td></tr>
 <tr><td><code id="textrpp_install_+3A_python_path">python_path</code></td>
 <td>
-<p>character; path to Python in virtualenv installation</p>
+<p>character; path to Python only for virtualenvironment installation</p>
 </td></tr>
 <tr><td><code id="textrpp_install_+3A_prompt">prompt</code></td>
 <td>
@@ -4284,6 +4363,10 @@ package manager with conda-forge channel will be used for installing rpp.</p>
 <tr><td><code id="textrpp_install_+3A_pip_version">pip_version</code></td>
 <td>
 <p>character;</p>
+</td></tr>
+<tr><td><code id="textrpp_install_+3A_bin">bin</code></td>
+<td>
+<p>character; e.g., &quot;python&quot;, only for virtualenvironment installation</p>
 </td></tr>
 </table>
 
@@ -4856,7 +4939,79 @@ the vectorizer model.</p>
 
 <p>A folder containing the model, data, folder with terms and values for each topic,
 and the document-topic matrix. Moreover the model itself is returned formatted as a data.frame
-together with metdata
+together with metdata.
+See <code><a href="#topic+textTopicsReduce">textTopicsReduce</a></code> <code><a href="#topic+textTopicsTest">textTopicsTest</a></code> and <code><a href="#topic+textTopicsWordcloud">textTopicsWordcloud</a></code>.
+</p>
+
+<hr>
+<h2 id='textTopicsReduce'>textTopicsReduce (EXPERIMENTAL)</h2><span id='topic+textTopicsReduce'></span>
+
+<h3>Description</h3>
+
+<p>textTopicsReduce (EXPERIMENTAL)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>textTopicsReduce(
+  data,
+  data_var,
+  n_topics = 10,
+  load_path = "./results",
+  save_dir = "./results_reduced",
+  embedding_model = "default"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="textTopicsReduce_+3A_data">data</code></td>
+<td>
+<p>(tibble/data.frame) A tibble with a text-variable to be analysed, and optional
+numeric/categorical variables that you might want to use for later analyses testing the
+significance of topics in relation to these variables.</p>
+</td></tr>
+<tr><td><code id="textTopicsReduce_+3A_data_var">data_var</code></td>
+<td>
+<p>(string)  Name of the text-variable in the data tibble that you want
+to perform topic modeling on.</p>
+</td></tr>
+<tr><td><code id="textTopicsReduce_+3A_n_topics">n_topics</code></td>
+<td>
+<p>(string) The dimension reduction algorithm, currently only &quot;default&quot;
+is supported.</p>
+</td></tr>
+<tr><td><code id="textTopicsReduce_+3A_load_path">load_path</code></td>
+<td>
+<p>(string) The clustering algorithm to use, currently only &quot;default&quot;
+is supported.</p>
+</td></tr>
+<tr><td><code id="textTopicsReduce_+3A_save_dir">save_dir</code></td>
+<td>
+<p>(string) The directory for saving results.</p>
+</td></tr>
+<tr><td><code id="textTopicsReduce_+3A_embedding_model">embedding_model</code></td>
+<td>
+<p>(string) Name of the embedding model to use such as &quot;miniLM&quot;, &quot;mpnet&quot;,
+&quot;multi-mpnet&quot;, &quot;distilroberta&quot;.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A folder containing the model, data, folder with terms and values for each topic,
+and the document-topic matrix. Moreover the model itself is returned formatted as a data.frame
+together with metdata.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>See <code><a href="#topic+textTopics">textTopics</a></code> <code><a href="#topic+textTopicsTest">textTopicsTest</a></code> and <code><a href="#topic+textTopicsWordcloud">textTopicsWordcloud</a></code>.
 </p>
 
 <hr>
@@ -4927,6 +5082,44 @@ from the directory, otherwise leave blank</p>
 
 <p>Metadata and results of the test such as estimate, t-value, p-value,
 and variable name.
+</p>
+
+<hr>
+<h2 id='textTopicsTree'>textTopicsTest (EXPERIMENTAL) to get the hierarchical topic tree</h2><span id='topic+textTopicsTree'></span>
+
+<h3>Description</h3>
+
+<p>textTopicsTest (EXPERIMENTAL) to get the hierarchical topic tree
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>textTopicsTree(topic_model, data, data_var)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="textTopicsTree_+3A_topic_model">topic_model</code></td>
+<td>
+<p>(list) The output from textTopics.</p>
+</td></tr>
+<tr><td><code id="textTopicsTree_+3A_data">data</code></td>
+<td>
+<p>(tibble/data.frame) A tibble with the data</p>
+</td></tr>
+<tr><td><code id="textTopicsTree_+3A_data_var">data_var</code></td>
+<td>
+<p>(string) The name of the text variable that the topic model was trained on</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>prints a hierarchical topic tree on the console
 </p>
 
 <hr>
@@ -5445,22 +5638,23 @@ error-bars will be included in the plot.
 <h3>Usage</h3>
 
 <pre><code class='language-R'>textTrainNPlot(
-  tibble,
+  train_data,
   sample_percents = c(25, 50, 75, 100),
-  n_cross_val = 1,
+  n_cross_val = rep(1, length(tibble_list)),
   x_unit = "percent",
   y_range = NULL,
   title = "Cross-validated correlation coefficients across different sample sizes",
   x_axes_label = "Sample Size (percent)",
   y_axes_label = "Correlation Coefficient (r)",
-  point_color = "#5dc688",
-  bar_color = "#60A1F7",
-  line_color = "grey",
-  bar_width = 1,
-  bar_size = 0.8,
-  line_size = 0.6,
-  line_type = "straight",
-  point_size = 3
+  point_color = rep("#5dc688", length(tibble_list)),
+  bar_color = rep("#60A1F7", length(tibble_list)),
+  line_color = rep("grey", length(tibble_list)),
+  bar_width = rep(1, length(tibble_list)),
+  bar_size = rep(0.8, length(tibble_list)),
+  line_size = rep(0.6, length(tibble_list)),
+  line_type = rep("straight", length(tibble_list)),
+  point_size = rep(3, length(tibble_list)),
+  log_transform_x = FALSE
 )
 </code></pre>
 
@@ -5468,9 +5662,11 @@ error-bars will be included in the plot.
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="textTrainNPlot_+3A_tibble">tibble</code></td>
+<tr><td><code id="textTrainNPlot_+3A_train_data">train_data</code></td>
 <td>
-<p>(tibble) Object returned by the function textTrainN.</p>
+<p>(list) One or several objects returned by the function textTrainN as a list (e.g, list(object1, object2)). Also,
+If several models are provided, then one can add a vector c() with settings (i.e the parameters below) for each model
+(make sure to add the settings in the order as the models are ordered, if you look to keep the original settings then write &quot;&quot;).</p>
 </td></tr>
 <tr><td><code id="textTrainNPlot_+3A_sample_percents">sample_percents</code></td>
 <td>
@@ -5480,7 +5676,8 @@ included in each sample (default = c(25,50,75,100)).</p>
 <tr><td><code id="textTrainNPlot_+3A_n_cross_val">n_cross_val</code></td>
 <td>
 <p>(numeric) Value of the number of times cross-validation has been repeated (default = 1,
-i.e., cross-validation has only been applied once).</p>
+i.e., cross-validation has only been applied once). If several models are provided, then one can add a vector c()
+with settings for each model (make sure to add the settings in the order as the models are ordered).</p>
 </td></tr>
 <tr><td><code id="textTrainNPlot_+3A_x_unit">x_unit</code></td>
 <td>
@@ -5538,6 +5735,11 @@ across different sample sizes&quot;).</p>
 <td>
 <p>(numeric) Determine points size (default = 1).</p>
 </td></tr>
+<tr><td><code id="textTrainNPlot_+3A_log_transform_x">log_transform_x</code></td>
+<td>
+<p>(boolean) Determine wether to log-transform x in case of displaying number of samples
+(default = FALSE).</p>
+</td></tr>
 </table>
 
 
@@ -5567,14 +5769,22 @@ If number och cross-validations exceed 1, then error bars measuring standard dev
 # returned by the textTrainN function.
 
 ## Not run: 
-plot_object &lt;- textTrainNPlot(
-  tibble = tibble_to_plot,
+# Plot the performance of a single model across different sample sizes
+plot_object1 &lt;- textTrainNPlot(
+  train_data = tibble_to_plot,
   n_cross_val = 3,
   x_unit = "quantity"
 )
 
 # Visualize plot
-plot_object
+plot_object1
+
+# Plot the performance of several models across different sample sizes.
+plot_object2 &lt;- textTrainNPlot(train_data = list(object1, object2, object3),
+                               n_cross_val = c(2,1,1),
+                               line_color = c("","","#0000FF")) # "" gives the default settings.
+# Visualize plot
+plot_object2
 
 ## End(Not run)
 </code></pre>
@@ -5741,7 +5951,8 @@ hyperparameters default &quot;roc_auc&quot;; see also &quot;accuracy&quot;, &quo
 <td>
 <p>If TRUE it enables the use of multiple cores if the computer system allows for it (i.e.,
 only on unix, not windows). Hence it makes the analyses considerably faster to run. Default is
-&quot;multi_cores_sys_default&quot;, where it automatically uses TRUE for Mac and Linux and FALSE for Windows.</p>
+&quot;multi_cores_sys_default&quot;, where it automatically uses TRUE for Mac and Linux and FALSE for Windows.
+Note that having it to TRUE does not enable reproducable results at the moment (i.e., cannot set seed).</p>
 </td></tr>
 <tr><td><code id="textTrainRandomForest_+3A_save_output">save_output</code></td>
 <td>
@@ -5998,6 +6209,18 @@ Monte Carlo simulation, in larger than 2 × 2 tables.</p>
 <p>For example settings in yardstick::accuracy to set event_level (e.g., event_level = &quot;second&quot;).</p>
 </td></tr>
 </table>
+
+
+<h3>Details</h3>
+
+<p>By default, NAs are treated as follows:
+1. rows with NAs in word embeddings are removed.
+2. rows with NAs in y are removed
+3. rows with NAs in  x_append are removed; if impute_missing is set to
+TRUE, missing values will be imputed using k-nearest neighbours.
+When rows are omitted, the user will get a warning.
+The CV predictions will include NAs with the same length as the input.
+</p>
 
 
 <h3>Value</h3>

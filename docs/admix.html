@@ -50,6 +50,8 @@ function processMathHTML() {
 <li><a href='#knownComp_to_uniform'><p>Transforms the known component of the admixture distribution to a Uniform distribution</p></a></li>
 <li><a href='#milkyWay'><p>Heliocentric velocity measured for the Milky Way (from Walker, M. G., M. Mateo, E. W. Olszewski, O. Y. Gnedin, X. Wang,</p>
 B. Sen, and M. Woodroofe (2007). Velocity dispersion profiles of seven dwarf spheroidal galaxies. Astrophysical J. 667(1), L53–L56).</a></li>
+<li><a href='#mortality_sample'><p>Dataset giving exposure-to-death (population size) and number of deaths for males in eleven european countries,</p>
+with ages ranging from 30 years old to 85 years old.</a></li>
 <li><a href='#orthoBasis_coef'><p>Compute expansion coefficients in a given orthonormal polynomial basis.</p></a></li>
 <li><a href='#orthoBasis_test_H0'><p>Equality test of unknown components between two admixture models using polynomial basis expansions</p></a></li>
 <li><a href='#PatraSen_cv_mixmodel'><p>Cross-validation estimate (by Patra and Sen) of the unknown component weight as well as the unknown distribution in an admixture model</p></a></li>
@@ -79,11 +81,11 @@ B. Sen, and M. Woodroofe (2007). Velocity dispersion profiles of seven dwarf sph
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.1-2</td>
+<td>2.1-3</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-07-11</td>
+<td>2024-04-05</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -160,7 +162,7 @@ rmarkdown, markdown, spelling</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-07-11 12:53:51 UTC; XM</td>
+<td>2024-04-25 09:27:40 UTC; XM</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -179,7 +181,7 @@ rmarkdown, markdown, spelling</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-07-12 22:50:15 UTC</td>
+<td>2024-04-25 09:50:05 UTC</td>
 </tr>
 </table>
 <hr>
@@ -243,9 +245,11 @@ using Inversion - Best Matching (IBM) approach, see 'Details' below for further 
   comp.dist = NULL,
   comp.param = NULL,
   tabul.dist = NULL,
+  tune.penalty = FALSE,
   conf.level = 0.95,
   parallel = FALSE,
-  n_cpu = 2
+  n_cpu = 2,
+  echo = TRUE
 )
 </code></pre>
 
@@ -282,6 +286,12 @@ list(f1 = NULL, g1 = list(mean=0,sd=1), f2 = NULL, g2 = list(mean=3,sd=1.1), f3 
 <p>Only useful for comparisons of detected clusters at different confidence levels. Is a list of the tabulated distributions
 of the stochastic integral for each cluster previously detected.</p>
 </td></tr>
+<tr><td><code id="admix_clustering_+3A_tune.penalty">tune.penalty</code></td>
+<td>
+<p>A boolean that allows to choose between a classical penalty term or an optimized penalty embedding some tuning parameters
+(automatically optimized) for k-sample tests used within the clustering procedure.
+Optimized penalty is particularly useful for low sample size.</p>
+</td></tr>
 <tr><td><code id="admix_clustering_+3A_conf.level">conf.level</code></td>
 <td>
 <p>The confidence level of the K-sample test used in the clustering procedure.</p>
@@ -294,6 +304,10 @@ of the stochastic integral for each cluster previously detected.</p>
 <td>
 <p>(default to 2) Number of cores used when parallelizing.</p>
 </td></tr>
+<tr><td><code id="admix_clustering_+3A_echo">echo</code></td>
+<td>
+<p>(default to TRUE) Display the remaining computation time.</p>
+</td></tr>
 </table>
 
 
@@ -305,11 +319,12 @@ of the stochastic integral for each cluster previously detected.</p>
 
 <h3>Value</h3>
 
-<p>A list with eight elements: 1) the number of populations under consideration; 2) the number of detected clusters;
+<p>A list with eleven elements: 1) the number of populations studied; 2) the number of detected clusters;
 3) the list of p-values for each test performed; 4) the cluster affiliation for each population; 5) the chosen confidence
-level of statistical tests; 6) the cluster components; 7) the estimated weights of the unknown component distributions inside
-each cluster (remind that estimated weights are consistent only under the null); 8) the matrix of pairwise discrepancies
-among all populations.
+level of statistical tests; 6) the cluster components; 7) the size of clusters; 8) the estimated weights of the unknown
+component distributions inside each cluster (remind that estimated weights are consistent only if unknown components are tested
+to be identical); 9) the matrix of pairwise discrepancies across populations; 10) the tabulated distributions used for
+statistical tests; 11) the initial call.
 </p>
 
 
@@ -348,9 +363,10 @@ list.param &lt;- list(f1 = NULL, g1 = list(rate = 1/3.5),
                    f2 = NULL, g2 = list(rate = 1/5),
                    f3 = NULL, g3 = list(shape = 12, rate = 2),
                    f4 = NULL, g4 = list(rate = 1/7))
-clusters &lt;- admix_clustering(samples = list(A.sim,B.sim,C.sim,D.sim), n_sim_tab = 8,
-                             comp.dist=list.comp, comp.param=list.param, conf.level = 0.95,
-                             parallel = FALSE, n_cpu = 2)
+clusters &lt;- admix_clustering(samples = list(A.sim,B.sim,C.sim,D.sim), n_sim_tab = 30,
+                             comp.dist = list.comp, comp.param = list.param,
+                             tabul.dist = NULL, tune.penalty = TRUE, conf.level = 0.95,
+                             parallel = TRUE, n_cpu = 2, echo = FALSE)
 clusters
 
 
@@ -487,6 +503,7 @@ of the component densities, or by the inner-convergence property obtained using 
   comp.dist = NULL,
   comp.param = NULL,
   support = c("Real", "Integer", "Positive", "Bounded.continuous"),
+  ICV_tunePenalty = TRUE,
   conf.level = 0.95,
   parallel = FALSE,
   n_cpu = 2
@@ -541,6 +558,12 @@ list(f1 = NULL, g1 = list(mean=0,sd=1), f2 = NULL, g2 = list(mean=3,sd=1.1), f3 
 <td>
 <p>(Potentially used with 'Poly' testing method, otherwise useless) The support of the observations; one of &quot;Real&quot;,
 &quot;Integer&quot;, &quot;Positive&quot;, or &quot;Bounded.continuous&quot;.</p>
+</td></tr>
+<tr><td><code id="admix_test_+3A_icv_tunepenalty">ICV_tunePenalty</code></td>
+<td>
+<p>(default to TRUE) Boolean used to tune the penalty term in the k-sample test (k=2,3,...,K) when using Inversion
+Best Matching (IBM) approach coupled to Inner ConVergence (ICV) property. Particularly useful when studying
+unbalanced samples (in terms of sample size) or small-sized samples.</p>
 </td></tr>
 <tr><td><code id="admix_test_+3A_conf.level">conf.level</code></td>
 <td>
@@ -3139,6 +3162,51 @@ B. Sen, and M. Woodroofe (2007). Velocity dispersion profiles of seven dwarf sph
 </p>
 
 <hr>
+<h2 id='mortality_sample'>Dataset giving exposure-to-death (population size) and number of deaths for males in eleven european countries,
+with ages ranging from 30 years old to 85 years old.</h2><span id='topic+mortality_sample'></span>
+
+<h3>Description</h3>
+
+<p>Dataset giving exposure-to-death (population size) and number of deaths for males in eleven european countries,
+with ages ranging from 30 years old to 85 years old.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mortality_sample
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>Two different lists related to the reduced (subsample) population size and reduced number of deaths in
+eleven european countries, for male people aged 30 years old to 85 years old between 1908 and 2020.
+The data were exported from the Human Mortality Database (HMD).
+</p>
+<p>An evolving data frame of exposure-to-death and number of deaths in Belgium, Switzerland, Denmark, Spain, Finland,
+France, United Kingdom, Italia, The Netherlands, Norway and Sweden.
+</p>
+
+<dl>
+<dt>XP</dt><dd><p>A list of eleven elements (one for each country) giving a subset of the exposure-to-death (or reduced population size),
+each element having 56 rows (ages 30-85) and 113 columns (period 1908-2020)</p>
+</dd>
+<dt>DX</dt><dd><p>A list of eleven elements (one for each country) giving a subset of the number of deaths, each element having 56 rows
+(ages 30-85) and 113 columns (period 1908-2020)</p>
+</dd>
+<dt>names</dt><dd><p>A list of eleven elements giving the names of the countries, in the same order as the elements in other lists</p>
+</dd>
+</dl>
+
+
+
+<h3>Source</h3>
+
+<p><a href="https://www.mortality.org">https://www.mortality.org</a>
+</p>
+
+<hr>
 <h2 id='orthoBasis_coef'>Compute expansion coefficients in a given orthonormal polynomial basis.</h2><span id='topic+orthoBasis_coef'></span>
 
 <h3>Description</h3>
@@ -3251,7 +3319,7 @@ The admixture weights p1 and p2 thus have to be estimated. For further informati
   K = 3,
   nb.ssEch = 2,
   s = 0.49,
-  var.explicit = FALSE,
+  var.explicit = TRUE,
   nb.echBoot = NULL,
   support = c("Real", "Integer", "Positive", "Bounded.continuous", "Bounded.discrete"),
   bounds.supp = NULL,
@@ -3360,7 +3428,7 @@ variance-covariance matrix of the test statistic; 5) selected rank for testing, 
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-###### Using Bordes and Vandekerkhove estimation (valid if symetric unknown component densities).
+###### Using Bordes and Vandekerkhove estimation (valid if symmetric unknown component densities).
 #### Under the null hypothesis H0.
 ## Simulate data:
 list.comp &lt;- list(f1 = "norm", g1 = "norm",
@@ -3381,7 +3449,7 @@ test &lt;- orthoBasis_test_H0(samples = list(sim.X, sim.Y),
              known.p=NULL, comp.dist = list.comp, comp.param = list.param, known.coef=NULL, K=3,
              nb.ssEch = 2, s = 0.25, var.explicit=TRUE, nb.echBoot=NULL, support = 'Real',
              bounds.supp = NULL, est.method = 'BVdk', uniformized.knownComp_data = NULL)
-test$decision
+test$rejection_rule
 
 
 </code></pre>

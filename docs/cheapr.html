@@ -23,9 +23,12 @@ function processMathHTML() {
 <li><a href='#factor_'><p>A faster version of <code>factor()</code></p></a></li>
 <li><a href='#gcd'><p>Greatest common divisor and smallest common multiple</p></a></li>
 <li><a href='#is_na'><p>Efficient functions for dealing with missing values.</p></a></li>
+<li><a href='#lag_'><p>Lagged operations.</p></a></li>
 <li><a href='#lengths_'><p>List utilities</p></a></li>
 <li><a href='#overview'><p>An alternative to <code>summary()</code> inspired by the skimr package</p></a></li>
+<li><a href='#recycle'><p>Recycle objects to a common size</p></a></li>
 <li><a href='#sequence_'><p>Utilities for creating many sequences</p></a></li>
+<li><a href='#set_abs'><p>Math operations by reference - <b>Experimental</b></p></a></li>
 <li><a href='#setdiff_'><p>Extra utilities</p></a></li>
 <li><a href='#sset'><p>Cheaper subset</p></a></li>
 <li><a href='#which_'><p>Memory-efficient alternative to <code>which()</code></p></a></li>
@@ -41,7 +44,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.5.0</td>
+<td>0.9.2</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -72,7 +75,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>bench, testthat (&ge; 3.0.0), vctrs</td>
+<td>bench, data.table, testthat (&ge; 3.0.0), vctrs</td>
 </tr>
 <tr>
 <td>LinkingTo:</td>
@@ -88,7 +91,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -96,7 +99,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-04-05 12:18:15 UTC; Nmc5</td>
+<td>2024-05-10 10:10:58 UTC; Nmc5</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -109,7 +112,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-04-05 12:32:59 UTC</td>
+<td>2024-05-11 02:03:35 UTC</td>
 </tr>
 </table>
 <hr>
@@ -571,6 +574,304 @@ df[which_(row_na, invert = TRUE), ]
 </code></pre>
 
 <hr>
+<h2 id='lag_'>Lagged operations.</h2><span id='topic+lag_'></span><span id='topic+lag2_'></span>
+
+<h3>Description</h3>
+
+<p>Fast lags and leads optionally using dynamic vectorised lags, ordering and
+run lengths.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>lag_(x, n = 1L, fill = NULL, set = FALSE, recursive = TRUE)
+
+lag2_(
+  x,
+  n = 1L,
+  order = NULL,
+  run_lengths = NULL,
+  fill = NULL,
+  recursive = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="lag__+3A_x">x</code></td>
+<td>
+<p>A vector or data frame.</p>
+</td></tr>
+<tr><td><code id="lag__+3A_n">n</code></td>
+<td>
+<p>Number of lags. Negative values are accepted. <br />
+<code>lag2_</code> accepts a vector of dynamic lags and leads
+which gets recycled to the length of x.</p>
+</td></tr>
+<tr><td><code id="lag__+3A_fill">fill</code></td>
+<td>
+<p>Value used to fill first n values. Default is <code>NA</code>.</p>
+</td></tr>
+<tr><td><code id="lag__+3A_set">set</code></td>
+<td>
+<p>Should x be updated by reference? If <code>TRUE</code> no copy is made and
+x is updated in place. The default is <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="lag__+3A_recursive">recursive</code></td>
+<td>
+<p>Should list elements be lagged as well?
+If <code>TRUE</code>, this is useful for data frames and will return row lags.
+If <code>FALSE</code> this will return a plain lagged list.</p>
+</td></tr>
+<tr><td><code id="lag__+3A_order">order</code></td>
+<td>
+<p>Optionally specify an ordering with which to apply the lags.
+This is useful for example when applying lags chronologically using an unsorted
+time variable.</p>
+</td></tr>
+<tr><td><code id="lag__+3A_run_lengths">run_lengths</code></td>
+<td>
+<p>Optional integer vector of run lengths that defines the size of each
+lag run. For example, supplying <code>c(5, 5)</code> applies lags to the first 5 elements and
+then essentially resets the bounds and applies lags to the next 5 elements as if
+they were an entirely separate and standalone vector. <br />
+This is particularly useful in conjunction with the <code>order</code> argument
+to perform a by-group lag. See the examples for details.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>For most applications, it is more efficient and recommended to use <code>lag_()</code>.
+For anything that requires dynamic lags, lag by order of another variable,
+or by-group lags, one can use <code>lag2_()</code>. <br />
+To do cyclic lags, see the examples below for an implementation.
+</p>
+
+
+<h4><code>lag2_</code></h4>
+
+<p><code>lag2_</code> is a generalised form of <code>lag_</code> that by default performs
+simple lags and leads. <br />
+It has 3 additional features but does not support updating by reference or
+long vectors. <br />
+</p>
+<p>These extra features include:
+</p>
+
+<ul>
+<li> <p><code>n</code> - This shares the same name as the <code>n</code> argument in <code>lag_</code>
+for consistency. The difference is that <code>lag_</code> accepts a
+lag vector of length 1 whereas
+this accepts a vector of dynamic lags allowing for
+flexible combinations of variable sized lags and leads.
+These are recycled to the length of the data and will always align
+with the data, meaning that if you supply a custom <code>order</code> argument, this
+ordering is applied both to <code>x</code> and the recycled lag vector <code>n</code> simultaneously.
+</p>
+</li>
+<li> <p><code>order</code> - Apply lags in any order you wish. This can be useful for
+reverse order lags, lags against unsorted time variables, and by-group lags.
+</p>
+</li>
+<li> <p><code>run_lengths</code> - Specify the size of individual lag runs. For example, if you
+specify <code>run_lengths = c(3, 4, 2)</code>, this will apply your lags to the first 3 elements and
+then reset, applying lags to the next 4 elements, to reset again and apply lags to the
+final 2 elements. Each time the reset occurs, it treats each run length sized 'chunk' as
+a unique and separate vector. See the examples for a showcase.
+</p>
+</li></ul>
+
+
+
+
+<h4>Table of differences between <code>lag_</code> and <code>lag2_</code></h4>
+
+
+<table>
+<tr>
+ <td style="text-align: center;">
+   Description </td><td style="text-align: center;"> <code>lag_</code> </td><td style="text-align: center;"> <code>lag2_</code> </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+   Lags </td><td style="text-align: center;"> Yes </td><td style="text-align: center;"> Yes </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+   Leads </td><td style="text-align: center;"> Yes </td><td style="text-align: center;"> Yes </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+   Long vector support </td><td style="text-align: center;"> Yes </td><td style="text-align: center;"> No </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+   Lag by reference </td><td style="text-align: center;"> Yes </td><td style="text-align: center;"> No </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+   Dynamic vectorised lags </td><td style="text-align: center;"> No </td><td style="text-align: center;"> Yes </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+   Data frame row lags </td><td style="text-align: center;"> Yes </td><td style="text-align: center;"> Yes </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+   Alternative order lags </td><td style="text-align: center;"> No </td><td style="text-align: center;"> Yes </td>
+</tr>
+<tr>
+ <td style="text-align: center;">
+</td>
+</tr>
+
+</table>
+
+
+
+
+<h3>Value</h3>
+
+<p>A lagged object the same size as x.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(cheapr)
+library(bench)
+
+# A use-case for data.table
+# Adding 0 because can't update ALTREP by reference
+df &lt;- data.frame(x = 1:10^5 + 0L)
+
+# Normal data frame lag
+sset(lag_(df), 1:10)
+
+# Lag these behind by 3 rows
+sset(lag_(df, 3, set = TRUE), 1:10)
+
+df$x[1:10] # x variable was updated by reference!
+
+# The above can be used naturally in data.table to lag data
+# without any copies
+
+# To perform regular R row lags, just make sure set is `FALSE`
+
+sset(lag_(as.data.frame(EuStockMarkets), 5), 1:10)
+
+# lag2_ is a generalised version of lag_ that allows
+# for much more complex lags
+
+x &lt;- 1:10
+
+# lag every 2nd element
+lag2_(x, n = c(1, 0)) # lag vector is recycled
+
+# Explicit Lag(3) using a vector of lags
+lags &lt;- lag_sequence(length(x), 3, partial = FALSE)
+lag2_(x, n = lags)
+
+# Alternating lags and leads
+lag2_(x, c(1, -1))
+
+# Lag only the 3rd element
+lags &lt;- integer(length(x))
+lags[3] &lt;- 1L
+lag2_(x, lags)
+
+# lag in descending order (same as a lead)
+
+lag2_(x, order = 10:1)
+
+# lag that resets after index 5
+lag2_(x, run_lengths = c(5, 5))
+
+# lag with a time index
+years &lt;- sample(2011:2020)
+lag2_(x, order = order(years))
+
+# Example of how to do a cyclical lag
+n &lt;- length(x)
+
+# When k &gt;= 0
+k &lt;- min(3, n)
+lag2_(x, c(rep(-n + k, k), rep(k, n - k)))
+# When k &lt; 0
+k &lt;- max(-3, -n)
+lag2_(x, c(rep(k, n + k), rep(n + k, -k)))
+
+# As it turns out, we can do a grouped lag
+# by supplying group sizes as run lengths and group order as the order
+
+set.seed(45)
+g &lt;- sample(c("a", "b"), 10, TRUE)
+
+# NOTE: collapse::flag will not work unless g is already sorted!
+# This is not an issue with lag2_()
+collapse::flag(x, g = g)
+lag2_(x, order = order(g), run_lengths = collapse::GRP(g)$group.sizes)
+
+# For production code, we can of course make
+# this more optimised by using collapse::radixorderv()
+# Which calculates the order and group sizes all at once
+
+o &lt;- collapse::radixorderv(g, group.sizes = TRUE)
+lag2_(x, order = o, run_lengths = attr(o, "group.sizes"))
+
+# Let's finally wrap this up in a nice grouped-lag function
+
+grouped_lag &lt;- function(x, n = 1, g = integer(length(x))){
+  o &lt;- collapse::radixorderv(g, group.sizes = TRUE, sort = FALSE)
+  lag2_(x, n, order = o, run_lengths = attr(o, "group.sizes"))
+}
+
+# And voila!
+grouped_lag(x, g = g)
+
+# A method to extract this information from dplyr
+
+## We can actually get this information easily from a `grouped_df` object
+## Uncomment the below code to run the implementation
+# library(dplyr)
+# library(timeplyr)
+# eu_stock &lt;- EuStockMarkets |&gt;
+#   ts_as_tibble() |&gt;
+#   group_by(stock_index = group)
+# groups &lt;- group_data(eu_stock) # Group information
+# group_order &lt;- unlist(groups$.rows) # Order of groups
+# group_sizes &lt;- lengths_(groups$.rows) # Group sizes
+#
+# # by-stock index lag
+# lag2_(eu_stock$value, order = group_order, run_lengths = group_sizes)
+#
+# # Verifying this output is correct
+# eu_stock |&gt;
+#   ungroup() |&gt;
+#   mutate(lag1 = lag_(value), .by = stock_index) |&gt;
+#   mutate(lag2 = lag2_(value, order = group_order, run_lengths = group_sizes)) |&gt;
+#   summarise(lags_are_equal = identical(lag1, lag2))
+
+# Let's compare this to data.table
+
+library(data.table)
+default_threads &lt;- getDTthreads()
+setDTthreads(1)
+dt &lt;- data.table(x = 1:10^5,
+                 g = sample.int(10^4, 10^5, TRUE))
+
+bench::mark(dt[, y := shift(x), by = g][][["y"]],
+            grouped_lag(dt$x, g = dt$g),
+            iterations = 10)
+setDTthreads(default_threads)
+</code></pre>
+
+<hr>
 <h2 id='lengths_'>List utilities</h2><span id='topic+lengths_'></span><span id='topic+unlisted_length'></span><span id='topic+new_list'></span>
 
 <h3>Description</h3>
@@ -738,6 +1039,68 @@ options(cheapr.digits = 2) # The default
 </code></pre>
 
 <hr>
+<h2 id='recycle'>Recycle objects to a common size</h2><span id='topic+recycle'></span>
+
+<h3>Description</h3>
+
+<p>A convenience function to recycle R objects to either a common or specified
+size.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>recycle(..., length = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="recycle_+3A_...">...</code></td>
+<td>
+<p>Objects to recycle.</p>
+</td></tr>
+<tr><td><code id="recycle_+3A_length">length</code></td>
+<td>
+<p>Optional length to recycle objects to.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Data frames are recycled by recycling their rows. <br />
+<code>recycle()</code> is optimised to only recycle objects that need recycling. <br />
+<code>NULL</code> objects are ignored and not recycled or returned.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of recycled R objects.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(cheapr)
+
+recycle(Sys.Date(), 1:10)
+
+# Any vectors of zero-length are all recycled to zero-length
+recycle(integer(), 1:10)
+
+# Data frame rows are recycled
+recycle(sset(iris, 1:3), length = 3 * 3)
+
+# To recycle list items, use `do.call()`
+my_list &lt;- list(from = 1L, to = 10L, by = seq(0.1, 1, 0.1))
+do.call(recycle, my_list)
+
+</code></pre>
+
+<hr>
 <h2 id='sequence_'>Utilities for creating many sequences</h2><span id='topic+sequence_'></span><span id='topic+seq_id'></span><span id='topic+seq_'></span><span id='topic+seq_size'></span><span id='topic+window_sequence'></span><span id='topic+lag_sequence'></span><span id='topic+lead_sequence'></span>
 
 <h3>Description</h3>
@@ -880,7 +1243,118 @@ window_sequence(c(3, 5), 3, partial = TRUE, ascending = FALSE)
 </code></pre>
 
 <hr>
-<h2 id='setdiff_'>Extra utilities</h2><span id='topic+setdiff_'></span><span id='topic+intersect_'></span><span id='topic+cut_numeric'></span><span id='topic++25in_+25'></span><span id='topic++25+21in_+25'></span><span id='topic+enframe_'></span><span id='topic+deframe_'></span><span id='topic+na_rm'></span>
+<h2 id='set_abs'>Math operations by reference - <b>Experimental</b></h2><span id='topic+set_abs'></span><span id='topic+set_floor'></span><span id='topic+set_ceiling'></span><span id='topic+set_trunc'></span><span id='topic+set_exp'></span><span id='topic+set_sqrt'></span><span id='topic+set_change_sign'></span><span id='topic+set_round'></span><span id='topic+set_log'></span><span id='topic+set_pow'></span><span id='topic+set_add'></span><span id='topic+set_subtract'></span><span id='topic+set_multiply'></span><span id='topic+set_divide'></span>
+
+<h3>Description</h3>
+
+<p>These functions transform your variable by reference, with no copies being made.
+It is advisable to only use these if you know what you are doing.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_abs(x)
+
+set_floor(x)
+
+set_ceiling(x)
+
+set_trunc(x)
+
+set_exp(x)
+
+set_sqrt(x)
+
+set_change_sign(x)
+
+set_round(x, digits = 0)
+
+set_log(x, base = exp(1))
+
+set_pow(x, y)
+
+set_add(x, y)
+
+set_subtract(x, y)
+
+set_multiply(x, y)
+
+set_divide(x, y)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_abs_+3A_x">x</code></td>
+<td>
+<p>A numeric vector.</p>
+</td></tr>
+<tr><td><code id="set_abs_+3A_digits">digits</code></td>
+<td>
+<p>Number of digits to round to.</p>
+</td></tr>
+<tr><td><code id="set_abs_+3A_base">base</code></td>
+<td>
+<p>Logarithm base.</p>
+</td></tr>
+<tr><td><code id="set_abs_+3A_y">y</code></td>
+<td>
+<p>A numeric vector.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>These functions are particularly useful for situations
+where you have made a copy and then
+wish to perform further operations without creating more copies. <br />
+<code>NA</code> and <code>NaN</code> values are ignored though in some instances <code>NaN</code> values may
+be replaced with <code>NA</code>.
+These functions will <b>not work</b> on <b>any</b> classed objects, meaning they
+only work on standard integer and numeric vectors and matrices. <br />
+</p>
+
+
+<h4>When a copy has to be made</h4>
+
+<p>A copy is only made in certain instances, e.g. when passing an integer vector
+to <code>set_log()</code>. A warning will always be thrown in this instance alerting the user
+to assign the output to an object because <code>x</code> has not been updated by reference. <br />
+To ensure consistent and expected outputs, always assign the output to the same object, <br /> e.g.
+<code>x &lt;- set_log(x)</code> (<b>do this</b>) <br />
+<code>set_log(x)</code> (<b>don't do this</b>) <br />
+<code>x2 &lt;- set_log(x)</code> (Don't do this either) <br />
+<br /> No copy is made here unless x is an integer vector.
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>The exact same object with no copy made, just transformed.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(cheapr)
+library(bench)
+
+x &lt;- rnorm(2e05)
+options(cheapr.cores = 2)
+mark(
+  base = exp(log(abs(x))),
+  cheapr = set_exp(set_log(set_abs(x)))
+)
+options(cheapr.cores = 1)
+
+</code></pre>
+
+<hr>
+<h2 id='setdiff_'>Extra utilities</h2><span id='topic+setdiff_'></span><span id='topic+intersect_'></span><span id='topic+cut_numeric'></span><span id='topic++25in_+25'></span><span id='topic++25+21in_+25'></span><span id='topic+enframe_'></span><span id='topic+deframe_'></span><span id='topic+na_rm'></span><span id='topic+sample_'></span>
 
 <h3>Description</h3>
 
@@ -914,6 +1388,8 @@ enframe_(x, name = "name", value = "value")
 deframe_(x)
 
 na_rm(x)
+
+sample_(x, size = cpp_vec_length(x), replace = FALSE, prob = NULL)
 </code></pre>
 
 
@@ -972,6 +1448,18 @@ na_rm(x)
 <td>
 <p>The column name to assign the values of a vector.</p>
 </td></tr>
+<tr><td><code id="setdiff__+3A_size">size</code></td>
+<td>
+<p>See <code>?sample</code>.</p>
+</td></tr>
+<tr><td><code id="setdiff__+3A_replace">replace</code></td>
+<td>
+<p>See <code>?sample</code>.</p>
+</td></tr>
+<tr><td><code id="setdiff__+3A_prob">prob</code></td>
+<td>
+<p>See <code>?sample</code>.</p>
+</td></tr>
 </table>
 
 
@@ -998,7 +1486,11 @@ in which case an integer vector of break indices is returned. <br />
 <code style="white-space: pre;">&#8288;%in_%&#8288;</code> and <code style="white-space: pre;">&#8288;%!in_%&#8288;</code> both return a logical vector signifying if the values of
 <code>x</code> exist or don't exist in <code>table</code> respectively. <br />
 <code>na_rm()</code> is a convenience function that removes <code>NA</code> values and
-works only on vectors. For more advanced <code>NA</code> handling, see <code>?is_na</code>.
+empty rows in the case of data frames.
+For more advanced <code>NA</code> handling, see <code>?is_na</code>. <br />
+<code>sample_()</code> is an alternative to <code>sample()</code> that natively samples
+data frame rows through <code>sset()</code>. It also does not have a special case when
+<code>length(x)</code> is 1.
 </p>
 
 <hr>
@@ -1026,19 +1518,19 @@ sset(x, i, ...)
 sset(x, i, ...)
 
 ## S3 method for class 'data.frame'
-sset(x, i, j = seq_along(x), ...)
+sset(x, i, j, ...)
 
 ## S3 method for class 'tbl_df'
-sset(x, i, j = seq_along(x), ...)
+sset(x, i, j, ...)
 
 ## S3 method for class 'POSIXlt'
 sset(x, i, j, ...)
 
 ## S3 method for class 'data.table'
-sset(x, i, j = seq_along(x), ...)
+sset(x, i, j, ...)
 
 ## S3 method for class 'sf'
-sset(x, i, j = seq_along(x), ...)
+sset(x, i, j, ...)
 </code></pre>
 
 
@@ -1080,19 +1572,25 @@ list is always allocated through <code>new_list()</code>.
 <p>When <code>i</code> is a logical vector, it is passed directly to <code>which_()</code>. <br />
 This means that <code>NA</code> values are ignored and this also means that <code>i</code>
 is not recycled, so it is good practice to make sure the logical vector
-matches the length of x. To return <code>NA</code> values, use <code>x[NA_integer_]</code>.
+matches the length of x. To return <code>NA</code> values, use <code>sset(x, NA_integer_)</code>.
 </p>
 
 
 
 <h4>ALTREP range subsetting</h4>
 
-<p>When <code>i</code> is an ALTREP compact integer sequence which can be commonly created
+<p>When <code>i</code> is an ALTREP compact sequence which can be commonly created
 using e.g. <code>1:10</code> or using <code>seq_len</code>, <code>seq_along</code> and <code>seq.int</code>,
-<code>sset</code> internally uses a range-based subsetting which is faster and doesn't
+<code>sset</code> internally uses a range-based subsetting method which is faster and doesn't
 allocate <code>i</code> into memory.
 </p>
 
+
+
+<h3>Value</h3>
+
+<p>A new vector, data frame, list, matrix or other R object.
+</p>
 
 
 <h3>Examples</h3>
@@ -1123,6 +1621,21 @@ mark(df[df$x &gt; 0, , drop = FALSE],
      sset(df, df$x &gt; 0),
      check = FALSE) # Row names are different
 
+
+## EXTRA: An easy way to incorporate cheapr into dplyr's filter()
+# cheapr_filter &lt;- function(.data, ..., .by = NULL, .preserve = FALSE){
+#   filter_df &lt;- .data |&gt;
+#     dplyr::mutate(..., .by = {{ .by }}, .keep = "none")
+#   groups &lt;- dplyr::group_vars(filter_df)
+#   filter_df &lt;- cheapr::sset(filter_df, j = setdiff(names(filter_df), groups))
+#   n_filters &lt;- ncol(filter_df)
+#   if (n_filters &lt; 1){
+#     .data
+#   } else {
+#     dplyr::dplyr_row_slice(.data, cheapr::which_(Reduce(`&amp;`, filter_df)),
+#                            preserve = .preserve)
+#   }
+# }
 </code></pre>
 
 <hr>

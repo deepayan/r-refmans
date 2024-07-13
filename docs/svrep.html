@@ -19,6 +19,7 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#svrep-package'><p>svrep: Tools for Creating, Updating, and Analyzing Survey Replicate Weights</p></a></li>
+<li><a href='#add_inactive_replicates'><p>Add inactive replicates to a survey design object</p></a></li>
 <li><a href='#as_bootstrap_design'><p>Convert a survey design object to a bootstrap replicate design</p></a></li>
 <li><a href='#as_data_frame_with_weights'><p>Convert a survey design object to a data frame with weights stored as columns</p></a></li>
 <li><a href='#as_fays_gen_rep_design'><p>Convert a survey design object to a replication design</p>
@@ -59,9 +60,11 @@ using the Rao-Wu-Yue-Beaumont bootstrap method</a></li>
 for a total under simple random sampling without replacement</a></li>
 <li><a href='#make_twophase_quad_form'><p>Combine quadratic forms from each phase of a two phase design</p></a></li>
 <li><a href='#redistribute_weights'><p>Redistribute weight from one group to another</p></a></li>
-<li><a href='#rescale_reps'><p>Rescale replicate factors to have specified lower bound</p></a></li>
+<li><a href='#rescale_reps'><p>Rescale replicate factors</p></a></li>
 <li><a href='#shift_weight'><p>(Internal function) Shift weight from one set of cases to another</p></a></li>
+<li><a href='#shuffle_replicates'><p>Shuffle the order of replicates in a survey design object</p></a></li>
 <li><a href='#stack_replicate_designs'><p>Stack replicate designs, combining data and weights into a single object</p></a></li>
+<li><a href='#subsample_replicates'><p>Retain only a random subset of the replicates in a design</p></a></li>
 <li><a href='#summarize_rep_weights'><p>Summarize the replicate weights</p></a></li>
 <li><a href='#svyby_repwts'><p>Compare survey statistics calculated separately from different sets of replicate weights</p></a></li>
 <li><a href='#variance-estimators'><p>Variance Estimators</p></a></li>
@@ -83,7 +86,7 @@ Weights</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.6.3</td>
+<td>0.6.4</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -151,7 +154,7 @@ dplyr, srvyr, withr, sampling, prettydoc, RSQLite</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-08 19:54:45 UTC; benja</td>
+<td>2024-04-26 18:08:58 UTC; benja</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -168,7 +171,7 @@ dplyr, srvyr, withr, sampling, prettydoc, RSQLite</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-09 08:10:02 UTC</td>
+<td>2024-04-26 18:40:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -202,6 +205,150 @@ dplyr, srvyr, withr, sampling, prettydoc, RSQLite</td>
 </p>
 </li></ul>
 
+
+<hr>
+<h2 id='add_inactive_replicates'>Add inactive replicates to a survey design object</h2><span id='topic+add_inactive_replicates'></span>
+
+<h3>Description</h3>
+
+<p>Adds inactive replicates to a survey design object. An inactive
+replicate is a replicate that does not contribute to variance estimates but
+adds to the matrix of replicate weights so that the matrix has the desired
+number of columns. The new replicates' values are simply equal to the full-sample weights.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>add_inactive_replicates(design, n_total, n_to_add, location = "last")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="add_inactive_replicates_+3A_design">design</code></td>
+<td>
+<p>A survey design object, created with either the <code>survey</code> or <code>srvyr</code> packages.</p>
+</td></tr>
+<tr><td><code id="add_inactive_replicates_+3A_n_total">n_total</code></td>
+<td>
+<p>The total number of replicates
+that the result should contain. If the design already contains <code>n_total</code>
+replicates (or more), then no update is made.</p>
+</td></tr>
+<tr><td><code id="add_inactive_replicates_+3A_n_to_add">n_to_add</code></td>
+<td>
+<p>The number of additional replicates to add.
+Can only use the <code>n_total</code> argument OR the <code>n_to_add</code> argument,
+not both.</p>
+</td></tr>
+<tr><td><code id="add_inactive_replicates_+3A_location">location</code></td>
+<td>
+<p>Either <code>"first"</code>, <code>"last"</code> (the default), or <code>"random"</code>.
+Specifies where the columns of new replicates should be located in the
+matrix of replicate weights. Use <code>"first"</code>
+to place new replicates first (i.e., in the leftmost part of the matrix),
+<code>"last"</code> to place the new replicates last (i.e., in the rightmost part
+of the matrix). Use <code>"random"</code> to intersperse the new replicates
+in random column locations of the matrix; the original replicates will
+still be in their original order.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An updated survey design object, where the number of columns
+of replicate weights has potentially increased. The increase only happens
+if the user specifies the <code>n_to_add</code> argument instead of <code>n_total</code>,
+of if the user specifies <code>n_total</code> and <code>n_total</code> is less than the number
+of columns of replicate weights that the design already had.
+</p>
+
+
+<h3>Statistical Details</h3>
+
+<p>Inactive replicates are also sometimes referred to as &quot;dead replicates&quot;,
+for example in Ash (2014). The purpose of adding inactive replicates
+is to increase the number of columns of replicate weights without impacting
+variance estimates. This can be useful, for example, when combining data
+from a survey across multiple years, where different years use different number
+of replicates, but a consistent number of replicates is desired in the combined
+data file.
+</p>
+<p>Suppose the initial replicate design has <code class="reqn">L</code> replicates, with
+respective constants <code class="reqn">c_k</code> for <code class="reqn">k=1,\dots,L</code> used to estimate variance
+with the formula
+</p>
+<p style="text-align: center;"><code class="reqn">v_{R} = \sum_{k=1}^L c_k\left(\hat{T}_y^{(k)}-\hat{T}_y\right)^2</code>
+</p>
+
+<p>where <code class="reqn">\hat{T}_y</code> is the estimate produced using the full-sample weights
+and <code class="reqn">\hat{T}_y^{(k)}</code> is the estimate from replicate <code class="reqn">k</code>.
+</p>
+<p>Inactive replicates are simply replicates that are exactly equal to the full sample:
+that is, the replicate <code class="reqn">k</code> is called &quot;inactive&quot; if its vector of replicate
+weights exactly equals the full-sample weights. In this case, when using the formula
+above to estimate variances, these replicates contribute nothing to the variance estimate.
+</p>
+<p>If the analyst uses the variant of the formula above where the full-sample estimate
+<code class="reqn">\hat{T}_y</code> is replaced by the average replicate estimate (i.e., <code class="reqn">L^{-1}\sum_{k=1}^{L}\hat{T}_y^{(k)}</code>),
+then variance estimates will differ before vs. after adding the inactive replicates.
+For this reason, it is strongly recommend to explicitly specify <code>mse=TRUE</code>
+when creating a replicate design object in R with functions such as <code>svrepdesign()</code>,
+<code>as_bootstrap_design()</code>, etc. If working with an already existing replicate design,
+you can update the <code>mse</code> option to <code>TRUE</code> simply by using code such as
+<code>my_design$mse &lt;- TRUE</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p>Ash, S. (2014). &quot;<em>Using successive difference replication for estimating variances</em>.&quot;
+<strong>Survey Methodology</strong>, Statistics Canada, 40(1), 47–59.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(survey)
+set.seed(2023)
+
+# Create an example survey design object
+
+  sample_data &lt;- data.frame(
+    PSU     = c(1,2,3)
+  )
+
+  survey_design &lt;- svydesign(
+    data = sample_data,
+    ids = ~ PSU,
+    weights = ~ 1
+  )
+
+  rep_design &lt;- survey_design |&gt;
+    as.svrepdesign(type = "JK1", mse = TRUE)
+
+# Inspect replicates before subsampling
+
+  rep_design |&gt; weights(type = "analysis")
+
+# Inspect replicates after adding inactive replicates
+
+  rep_design |&gt;
+    add_inactive_replicates(n_total = 5, location = "first") |&gt;
+    weights(type = "analysis")
+
+  rep_design |&gt;
+    add_inactive_replicates(n_to_add = 2, location = "last") |&gt;
+    weights(type = "analysis")
+
+  rep_design |&gt;
+    add_inactive_replicates(n_to_add = 5, location = "random") |&gt;
+    weights(type = "analysis")
+
+</code></pre>
 
 <hr>
 <h2 id='as_bootstrap_design'>Convert a survey design object to a bootstrap replicate design</h2><span id='topic+as_bootstrap_design'></span>
@@ -245,7 +392,7 @@ The available types are the following: <br />
 </p>
 
 <ul>
-<li><p><strong>&quot;Rao-Wu-Yue-Beaumont&quot;</strong> (the default): <br />
+<li> <p><strong>&quot;Rao-Wu-Yue-Beaumont&quot;</strong> (the default): <br />
 The bootstrap method of Beaumont and Émond (2022), which is a generalization of the Rao-Wu-Yue bootstrap,
 and is applicable to a wide variety of designs, including single-stage and multistage stratified designs.
 The design may have different sampling methods used at different stages.
@@ -254,20 +401,20 @@ and may potentially use Poisson sampling. <br /> <br />
 For a stratum with a fixed sample size of <code class="reqn">n</code> sampling units, resampling in each replicate resamples <code class="reqn">(n-1)</code> sampling units with replacement.
 </p>
 </li>
-<li><p><strong>&quot;Rao-Wu&quot;</strong>: <br />
+<li> <p><strong>&quot;Rao-Wu&quot;</strong>: <br />
 The basic Rao-Wu <code class="reqn">(n-1)</code> bootstrap method, which is only applicable to single-stage designs or
 multistage designs where the first-stage sampling fractions are small (and can thus be ignored).
 Accommodates stratified designs. All sampling within a stratum must be simple random sampling with or without replacement,
 although the first-stage sampling is effectively treated as sampling without replacement.
 </p>
 </li>
-<li><p><strong>&quot;Preston&quot;</strong>: <br />
+<li> <p><strong>&quot;Preston&quot;</strong>: <br />
 Preston's multistage rescaled bootstrap, which is applicable to single-stage designs or multistage designs
 with arbitrary sampling fractions. Accommodates stratified designs. All sampling within a stratum must be
 simple random sampling with or without replacement.
 </p>
 </li>
-<li><p><strong>&quot;Canty-Davison&quot;</strong>: <br />
+<li> <p><strong>&quot;Canty-Davison&quot;</strong>: <br />
 The Canty-Davison bootstrap, which is only applicable to single-stage designs, with arbitrary sampling fractions.
 Accommodates stratified designs. All sampling with a stratum must be simple random sampling with or without replacement.
 </p>
@@ -298,19 +445,19 @@ Each element should be one of the following: <br />
 </p>
 
 <ul>
-<li><p>&quot;SRSWOR&quot; - Simple random sampling, without replacement
+<li> <p><code>"SRSWOR"</code> - Simple random sampling, without replacement
 </p>
 </li>
-<li><p>&quot;SRSWR&quot; - Simple random sampling, with replacement
+<li> <p><code>"SRSWR"</code> - Simple random sampling, with replacement
 </p>
 </li>
-<li><p>&quot;PPSWOR&quot; - Unequal probabilities of selection, without replacement
+<li> <p><code>"PPSWOR"</code> - Unequal probabilities of selection, without replacement
 </p>
 </li>
-<li><p>&quot;PPSWR&quot; - Unequal probabilities of selection, with replacement
+<li> <p><code>"PPSWR"</code> - Unequal probabilities of selection, with replacement
 </p>
 </li>
-<li><p>&quot;Poisson&quot; -  Poisson sampling: each sampling unit is selected into the sample at most once, with potentially different probabilities of inclusion for each sampling unit.
+<li> <p><code>"Poisson"</code> -  Poisson sampling: each sampling unit is selected into the sample at most once, with potentially different probabilities of inclusion for each sampling unit.
 </p>
 </li></ul>
 </td></tr>
@@ -540,7 +687,7 @@ can be represented as a quadratic form whose matrix is positive semidefinite
   max_replicates = 500,
   balanced = TRUE,
   psd_option = "warn",
-  mse = getOption("survey.replicates.mse"),
+  mse = TRUE,
   compress = TRUE
 )
 </code></pre>
@@ -564,46 +711,45 @@ Options include:
 </p>
 
 <ul>
-<li><p><strong>&quot;Yates-Grundy&quot;</strong>: The Yates-Grundy variance estimator based on
+<li> <p><strong>&quot;Yates-Grundy&quot;</strong>: <br /> The Yates-Grundy variance estimator based on
 first-order and second-order inclusion probabilities.
 </p>
 </li>
-<li><p><strong>&quot;Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator based on
+<li> <p><strong>&quot;Horvitz-Thompson&quot;</strong>: <br /> The Horvitz-Thompson variance estimator based on
 first-order and second-order inclusion probabilities.
 </p>
 </li>
-<li><p><strong>&quot;Poisson Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator
+<li> <p><strong>&quot;Poisson Horvitz-Thompson&quot;</strong>: <br /> The Horvitz-Thompson variance estimator
 based on assuming Poisson sampling, with first-order inclusion probabilities
 inferred from the sampling probabilities of the survey design object.
 </p>
 </li>
-<li><p><strong>&quot;Stratified Multistage SRS&quot;</strong>: The usual stratified multistage variance estimator
+<li> <p><strong>&quot;Stratified Multistage SRS&quot;</strong>: <br /> The usual stratified multistage variance estimator
 based on estimating the variance of cluster totals within strata at each stage.
 </p>
 </li>
-<li><p><strong>&quot;Ultimate Cluster&quot;</strong>: The usual variance estimator based on estimating
+<li> <p><strong>&quot;Ultimate Cluster&quot;</strong>: <br /> The usual variance estimator based on estimating
 the variance of first-stage cluster totals within first-stage strata.
 </p>
 </li>
-<li><p><strong>&quot;Deville-1&quot;</strong>: A variance estimator for unequal-probability
+<li> <p><strong>&quot;Deville-1&quot;</strong>: <br /> A variance estimator for unequal-probability
 sampling without replacement, described in Matei and Tillé (2005)
 as &quot;Deville 1&quot;.
 </p>
 </li>
-<li><p><strong>&quot;Deville-2&quot;</strong>: A variance estimator for unequal-probability
-sampling without replacement, described in Matei and Tillé (2005)
-as &quot;Deville 2&quot;.
+<li> <p><strong>&quot;Deville-2&quot;</strong>: <br /> A variance estimator for unequal-probability
+sampling without replacement, described in Matei and Tillé (2005) as &quot;Deville 2&quot;.
 </p>
 </li>
-<li><p><strong>&quot;Deville-Tille&quot;: </strong>A variance estimator useful
+<li> <p><strong>&quot;Deville-Tille&quot;: </strong> <br /> A variance estimator useful
 for balanced sampling designs, proposed by Deville and Tillé (2005).
 </p>
 </li>
-<li><p><strong>&quot;SD1&quot;</strong>: The non-circular successive-differences variance estimator described by Ash (2014),
+<li> <p><strong>&quot;SD1&quot;</strong>: <br /> The non-circular successive-differences variance estimator described by Ash (2014),
 sometimes used for variance estimation for systematic sampling.
 </p>
 </li>
-<li><p><strong>&quot;SD2&quot;</strong>: The circular successive-differences variance estimator described by Ash (2014).
+<li><p><strong>&quot;SD2&quot;</strong>:  <br /> The circular successive-differences variance estimator described by Ash (2014).
 This estimator is the basis of the &quot;successive-differences replication&quot; estimator commonly used
 for variance estimation for systematic sampling.
 </p>
@@ -648,8 +794,10 @@ for details of the approximation.</p>
 </td></tr>
 <tr><td><code id="as_fays_gen_rep_design_+3A_mse">mse</code></td>
 <td>
-<p>If <code>TRUE</code>, compute variances from sums of squares around the point estimate from the full-sample weights,
-If <code>FALSE</code>, compute variances from sums of squares around the mean estimate from the replicate weights.</p>
+<p>If <code>TRUE</code> (the default), compute variances from sums of squares around the point estimate from the full-sample weights,
+If <code>FALSE</code>, compute variances from sums of squares around the mean estimate from the replicate weights.
+For Fay's generalized replication method, setting <code>mse = FALSE</code> can potentially
+lead to large underestimates of variance.</p>
 </td></tr>
 <tr><td><code id="as_fays_gen_rep_design_+3A_compress">compress</code></td>
 <td>
@@ -827,46 +975,45 @@ Options include:
 </p>
 
 <ul>
-<li><p><strong>&quot;Yates-Grundy&quot;</strong>: The Yates-Grundy variance estimator based on
+<li> <p><strong>&quot;Yates-Grundy&quot;</strong>: <br /> The Yates-Grundy variance estimator based on
 first-order and second-order inclusion probabilities.
 </p>
 </li>
-<li><p><strong>&quot;Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator based on
+<li> <p><strong>&quot;Horvitz-Thompson&quot;</strong>: <br /> The Horvitz-Thompson variance estimator based on
 first-order and second-order inclusion probabilities.
 </p>
 </li>
-<li><p><strong>&quot;Poisson Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator
+<li> <p><strong>&quot;Poisson Horvitz-Thompson&quot;</strong>: <br /> The Horvitz-Thompson variance estimator
 based on assuming Poisson sampling, with first-order inclusion probabilities
 inferred from the sampling probabilities of the survey design object.
 </p>
 </li>
-<li><p><strong>&quot;Stratified Multistage SRS&quot;</strong>: The usual stratified multistage variance estimator
+<li> <p><strong>&quot;Stratified Multistage SRS&quot;</strong>: <br /> The usual stratified multistage variance estimator
 based on estimating the variance of cluster totals within strata at each stage.
 </p>
 </li>
-<li><p><strong>&quot;Ultimate Cluster&quot;</strong>: The usual variance estimator based on estimating
+<li> <p><strong>&quot;Ultimate Cluster&quot;</strong>: <br /> The usual variance estimator based on estimating
 the variance of first-stage cluster totals within first-stage strata.
 </p>
 </li>
-<li><p><strong>&quot;Deville-1&quot;</strong>: A variance estimator for unequal-probability
+<li> <p><strong>&quot;Deville-1&quot;</strong>: <br /> A variance estimator for unequal-probability
 sampling without replacement, described in Matei and Tillé (2005)
 as &quot;Deville 1&quot;.
 </p>
 </li>
-<li><p><strong>&quot;Deville-2&quot;</strong>: A variance estimator for unequal-probability
-sampling without replacement, described in Matei and Tillé (2005)
-as &quot;Deville 2&quot;.
+<li> <p><strong>&quot;Deville-2&quot;</strong>: <br /> A variance estimator for unequal-probability
+sampling without replacement, described in Matei and Tillé (2005) as &quot;Deville 2&quot;.
 </p>
 </li>
-<li><p><strong>&quot;Deville-Tille&quot;: </strong>A variance estimator useful
+<li> <p><strong>&quot;Deville-Tille&quot;: </strong> <br /> A variance estimator useful
 for balanced sampling designs, proposed by Deville and Tillé (2005).
 </p>
 </li>
-<li><p><strong>&quot;SD1&quot;</strong>: The non-circular successive-differences variance estimator described by Ash (2014),
+<li> <p><strong>&quot;SD1&quot;</strong>: <br /> The non-circular successive-differences variance estimator described by Ash (2014),
 sometimes used for variance estimation for systematic sampling.
 </p>
 </li>
-<li><p><strong>&quot;SD2&quot;</strong>: The circular successive-differences variance estimator described by Ash (2014).
+<li><p><strong>&quot;SD2&quot;</strong>:  <br /> The circular successive-differences variance estimator described by Ash (2014).
 This estimator is the basis of the &quot;successive-differences replication&quot; estimator commonly used
 for variance estimation for systematic sampling.
 </p>
@@ -1198,6 +1345,7 @@ into random, (approximately) equal-sized groups.
   replicates = 50,
   var_strat = NULL,
   var_strat_frac = NULL,
+  sort_var = NULL,
   adj_method = "variance-stratum-psus",
   scale_method = "variance-stratum-psus",
   group_var_name = ".random_group",
@@ -1237,6 +1385,14 @@ to use for finite population corrections in each
 value of <code>var_strat</code>. Can use either a single number
 or a variable in the data corresponding to <code>var_strat</code>.</p>
 </td></tr>
+<tr><td><code id="as_random_group_jackknife_design_+3A_sort_var">sort_var</code></td>
+<td>
+<p>(Optional) Specifies the name of a variable
+in the data which should be used to sort the data before
+assigning random groups. If a variable is specified for
+<code>var_strat</code>, the sorting will happen within values of
+that variable.</p>
+</td></tr>
 <tr><td><code id="as_random_group_jackknife_design_+3A_adj_method">adj_method</code></td>
 <td>
 <p>Specifies how to calculate the
@@ -1245,17 +1401,15 @@ Available options for <code>adj_method</code> include:
 </p>
 
 <ul>
-<li><p>&quot;variance-stratum-psus&quot; (the default)
+<li> <p><code>"variance-stratum-psus"</code> (the default) <br />
 The replicate weight adjustment for a unit
 is based on the number of PSUs in its variance stratum.
-
 </p>
 </li>
-<li><p>&quot;variance-units&quot;
+<li> <p><code>"variance-units"</code> <br />
 The replicate weight adjustment for a unit
 is based on the number of variance units
 in its variance stratum.
-
 </p>
 </li></ul>
 
@@ -1269,18 +1423,16 @@ Available options for <code>scale_method</code> include:
 </p>
 
 <ul>
-<li><p>&quot;variance-stratum-psus&quot;
+<li> <p><code>"variance-stratum-psus"</code> <br />
 The scale factor for a variance unit
 is based on its number of PSUs compared
 to the number of PSUs in its variance stratum.
-
 </p>
 </li>
-<li><p>&quot;variance-units&quot;
+<li> <p><code>"variance-units"</code> <br />
 The scale factor for a variance unit is
 based on the number of variance units in
 its variance stratum.
-
 </p>
 </li></ul>
 
@@ -1762,8 +1914,10 @@ See <a href="survey.html#topic+calibrate">calibrate</a> for details.</p>
 </td></tr>
 <tr><td><code id="calibrate_to_sample_+3A_control_col_matches">control_col_matches</code></td>
 <td>
-<p>Optional parameter to control which control survey replicate
-is matched to each primary survey replicate.
+<p>Optional parameter to specify which control survey replicate
+is matched to each primary survey replicate. If the <code class="reqn">i-th</code> entry of <code>control_col_matches</code>
+equals <code class="reqn">k</code>, then replicate <code class="reqn">i</code> in <code>primary_rep_design</code> is matched
+to replicate <code class="reqn">k</code> in <code>control_rep_design.</code>
 Entries of <code>NA</code> denote a primary survey replicate not matched to any control survey replicate.
 If this parameter is not used, matching is done at random.</p>
 </td></tr>
@@ -2321,45 +2475,45 @@ Options include:
 </p>
 
 <ul>
-<li><p><strong>&quot;Yates-Grundy&quot;</strong>: The Yates-Grundy variance estimator based on
+<li> <p><strong>&quot;Yates-Grundy&quot;</strong>: <br /> The Yates-Grundy variance estimator based on
 first-order and second-order inclusion probabilities.
 </p>
 </li>
-<li><p><strong>&quot;Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator based on
+<li> <p><strong>&quot;Horvitz-Thompson&quot;</strong>: <br /> The Horvitz-Thompson variance estimator based on
 first-order and second-order inclusion probabilities.
 </p>
 </li>
-<li><p><strong>&quot;Poisson Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator
-based on assuming Poisson sampling with specified first-order inclusion probabilities.
+<li> <p><strong>&quot;Poisson Horvitz-Thompson&quot;</strong>: <br /> The Horvitz-Thompson variance estimator
+based on assuming Poisson sampling, with first-order inclusion probabilities
+inferred from the sampling probabilities of the survey design object.
 </p>
 </li>
-<li><p><strong>&quot;Stratified Multistage SRS&quot;</strong>: The usual stratified multistage variance estimator
+<li> <p><strong>&quot;Stratified Multistage SRS&quot;</strong>: <br /> The usual stratified multistage variance estimator
 based on estimating the variance of cluster totals within strata at each stage.
 </p>
 </li>
-<li><p><strong>&quot;Ultimate Cluster&quot;</strong>: The usual variance estimator based on estimating
+<li> <p><strong>&quot;Ultimate Cluster&quot;</strong>: <br /> The usual variance estimator based on estimating
 the variance of first-stage cluster totals within first-stage strata.
 </p>
 </li>
-<li><p><strong>&quot;Deville-1&quot;</strong>: A variance estimator for unequal-probability
+<li> <p><strong>&quot;Deville-1&quot;</strong>: <br /> A variance estimator for unequal-probability
 sampling without replacement, described in Matei and Tillé (2005)
 as &quot;Deville 1&quot;.
 </p>
 </li>
-<li><p><strong>&quot;Deville-2&quot;</strong>: A variance estimator for unequal-probability
-sampling without replacement, described in Matei and Tillé (2005)
-as &quot;Deville 2&quot;.
+<li> <p><strong>&quot;Deville-2&quot;</strong>: <br /> A variance estimator for unequal-probability
+sampling without replacement, described in Matei and Tillé (2005) as &quot;Deville 2&quot;.
 </p>
 </li>
-<li><p><strong>&quot;Deville-Tille&quot;: </strong>A variance estimator useful
+<li> <p><strong>&quot;Deville-Tille&quot;: </strong> <br /> A variance estimator useful
 for balanced sampling designs, proposed by Deville and Tillé (2005).
 </p>
 </li>
-<li><p><strong>&quot;SD1&quot;</strong>: The non-circular successive-differences variance estimator described by Ash (2014),
+<li> <p><strong>&quot;SD1&quot;</strong>: <br /> The non-circular successive-differences variance estimator described by Ash (2014),
 sometimes used for variance estimation for systematic sampling.
 </p>
 </li>
-<li><p><strong>&quot;SD2&quot;</strong>: The circular successive-differences variance estimator described by Ash (2014).
+<li><p><strong>&quot;SD2&quot;</strong>:  <br /> The circular successive-differences variance estimator described by Ash (2014).
 This estimator is the basis of the &quot;successive-differences replication&quot; estimator commonly used
 for variance estimation for systematic sampling.
 </p>
@@ -2789,13 +2943,13 @@ Identifier variables and survey response status:
 </p>
 
 <ul>
-<li><p>FSCSKEY: A unique identifier for libraries.
+<li><p> FSCSKEY: A unique identifier for libraries.
 </p>
 </li>
-<li><p>LIBNAME: The name of the library
+<li><p> LIBNAME: The name of the library.
 </p>
 </li>
-<li><p>RESPONSE_STATUS: Response status for the Public Library Survey:
+<li><p> RESPONSE_STATUS: Response status for the Public Library Survey:
 indicates whether the library was a respondent, nonrespondent, or was closed.
 </p>
 </li></ul>
@@ -2804,31 +2958,31 @@ indicates whether the library was a respondent, nonrespondent, or was closed.
 </p>
 
 <ul>
-<li><p>TOTCIR: Total circulation
+<li><p> TOTCIR: Total circulation
 </p>
 </li>
-<li><p>VISITS: Total visitors
+<li><p> VISITS: Total visitors
 </p>
 </li>
-<li><p>REGBOR: Total number of registered users
+<li><p> REGBOR: Total number of registered users
 </p>
 </li>
-<li><p>TOTSTAFF: Total staff (measured in full-time equivalent staff)
+<li><p> TOTSTAFF: Total staff (measured in full-time equivalent staff)
 </p>
 </li>
-<li><p>LIBRARIA: Total librarians (measured in full-time equivalent staff)
+<li><p> LIBRARIA: Total librarians (measured in full-time equivalent staff)
 </p>
 </li>
-<li><p>TOTOPEXP: Total operating expenses
+<li><p> TOTOPEXP: Total operating expenses
 </p>
 </li>
-<li><p>TOTINCM: Total income
+<li><p> TOTINCM: Total income
 </p>
 </li>
-<li><p>BRANLIB: Number of library branches
+<li><p> BRANLIB: Number of library branches
 </p>
 </li>
-<li><p>CENTLIB: Number of central library locations
+<li><p> CENTLIB: Number of central library locations
 </p>
 </li></ul>
 
@@ -2836,19 +2990,19 @@ indicates whether the library was a respondent, nonrespondent, or was closed.
 </p>
 
 <ul>
-<li><p>LONGITUD: Geocoded longitude (in WGS84 CRS)
+<li><p> LONGITUD: Geocoded longitude (in WGS84 CRS)
 </p>
 </li>
-<li><p>LATITUD: Geocoded latitude (in WGS84 CRS)
+<li><p> LATITUD: Geocoded latitude (in WGS84 CRS)
 </p>
 </li>
-<li><p>STABR: Two-letter state abbreviation
+<li><p> STABR: Two-letter state abbreviation
 </p>
 </li>
-<li><p>CBSA: Five-digit identifer for a core-based statistical area (CBSA)
+<li><p> CBSA: Five-digit identifer for a core-based statistical area (CBSA)
 </p>
 </li>
-<li><p>MICROF: Flag for a metropolitan or micropolitan statistical area
+<li><p> MICROF: Flag for a metropolitan or micropolitan statistical area
 </p>
 </li></ul>
 
@@ -2862,25 +3016,25 @@ but with additional design variables.
 </p>
 
 <ul>
-<li><p>PSU_ID: A unique identifier for primary sampling units
+<li><p> PSU_ID: A unique identifier for primary sampling units
 </p>
 </li>
-<li><p>SSU_ID: A unique identifer for secondary sampling units
+<li><p> SSU_ID: A unique identifer for secondary sampling units
 </p>
 </li>
-<li><p>SAMPLING_PROB: Overall inclusion probability
+<li><p> SAMPLING_PROB: Overall inclusion probability
 </p>
 </li>
-<li><p>PSU_SAMPLING_PROB: Inclusion probability for the PSU
+<li><p> PSU_SAMPLING_PROB: Inclusion probability for the PSU
 </p>
 </li>
-<li><p>SSU_SAMPLING_PROB: Inclusion probability for the SSU
+<li><p> SSU_SAMPLING_PROB: Inclusion probability for the SSU
 </p>
 </li>
-<li><p>PSU_POP_SIZE: The number of PSUs in the population
+<li><p> PSU_POP_SIZE: The number of PSUs in the population
 </p>
 </li>
-<li><p>SSU_POP_SIZE: The number of population SSUs within the PSU
+<li><p> SSU_POP_SIZE: The number of population SSUs within the PSU
 </p>
 </li></ul>
 
@@ -2891,16 +3045,16 @@ but with additional design variables.
 </p>
 
 <ul>
-<li><p>SAMPLING_STRATUM: Unique identifier for sampling strata
+<li><p> SAMPLING_STRATUM: Unique identifier for sampling strata
 </p>
 </li>
-<li><p>STRATUM_POP_SIZE: The population size in the stratum
+<li><p> STRATUM_POP_SIZE: The population size in the stratum
 </p>
 </li>
-<li><p>SAMPLING_SORT_ORDER: The sort order used before selecting a random systematic sample
+<li><p> SAMPLING_SORT_ORDER: The sort order used before selecting a random systematic sample
 </p>
 </li>
-<li><p>SAMPLING_PROB: Overall inclusion probability
+<li><p> SAMPLING_PROB: Overall inclusion probability
 </p>
 </li></ul>
 
@@ -2938,28 +3092,28 @@ represents all adults (persons aged 18 or over) in Louisville, KY. <br />
 </p>
 
 <ul>
-<li><p>UNIQUE_ID: Unique identifier for records
+<li><p> UNIQUE_ID: Unique identifier for records
 </p>
 </li>
-<li><p>AGE: Age in years (copied from the AGEP variable in the ACS microdata)
+<li><p> AGE: Age in years (copied from the AGEP variable in the ACS microdata)
 </p>
 </li>
-<li><p>RACE_ETHNICITY: Race and Hispanic/Latino ethnicity
+<li><p> RACE_ETHNICITY: Race and Hispanic/Latino ethnicity
 derived from RAC1P and HISP variables
 of ACS microdata and collapsed to a smaller number of categories.
 </p>
 </li>
-<li><p>SEX: Male or Female
+<li><p> SEX: Male or Female
 </p>
 </li>
-<li><p>EDUC_ATTAINMENT: Highest level of education attained ('Less than high school' or 'High school or beyond')
+<li><p> EDUC_ATTAINMENT: Highest level of education attained ('Less than high school' or 'High school or beyond')
 derived from SCHL variable in ACS microdata and collapsed to a smaller number of categories.
 </p>
 </li>
-<li><p>PWGTP: Weights for the full-sample
+<li><p> PWGTP: Weights for the full-sample
 </p>
 </li>
-<li><p>PWGTP1-PWGTP80: 80 columns of replicate weights
+<li><p> PWGTP1-PWGTP80: 80 columns of replicate weights
 created using the Successive Differences Replication (SDR) method.
 </p>
 </li></ul>
@@ -3063,10 +3217,10 @@ each of which contains two elements: <code>estimates</code> and <code>variance-c
 </p>
 
 <ul>
-<li><p>estimates: A numeric vector of estimated population totals.
+<li><p> estimates: A numeric vector of estimated population totals.
 </p>
 </li>
-<li><p>variance-covariance: A variance-covariance matrix for the estimated population totals.
+<li><p> variance-covariance: A variance-covariance matrix for the estimated population totals.
 </p>
 </li></ul>
 
@@ -3076,10 +3230,10 @@ each of which contains two elements: <code>estimates</code> and <code>variance-c
 </p>
 
 <ul>
-<li><p>estimates: A numeric vector of estimated population totals.
+<li><p> estimates: A numeric vector of estimated population totals.
 </p>
 </li>
-<li><p>variance-covariance: A variance-covariance matrix for the estimated population totals.
+<li><p> variance-covariance: A variance-covariance matrix for the estimated population totals.
 </p>
 </li></ul>
 
@@ -3680,10 +3834,10 @@ Options include:
 </p>
 
 <ul>
-<li><p>&quot;Deville-1&quot;
+<li><p> &quot;Deville-1&quot;
 </p>
 </li>
-<li><p>&quot;Deville-2&quot;
+<li><p> &quot;Deville-2&quot;
 </p>
 </li></ul>
 </td></tr>
@@ -3723,13 +3877,13 @@ with the names taken directly from Matei and Tillé (2005).
 </p>
 
 <ul>
-<li><p><strong>&quot;Deville-1&quot;</strong>: 
+<li> <p><strong>&quot;Deville-1&quot;</strong>:
 </p>
 <p style="text-align: center;"><code class="reqn">c_i=\left(1-\pi_i\right) \frac{n}{n-1}</code>
 </p>
 
 </li>
-<li><p><strong>&quot;Deville-2&quot;</strong>: 
+<li> <p><strong>&quot;Deville-2&quot;</strong>:
 </p>
 <p style="text-align: center;"><code class="reqn">c_i = (1-\pi_i) \left[1 - \sum_{k=1}^{n} \left(\frac{1-\pi_k}{\sum_{k=1}^{n}(1-\pi_k)}\right)^2 \right]^{-1}</code>
 </p>
@@ -3801,53 +3955,52 @@ Options include:
 </p>
 
 <ul>
-<li><p><strong>&quot;Yates-Grundy&quot;</strong>: The Yates-Grundy variance estimator based on
+<li> <p><strong>&quot;Yates-Grundy&quot;</strong>: The Yates-Grundy variance estimator based on
 first-order and second-order inclusion probabilities. If this is used,
 the argument <code>joint_probs</code> must also be used.
 </p>
 </li>
-<li><p><strong>&quot;Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator based on
+<li> <p><strong>&quot;Horvitz-Thompson&quot;</strong>: The Horvitz-Thompson variance estimator based on
 first-order and second-order inclusion probabilities. If this is used,
 the argument <code>joint_probs</code> must also be used.
 </p>
 </li>
-<li><p><strong>&quot;Stratified Multistage SRS&quot;</strong>: The usual stratified multistage variance estimator
+<li> <p><strong>&quot;Stratified Multistage SRS&quot;</strong>: The usual stratified multistage variance estimator
 based on estimating the variance of cluster totals within strata at each stage.
 If this option is used, then it is necessary to also use the arguments
 <code>strata_ids</code>, <code>cluster_ids</code>, <code>strata_pop_sizes</code>, and <code>strata_pop_sizes</code>.
 </p>
 </li>
-<li><p><strong>&quot;Ultimate Cluster&quot;</strong>: The usual variance estimator based on estimating
+<li> <p><strong>&quot;Ultimate Cluster&quot;</strong>: The usual variance estimator based on estimating
 the variance of first-stage cluster totals within first-stage strata.
 If this option is used, then it is necessary to also use the arguments
 <code>strata_ids</code>, <code>cluster_ids</code>, <code>strata_pop_sizes</code>.
 Optionally, to use finite population correction factors, one can also use the argument <code>strata_pop_sizes</code>.
 </p>
 </li>
-<li><p><strong>&quot;Deville-1&quot;</strong>: A variance estimator for unequal-probability
+<li> <p><strong>&quot;Deville-1&quot;</strong>: A variance estimator for unequal-probability
 sampling without replacement, described in Matei and Tillé (2005)
 as &quot;Deville 1&quot;. If this option is used, then it is necessary to also use the arguments
 <code>strata_ids</code>, <code>cluster_ids</code>, and <code>probs</code>.
 </p>
 </li>
-<li><p><strong>&quot;Deville-2&quot;</strong>: A variance estimator for unequal-probability
+<li> <p><strong>&quot;Deville-2&quot;</strong>:  A variance estimator for unequal-probability
 sampling without replacement, described in Matei and Tillé (2005)
 as &quot;Deville 2&quot;. If this option is used, then it is necessary to also use the arguments
 <code>strata_ids</code>, <code>cluster_ids</code>, and <code>probs</code>.
 </p>
 </li>
-<li><p><strong>&quot;SD1&quot;</strong>: The non-circular successive-differences variance estimator described by Ash (2014),
+<li> <p><strong>&quot;SD1&quot;</strong>: The non-circular successive-differences variance estimator described by Ash (2014),
 sometimes used for variance estimation for systematic sampling.
 </p>
 </li>
-<li><p><strong>&quot;SD2&quot;</strong>: The circular successive-differences variance estimator described by Ash (2014).
+<li> <p><strong>&quot;SD2&quot;</strong>: The circular successive-differences variance estimator described by Ash (2014).
 This estimator is the basis of the &quot;successive-differences replication&quot; estimator commonly used
 for variance estimation for systematic sampling.
 </p>
 </li>
-<li><p><strong>&quot;Deville-Tille&quot;</strong>: The estimator of Deville and Tillé (2005),
+<li> <p><strong>&quot;Deville-Tille&quot;</strong>: The estimator of Deville and Tillé (2005),
 developed for balanced sampling using the cube method.
-
 </p>
 </li></ul>
 </td></tr>
@@ -4111,19 +4264,19 @@ Each element should be one of the following: <br />
 </p>
 
 <ul>
-<li><p>&quot;SRSWOR&quot; - Simple random sampling, without replacement
+<li><p> &quot;SRSWOR&quot; - Simple random sampling, without replacement
 </p>
 </li>
-<li><p>&quot;SRSWR&quot; - Simple random sampling, with replacement
+<li><p> &quot;SRSWR&quot; - Simple random sampling, with replacement
 </p>
 </li>
-<li><p>&quot;PPSWOR&quot; - Unequal probabilities of selection, without replacement
+<li><p> &quot;PPSWOR&quot; - Unequal probabilities of selection, without replacement
 </p>
 </li>
-<li><p>&quot;PPSWR&quot; - Unequal probabilities of selection, with replacement
+<li><p> &quot;PPSWR&quot; - Unequal probabilities of selection, with replacement
 </p>
 </li>
-<li><p>&quot;Poisson&quot; -  Poisson sampling: each sampling unit is selected into the sample at most once, with potentially different probabilities of inclusion for each sampling unit.
+<li><p> &quot;Poisson&quot; -  Poisson sampling: each sampling unit is selected into the sample at most once, with potentially different probabilities of inclusion for each sampling unit.
 </p>
 </li></ul>
 </td></tr>
@@ -4157,16 +4310,16 @@ for designs where sampling uses one or more of the following methods:
 </p>
 
 <ul>
-<li><p>&quot;SRSWOR&quot; - Simple random sampling, without replacement
+<li><p> &quot;SRSWOR&quot; - Simple random sampling, without replacement
 </p>
 </li>
-<li><p>&quot;SRSWR&quot; - Simple random sampling, with replacement
+<li><p> &quot;SRSWR&quot; - Simple random sampling, with replacement
 </p>
 </li>
-<li><p>&quot;PPSWR&quot; - Unequal probabilities of selection, with replacement
+<li><p> &quot;PPSWR&quot; - Unequal probabilities of selection, with replacement
 </p>
 </li>
-<li><p>&quot;Poisson&quot; -  Poisson sampling: each sampling unit is selected into the sample at most once, with potentially different probabilities of inclusion for each sampling unit.
+<li><p> &quot;Poisson&quot; -  Poisson sampling: each sampling unit is selected into the sample at most once, with potentially different probabilities of inclusion for each sampling unit.
 </p>
 </li></ul>
 
@@ -4887,22 +5040,22 @@ nr_adjusted_design &lt;- redistribute_weights(
 </code></pre>
 
 <hr>
-<h2 id='rescale_reps'>Rescale replicate factors to have specified lower bound</h2><span id='topic+rescale_reps'></span>
+<h2 id='rescale_reps'>Rescale replicate factors</h2><span id='topic+rescale_reps'></span>
 
 <h3>Description</h3>
 
-<p>Rescale replicate factors to ensure that they all exceed
-a specified lower bound. The main use of this rescaling is to ensure
+<p>Rescale replicate factors.
+The main application of this rescaling is to ensure
 that all replicate weights are strictly positive.
 </p>
-<p>Note that this rescaling has no impact on variance estimates for totals,
+<p>Note that this rescaling has no impact on variance estimates for totals (or other linear statistics),
 but variance estimates for nonlinear statistics will be affected by the rescaling.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>rescale_reps(x, tau = "auto", min_wgt = 0.01, digits = 2)
+<pre><code class='language-R'>rescale_reps(x, tau = NULL, min_wgt = 0.01, digits = 2)
 </code></pre>
 
 
@@ -4916,23 +5069,28 @@ or a numeric matrix of replicate weights.</p>
 </td></tr>
 <tr><td><code id="rescale_reps_+3A_tau">tau</code></td>
 <td>
-<p>Either <code>"auto"</code>, or a single number. This is the rescaling constant
-used to avoid negative weights through the transformation <code class="reqn">\frac{w + \tau - 1}{\tau}</code>,
-where <code class="reqn">w</code> is the original weight and <code class="reqn">\tau</code> is the rescaling constant <code>tau</code>. <br />
-If <code>tau="auto"</code>, the rescaling factor is determined automatically as follows:
-if all of the adjustment factors exceed the minimum value <code>min_wgt</code>,
-then <code>tau</code> is set equal to 1;
-otherwise, <code>tau</code> is set to the smallest value needed to rescale
-the adjustment factors such that they are all at least <code>min_wgt</code>.</p>
+<p>Either a single positive number, or <code>NULL</code>. 
+This is the rescaling constant <code class="reqn">\tau</code> used in the transformation 
+<code class="reqn">\frac{w + \tau - 1}{\tau}</code>,
+where <code class="reqn">w</code> is the original weight. <br />
+If <code>tau=NULL</code> or is left unspecified, 
+then the argument <code>min_wgt</code> should be used instead,
+in which case, <code class="reqn">\tau</code> is automatically set to the smallest value needed to rescale
+the replicate weights such that they are all at least <code>min_wgt</code>.</p>
 </td></tr>
 <tr><td><code id="rescale_reps_+3A_min_wgt">min_wgt</code></td>
 <td>
-<p>Only used if <code>tau='auto'</code>. Specifies the minimum acceptable value for the rescaled weights.
+<p>Should only be used if <code>tau=NULL</code> or <code>tau</code> is left unspecified. 
+Specifies the minimum acceptable value for the rescaled weights,
+which will be used to automatically determine the value <code class="reqn">\tau</code> used
+in the transformation <code class="reqn">\frac{w + \tau - 1}{\tau}</code>,
+where <code class="reqn">w</code> is the original weight.
 Must be at least zero and must be less than one.</p>
 </td></tr>
 <tr><td><code id="rescale_reps_+3A_digits">digits</code></td>
 <td>
-<p>Only used if <code>tau='auto'</code>. Specifies the number of decimal places
+<p>Only used if the argument <code>min_wgt</code> is used. 
+Specifies the number of decimal places
 to use for choosing <code>tau</code>. Using a smaller number of <code>digits</code>
 is useful simply for producing easier-to-read documentation.</p>
 </td></tr>
@@ -4997,8 +5155,10 @@ which can be retrieved using <code>attr(x, 'tau')</code>.
 <p>This method was suggested by Fay (1989) for the specific application
 of creating replicate factors using his generalized replication method.
 Beaumont and Patak (2012) provided an extended discussion on this rescaling
-method in the context of creating generalized bootstrap weights.
-The notation used in this documentation is taken from Beaumont and Patak (2012).
+method in the context of rescaling generalized bootstrap replication factors
+to avoid negative replicate weights.
+</p>
+<p>The notation used in this documentation is taken from Beaumont and Patak (2012).
 </p>
 <p>- Beaumont, Jean-François, and Zdenek Patak. 2012.
 &quot;On the Generalized Bootstrap for Sample Surveys with Special Attention to Poisson Sampling: Generalized Bootstrap for Sample Surveys.&quot;
@@ -5013,7 +5173,7 @@ http://www.asasrms.org/Proceedings/papers/1989_033.pdf
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># Example 1: Rescaling a matrix of replicate weights
+<pre><code class='language-R'># Example 1: Rescaling a matrix of replicate weights to avoid negative weights
 
  rep_wgts &lt;- matrix(
    c(1.69742746694909, -0.230761178913411, 1.53333377634192,
@@ -5024,12 +5184,17 @@ http://www.asasrms.org/Proceedings/papers/1989_033.pdf
    nrow = 3, ncol = 5
  )
 
- rescaled_wgts &lt;- rescale_reps(rep_wgts, tau = 'auto', min_wgt = 0.01)
+ rescaled_wgts &lt;- rescale_reps(rep_wgts, min_wgt = 0.01)
 
  print(rep_wgts)
  print(rescaled_wgts)
+ 
+ # Example 2: Rescaling replicate weights with a specified value of 'tau'
+ 
+ rescaled_wgts &lt;- rescale_reps(rep_wgts, tau = 2)
+ print(rescaled_wgts)
 
- # Example 2: Rescaling replicate weights of a survey design object
+ # Example 3: Rescaling replicate weights of a survey design object
  set.seed(2023)
  library(survey)
  data('mu284', package = 'survey')
@@ -5049,7 +5214,7 @@ http://www.asasrms.org/Proceedings/papers/1989_033.pdf
 
  ## Rescale the weights
  rescaled_boot_design &lt;- boot_design |&gt;
-   rescale_reps(tau = 'auto', min_wgt = 0.01)
+   rescale_reps(min_wgt = 0.01)
 
  boot_wgts &lt;- weights(boot_design, "analysis")
  rescaled_boot_wgts &lt;- weights(rescaled_boot_design, 'analysis')
@@ -5096,6 +5261,72 @@ The function <code>shift_weight</code> is internal to this package and is used o
 
 <p>A numeric vector of adjusted weights, of the same length as <code>wt_set</code>.
 </p>
+
+<hr>
+<h2 id='shuffle_replicates'>Shuffle the order of replicates in a survey design object</h2><span id='topic+shuffle_replicates'></span>
+
+<h3>Description</h3>
+
+<p>Shuffle the order of replicates in a survey design object.
+In other words, the order of the columns of replicate weights is randomly permuted.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>shuffle_replicates(design)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="shuffle_replicates_+3A_design">design</code></td>
+<td>
+<p>A survey design object, created with either the <code>survey</code> or <code>srvyr</code> packages.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An updated survey design object, where the order of the replicates
+has been shuffled (i.e., the order has been randomly permuted).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(survey)
+set.seed(2023)
+
+# Create an example survey design object
+
+  sample_data &lt;- data.frame(
+    STRATUM = c(1,1,1,1,2,2,2,2),
+    PSU     = c(1,2,3,4,5,6,7,8)
+  )
+
+  survey_design &lt;- svydesign(
+    data = sample_data,
+    strata = ~ STRATUM,
+    ids = ~ PSU,
+    weights = ~ 1
+  )
+
+  rep_design &lt;- survey_design |&gt;
+    as_fays_gen_rep_design(variance_estimator = "Ultimate Cluster")
+
+# Inspect replicates before shuffling
+
+  rep_design |&gt; getElement("repweights")
+
+# Inspect replicates after shuffling
+
+  rep_design |&gt;
+    shuffle_replicates() |&gt;
+    getElement("repweights")
+</code></pre>
 
 <hr>
 <h2 id='stack_replicate_designs'>Stack replicate designs, combining data and weights into a single object</h2><span id='topic+stack_replicate_designs'></span>
@@ -5192,6 +5423,112 @@ stacked_design &lt;- stack_replicate_designs(list_of_designs, .id = "which_desig
 </code></pre>
 
 <hr>
+<h2 id='subsample_replicates'>Retain only a random subset of the replicates in a design</h2><span id='topic+subsample_replicates'></span>
+
+<h3>Description</h3>
+
+<p>Randomly subsamples the replicates of a survey design object,
+to keep only a subset. The scale factor used in estimation is increased
+to account for the subsampling.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>subsample_replicates(design, n_reps)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="subsample_replicates_+3A_design">design</code></td>
+<td>
+<p>A survey design object, created with either the <code>survey</code> or <code>srvyr</code> packages.</p>
+</td></tr>
+<tr><td><code id="subsample_replicates_+3A_n_reps">n_reps</code></td>
+<td>
+<p>The number of replicates to keep after subsampling</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An updated survey design object, where only a random selection
+of the replicates has been retained. The overall 'scale' factor for the design
+(accessed with <code>design$scale</code>) is increased to account for the sampling of replicates.
+</p>
+
+
+<h3>Statistical Details</h3>
+
+<p>Suppose the initial replicate design has <code class="reqn">L</code> replicates, with
+respective constants <code class="reqn">c_k</code> for <code class="reqn">k=1,\dots,L</code> used to estimate variance
+with the formula
+</p>
+<p style="text-align: center;"><code class="reqn">v_{R} = \sum_{k=1}^L c_k\left(\hat{T}_y^{(k)}-\hat{T}_y\right)^2</code>
+</p>
+
+<p>With subsampling of replicates, <code class="reqn">L_0</code> of the original <code class="reqn">L</code> replicates
+are randomly selected, and then variances are estimated using the formula:
+</p>
+<p style="text-align: center;"><code class="reqn">v_{R} = \frac{L}{L_0} \sum_{k=1}^{L_0} c_k\left(\hat{T}_y^{(k)}-\hat{T}_y\right)^2</code>
+</p>
+
+<p>This subsampling is suggested for certain replicate designs in Fay (1989).
+Kim and Wu (2013) provide a detailed theoretical justification and
+also propose alternative methods of subsampling replicates.
+</p>
+
+
+<h3>References</h3>
+
+<p>Fay, Robert. 1989.
+&quot;Theory And Application Of Replicate Weighting For Variance Calculations.&quot;
+In, 495–500. Alexandria, VA: American Statistical Association.
+http://www.asasrms.org/Proceedings/papers/1989_033.pdf
+</p>
+<p>Kim, J.K. and Wu, C. 2013.
+&quot;Sparse and Efficient Replication Variance Estimation for Complex Surveys.&quot;
+<strong>Survey Methodology</strong>, Statistics Canada, 39(1), 91-120.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(survey)
+set.seed(2023)
+
+# Create an example survey design object
+
+  sample_data &lt;- data.frame(
+    STRATUM = c(1,1,1,1,2,2,2,2),
+    PSU     = c(1,2,3,4,5,6,7,8)
+  )
+
+  survey_design &lt;- svydesign(
+    data = sample_data,
+    strata = ~ STRATUM,
+    ids = ~ PSU,
+    weights = ~ 1
+  )
+
+  rep_design &lt;- survey_design |&gt;
+    as_fays_gen_rep_design(variance_estimator = "Ultimate Cluster")
+
+# Inspect replicates before subsampling
+
+  rep_design |&gt; getElement("repweights")
+
+# Inspect replicates after subsampling
+
+  rep_design |&gt;
+    subsample_replicates(n_reps = 4) |&gt;
+    getElement("repweights")
+</code></pre>
+
+<hr>
 <h2 id='summarize_rep_weights'>Summarize the replicate weights</h2><span id='topic+summarize_rep_weights'></span>
 
 <h3>Description</h3>
@@ -5239,28 +5576,28 @@ The contents of the <code>"overall"</code> summary are the following:
 </p>
 
 <ul>
-<li><p>&quot;nrows&quot;: Number of rows for the weights
+<li><p> &quot;nrows&quot;: Number of rows for the weights
 </p>
 </li>
-<li><p>&quot;ncols&quot;: Number of columns of replicate weights
+<li><p> &quot;ncols&quot;: Number of columns of replicate weights
 </p>
 </li>
-<li><p>&quot;degf_svy_pkg&quot;: The degrees of freedom according to the survey package in R
+<li><p> &quot;degf_svy_pkg&quot;: The degrees of freedom according to the survey package in R
 </p>
 </li>
-<li><p>&quot;rank&quot;: The matrix rank as determined by a QR decomposition
+<li><p> &quot;rank&quot;: The matrix rank as determined by a QR decomposition
 </p>
 </li>
-<li><p>&quot;avg_wgt_sum&quot;: The average column sum
+<li><p> &quot;avg_wgt_sum&quot;: The average column sum
 </p>
 </li>
-<li><p>&quot;sd_wgt_sums&quot;: The standard deviation of the column sums
+<li><p> &quot;sd_wgt_sums&quot;: The standard deviation of the column sums
 </p>
 </li>
-<li><p>&quot;min_rep_wgt&quot;: The minimum value of any replicate weight
+<li><p> &quot;min_rep_wgt&quot;: The minimum value of any replicate weight
 </p>
 </li>
-<li><p>&quot;max_rep_wgt&quot;: The maximum value of any replicate weight
+<li><p> &quot;max_rep_wgt&quot;: The maximum value of any replicate weight
 </p>
 </li></ul>
 
@@ -5271,29 +5608,29 @@ The contents of the <code>"specific"</code> summary are the following:
 </p>
 
 <ul>
-<li><p>&quot;Rep_Column&quot;: The name of a given column of replicate weights.
+<li><p> &quot;Rep_Column&quot;: The name of a given column of replicate weights.
 If columns are unnamed, the column number is used instead
 </p>
 </li>
-<li><p>&quot;N&quot;: The number of entries
+<li><p> &quot;N&quot;: The number of entries
 </p>
 </li>
-<li><p>&quot;N_NONZERO&quot;: The number of nonzero entries
+<li><p> &quot;N_NONZERO&quot;: The number of nonzero entries
 </p>
 </li>
-<li><p>&quot;SUM&quot;: The sum of the weights
+<li><p> &quot;SUM&quot;: The sum of the weights
 </p>
 </li>
-<li><p>&quot;MEAN&quot;: The average of the weights
+<li><p> &quot;MEAN&quot;: The average of the weights
 </p>
 </li>
-<li><p>&quot;CV&quot;: The coefficient of variation of the weights (standard deviation divided by mean)
+<li><p> &quot;CV&quot;: The coefficient of variation of the weights (standard deviation divided by mean)
 </p>
 </li>
-<li><p>&quot;MIN&quot;: The minimum weight
+<li><p> &quot;MIN&quot;: The minimum weight
 </p>
 </li>
-<li><p>&quot;MAX&quot;: The maximum weight
+<li><p> &quot;MAX&quot;: The maximum weight
 </p>
 </li></ul>
 
@@ -5700,13 +6037,13 @@ and <code class="reqn">c_i</code> depend on the method used:
 </p>
 
 <ul>
-<li><p><strong>&quot;Deville-1&quot;</strong>: 
+<li> <p><strong>&quot;Deville-1&quot;</strong>: 
 </p>
 <p style="text-align: center;"><code class="reqn">c_i=\left(1-\pi_i\right) \frac{n}{n-1}</code>
 </p>
 
 </li>
-<li><p><strong>&quot;Deville-2&quot;</strong>: 
+<li> <p><strong>&quot;Deville-2&quot;</strong>: 
 </p>
 <p style="text-align: center;"><code class="reqn">c_i = (1-\pi_i) \left[1 - \sum_{k=1}^{n} \left(\frac{1-\pi_k}{\sum_{k=1}^{n}(1-\pi_k)}\right)^2 \right]^{-1}</code>
 </p>

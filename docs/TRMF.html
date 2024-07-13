@@ -44,7 +44,6 @@ function processMathHTML() {
 <li><a href='#TRMF_ar'><p>Add an Auto-Regressive Regularization Model to a TRMF Object.</p></a></li>
 <li><a href='#TRMF_columns'>
 <p>Add a column regularization model to TRMF object</p></a></li>
-<li><a href='#TRMF_es'><p>Add exponential smoothing regularization model to a TRMF object.</p></a></li>
 <li><a href='#TRMF_regression'><p>Add external regressors to TRMF object</p></a></li>
 <li><a href='#TRMF_seasonal'><p>Add seasonal regularization model to a TRMF object</p></a></li>
 <li><a href='#TRMF_simple'><p>Add L2 regularization model to a TRMF object</p></a></li>
@@ -65,7 +64,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.5</td>
+<td>0.2.1</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -110,7 +109,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2021-08-16 16:04:22 UTC; chammerquist</td>
+<td>2024-06-13 19:58:16 UTC; chammerquist</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -118,7 +117,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2021-08-16 16:20:06 UTC</td>
+<td>2024-06-13 20:30:01 UTC</td>
 </tr>
 </table>
 <hr>
@@ -128,7 +127,7 @@ Extract TRMF Coefficients (Fm)
 
 <h3>Description</h3>
 
-<p>Returns the Fm (transposed) matrix from the matrix factorization Xm*Fm.
+<p>Returns the Fm (transposed) matrix from the matrix factorization Xm*Z*Fm.
 </p>
 
 
@@ -189,14 +188,14 @@ Access TRMF factors
 
 <h3>Description</h3>
 
-<p>This function returns the factors (Xm, Fm) from a trained TRMF object
+<p>This function returns the factors (Xm, Fm,Z) from a trained TRMF object
 </p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>## S3 method for class 'TRMF'
-components(object, XorF = c("Xm","Fm"), ...)
+components(object, XorF = c("Xm","Fm","Z","Fm_each"), ...)
 </code></pre>
 
 
@@ -220,13 +219,13 @@ components(object, XorF = c("Xm","Fm"), ...)
 
 <h3>Details</h3>
 
-<p>Returns the matrix factors. Could also use <code>object$Factors$Xm, object$Factors$Fm</code> . If matrix normalization was used in <code><a href="#topic+create_TRMF">create_TRMF</a></code>, <code>Xm%*%Fm</code> could look much different than the input data matrix. 
+<p>Returns the matrix factors.  If matrix normalization was used in <code><a href="#topic+create_TRMF">create_TRMF</a></code>, <code>Xm%*%diag(Z)%*%Fm</code> could look much different than the input data matrix. If external regressor were included in the model and <code>XorF = "F_each"</code> then a returns a list with Fm split up by parts.
 </p>
 
 
 <h3>Value</h3>
 
-<p>A matrix.
+<p>A matrix or vector, or a possibly a list if <code>XorF = "F_each"</code>.
 </p>
 
 
@@ -269,7 +268,8 @@ components(out,"Xm")
 <pre><code class='language-R'>create_TRMF(dataM, weight = 1, 
       normalize = c("none", "standard", "robust", "range"),
       normalize.type = c("global", "columnwise", "rowwise"),
-      na.action = c("impute", "fail"))
+      na.action = c("impute", "fail"),
+      scaleXm = c("no","project","track"))
 </code></pre>
 
 
@@ -300,12 +300,17 @@ normalize each column or row separately.</p>
 <td>
 <p>what action to take when data contains NAs</p>
 </td></tr>
+<tr><td><code id="create_TRMF_+3A_scalexm">scaleXm</code></td>
+<td>
+<p>Should the columns of Xm be rescaled at each iteration. See details</p>
+</td></tr>
 </table>
 
 
 <h3>Details</h3>
 
 <p>This function doesn't do any computation, it is the entry point for creating a TRMF model. To train the model or add additional details, see examples. Normalization is recommended in general. Regularization biases the factorization toward zero a little bit, centering changes that to bias towards the mean. Scaling makes the choosing of regularization parameters easier. If the factorization is to be used for forward forecasting, rowwise normalization is not recommended as it could remove some temporal information.
+If <code>scaleXm</code> = 'project' then the columns of Xm will be rescaled to have sum squared value = 1. If set to 'track' then the scaling factors will be stored and updated and used scale Fm before fitting Xm at each iteration.These options were added to allow for more stable behavior of temporal regularization.
 </p>
 
 
@@ -776,13 +781,13 @@ Retrain TRMF objects.
 
 <h3>Description</h3>
 
-<p>Continue training on a pretrained TRMF object.
+<p>Continue training on a pre-trained TRMF object.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>retrain(obj, numit, fit_xm_first = TRUE)
+<pre><code class='language-R'>retrain(obj, numit, fit_xm_first = TRUE,Xm=NULL,Fm=NULL,Z=NULL)
 </code></pre>
 
 
@@ -791,7 +796,7 @@ Retrain TRMF objects.
 <table>
 <tr><td><code id="retrain_+3A_obj">obj</code></td>
 <td>
-<p>Pretrained TRMF object</p>
+<p>Pre-trained TRMF object</p>
 </td></tr>
 <tr><td><code id="retrain_+3A_numit">numit</code></td>
 <td>
@@ -801,12 +806,24 @@ Retrain TRMF objects.
 <td>
 <p>Fit the Xm factor first? This could be useful it modifications are made to one of the factors that we don't want to be overwritten.</p>
 </td></tr>
+<tr><td><code id="retrain_+3A_xm">Xm</code></td>
+<td>
+<p>Optional update to Xm matrix. See details</p>
+</td></tr>
+<tr><td><code id="retrain_+3A_fm">Fm</code></td>
+<td>
+<p>Optional update to Fm matrix. See details</p>
+</td></tr>
+<tr><td><code id="retrain_+3A_z">Z</code></td>
+<td>
+<p>Optional update to Z vector. See details</p>
+</td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>This is basically the same function as <code>train()</code> but it doesn't create any of the constraint matrices and doesn't do any initialization.
+<p>This is basically the same function as <code>train()</code> but it doesn't create any of the constraint matrices and doesn't do any initialization. train() must be called on obj before this function. If external regressors are in the model and Fm is provided, the number of rows of columns must equal number of regressors plus columns of Xm. The format of Fm in this case is: [column_xreg_parameters,global_xreg_parameters,Fm_parameters]^T.
 </p>
 
 
@@ -911,14 +928,14 @@ summary(out)
 
 <h3>Description</h3>
 
-<p>This function is the &quot;engine&quot; of the TRMF package. It takes a previously created TRMF object and fits it to the data using an alternating least squares algorithm.
+<p>This function is the &quot;engine&quot; of the TRMF package. It takes a previously created TRMF object, sets up the internal objects and fits it to the data using an alternating least squares (ALS) algorithm.
 </p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>## S3 method for class 'TRMF'
-train(x, numit = 10, ...)</code></pre>
+train(x,numit=10,Xm=NULL,Fm=NULL,Z=NULL,...)</code></pre>
 
 
 <h3>Arguments</h3>
@@ -932,6 +949,18 @@ train(x, numit = 10, ...)</code></pre>
 <td>
 <p>Number of alternating least squares iterations</p>
 </td></tr>
+<tr><td><code id="train.TRMF_+3A_xm">Xm</code></td>
+<td>
+<p>Optional initial matrix. See details</p>
+</td></tr>
+<tr><td><code id="train.TRMF_+3A_fm">Fm</code></td>
+<td>
+<p>Optional initial matrix. See details</p>
+</td></tr>
+<tr><td><code id="train.TRMF_+3A_z">Z</code></td>
+<td>
+<p>Optional initial vector. See details</p>
+</td></tr>
 <tr><td><code id="train.TRMF_+3A_...">...</code></td>
 <td>
 <p>ignored</p>
@@ -941,14 +970,15 @@ train(x, numit = 10, ...)</code></pre>
 
 <h3>Details</h3>
 
-<p>If a coefficient model is not present in <code>object</code>, it adds a L2 regularization model. If no time series models have been added to <code>object</code>, it adds a simple model using <code><a href="#topic+TRMF_simple">TRMF_simple</a></code>.
+<p>If a coefficient model is not present in <code>object</code>, it adds a L2 regularization model. If no time series models have been added to <code>object</code>, it adds a simple model using <code><a href="#topic+TRMF_simple">TRMF_simple</a></code>. If <code>Xm, Fm</code> are both NULL, then initial estimates are provided. If both are provided, the ALS algorithm is started with <code>Xm</code> (with a warning) and <code>Fm</code> is overwritten with the next ALS step. If external regressors are in the model and Fm is provided, the number of rows of columns must equal number of regressors plus columns of Xm. The format of Fm in this case is: [column_xreg_parameters,global_xreg_parameters,Fm_parameters]^T.
+If <code>Z</code> is NULL, then a vector of 1's is used as initial estimate.
 </p>
 
 
 <h3>Value</h3>
 
 <p><code>train</code> returns a fitted object of <code><a href="base.html#topic+class">class</a></code> &quot;<code>TRMF</code>&quot; that contains the data, all added models, matrix factorization and fitted model. The matrix factors Xm, Fm 
-are stored in <code>object$Factors$Xm</code> and <code>object$Factors$Fm</code> respectively. Use <code><a href="stats.html#topic+fitted">fitted</a></code> to get fitted model, use <code><a href="stats.html#topic+resid">resid</a></code> to get residuals, use <code><a href="stats.html#topic+coef">coef</a></code> to get coefficients (Fm matrix) and <code><a href="#topic+components">components</a></code> to get <code>Xm</code> or <code>Fm</code>.
+are stored in <code>object$Factors$Xm</code> and <code>object$Factors$Fm</code>, <code>object$Factors$Z</code> respectively. Use <code><a href="stats.html#topic+fitted">fitted</a></code> to get fitted model, use <code><a href="stats.html#topic+resid">resid</a></code> to get residuals, use <code><a href="stats.html#topic+coef">coef</a></code> to get coefficients (Fm matrix) and <code><a href="#topic+components">components</a></code> to get <code>Xm</code> or <code>Fm</code>.
 </p>
 
 
@@ -1030,7 +1060,7 @@ In matrix optimization form, it adds the following term to the TRMF cost functio
 
 <h3>Details</h3>
 
-<p>Setting AR = c(1) gives a random walk model, same as <code>TRMF_trend(..., order=1)</code>
+<p>Setting AR = c(1) gives a random walk model, same as <code>TRMF_trend(..., order=1)</code>.
 </p>
 
 
@@ -1038,6 +1068,11 @@ In matrix optimization form, it adds the following term to the TRMF cost functio
 
 <p>Returns an updated object of class TRMF.
 </p>
+
+
+<h3>Note</h3>
+
+<p>Unlike <code>TRMF_columns()</code>, these lambdas are squared in the code.</p>
 
 
 <h3>Author(s)</h3>
@@ -1077,22 +1112,18 @@ plot(out)
 <hr>
 <h2 id='TRMF_columns'>
 Add a column regularization model to TRMF object
-</h2><span id='topic+TRMF_columns'></span><span id='topic+TRMF_coefficients'></span>
+</h2><span id='topic+TRMF_columns'></span>
 
 <h3>Description</h3>
 
 <p>Adds a regularization model to TRMF object created by <code>create_TRMF()</code> to constrain the fitting process of the coefficient matrix. 
-</p>
-<p><code>TRMF_coefficient</code> is a (soon to be deprecated) alias for <code>TRMF_columns</code>.
 </p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>TRMF_columns(obj,
-    reg_type = c("l2", "nnls", "constrain", "interval", "none"), lambda = 0.0001)
-TRMF_coefficients(obj,
-    reg_type = c("l2", "nnls", "constrain", "interval", "none"), lambda = 0.0001)
+    reg_type = c("l2", "nnls", "constrain", "interval", "none"), lambda = 0.0001,mu0=NULL)
 </code></pre>
 
 
@@ -1105,22 +1136,25 @@ TRMF_coefficients(obj,
 </td></tr>
 <tr><td><code id="TRMF_columns_+3A_reg_type">reg_type</code></td>
 <td>
-<p>regularization type to apply when fitting TRMF model. <code>l2</code> regularizes by simple sum of squares, <code>nnls</code>
+<p>regularization type to apply when fitting TRMF model. <code>l2</code> regularizes using an L2 function (see details), <code>nnls</code>
 forces coefficients to be non-negative. <code>constrain</code> constrains coefficients to be non-negative and to sum to 1. <code>interval</code> constrains coefficients
 to the interval [0-1]
 </p>
 </td></tr>
 <tr><td><code id="TRMF_columns_+3A_lambda">lambda</code></td>
 <td>
-<p>L2 regularization parameter used for all regularization types. If NULL, uses lambda set in create_TRMF().
-</p>
+<p>L2 regularization parameter used for all regularization types. Can be a single value, a vector, or a matrix. If not a scalar, the dimension must match the number of rows of <code>Fm</code>. In a Bayesian framework, this is the inverse prior covariance for matrix coefficients. Note this value is not squared in the code.</p>
+</td></tr>
+<tr><td><code id="TRMF_columns_+3A_mu0">mu0</code></td>
+<td>
+<p>The prior value for matrix coefficient. Can be a single value or vector. If not a scalar, the dimension must match the number of rows of <code>Fm</code>. If NULL it is set to zero. If external regressors are used these are included in Fm, so if lambda and mu0 are not scalars, they need to be arranged as: [column_xreg_parameters,global_xreg_parameters,Fm_parameters].</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>This function doesn't do any computations, it just sets up regularization parameters for the coefficient matrix. This function should only be called once on a TRMF object. If called twice, it will overwrite previous model with a warning.
+<p>This function doesn't do any computations, it just sets up regularization parameters for the coefficient matrix. This function should only be called once on a TRMF object. If called twice, it will overwrite previous model with a warning. In addition to the possible constraints, a possible L2 regularization term is added to the fit. The regularization term for each column <code>i</code> is <code class="reqn">(Fm_i - \mu_0)^TP(Fm_i - \mu_0)</code> where <code class="reqn">P = \lambda I</code> or <code class="reqn">P = diag(\lambda)</code> or <code class="reqn">P = \lambda</code> depending on the size of provided lambda. A nonzero value for <code>lambda</code> is recommended to ensure stability of fit.
 </p>
 
 
@@ -1159,103 +1193,6 @@ Am = xm%*%fm+rnorm(210,0,.2)
 # create model
 obj = create_TRMF(Am)
 obj = TRMF_columns(obj,reg_type ="nnls")
-out = train(obj)
-plot(out)
-
-
-</code></pre>
-
-<hr>
-<h2 id='TRMF_es'>Add exponential smoothing regularization model to a TRMF object.</h2><span id='topic+TRMF_es'></span>
-
-<h3>Description</h3>
-
-<p>Creates a regularization scheme that favors exponentially smoothed solutions and adds it to a TRMF object. In matrix optimization form, it adds the following term to the TRMF cost function:  <code class="reqn">R(x) = lambdaD^2||w(DX_s)||^2 + lambdaA^2||X_s||^2</code>  where <code class="reqn">X_s</code> is sub-set of the Xm matrix controlled by this model and D is a matrix with weights from exponential smoothing.</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>TRMF_es(obj,numTS = 1,alpha=1,es_type=c("single","double"),
-        lambdaD=1,lambdaA=0.0001,weight=1)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="TRMF_es_+3A_obj">obj</code></td>
-<td>
-<p>A TRMF object</p>
-</td></tr>
-<tr><td><code id="TRMF_es_+3A_numts">numTS</code></td>
-<td>
-<p>number of latent time series in this model</p>
-</td></tr>
-<tr><td><code id="TRMF_es_+3A_lambdad">lambdaD</code></td>
-<td>
-<p>regularization parameter for temporal constraint matrix</p>
-</td></tr>
-<tr><td><code id="TRMF_es_+3A_lambdaa">lambdaA</code></td>
-<td>
-<p>regularization parameter to apply simple L2 regularization to this time series model</p>
-</td></tr>
-<tr><td><code id="TRMF_es_+3A_weight">weight</code></td>
-<td>
-<p>optional vector of weights to weight constraint, i.e. R(x) = lambdaD^2*||w*(D%*%X)||^2</p>
-</td></tr>
-<tr><td><code id="TRMF_es_+3A_es_type">es_type</code></td>
-<td>
-<p>type of exponential smoothing. <code>"double"</code> does Brown's double exponential smoothing.</p>
-</td></tr>
-<tr><td><code id="TRMF_es_+3A_alpha">alpha</code></td>
-<td>
-<p>exponential smoothing parameter, constrained to be in the interval [0,1]</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>This creates a non-sparse constraint matrix which could slow training down for longer time series.
-</p>
-
-
-<h3>Value</h3>
-
-<p>Returns an updated object of class TRMF.
-</p>
-
-
-<h3>Author(s)</h3>
-
-<p>Chad Hammerquist
-</p>
-
-
-<h3>References</h3>
-
-<p>Yu, Hsiang-Fu, Nikhil Rao, and Inderjit S. Dhillon. &quot;High-dimensional time series prediction with missing values.&quot; arXiv preprint arXiv:1509.08333 (2015).
-</p>
-<p>https://en.wikipedia.org/wiki/Exponential_smoothing
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+create_TRMF">create_TRMF</a></code>, <code><a href="#topic+TRMF_columns">TRMF_columns</a></code>, <code><a href="#topic+TRMF_trend">TRMF_trend</a></code>,<code><a href="#topic+TRMF_seasonal">TRMF_seasonal</a></code></p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-# create test data
-xm = cbind(cumsum(rnorm(20)),cumsum(rnorm(20)))
-fm = matrix(runif(20),2,10)
-Am = xm%*%fm+rnorm(200,0,.2)
-
-# create model
-obj = create_TRMF(Am)
-obj = TRMF_es(obj,numTS=2,alpha=0.5)
 out = train(obj)
 plot(out)
 
@@ -1362,7 +1299,7 @@ plot(out)
 
 <h3>Description</h3>
 
-<p>Creates a regularization scheme that favors seasonally varying solutions and adds it to a TRMF object. In matrix optimization form, it adds the following term to the TRMF cost function:  <code class="reqn">R(x) = lambdaD^2||w(DX_s)||^2 + lambdaA^2||X_s||^2</code>  where <code class="reqn">X_s</code> is sub-set of the Xm matrix controlled by this model and D is a (with a lag of freq) finite difference matrix.</p>
+<p>Creates a regularization scheme that favors seasonally varying solutions and adds it to a TRMF object. In matrix optimization form, it adds the following term to the TRMF cost function:  <code class="reqn">R(x) = lambdaD^2||w(DX_s)||^2 + lambdaA^2||X_s||^2</code>  where <code class="reqn">X_s</code> is sub-set of the Xm matrix controlled by this model and D is a (with a lag of freq) finite difference matrix (or rolling sum matrix, see details).</p>
 
 
 <h3>Usage</h3>
@@ -1396,18 +1333,18 @@ plot(out)
 </td></tr>
 <tr><td><code id="TRMF_seasonal_+3A_freq">freq</code></td>
 <td>
-<p>The frequency of the seasonal time series model. Minimize the differences of lag = <code>freq</code></p>
+<p>The frequency of the seasonal time series model.</p>
 </td></tr>
 <tr><td><code id="TRMF_seasonal_+3A_sumfirst">sumFirst</code></td>
 <td>
-<p>minimize the sum of first <code>freq</code> elements in time series</p>
+<p>Minimize the rolling sum of length <code>freq</code> instead of a lagged finite difference.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p><code>TRMF_seasonal(freq=N)</code> fits a lag N random walk. For monthly data, use freq=12, for quarterly data, freq=4. If <code>sumFirst = TRUE</code>, the sum of the first <code>freq</code> elements in the latent time series are also minimized.This can be used to help force the seasonal component to vary around a zero mean.
+<p><code>TRMF_seasonal(freq=N)</code> fits a lag N random walk. For monthly data, use freq=12, for quarterly data, freq=4. If <code>sumFirst = TRUE</code>, (called this for legacy reasons), a different regularization matrix is used which minimizes a rolling sum of length <code>freq</code> in the latent time series. This can be useful to prevent drift and force the seasonal component to vary around a zero mean.
 </p>
 
 
@@ -1415,6 +1352,11 @@ plot(out)
 
 <p>Returns an updated object of class TRMF.
 </p>
+
+
+<h3>Note</h3>
+
+<p>Unlike <code>TRMF_columns()</code>, these lambdas are squared in the code.</p>
 
 
 <h3>Author(s)</h3>
@@ -1579,7 +1521,7 @@ plot(out)
 
 <h3>Details</h3>
 
-<p>An arbitrary number of time series models can be added. <code>TRMF_trend(order = 1)</code> fits a random walk. <code>TRMF_trend(order = 2)</code> fits a cubic smoothing spline. For a single time series, <code>TRMF_trend(order = 2)</code> is basically equivalent to the Hodge-Prescot filter. A fractional value for order minimizes a squared fractional derivative. A negative value minimizes a (possibly fractional order) squared integral of time-series. Using a fractional or negative order for <code>TRMF_trend</code> or using <code>TRMF_es</code> could drastically reduce the sparsity of constraint matrix and slow down training. Fractional or negative order has only been lightly tested, so use with care.
+<p>An arbitrary number of time series models can be added. <code>TRMF_trend(order = 1)</code> fits a random walk. <code>TRMF_trend(order = 2)</code> fits a cubic smoothing spline. For a single time series, <code>TRMF_trend(order = 2)</code> is basically equivalent to the Hodge-Prescot filter. A fractional value for order minimizes a squared fractional derivative. A negative value minimizes a (possibly fractional order) squared integral of time-series. Using a fractional or negative order for <code>TRMF_trend</code> could drastically reduce the sparsity of constraint matrix and slow down training. Fractional or negative order has only been lightly tested, so use with care. 
 </p>
 
 
@@ -1587,6 +1529,11 @@ plot(out)
 
 <p>Returns an updated object of class TRMF.
 </p>
+
+
+<h3>Note</h3>
+
+<p>Unlike <code>TRMF_columns()</code>, these lambdas are squared in the code.</p>
 
 
 <h3>Author(s)</h3>

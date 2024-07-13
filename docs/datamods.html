@@ -35,6 +35,7 @@ function processMathHTML() {
 <li><a href='#module-sample'><p>Shiny module to interactively sample a <code>data.frame</code></p></a></li>
 <li><a href='#select-group'><p>Select Group Input Module</p></a></li>
 <li><a href='#show_data'><p>Display a table in a window</p></a></li>
+<li><a href='#update-factor'><p>Module to Reorder the Levels of a Factor Variable</p></a></li>
 <li><a href='#update-variables'><p>Select, rename and convert variables</p></a></li>
 <li><a href='#validation_ui'><p>Validation module</p></a></li>
 </ul>
@@ -49,7 +50,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.5.0</td>
+<td>1.5.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -80,12 +81,13 @@ function processMathHTML() {
 <tr>
 <td>Imports:</td>
 <td>classInt, data.table, htmltools, phosphoricons, reactable,
-readxl, rio, rlang, shiny (&ge; 1.5.0), shinyWidgets (&ge; 0.7.3),
+readxl, rio, rlang, shiny (&ge; 1.5.0), shinyWidgets (&ge; 0.8.4),
 tibble, toastui (&ge; 0.3.3), tools, shinybusy, writexl</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>bslib, jsonlite, knitr, MASS, rmarkdown, testthat, validate</td>
+<td>bslib, ggplot2, jsonlite, knitr, MASS, rmarkdown, testthat,
+validate</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -105,7 +107,7 @@ tibble, toastui (&ge; 0.3.3), tools, shinybusy, writexl</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-04-04 17:14:19 UTC; victor</td>
+<td>2024-05-16 09:52:56 UTC; perri</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -125,15 +127,15 @@ tibble, toastui (&ge; 0.3.3), tools, shinybusy, writexl</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-04-04 18:23:05 UTC</td>
+<td>2024-05-16 10:30:02 UTC</td>
 </tr>
 </table>
 <hr>
-<h2 id='create-column'>Create new column</h2><span id='topic+create-column'></span><span id='topic+create_column_ui'></span><span id='topic+create_column_server'></span><span id='topic+list_allowed_operations'></span><span id='topic+modal_create_column'></span>
+<h2 id='create-column'>Create new column</h2><span id='topic+create-column'></span><span id='topic+create_column_ui'></span><span id='topic+create_column_server'></span><span id='topic+list_allowed_operations'></span><span id='topic+modal_create_column'></span><span id='topic+winbox_create_column'></span><span id='topic+winbox_update_factor'></span>
 
 <h3>Description</h3>
 
-<p>This module allow to enter an expression to create a new column in <code>data.frame</code>.
+<p>This module allow to enter an expression to create a new column in a <code>data.frame</code>.
 </p>
 
 
@@ -151,10 +153,24 @@ list_allowed_operations()
 
 modal_create_column(
   id,
-  title = "Create a new column",
+  title = i18n("Create a new column"),
   easyClose = TRUE,
   size = "l",
   footer = NULL
+)
+
+winbox_create_column(
+  id,
+  title = i18n("Create a new column"),
+  options = shinyWidgets::wbOptions(),
+  controls = shinyWidgets::wbControls()
+)
+
+winbox_update_factor(
+  id,
+  title = i18n("Update levels of a factor"),
+  options = shinyWidgets::wbOptions(),
+  controls = shinyWidgets::wbControls()
 )
 </code></pre>
 
@@ -198,6 +214,14 @@ like <code><a href="shiny.html#topic+fluidPage">fluidPage()</a></code>).</p>
 <td>
 <p>UI for footer. Use <code>NULL</code> for no footer.</p>
 </td></tr>
+<tr><td><code id="create-column_+3A_options">options</code></td>
+<td>
+<p>List of options, see <code><a href="shinyWidgets.html#topic+wbOptions">wbOptions()</a></code>.</p>
+</td></tr>
+<tr><td><code id="create-column_+3A_controls">controls</code></td>
+<td>
+<p>List of controls, see <code><a href="shinyWidgets.html#topic+wbControls">wbControls()</a></code>.</p>
+</td></tr>
 </table>
 
 
@@ -225,12 +249,15 @@ library(reactable)
 
 ui &lt;- fluidPage(
   theme = bslib::bs_theme(version = 5L, preset = "bootstrap"),
+  shinyWidgets::html_dependency_winbox(),
   tags$h2("Create new column"),
   fluidRow(
     column(
       width = 4,
       create_column_ui("inline"),
-      actionButton("modal", "Or click here to open a modal to create a column")
+      actionButton("modal", "Or click here to open a modal to create a column"),
+      tags$br(), tags$br(),
+      actionButton("winbox", "Or click here to open a WinBox to create a column")
     ),
     column(
       width = 8,
@@ -259,6 +286,14 @@ server &lt;- function(input, output, session) {
   )
   observeEvent(data_modal_r(), rv$data &lt;- data_modal_r())
 
+  # WinBox window mode
+  observeEvent(input$winbox, winbox_create_column("winbox"))
+  data_winbox_r &lt;- create_column_server(
+    id = "winbox",
+    data_r = reactive(rv$data)
+  )
+  observeEvent(data_winbox_r(), rv$data &lt;- data_winbox_r())
+
   # Show result
   output$table &lt;- renderReactable({
     data &lt;- req(rv$data)
@@ -280,11 +315,11 @@ if (interactive())
 </code></pre>
 
 <hr>
-<h2 id='cut-variable'>Module to Convert Numeric to Factor</h2><span id='topic+cut-variable'></span><span id='topic+cut_variable_ui'></span><span id='topic+cut_variable_server'></span><span id='topic+modal_cut_variable'></span>
+<h2 id='cut-variable'>Module to Convert Numeric to Factor</h2><span id='topic+cut-variable'></span><span id='topic+cut_variable_ui'></span><span id='topic+cut_variable_server'></span><span id='topic+modal_cut_variable'></span><span id='topic+winbox_cut_variable'></span>
 
 <h3>Description</h3>
 
-<p>This module contain an interface to cut a numeric factor into several intervals.
+<p>This module contain an interface to cut a numeric into several intervals.
 </p>
 
 
@@ -296,10 +331,17 @@ cut_variable_server(id, data_r = reactive(NULL))
 
 modal_cut_variable(
   id,
-  title = "Convert Numeric to Factor",
+  title = i18n("Convert Numeric to Factor"),
   easyClose = TRUE,
   size = "l",
   footer = NULL
+)
+
+winbox_cut_variable(
+  id,
+  title = i18n("Convert Numeric to Factor"),
+  options = shinyWidgets::wbOptions(),
+  controls = shinyWidgets::wbControls()
 )
 </code></pre>
 
@@ -339,6 +381,14 @@ like <code><a href="shiny.html#topic+fluidPage">fluidPage()</a></code>).</p>
 <td>
 <p>UI for footer. Use <code>NULL</code> for no footer.</p>
 </td></tr>
+<tr><td><code id="cut-variable_+3A_options">options</code></td>
+<td>
+<p>List of options, see <code><a href="shinyWidgets.html#topic+wbOptions">wbOptions()</a></code>.</p>
+</td></tr>
+<tr><td><code id="cut-variable_+3A_controls">controls</code></td>
+<td>
+<p>List of controls, see <code><a href="shinyWidgets.html#topic+wbControls">wbControls()</a></code>.</p>
+</td></tr>
 </table>
 
 
@@ -357,12 +407,15 @@ library(reactable)
 
 ui &lt;- fluidPage(
   theme = bslib::bs_theme(version = 5L, preset = "bootstrap"),
+  shinyWidgets::html_dependency_winbox(),
   tags$h2("Convert Numeric to Factor"),
   fluidRow(
     column(
       width = 6,
       cut_variable_ui("inline"),
-      actionButton("modal", "Or click here to open a modal to cut a variable")
+      actionButton("modal", "Or click here to open a modal to cut a variable"),
+      tags$br(), tags$br(),
+      actionButton("winbox", "Or click here to open a WinBox to cut a variable")
     ),
     column(
       width = 6,
@@ -390,6 +443,14 @@ server &lt;- function(input, output, session) {
     data_r = reactive(rv$data)
   )
   observeEvent(data_modal_r(), rv$data &lt;- data_modal_r())
+
+  # WinBox window mode
+  observeEvent(input$winbox, winbox_cut_variable("winbox"))
+  data_winbox_r &lt;- cut_variable_server(
+    id = "winbox",
+    data_r = reactive(rv$data)
+  )
+  observeEvent(data_winbox_r(), rv$data &lt;- data_winbox_r())
 
   # Show result
   output$table &lt;- renderReactable({
@@ -614,7 +675,7 @@ ui &lt;- fluidPage(
   theme = bs_theme(
     version = 5
   ),
-  tags$h2(i18n("Edit data"), align = "center"),
+  tags$h2("Edit data", align = "center"),
   edit_data_ui(id = "id"),
   verbatimTextOutput("result")
 )
@@ -1377,6 +1438,8 @@ ui &lt;- fluidPage(
       verbatimTextOutput(outputId = "status"),
       tags$b("Name:"),
       verbatimTextOutput(outputId = "name"),
+      tags$b("Code:"),
+      verbatimTextOutput(outputId = "code"),
       tags$b("Data:"),
       verbatimTextOutput(outputId = "data")
     )
@@ -1404,6 +1467,9 @@ server &lt;- function(input, output, session) {
   })
   output$name &lt;- renderPrint({
     imported$name()
+  })
+  output$code &lt;- renderPrint({
+    imported$code()
   })
   output$data &lt;- renderPrint({
     imported$data()
@@ -1734,7 +1800,7 @@ import_server(
 import_modal(
   id,
   from,
-  title = "Import data",
+  title = i18n("Import data"),
   size = "l",
   file_extensions = c(".csv", ".txt", ".xls", ".xlsx", ".rds", ".fst", ".sas7bdat",
     ".sav")
@@ -1850,7 +1916,7 @@ library(datamods)
 
 ui &lt;- fluidPage(
   # Try with different Bootstrap version
-  # theme = bslib::bs_theme(version = 5, preset = "bootstrap"),
+  theme = bslib::bs_theme(version = 5, preset = "bootstrap"),
   fluidRow(
     column(
       width = 4,
@@ -2125,29 +2191,26 @@ sample_server(id, data_r = reactive(NULL))
 <h3>Examples</h3>
 
 <pre><code class='language-R'>library(shiny)
+library(datamods)
 library(reactable)
 
-##### ui.R #####
 
 ui &lt;- fluidPage(
 
-  titlePanel("Sampling"),
+  tags$h2("Sampling"),
 
   fluidRow(
     column(
-      width = 4,
+      width = 3,
       sample_ui("myID")
     ),
     column(
-      width = 8,
+      width = 9,
       reactableOutput("table")
     )
   )
 )
 
-
-
-##### server.R #####
 
 server &lt;- function(input, output, session) {
 
@@ -2327,8 +2390,9 @@ if (interactive())
   title = NULL,
   options = NULL,
   show_classes = TRUE,
-  type = c("popup", "modal"),
-  width = "65%"
+  type = c("popup", "modal", "winbox"),
+  width = "65%",
+  ...
 )
 </code></pre>
 
@@ -2346,7 +2410,7 @@ if (interactive())
 </td></tr>
 <tr><td><code id="show_data_+3A_options">options</code></td>
 <td>
-<p>Arguments passed to <code><a href="reactable.html#topic+reactable">reactable::reactable()</a></code>.</p>
+<p>Arguments passed to <code><a href="toastui.html#topic+datagrid">toastui::datagrid()</a></code>.</p>
 </td></tr>
 <tr><td><code id="show_data_+3A_show_classes">show_classes</code></td>
 <td>
@@ -2354,11 +2418,16 @@ if (interactive())
 </td></tr>
 <tr><td><code id="show_data_+3A_type">type</code></td>
 <td>
-<p>Display table in a pop-up or in modal window.</p>
+<p>Display table in a pop-up with <code><a href="shinyWidgets.html#topic+sweetalert">shinyWidgets::show_alert()</a></code>,
+in modal window with <code><a href="shiny.html#topic+showModal">shiny::showModal()</a></code> or in a WinBox window with <code><a href="shinyWidgets.html#topic+WinBox">shinyWidgets::WinBox()</a></code>.</p>
 </td></tr>
 <tr><td><code id="show_data_+3A_width">width</code></td>
 <td>
-<p>Width of the window, only used if <code>type = "popup"</code>.</p>
+<p>Width of the window, only used if <code>type = "popup"</code> or <code>type = "winbox"</code>.</p>
+</td></tr>
+<tr><td><code id="show_data_+3A_...">...</code></td>
+<td>
+<p>Additional options, such as <code>wbOptions = wbOptions()</code> or <code>wbControls = wbControls()</code>.</p>
 </td></tr>
 </table>
 
@@ -2366,6 +2435,12 @@ if (interactive())
 <h3>Value</h3>
 
 <p>No value.
+</p>
+
+
+<h3>Note</h3>
+
+<p>If you use <code>type = "winbox"</code>, you'll need to use <code>shinyWidgets::html_dependency_winbox()</code> somewhere in your UI.
 </p>
 
 
@@ -2377,6 +2452,7 @@ library(datamods)
 
 ui &lt;- fluidPage(
   theme = bslib::bs_theme(version = 5L),
+  shinyWidgets::html_dependency_winbox(),
   actionButton(
     inputId = "show1",
     label = "Show data in popup",
@@ -2391,12 +2467,17 @@ ui &lt;- fluidPage(
     inputId = "show3",
     label = "Show data without classes",
     icon = icon("eye")
+  ),
+  actionButton(
+    inputId = "show4",
+    label = "Show data in Winbox",
+    icon = icon("eye")
   )
 )
 
 server &lt;- function(input, output, session) {
   observeEvent(input$show1, {
-    show_data(MASS::Cars93, title = "MASS::Cars93 dataset")
+    show_data(MASS::Cars93, title = "MASS::Cars93 dataset", type = "popup")
   })
   observeEvent(input$show2, {
     show_data(MASS::Cars93, title = "MASS::Cars93 dataset", type = "modal")
@@ -2409,6 +2490,166 @@ server &lt;- function(input, output, session) {
       options = list(pagination = 10),
       type = "modal"
     )
+  })
+  observeEvent(input$show4, {
+    show_data(
+      MASS::Cars93,
+      title = "MASS::Cars93 dataset",
+      type = "winbox",
+      wbOptions = shinyWidgets::wbOptions(background = "forestgreen")
+    )
+  })
+}
+
+if (interactive())
+  shinyApp(ui, server)
+</code></pre>
+
+<hr>
+<h2 id='update-factor'>Module to Reorder the Levels of a Factor Variable</h2><span id='topic+update-factor'></span><span id='topic+update_factor_ui'></span><span id='topic+update_factor_server'></span><span id='topic+modal_update_factor'></span>
+
+<h3>Description</h3>
+
+<p>This module contain an interface to reorder the levels of a factor variable.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>update_factor_ui(id)
+
+update_factor_server(id, data_r = reactive(NULL))
+
+modal_update_factor(
+  id,
+  title = i18n("Update levels of a factor"),
+  easyClose = TRUE,
+  size = "l",
+  footer = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="update-factor_+3A_id">id</code></td>
+<td>
+<p>Module ID.</p>
+</td></tr>
+<tr><td><code id="update-factor_+3A_data_r">data_r</code></td>
+<td>
+<p>A <code><a href="shiny.html#topic+reactive">shiny::reactive()</a></code> function returning a <code>data.frame</code>.</p>
+</td></tr>
+<tr><td><code id="update-factor_+3A_title">title</code></td>
+<td>
+<p>An optional title for the dialog.</p>
+</td></tr>
+<tr><td><code id="update-factor_+3A_easyclose">easyClose</code></td>
+<td>
+<p>If <code>TRUE</code>, the modal dialog can be dismissed by
+clicking outside the dialog box, or be pressing the Escape key. If
+<code>FALSE</code> (the default), the modal dialog can't be dismissed in those
+ways; instead it must be dismissed by clicking on a <code>modalButton()</code>, or
+from a call to <code><a href="shiny.html#topic+removeModal">removeModal()</a></code> on the server.</p>
+</td></tr>
+<tr><td><code id="update-factor_+3A_size">size</code></td>
+<td>
+<p>One of <code>"s"</code> for small, <code>"m"</code> (the default) for medium,
+<code>"l"</code> for large, or <code>"xl"</code> for extra large. Note that <code>"xl"</code> only
+works with Bootstrap 4 and above (to opt-in to Bootstrap 4+,
+pass <code><a href="bslib.html#topic+bs_theme">bslib::bs_theme()</a></code> to the <code>theme</code> argument of a page container
+like <code><a href="shiny.html#topic+fluidPage">fluidPage()</a></code>).</p>
+</td></tr>
+<tr><td><code id="update-factor_+3A_footer">footer</code></td>
+<td>
+<p>UI for footer. Use <code>NULL</code> for no footer.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A <code><a href="shiny.html#topic+reactive">shiny::reactive()</a></code> function returning the data.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+library(shiny)
+library(datamods)
+library(ggplot2)
+
+ui &lt;- fluidPage(
+  theme = bslib::bs_theme(version = 5L, preset = "bootstrap"),
+  shinyWidgets::html_dependency_winbox(),
+  tags$h2("Reorder the Levels of a Factor"),
+  fluidRow(
+    column(
+      width = 6,
+      update_factor_ui("id"),
+      actionButton("modal", "Or click here to open a modal to update factor's level"),
+      tags$br(), tags$br(),
+      actionButton("winbox", "Or click here to open a WinBox to create a column")
+    ),
+    column(
+      width = 6,
+      selectInput(
+        "var",
+        label = "Variable to plot:",
+        choices = NULL
+      ),
+      plotOutput("plot"),
+      verbatimTextOutput("res")
+    )
+  )
+)
+
+server &lt;- function(input, output, session) {
+
+  rv &lt;- reactiveValues(data = MASS::Cars93[c(1, 2, 3, 9, 10, 11, 16, 26, 27)])
+  observe(
+    updateSelectInput(inputId = "var", choices = names(rv$data))
+  )
+
+  # Inline mode
+  data_inline_r &lt;- update_factor_server(
+    id = "id",
+    data_r = reactive(rv$data)
+  )
+  observeEvent(data_inline_r(), rv$data &lt;- data_inline_r())
+
+  # modal window mode
+  observeEvent(input$modal, modal_update_factor("modal"))
+  data_modal_r &lt;- update_factor_server(
+    id = "modal",
+    data_r = reactive(rv$data)
+  )
+  observeEvent(data_modal_r(), {
+    shiny::removeModal()
+    rv$data &lt;- data_modal_r()
+  })
+
+  # winbox mode
+  observeEvent(input$winbox, winbox_update_factor("winbox"))
+  data_winbox_r &lt;- update_factor_server(
+    id = "winbox",
+    data_r = reactive(rv$data)
+  )
+  observeEvent(data_winbox_r(), rv$data &lt;- data_winbox_r())
+
+  # Plot results
+  output$plot &lt;- renderPlot({
+    req(input$var, rv$data)
+    ggplot(rv$data) +
+      aes(x = !!sym(input$var)) +
+      geom_bar()
+  })
+  # Show results
+  output$res &lt;- renderPrint({
+    data &lt;- req(rv$data)
+    str(data)
   })
 }
 
@@ -2544,9 +2785,9 @@ validation_server(
   data,
   n_row = NULL,
   n_col = NULL,
-  n_row_label = "Valid number of rows",
-  n_col_label = "Valid number of columns",
-  btn_label = "Dataset validation:",
+  n_row_label = i18n("Valid number of rows"),
+  n_col_label = i18n("Valid number of columns"),
+  btn_label = i18n("Dataset validation:"),
   rules = NULL,
   bs_version = 3
 )

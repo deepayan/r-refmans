@@ -19,10 +19,10 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#cv'><p>Cross-Validate Regression Models</p></a></li>
-<li><a href='#cvMixed'><p>Cross-Validate Mixed-Effects Model</p></a></li>
-<li><a href='#cvSelect'><p>Cross-Validate a Model-Selection Procedure</p></a></li>
-<li><a href='#GetResponse'><p>Extract Response Variable</p></a></li>
-<li><a href='#models'><p>Cross-Validate Several Models Fit to the Same Data</p></a></li>
+<li><a href='#cv.function'><p>Cross-Validate a Model-Selection Procedure</p></a></li>
+<li><a href='#cv.merMod'><p>Cross-Validate Mixed-Effects Model</p></a></li>
+<li><a href='#cv.modList'><p>Cross-Validate Several Models Fit to the Same Data</p></a></li>
+<li><a href='#cvCompute'><p>Utility Functions for the cv Package</p></a></li>
 <li><a href='#mse'><p>Cost Functions for Fitted Regression Models</p></a></li>
 <li><a href='#Pigs'><p>Body Weights of 48 Pigs in 9 Successive Weeks</p></a></li>
 </ul>
@@ -37,15 +37,15 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Title:</td>
-<td>Cross-Validation of Regression Models</td>
+<td>Cross-Validating Regression Models</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.1.0</td>
+<td>2.0.0</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-01-10</td>
+<td>2024-04-14</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -64,13 +64,14 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>car, foreach, insight, lme4, MASS, methods, nlme</td>
+<td>car, foreach, glmmTMB, gtools, insight, lme4, MASS, methods,
+nlme</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>boot, carData, dplyr, effects, glmmTMB, ISLR2, knitr,
-lattice, latticeExtra, leaps, Metrics, microbenchmark, nnet,
-rmarkdown, spelling, testthat</td>
+<td>boot, carData, dplyr, effects, ISLR2, knitr, lattice,
+latticeExtra, leaps, Metrics, microbenchmark, nnet, rmarkdown,
+spelling, testthat</td>
 </tr>
 <tr>
 <td>LazyData:</td>
@@ -111,7 +112,7 @@ rmarkdown, spelling, testthat</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-01-23 18:28:46 UTC; johnfox</td>
+<td>2024-04-17 14:04:42 UTC; johnfox</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -128,58 +129,61 @@ rmarkdown, spelling, testthat</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-01-27 18:30:02 UTC</td>
+<td>2024-04-29 18:00:02 UTC</td>
 </tr>
 </table>
 <hr>
-<h2 id='cv'>Cross-Validate Regression Models</h2><span id='topic+cv'></span><span id='topic+cv.default'></span><span id='topic+print.cv'></span><span id='topic+print.cvList'></span><span id='topic+cv.lm'></span><span id='topic+cv.glm'></span><span id='topic+cv.rlm'></span>
+<h2 id='cv'>Cross-Validate Regression Models</h2><span id='topic+cv'></span><span id='topic+cv.default'></span><span id='topic+cv.lm'></span><span id='topic+cv.glm'></span><span id='topic+cv.rlm'></span><span id='topic+print.cv'></span><span id='topic+print.cvList'></span><span id='topic+as.data.frame.cv'></span><span id='topic+as.data.frame.cvList'></span><span id='topic+print.cvDataFrame'></span><span id='topic+summary.cvDataFrame'></span>
 
 <h3>Description</h3>
 
-<p>A parallelized generic k-fold (including n-fold, i.e., leave-one-out)
-cross-validation function, with a default method, and
+<p><code>cv()</code> is a parallelized generic k-fold (including n-fold, i.e., leave-one-out)
+cross-validation function, with a default method,
 specific methods for linear and generalized-linear models that can be much
-more computationally efficient.
+more computationally efficient, and a method for robust linear models.
+There are also <code>cv()</code> methods for <a href="#topic+cv.merMod">mixed-effects models</a>,
+for <a href="#topic+cv.function">model-selection procedures</a>,
+and for <a href="#topic+cv.modList">several models fit to the same data</a>,
+which are documented separately.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>cv(model, data, criterion, k, reps = 1, seed, ...)
+<pre><code class='language-R'>cv(model, data, criterion, k, reps = 1L, seed, ...)
 
 ## Default S3 method:
 cv(
   model,
   data = insight::get_data(model),
   criterion = mse,
-  k = 10,
-  reps = 1,
-  seed,
-  confint = n &gt;= 400,
+  k = 10L,
+  reps = 1L,
+  seed = NULL,
+  criterion.name = deparse(substitute(criterion)),
+  details = k &lt;= 10L,
+  confint = n &gt;= 400L,
   level = 0.95,
-  ncores = 1,
+  ncores = 1L,
   type = "response",
+  start = FALSE,
+  model.function,
   ...
 )
-
-## S3 method for class 'cv'
-print(x, digits = getOption("digits"), ...)
-
-## S3 method for class 'cvList'
-print(x, ...)
 
 ## S3 method for class 'lm'
 cv(
   model,
   data = insight::get_data(model),
   criterion = mse,
-  k = 10,
-  reps = 1,
-  seed,
-  confint = n &gt;= 400,
+  k = 10L,
+  reps = 1L,
+  seed = NULL,
+  details = k &lt;= 10L,
+  confint = n &gt;= 400L,
   level = 0.95,
   method = c("auto", "hatvalues", "Woodbury", "naive"),
-  ncores = 1,
+  ncores = 1L,
   ...
 )
 
@@ -188,18 +192,52 @@ cv(
   model,
   data = insight::get_data(model),
   criterion = mse,
-  k = 10,
-  reps = 1,
-  seed,
-  confint = n &gt;= 400,
+  k = 10L,
+  reps = 1L,
+  seed = NULL,
+  details = k &lt;= 10L,
+  confint = n &gt;= 400L,
   level = 0.95,
   method = c("exact", "hatvalues", "Woodbury"),
-  ncores = 1,
+  ncores = 1L,
+  start = FALSE,
   ...
 )
 
 ## S3 method for class 'rlm'
-cv(model, data, criterion, k, reps = 1, seed, ...)
+cv(model, data, criterion, k, reps = 1L, seed, ...)
+
+## S3 method for class 'cv'
+print(x, digits = getOption("digits"), ...)
+
+## S3 method for class 'cvList'
+print(x, ...)
+
+## S3 method for class 'cv'
+as.data.frame(
+  x,
+  row.names = NULL,
+  optional = TRUE,
+  rows = c("cv", "folds"),
+  columns = c("criteria", "coefficients"),
+  ...
+)
+
+## S3 method for class 'cvList'
+as.data.frame(x, row.names = NULL, optional = TRUE, ...)
+
+## S3 method for class 'cvDataFrame'
+print(x, digits = getOption("digits") - 2L, ...)
+
+## S3 method for class 'cvDataFrame'
+summary(
+  object,
+  formula,
+  subset = NULL,
+  fun = mean,
+  include = c("cv", "folds", "all"),
+  ...
+)
 </code></pre>
 
 
@@ -229,17 +267,31 @@ cross-validation.</p>
 </td></tr>
 <tr><td><code id="cv_+3A_reps">reps</code></td>
 <td>
-<p>number of times to replicate k-fold CV (default is <code>1</code>)</p>
+<p>number of times to replicate k-fold CV (default is <code>1</code>).</p>
 </td></tr>
 <tr><td><code id="cv_+3A_seed">seed</code></td>
 <td>
 <p>for R's random number generator; optional, if not
 supplied a random seed will be selected and saved; not needed
-for n-fold cross-validation</p>
+for n-fold cross-validation.</p>
 </td></tr>
 <tr><td><code id="cv_+3A_...">...</code></td>
 <td>
-<p>to match generic; passed to <code>predict()</code> for the default method.</p>
+<p>to match generic; passed to <code>predict()</code> for the default <code>cv()</code> method;
+passed to the <code><a href="car.html#topic+Tapply">Tapply</a>()</code> function in the <span class="pkg">car</span> package for
+<code>summary.cvDataFrame()</code>.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_criterion.name">criterion.name</code></td>
+<td>
+<p>a character string giving the name of the CV criterion function
+in the returned <code>"cv"</code> object (not usually needed).</p>
+</td></tr>
+<tr><td><code id="cv_+3A_details">details</code></td>
+<td>
+<p>if <code>TRUE</code> (the default if the number of
+folds <code>k &lt;= 10</code>), save detailed information about the value of the
+CV criterion for the cases in each fold and the regression coefficients
+with that fold deleted.</p>
 </td></tr>
 <tr><td><code id="cv_+3A_confint">confint</code></td>
 <td>
@@ -254,7 +306,7 @@ criterion, if the criterion is the average of casewise components.</p>
 <tr><td><code id="cv_+3A_ncores">ncores</code></td>
 <td>
 <p>number of cores to use for parallel computations
-(default is <code>1</code>, i.e., computations aren't done in parallel)</p>
+(default is <code>1</code>, i.e., computations aren't done in parallel).</p>
 </td></tr>
 <tr><td><code id="cv_+3A_type">type</code></td>
 <td>
@@ -263,20 +315,90 @@ criterion, if the criterion is the average of casewise components.</p>
 the default is <code>type="response"</code>, which is appropriate, e.g., for a <code>"glm"</code> model
 and may be recognized or ignored by <code>predict()</code> methods for other model classes.</p>
 </td></tr>
+<tr><td><code id="cv_+3A_start">start</code></td>
+<td>
+<p>if <code>TRUE</code> (the default is <code>FALSE</code>), the <code>start</code> argument
+to <code>update()</code> is set to the vector of regression coefficients for the model fit
+to the full data, possibly making the CV updates faster, e.g., for a GLM.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_model.function">model.function</code></td>
+<td>
+<p>a regression function, typically for a new <code>cv()</code> method that
+that calls <code>cv.default()</code> via <code>NextMethod()</code>,
+residing in a package that's not a declared dependency of the <span class="pkg">cv</span> package,
+e.g., <code>nnet::multinom</code>. It's usually not necessary to specify
+<code>model.function</code> to make <code>cv.default()</code> work.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_method">method</code></td>
+<td>
+<p>computational method to apply to a linear (i.e., <code>"lm"</code>) model
+or to a generalized linear (i.e., <code>"glm"</code>) model. See Details for an explanation
+of the available options.</p>
+</td></tr>
 <tr><td><code id="cv_+3A_x">x</code></td>
 <td>
-<p>a <code>"cv"</code> or <code>"cvList"</code> object to be printed</p>
+<p>a <code>"cv"</code>, <code>"cvList"</code>, or <code>"cvDataFrame"</code>
+object to be printed or coerced to a data frame.</p>
 </td></tr>
 <tr><td><code id="cv_+3A_digits">digits</code></td>
 <td>
 <p>significant digits for printing,
-default taken from the <code>"digits"</code> option</p>
+default taken from the <code>"digits"</code> option.</p>
 </td></tr>
-<tr><td><code id="cv_+3A_method">method</code></td>
+<tr><td><code id="cv_+3A_row.names">row.names</code></td>
 <td>
-<p>computational method to apply to a linear (i.e. <code>"lm"</code>) model
-or to a generalized linear (i.e., <code>"glm"</code>) model. See Details for an explanation
-of the available options.</p>
+<p>optional row names for the result,
+defaults to <code>NULL</code>.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_optional">optional</code></td>
+<td>
+<p>to match the <code><a href="base.html#topic+as.data.frame">as.data.frame</a>()</code> generic function;
+if <code>FALSE</code> (the default is <code>TRUE</code>), then the names of the columns
+of the returned data frame, including the names of coefficients,
+are coerced to syntactically correct names.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_rows">rows</code></td>
+<td>
+<p>the rows of the resulting data frame to retain: setting
+<code>rows="cv"</code> retains rows pertaining to the overall CV result
+(marked as &quot;<code>fold 0</code>&quot; ); setting <code>rows="folds"</code> retains
+rows pertaining to individual folds 1 through k; the default is
+<code>rows = c("cv", "folds")</code>, which retains all rows.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_columns">columns</code></td>
+<td>
+<p>the columns of the resulting data frame to retain:
+setting <code>columns="critera"</code> retains columns pertaining to CV
+criteria; setting <code>columns="coefficients"</code> retains columns pertaining
+to model coefficients (broadly construed); the default is
+<code>columns = c("criteria", "coefficients")</code>, which retains both;
+and the columns <code>"model"</code>, <code>"rep"</code>, and <code>"fold"</code>, if present,
+are always retained.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_object">object</code></td>
+<td>
+<p>an object inheriting from <code>"cvDataFrame"</code> to summarize.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_formula">formula</code></td>
+<td>
+<p>of the form <code>some.criterion ~ classifying.variable(s)</code>
+(see examples).</p>
+</td></tr>
+<tr><td><code id="cv_+3A_subset">subset</code></td>
+<td>
+<p>a subsetting expression; the default (<code>NULL</code>)
+is not to subset the <code>"cvDataFrame"</code> object.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_fun">fun</code></td>
+<td>
+<p>summary function to apply, defaulting to <code>mean</code>.</p>
+</td></tr>
+<tr><td><code id="cv_+3A_include">include</code></td>
+<td>
+<p>which rows of the <code>"cvDataFrame"</code> to include in the
+summary. One of <code>"cv"</code> (the default), rows representing the overall CV
+results; <code>"folds"</code>, rows for individual folds; <code>"all"</code>, all rows
+(generally not sensible).</p>
 </td></tr>
 </table>
 
@@ -286,7 +408,7 @@ of the available options.</p>
 <p>The default <code>cv()</code> method uses <code><a href="stats.html#topic+update">update</a>()</code> to refit the model
 to each fold, and should work if there are appropriate <code>update()</code>
 and <code><a href="stats.html#topic+predict">predict</a>()</code> methods, and if the default method for <code><a href="#topic+GetResponse">GetResponse</a>()</code>
-works or if a <code>GetResponse()</code> method is supplied.
+works or if a <code><a href="#topic+GetResponse">GetResponse</a>()</code> method is supplied.
 </p>
 <p>The <code>"lm"</code> and <code>"glm"</code> methods can use much faster computational
 algorithms, as selected by the <code>method</code> argument. The linear-model
@@ -308,14 +430,16 @@ which is equivalent to <code>method="hatvalues"</code> for n-fold cross-validati
 and <code>method="Woodbury"</code> otherwise; <code>method="naive"</code> refits
 the model via <code>update()</code> and is generally much slower. The
 default for generalized linear models is <code>method="exact"</code>,
-which employs <code>update()</code>.
+which employs <code>update()</code>. This default is conservative, and
+it is usually safe to use <code>method="hatvalues"</code> for n-fold CV
+or <code>method="Woodbury"</code> for k-fold CV.
 </p>
 <p>There is also a method for robust linear models fit by
 <code><a href="MASS.html#topic+rlm">rlm</a>()</code> in the <span class="pkg">MASS</span> package (to avoid
 inheriting the <code>"lm"</code> method for which the default <code>"auto"</code>
 computational method would be inappropriate).
 </p>
-<p>For additional details, see the &quot;Cross-validation of regression models&quot;
+<p>For additional details, see the &quot;Cross-validating regression models&quot;
 vignette (<code>vignette("cv", package="cv")</code>).
 </p>
 <p><code>cv()</code> is designed to be extensible to other classes of regression
@@ -331,7 +455,11 @@ models; see the &quot;Extending the cv package&quot; vignette
 the criterion for the model applied to the full data (<code>"full crit"</code>),
 the confidence interval and level for the bias-adjusted CV criterion (<code>"confint"</code>),
 the number of folds (<code>"k"</code>), and the seed for R's random-number
-generator (<code>"seed"</code>). Some methods may return a
+generator (<code>"seed"</code>). If <code>details=TRUE</code>, then the returned object
+will also include a <code>"details"</code> component, which is a list of two
+elements: <code>"criterion"</code>, containing the CV criterion computed for the
+cases in each fold; and <code>"coefficients"</code>, regression coefficients computed
+for the model with each fold deleted.  Some methods may return a
 subset of these components and may add additional information.
 If <code>reps</code> &gt; <code>1</code>, then an object of class <code>"cvList"</code> is returned,
 which is literally a list of <code>"cv"</code> objects.
@@ -342,16 +470,16 @@ which is literally a list of <code>"cv"</code> objects.
 
 
 <ul>
-<li> <p><code>cv(default)</code>: <code>default</code> method
+<li> <p><code>cv(default)</code>: <code>"default"</code> method.
 </p>
 </li>
-<li> <p><code>cv(lm)</code>: <code>"lm"</code> method
+<li> <p><code>cv(lm)</code>: <code>"lm"</code> method.
 </p>
 </li>
-<li> <p><code>cv(glm)</code>: <code>"glm"</code> method
+<li> <p><code>cv(glm)</code>: <code>"glm"</code> method.
 </p>
 </li>
-<li> <p><code>cv(rlm)</code>: <code>"rlm"</code> method (to avoid inheriting the <code>"lm"</code> method)
+<li> <p><code>cv(rlm)</code>: <code>"rlm"</code> method (to avoid inheriting the <code>"lm"</code> method).
 </p>
 </li></ul>
 
@@ -360,7 +488,10 @@ which is literally a list of <code>"cv"</code> objects.
 
 
 <ul>
-<li> <p><code>print(cv)</code>: <code>print()</code> method
+<li> <p><code>print(cv)</code>: <code>print()</code> method for <code>"cv"</code> objects.
+</p>
+</li>
+<li> <p><code>as.data.frame(cv)</code>: <code>as.data.frame()</code> method for <code>"cv"</code> objects.
 </p>
 </li></ul>
 
@@ -369,14 +500,24 @@ which is literally a list of <code>"cv"</code> objects.
 
 
 <ul>
-<li> <p><code>print(cvList)</code>: <code>print()</code> method
+<li> <p><code>print(cvList)</code>: <code>print()</code> method for <code>"cvList"</code> objects.
+</p>
+</li>
+<li> <p><code>as.data.frame(cvList)</code>: <code>as.data.frame()</code> method for <code>"cvList"</code> objects.
+</p>
+</li>
+<li> <p><code>print(cvDataFrame)</code>: <code>print()</code> method for <code>"cvDataFrame"</code> objects.
+</p>
+</li>
+<li> <p><code>summary(cvDataFrame)</code>: <code>summary()</code> method for <code>"cvDataFrame"</code> objects.
 </p>
 </li></ul>
 
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+cvMixed">cvMixed</a></code>, <code><a href="#topic+cvSelect">cvSelect</a></code>.
+<p><code><a href="#topic+cv.merMod">cv.merMod</a></code>, <code><a href="#topic+cv.function">cv.function</a></code>,
+<code><a href="#topic+cv.modList">cv.modList</a></code>.
 </p>
 
 
@@ -385,8 +526,16 @@ which is literally a list of <code>"cv"</code> objects.
 <pre><code class='language-R'>data("Auto", package="ISLR2")
 m.auto &lt;- lm(mpg ~ horsepower, data=Auto)
 cv(m.auto,  k="loo")
-cv(m.auto, seed=1234)
-cv(m.auto, seed=1234, reps=3)
+(cv.auto &lt;- cv(m.auto, seed=1234))
+compareFolds(cv.auto)
+(cv.auto.reps &lt;- cv(m.auto, seed=1234, reps=3))
+D.auto.reps &lt;- as.data.frame(cv.auto.reps)
+head(D.auto.reps)
+summary(D.auto.reps, mse ~ rep + fold, include="folds")
+summary(D.auto.reps, mse ~ rep + fold, include = "folds",
+        subset = fold &lt;= 5) # first 5 folds
+summary(D.auto.reps, mse ~ rep, include="folds")
+summary(D.auto.reps, mse ~ rep, fun=sd, include="folds")
 
 data("Mroz", package="carData")
 m.mroz &lt;- glm(lfp ~ ., data=Mroz, family=binomial)
@@ -398,269 +547,46 @@ m.rlm &lt;- MASS::rlm(prestige ~ income + education,
                    data=Duncan)
 cv(m.lm, k="loo", method="Woodbury")
 cv(m.rlm, k="loo")
+
 </code></pre>
 
 <hr>
-<h2 id='cvMixed'>Cross-Validate Mixed-Effects Model</h2><span id='topic+cvMixed'></span><span id='topic+cv.merMod'></span><span id='topic+cv.lme'></span><span id='topic+cv.glmmTMB'></span>
+<h2 id='cv.function'>Cross-Validate a Model-Selection Procedure</h2><span id='topic+cv.function'></span><span id='topic+selectStepAIC'></span><span id='topic+selectTrans'></span><span id='topic+selectTransStepAIC'></span><span id='topic+selectModelList'></span><span id='topic+compareFolds'></span><span id='topic+coef.cvSelect'></span>
 
 <h3>Description</h3>
 
-<p><code><a href="#topic+cv">cv</a>()</code> methods for models of class <code>"merMod"</code>, fit
-by the <code><a href="lme4.html#topic+lmer">lmer</a>()</code> and <code><a href="lme4.html#topic+glmer">glmer</a>()</code> functions
-in the <span class="pkg">lme4</span> package; for models of class <code>"lme"</code>
-fit by the <code><a href="nlme.html#topic+lme">lme</a>()</code> function in the <span class="pkg">nlme</span>
-package; and for models of class <code>"glmmTMB"</code> fit by the
-<code><a href="glmmTMB.html#topic+glmmTMB">glmmTMB</a>()</code> function in the <span class="pkg">glmmTMB</span> package.
-The <code>cvMixed()</code> function is meant to be called by
-<code>cv()</code> methods for mixed-effect models and not directly by the user.
-It can be used to extend <code>cv()</code> to other classes of mixed-effects models.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>cvMixed(
-  model,
-  package,
-  data = insight::get_data(model),
-  criterion = mse,
-  k,
-  reps = 1,
-  confint,
-  level = 0.95,
-  seed,
-  ncores = 1,
-  clusterVariables,
-  predict.clusters.args = list(object = model, newdata = data),
-  predict.cases.args = list(object = model, newdata = data),
-  ...
-)
-
-## S3 method for class 'merMod'
-cv(
-  model,
-  data = insight::get_data(model),
-  criterion = mse,
-  k,
-  reps = 1,
-  seed,
-  ncores = 1,
-  clusterVariables,
-  ...
-)
-
-## S3 method for class 'lme'
-cv(
-  model,
-  data = insight::get_data(model),
-  criterion = mse,
-  k,
-  reps = 1,
-  seed,
-  ncores = 1,
-  clusterVariables,
-  ...
-)
-
-## S3 method for class 'glmmTMB'
-cv(
-  model,
-  data = insight::get_data(model),
-  criterion = mse,
-  k,
-  reps = 1,
-  seed,
-  ncores = 1,
-  clusterVariables,
-  ...
-)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="cvMixed_+3A_model">model</code></td>
-<td>
-<p>a mixed-effects model object for which a <code>cv()</code> method is available.</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_package">package</code></td>
-<td>
-<p>the name of the package in which mixed-modeling function (or functions) employed resides;
-used to get the namespace of the package.</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_data">data</code></td>
-<td>
-<p>data frame to which the model was fit (not usually necessary)</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_criterion">criterion</code></td>
-<td>
-<p>cross-validation (&quot;cost&quot; or lack-of-fit) criterion function of form <code>f(y, yhat)</code>
-where <code>y</code> is the observed values of the response and
-<code>yhat</code> the predicted values; the default is <code><a href="#topic+mse">mse</a></code>
-(the mean-squared error)</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_k">k</code></td>
-<td>
-<p>perform k-fold cross-validation; <code>k</code>
-may be a number or <code>"loo"</code> or <code>"n"</code> for n-fold (leave-one-out)
-cross-validation; the default is <code>10</code> if cross-validating individual
-cases and <code>"loo"</code> if cross-validating clusters.</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_reps">reps</code></td>
-<td>
-<p>number of times to replicate k-fold CV (default is <code>1</code>),</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_confint">confint</code></td>
-<td>
-<p>if <code>TRUE</code> (the default if the number of cases is 400
-or greater), compute a confidence interval for the bias-corrected CV
-criterion, if the criterion is the average of casewise components.</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_level">level</code></td>
-<td>
-<p>confidence level (default <code>0.95</code>).</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_seed">seed</code></td>
-<td>
-<p>for R's random number generator; optional, if not
-supplied a random seed will be selected and saved; not needed
-for n-fold cross-validation</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_ncores">ncores</code></td>
-<td>
-<p>number of cores to use for parallel computations
-(default is <code>1</code>, i.e., computations aren't done in parallel)</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_clustervariables">clusterVariables</code></td>
-<td>
-<p>a character vector of names of the variables
-defining clusters for a mixed model with nested or crossed random effects;
-if missing, cross-validation is performed for individual cases rather than
-for clusters</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_predict.clusters.args">predict.clusters.args</code></td>
-<td>
-<p>a list of arguments to be used to predict
-the whole data set from a mixed model when performing CV on clusters;
-the first two elements should be
-<code>model</code> and <code>newdata</code>; see the &quot;Extending the cv package&quot; vignette
-(<code>vignette("cv-extend", package="cv")</code>).</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_predict.cases.args">predict.cases.args</code></td>
-<td>
-<p>a list of arguments to be used to predict
-the whole data set from a mixed model when performing CV on cases;
-the first two elements should be
-<code>model</code> and <code>newdata</code>; see the &quot;Extending the cv package&quot; vignette
-(<code>vignette("cv-extend", package="cv")</code>).</p>
-</td></tr>
-<tr><td><code id="cvMixed_+3A_...">...</code></td>
-<td>
-<p>for <code>cv()</code> methods, to match generic,
-and for <code>cvMixed()</code>, arguments to be passed to <code>update()</code>.</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>For mixed-effects models, cross-validation can be done by &quot;clusters&quot; or by
-individual observations. If the former, predictions are based only on fixed
-effects; if the latter, predictions include the random effects (i.e., are the
-best linear unbiased predictors or &quot;BLUPS&quot;).
-</p>
-
-
-<h3>Value</h3>
-
-<p><code>cvMixed()</code>, and functions based on it, such as the methods
-<code>cv.merMod()</code>, <code>cv.lme()</code>, and <code>cv.glmmTMB()</code>, return objects of class <code>"cv"</code>, or,
-if <code>reps &gt; 1</code>, of class <code>"cvList"</code> (see <code><a href="#topic+cv">cv</a>()</code>).
-</p>
-
-
-<h3>Functions</h3>
-
-
-<ul>
-<li> <p><code>cvMixed()</code>: not to be called directly
-</p>
-</li>
-<li> <p><code>cv(merMod)</code>: <code>cv()</code> method
-</p>
-</li>
-<li> <p><code>cv(lme)</code>: <code>cv()</code> method
-</p>
-</li>
-<li> <p><code>cv(glmmTMB)</code>: <code>cv()</code> method
-</p>
-</li></ul>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+cv">cv</a></code>, <code><a href="lme4.html#topic+lmer">lmer</a></code>, <code><a href="lme4.html#topic+glmer">glmer</a></code>,
-<code><a href="nlme.html#topic+lme">lme</a></code>, <code><a href="glmmTMB.html#topic+glmmTMB">glmmTMB</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>library("lme4")
-# from ?lmer:
-(fm1 &lt;- lmer(Reaction ~ Days + (Days | Subject), sleepstudy))
-cv(fm1, clusterVariables="Subject") # LOO CV of clusters
-cv(fm1, seed=447) # 10-fold CV of cases
-cv(fm1, clusterVariables="Subject", k=5,
-   seed=834, reps=3) # 5-fold CV of clusters, repeated 3 times
-
-library(nlme)
-# from ?lme
-(fm2 &lt;- lme(distance ~ age + Sex, data = Orthodont,
-            random = ~ 1))
-cv(fm2) # LOO CV of cases
-cv(fm2, clusterVariables="Subject", k=5, seed=321) # 5-fold CV of clusters
-
-library("glmmTMB")
-# from ?glmmTMB
-(m1 &lt;- glmmTMB(count ~ mined + (1|site),
-               zi=~mined,
-               family=poisson, data=Salamanders))
-cv(m1, seed=97816, k=5, clusterVariables="site") # 5-fold CV of clusters
-cv(m1, seed=34506, k=5) # 5-fold CV of cases
-</code></pre>
-
-<hr>
-<h2 id='cvSelect'>Cross-Validate a Model-Selection Procedure</h2><span id='topic+cvSelect'></span><span id='topic+selectStepAIC'></span><span id='topic+selectTrans'></span><span id='topic+selectTransStepAIC'></span><span id='topic+compareFolds'></span><span id='topic+coef.cvSelect'></span>
-
-<h3>Description</h3>
-
-<p><code>cvSelect()</code> is a general function to cross-validate a model-selection procedure;
+<p>The <code>cv()</code> <code>"function"</code> method
+is a general function to cross-validate a model-selection procedure,
+such as the following:
 <code>selectStepAIC()</code> is a procedure that applies the <code><a href="MASS.html#topic+stepAIC">stepAIC</a>()</code>
 model-selection function in the <span class="pkg">MASS</span> package; <code>selectTrans()</code> is a procedure
 for selecting predictor and response transformations in regression, which
 uses the <code><a href="car.html#topic+powerTransform">powerTransform</a>()</code> function in the
-<span class="pkg">car</span> package; and <code>selectTransAndStepAIC()</code> combines predictor and response
-transformation with predictor selection.
+<span class="pkg">car</span> package; <code>selectTransAndStepAIC()</code> combines predictor and response
+transformations with predictor selection; and <code>selectModelList()</code>
+uses cross-validation to select a model from a list of models created by
+<code><a href="#topic+models">models</a>()</code> and employs (recursive) cross-validation to assess the predictive
+accuracy of this procedure.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>cvSelect(
-  procedure,
+<pre><code class='language-R'>## S3 method for class ''function''
+cv(
+  model,
   data,
   criterion = mse,
-  model,
-  y.expression,
-  k = 10,
-  confint = n &gt;= 400,
+  k = 10L,
+  reps = 1L,
+  seed = NULL,
+  working.model = NULL,
+  y.expression = NULL,
+  confint = n &gt;= 400L,
   level = 0.95,
-  reps = 1,
-  save.coef = k &lt;= 10,
-  seed,
-  ncores = 1,
+  details = k &lt;= 10L,
+  save.model = FALSE,
+  ncores = 1L,
   ...
 )
 
@@ -670,14 +596,16 @@ selectStepAIC(
   model,
   criterion = mse,
   AIC = TRUE,
-  save.coef = TRUE,
+  details = TRUE,
+  save.model = FALSE,
   ...
 )
 
 selectTrans(
   data,
   indices,
-  save.coef = TRUE,
+  details = TRUE,
+  save.model = FALSE,
   model,
   criterion = mse,
   predictors,
@@ -691,7 +619,8 @@ selectTrans(
 selectTransStepAIC(
   data,
   indices,
-  save.coef = TRUE,
+  details = TRUE,
+  save.model = FALSE,
   model,
   criterion = mse,
   predictors,
@@ -700,6 +629,20 @@ selectTransStepAIC(
   family.y = c("bcPower", "bcnPower", "yjPower", "basicPower"),
   rounded = TRUE,
   AIC = TRUE,
+  ...
+)
+
+selectModelList(
+  data,
+  indices,
+  model,
+  criterion = mse,
+  k = 10L,
+  k.recurse = k,
+  details = k &lt;= 10L,
+  save.model = FALSE,
+  seed = FALSE,
+  quietly = TRUE,
   ...
 )
 
@@ -713,74 +656,91 @@ coef(object, average, NAs = 0, ...)
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="cvSelect_+3A_procedure">procedure</code></td>
+<tr><td><code id="cv.function_+3A_model">model</code></td>
 <td>
-<p>a model-selection procedure function (see Details).</p>
+<p>a regression model object fit to data, or for the
+<code>cv()</code> <code>"function"</code> method, a model-selection procedure function
+(see Details).</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_data">data</code></td>
+<tr><td><code id="cv.function_+3A_data">data</code></td>
 <td>
 <p>full data frame for model selection.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_criterion">criterion</code></td>
+<tr><td><code id="cv.function_+3A_criterion">criterion</code></td>
 <td>
 <p>a CV criterion (&quot;cost&quot; or lack-of-fit) function.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_model">model</code></td>
-<td>
-<p>a regression model object fit to data.</p>
-</td></tr>
-<tr><td><code id="cvSelect_+3A_y.expression">y.expression</code></td>
-<td>
-<p>normally the response variable is found from the
-<code>model</code> argument; but if, for a particular selection procedure, the
-<code>model</code> argument is absent, or if the response can't be inferred from the
-model, the response can be specified by an expression, such as <code>expression(log(income))</code>,
-to be evaluated within the data set provided by the <code>data</code> argument.</p>
-</td></tr>
-<tr><td><code id="cvSelect_+3A_k">k</code></td>
+<tr><td><code id="cv.function_+3A_k">k</code></td>
 <td>
 <p>perform k-fold cross-validation (default is 10); <code>k</code>
 may be a number or <code>"loo"</code> or <code>"n"</code> for n-fold (leave-one-out)
 cross-validation.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_confint">confint</code></td>
+<tr><td><code id="cv.function_+3A_reps">reps</code></td>
+<td>
+<p>number of times to replicate k-fold CV (default is <code>1</code>)</p>
+</td></tr>
+<tr><td><code id="cv.function_+3A_seed">seed</code></td>
+<td>
+<p>for R's random number generator; not used for n-fold cross-validation.
+If not explicitly set, a seed is randomly generated and saved to make the results
+reproducible. In some cases, for internal use only, <code>seed</code> is set to
+<code>FALSE</code> to suppress automatically setting the seed.</p>
+</td></tr>
+<tr><td><code id="cv.function_+3A_working.model">working.model</code></td>
+<td>
+<p>a regression model object fit to data, typically
+to begin a model-selection process; for use with <code>selectModelList()</code>,
+a list of competing models created by <code><a href="#topic+models">models</a>()</code>.</p>
+</td></tr>
+<tr><td><code id="cv.function_+3A_y.expression">y.expression</code></td>
+<td>
+<p>normally the response variable is found from the
+<code>model</code> or <code>working.model</code> argument; but if, for a particular selection procedure, the
+<code>model</code> or <code>working.model</code> argument is absent, or if the response can't be inferred from the
+model, the response can be specified by an expression, such as <code>expression(log(income))</code>,
+to be evaluated within the data set provided by the <code>data</code> argument.</p>
+</td></tr>
+<tr><td><code id="cv.function_+3A_confint">confint</code></td>
 <td>
 <p>if <code>TRUE</code> (the default if the number of cases is 400
 or greater), compute a confidence interval for the bias-corrected CV
 criterion, if the criterion is the average of casewise components.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_level">level</code></td>
+<tr><td><code id="cv.function_+3A_level">level</code></td>
 <td>
 <p>confidence level (default <code>0.95</code>).</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_reps">reps</code></td>
+<tr><td><code id="cv.function_+3A_details">details</code></td>
 <td>
-<p>number of times to replicate k-fold CV (default is <code>1</code>)</p>
+<p>if <code>TRUE</code>, save detailed information about the value of the
+CV criterion for the cases in each fold and the regression coefficients
+(and possibly other information)
+with that fold deleted; default is <code>TRUE</code> if <code>k</code> is 10 or smaller,
+<code>FALSE</code> otherwise.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_save.coef">save.coef</code></td>
+<tr><td><code id="cv.function_+3A_save.model">save.model</code></td>
 <td>
-<p>save the coefficients from the selected models? (default is <code>TRUE</code> if
-<code>k</code> is 10 or smaller, <code>FALSE</code> otherwise)</p>
+<p>save the model that's selected using the <em>full</em> data set
+(default, <code>FALSE</code>).</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_seed">seed</code></td>
-<td>
-<p>for R's random number generator; not used for n-fold cross-validation.</p>
-</td></tr>
-<tr><td><code id="cvSelect_+3A_ncores">ncores</code></td>
+<tr><td><code id="cv.function_+3A_ncores">ncores</code></td>
 <td>
 <p>number of cores to use for parallel computations
 (default is <code>1</code>, i.e., computations aren't done in parallel)</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_...">...</code></td>
+<tr><td><code id="cv.function_+3A_...">...</code></td>
 <td>
-<p>for <code>cvSelect()</code>, arguments to be passed to <code>procedure()</code>;
-for <code>selectStepAIC()</code>, arguments to be passed to <code>stepAIC()</code>.</p>
+<p>for <code>cvSelect()</code> and the <code>cv()</code> <code>"function"</code> method,
+arguments to be passed to <code>procedure()</code>;
+for <code>selectStepAIC()</code> and <code>selectTransStepAIC()</code>,
+arguments to be passed to <code>stepAIC()</code>.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_indices">indices</code></td>
+<tr><td><code id="cv.function_+3A_indices">indices</code></td>
 <td>
 <p>indices of cases in data defining the current fold.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_aic">AIC</code></td>
+<tr><td><code id="cv.function_+3A_aic">AIC</code></td>
 <td>
 <p>if <code>TRUE</code> (the default) use the AIC as the
 model-selection criterion; if <code>FALSE</code>, use the BIC.
@@ -788,49 +748,61 @@ The <code>k</code> argument to <code><a href="MASS.html#topic+stepAIC">stepAIC</
 is set accordingly (note that this is distinct from the number of
 folds <code>k</code>).</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_predictors">predictors</code></td>
+<tr><td><code id="cv.function_+3A_predictors">predictors</code></td>
 <td>
 <p>character vector of names of the predictors in the model
 to transform; if missing, no predictors will be transformed.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_response">response</code></td>
+<tr><td><code id="cv.function_+3A_response">response</code></td>
 <td>
 <p>name of the response variable; if missing, the response
 won't be transformed.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_family">family</code></td>
+<tr><td><code id="cv.function_+3A_family">family</code></td>
 <td>
 <p>transformation family for the predictors, one of
 <code>"bcPower", "bcnPower", "yjPower", "basicPower"</code>,
 with <code>"bcPower"</code> as the default. These are the names of transformation
-functions in the <span class="pkg">car</span> package; see <code><a href="car.html#topic+bcPower">bcPower</a>()</code></p>
+functions in the <span class="pkg">car</span> package; see <code><a href="car.html#topic+bcPower">bcPower</a>()</code>.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_family.y">family.y</code></td>
+<tr><td><code id="cv.function_+3A_family.y">family.y</code></td>
 <td>
 <p>transformation family for the response,
 with <code>"bcPower"</code> as the default.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_rounded">rounded</code></td>
+<tr><td><code id="cv.function_+3A_rounded">rounded</code></td>
 <td>
 <p>if <code>TRUE</code> (the default) use nicely rounded versions
 of the estimated transformation parameters (see <code><a href="car.html#topic+bcPower">bcPower</a>()</code>).</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_object">object</code></td>
+<tr><td><code id="cv.function_+3A_k.recurse">k.recurse</code></td>
+<td>
+<p>the number of folds for recursive CV; defaults
+to the value of <code>k</code>; may be specified as <code>"loo"</code> or
+<code>"n"</code> as well as an integer.</p>
+</td></tr>
+<tr><td><code id="cv.function_+3A_quietly">quietly</code></td>
+<td>
+<p>if <code>TRUE</code> (the default), simple messages (for example about the
+value to which the random-number generator seed is set), but not warnings or
+errors, are suppressed.</p>
+</td></tr>
+<tr><td><code id="cv.function_+3A_object">object</code></td>
 <td>
 <p>an object of class <code>"cvSelect"</code>.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_digits">digits</code></td>
+<tr><td><code id="cv.function_+3A_digits">digits</code></td>
 <td>
 <p>significant digits for printing coefficients
 (default <code>3</code>).</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_average">average</code></td>
+<tr><td><code id="cv.function_+3A_average">average</code></td>
 <td>
 <p>if supplied, a function, such as <code>mean</code> or <code>median</code>,
 to use us in averaging estimates across folds; if missing, the
 estimates for each fold are returned.</p>
 </td></tr>
-<tr><td><code id="cvSelect_+3A_nas">NAs</code></td>
+<tr><td><code id="cv.function_+3A_nas">NAs</code></td>
 <td>
 <p>values to substitute for <code>NA</code>s in calculating
 averaged estimates; the default, <code>0</code>, is appropriate, e.g.,
@@ -842,22 +814,23 @@ for power-transformation estimates.</p>
 
 <h3>Details</h3>
 
-<p>The model-selection function supplied as the <code>procedure</code> argument
-to <code>cvSelect()</code> should accept the following arguments:
+<p>The model-selection function supplied as the <code>procedure</code> (for <code>cvSelect()</code>)
+or <code>model</code> (for <code>cv()</code>) argument
+should accept the following arguments:
 </p>
 
 <dl>
-<dt><code>data</code></dt><dd><p>set to the <code>data</code> argument to <code>cvSelect()</code>.</p>
+<dt><code>data</code></dt><dd><p>set to the <code>data</code> argument to <code>cvSelect()</code> or <code>cv()</code>.</p>
 </dd>
 <dt><code>indices</code></dt><dd><p>the indices of the rows of <code>data</code> defining the current fold; if missing,
 the model-selection procedure is applied to the full <code>data</code>.</p>
 </dd>
 <dt>other arguments</dt><dd><p>to be passed via <code>...</code>
-from <code>cvSelect()</code>.</p>
+from <code>cvSelect()</code> or <code>cv()</code>.</p>
 </dd>
 </dl>
 
-<p><code>procedure()</code> should return a list with the following
+<p><code>procedure()</code> or <code>model()</code> should return a list with the following
 named elements: <code>fit.i</code>, the vector of predicted values for the cases in
 the current fold computed from the model omitting these cases;
 <code>crit.all.i</code>, the CV criterion computed for all of the cases using
@@ -871,8 +844,8 @@ the model fit to all of the cases.
 argument, see the code for <code>selectStepAIC()</code>,
 <code>selectTrans()</code>, and <code>selectTransAndStepAIC()</code>.
 </p>
-<p>For additional information, see the &quot;Cross-validation of regression
-models&quot; vignette (<code>vignette("cv", package="cv")</code>)
+<p>For additional information, see the &quot;Cross-validating model selection&quot;
+vignette (<code>vignette("cv-select", package="cv")</code>)
 and the &quot;Extending the cv package&quot; vignette
 (<code>vignette("cv-extend", package="cv")</code>).
 </p>
@@ -896,36 +869,35 @@ which is literally a list of <code>c("cvSelect", "cv")</code> objects.
 </p>
 
 
-<h3>Methods (by generic)</h3>
-
-
-<ul>
-<li> <p><code>coef(cvSelect)</code>: extract the coefficients from the selected models
-for the several folds and possibly average them.
-</p>
-</li></ul>
-
-
 <h3>Functions</h3>
 
 
 <ul>
-<li> <p><code>cvSelect()</code>: apply cross-validation to a model-selection procedure.
+<li> <p><code>cv(`function`)</code>: <code>cv()</code> method for applying a model
+model-selection (or specification) procedure.
 </p>
 </li>
-<li> <p><code>selectStepAIC()</code>: select a model using the <code><a href="MASS.html#topic+stepAIC">stepAIC</a>()</code> function in the
-<span class="pkg">MASS</span> package.
+<li> <p><code>selectStepAIC()</code>: select a regression model using the
+<code><a href="MASS.html#topic+stepAIC">stepAIC</a>()</code> function in the <span class="pkg">MASS</span> package.
 </p>
 </li>
-<li> <p><code>selectTrans()</code>: select transformations of the predictors and response.
+<li> <p><code>selectTrans()</code>: select transformations of the predictors and response
+using <code><a href="car.html#topic+powerTransform">powerTransform</a>()</code> in the <span class="pkg">car</span> package.
 </p>
 </li>
 <li> <p><code>selectTransStepAIC()</code>: select transformations of the predictors and response,
 and then select predictors.
 </p>
 </li>
+<li> <p><code>selectModelList()</code>: select a model using (recursive) CV.
+</p>
+</li>
 <li> <p><code>compareFolds()</code>: print the coefficients from the selected models
 for the several folds.
+</p>
+</li>
+<li> <p><code>coef(cvSelect)</code>: extract the coefficients from the selected models
+for the several folds and possibly average them.
 </p>
 </li></ul>
 
@@ -941,132 +913,259 @@ for the several folds.
 
 <pre><code class='language-R'>data("Auto", package="ISLR2")
 m.auto &lt;- lm(mpg ~ . - name - origin, data=Auto)
-cvSelect(selectStepAIC, Auto, seed=123, model=m.auto)
-cvSelect(selectStepAIC, Auto, seed=123, model=m.auto,
+cv(selectStepAIC, Auto, seed=123, working.model=m.auto)
+cv(selectStepAIC, Auto, seed=123, working.model=m.auto,
          AIC=FALSE, k=5, reps=3) # via BIC
-
 data("Prestige", package="carData")
 m.pres &lt;- lm(prestige ~ income + education + women,
              data=Prestige)
-cvt &lt;- cvSelect(selectTrans, data=Prestige, model=m.pres, seed=123,
-                predictors=c("income", "education", "women"),
-                response="prestige", family="yjPower")
+cvt &lt;- cv(selectTrans, data=Prestige, working.model=m.pres, seed=123,
+          predictors=c("income", "education", "women"),
+          response="prestige", family="yjPower")
 cvt
 compareFolds(cvt)
 coef(cvt, average=median, NAs=1) # NAs not really needed here
 cv(m.pres, seed=123)
-
 Auto$year &lt;- as.factor(Auto$year)
 Auto$origin &lt;- factor(Auto$origin,
                       labels=c("America", "Europe", "Japan"))
 rownames(Auto) &lt;- make.names(Auto$name, unique=TRUE)
 Auto$name &lt;- NULL
 m.auto &lt;- lm(mpg ~ . , data=Auto)
-cvs &lt;- cvSelect(selectTransStepAIC, data=Auto, seed=76692, model=m.auto,
-                criterion=medAbsErr,
-                predictors=c("cylinders", "displacement", "horsepower",
-                             "weight", "acceleration"),
-                response="mpg", AIC=FALSE)
+cvs &lt;- cv(selectTransStepAIC, data=Auto, seed=76692, working.model=m.auto,
+          criterion=medAbsErr,
+          predictors=c("cylinders", "displacement", "horsepower",
+                       "weight", "acceleration"),
+          response="mpg", AIC=FALSE)
 cvs
 compareFolds(cvs)
+data("Duncan", package="carData")
+m1 &lt;- lm(prestige ~ income + education, data=Duncan)
+m2 &lt;- lm(prestige ~ income + education + type, data=Duncan)
+m3 &lt;- lm(prestige ~ (income + education)*type, data=Duncan)
+cv(selectModelList, data=Duncan, seed=5962,
+   working.model=models(m1, m2, m3)) # recursive CV
+
 </code></pre>
 
 <hr>
-<h2 id='GetResponse'>Extract Response Variable</h2><span id='topic+GetResponse'></span><span id='topic+GetResponse.default'></span><span id='topic+GetResponse.merMod'></span><span id='topic+GetResponse.lme'></span><span id='topic+GetResponse.glmmTMB'></span>
+<h2 id='cv.merMod'>Cross-Validate Mixed-Effects Model</h2><span id='topic+cv.merMod'></span><span id='topic+cv.lme'></span><span id='topic+cv.glmmTMB'></span>
 
 <h3>Description</h3>
 
-<p>Generic function to extract the response variable from a fitted model.
+<p><code><a href="#topic+cv">cv</a>()</code> methods for mixed-effect models of class <code>"merMod"</code>, fit
+by the <code><a href="lme4.html#topic+lmer">lmer</a>()</code> and <code><a href="lme4.html#topic+glmer">glmer</a>()</code> functions
+in the <span class="pkg">lme4</span> package; for models of class <code>"lme"</code>
+fit by the <code><a href="nlme.html#topic+lme">lme</a>()</code> function in the <span class="pkg">nlme</span>
+package; and for models of class <code>"glmmTMB"</code> fit by the
+<code><a href="glmmTMB.html#topic+glmmTMB">glmmTMB</a>()</code> function in the <span class="pkg">glmmTMB</span> package.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>GetResponse(model, ...)
-
-## Default S3 method:
-GetResponse(model, ...)
-
-## S3 method for class 'merMod'
-GetResponse(model, ...)
+<pre><code class='language-R'>## S3 method for class 'merMod'
+cv(
+  model,
+  data = insight::get_data(model),
+  criterion = mse,
+  k = NULL,
+  reps = 1L,
+  seed,
+  details = NULL,
+  ncores = 1L,
+  clusterVariables,
+  blups = coef,
+  fixed.effects = lme4::fixef,
+  ...
+)
 
 ## S3 method for class 'lme'
-GetResponse(model, ...)
+cv(
+  model,
+  data = insight::get_data(model),
+  criterion = mse,
+  k = NULL,
+  reps = 1L,
+  seed,
+  details = NULL,
+  ncores = 1L,
+  clusterVariables,
+  blups = coef,
+  fixed.effects = nlme::fixef,
+  ...
+)
 
 ## S3 method for class 'glmmTMB'
-GetResponse(model, ...)
+cv(
+  model,
+  data = insight::get_data(model),
+  criterion = mse,
+  k = NULL,
+  reps = 1L,
+  seed,
+  details = NULL,
+  ncores = 1L,
+  clusterVariables,
+  blups = coef,
+  fixed.effects = glmmTMB::fixef,
+  ...
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="GetResponse_+3A_model">model</code></td>
+<tr><td><code id="cv.merMod_+3A_model">model</code></td>
 <td>
-<p>a fitted model</p>
+<p>a mixed-effects model object for which a <code>cv()</code> method is available.</p>
 </td></tr>
-<tr><td><code id="GetResponse_+3A_...">...</code></td>
+<tr><td><code id="cv.merMod_+3A_data">data</code></td>
 <td>
-<p>additional parameters for specific methods</p>
+<p>data frame to which the model was fit (not usually necessary)</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_criterion">criterion</code></td>
+<td>
+<p>cross-validation (&quot;cost&quot; or lack-of-fit) criterion function of form <code>f(y, yhat)</code>
+where <code>y</code> is the observed values of the response and
+<code>yhat</code> the predicted values; the default is <code><a href="#topic+mse">mse</a></code>
+(the mean-squared error).</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_k">k</code></td>
+<td>
+<p>perform k-fold cross-validation; <code>k</code>
+may be a number or <code>"loo"</code> or <code>"n"</code> for n-fold (leave-one-out)
+cross-validation; the default is <code>10</code> if cross-validating individual
+cases and <code>"loo"</code> if cross-validating clusters.</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_reps">reps</code></td>
+<td>
+<p>number of times to replicate k-fold CV (default is <code>1</code>),
+or greater), compute a confidence interval for the bias-corrected CV
+criterion, if the criterion is the average of casewise components.</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_seed">seed</code></td>
+<td>
+<p>for R's random number generator; optional, if not
+supplied a random seed will be selected and saved; not needed
+for n-fold cross-validation</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_details">details</code></td>
+<td>
+<p>if <code>TRUE</code> (the default if the number of
+folds <code>k &lt;= 10</code>), save detailed information about the value of the
+CV criterion for the cases in each fold and the regression coefficients
+with that fold deleted.</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_ncores">ncores</code></td>
+<td>
+<p>number of cores to use for parallel computations
+(default is <code>1</code>, i.e., computations aren't done in parallel)</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_clustervariables">clusterVariables</code></td>
+<td>
+<p>a character vector of names of the variables
+defining clusters for a mixed model with nested or crossed random effects;
+if missing, cross-validation is performed for individual cases rather than
+for clusters</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_blups">blups</code></td>
+<td>
+<p>a function to be used to compute BLUPs for
+case-based CV when <code>details = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_fixed.effects">fixed.effects</code></td>
+<td>
+<p>a function to be used to compute fixed-effect
+coefficients for cluster-based CV when <code>details = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="cv.merMod_+3A_...">...</code></td>
+<td>
+<p>for <code>cv()</code> methods, to match generic,
+and for <code>cvMixed()</code>, arguments to be passed to <code>update()</code>.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>The supplied <code>default</code> method returns the <code>model$y</code> component
-of the model object, or, if <code>model</code> is an S4 object, the result
-returned by the <code><a href="insight.html#topic+get_response">get_response</a>()</code> function in
-the <span class="pkg">insight</span> package. If this result is <code>NULL</code>, the result of
-<code>model.response(model.frame(model))</code> is returned, checking in any case whether
-the result is a numeric vector.
-</p>
-<p>There is also an <code>"lme"</code> method, and <code>"merMod"</code>
-and <code>"glmmTMB"</code> methods that convert factor
-responses to numeric 0/1 responses, as would be appropriate
-for a generalized linear mixed model with a binary response.
+<p>For mixed-effects models, cross-validation can be done by &quot;clusters&quot; or by
+individual observations. If the former, predictions are based only on fixed
+effects; if the latter, predictions include the random effects (i.e., are the
+best linear unbiased predictors or &quot;BLUPS&quot;).
 </p>
 
 
 <h3>Value</h3>
 
-<p>a numeric vector containing the values of the response variable.
+<p>The methods <code>cv.merMod()</code>, <code>cv.lme()</code>, and <code>cv.glmmTMB()</code>,
+return objects of class <code>"cv"</code>, or,
+if <code>reps &gt; 1</code>, of class <code>"cvList"</code> (see <code><a href="#topic+cv">cv</a>()</code>).
 </p>
 
 
-<h3>Methods (by class)</h3>
+<h3>Functions</h3>
 
 
 <ul>
-<li> <p><code>GetResponse(default)</code>: <code>default</code> method
+<li> <p><code>cv(merMod)</code>: <code>cv()</code> method for <code><a href="lme4.html#topic+lmer">lmer</a>()</code> and
+<code><a href="lme4.html#topic+glmer">glmer</a>()</code> models from the <span class="pkg">lme4</span> package.
 </p>
 </li>
-<li> <p><code>GetResponse(merMod)</code>: <code>merMod</code> method
+<li> <p><code>cv(lme)</code>: <code>cv()</code> method for <code><a href="nlme.html#topic+lme">lme</a>()</code>
+models from the <span class="pkg">nlme</span> package.
 </p>
 </li>
-<li> <p><code>GetResponse(lme)</code>: <code>merMod</code> method
-</p>
-</li>
-<li> <p><code>GetResponse(glmmTMB)</code>: <code>glmmTMB</code> method
+<li> <p><code>cv(glmmTMB)</code>: <code>cv()</code> method for <code><a href="glmmTMB.html#topic+glmmTMB">glmmTMB</a>()</code>
+models from the <span class="pkg">glmmTMB</span> package.
 </p>
 </li></ul>
 
 
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cv">cv</a></code>, <code><a href="lme4.html#topic+lmer">lmer</a></code>, <code><a href="lme4.html#topic+glmer">glmer</a></code>,
+<code><a href="nlme.html#topic+lme">lme</a></code>, <code><a href="glmmTMB.html#topic+glmmTMB">glmmTMB</a></code>
+</p>
+
+
 <h3>Examples</h3>
 
-<pre><code class='language-R'>    fit &lt;- lm(mpg ~ gear, mtcars)
-    GetResponse(fit)
+<pre><code class='language-R'>library("lme4")
+# from ?lmer:
+(fm1 &lt;- lmer(Reaction ~ Days + (Days | Subject), sleepstudy))
+cv(fm1, clusterVariables="Subject") # LOO CV of clusters
+cv(fm1, seed=447) # 10-fold CV of cases
+cv(fm1, clusterVariables="Subject", k=5,
+   seed=834, reps=3) # 5-fold CV of clusters, repeated 3 times
+
+library("nlme")
+# from ?lme
+(fm2 &lt;- lme(distance ~ age + Sex, data = Orthodont,
+            random = ~ 1))
+cv(fm2) # LOO CV of cases
+cv(fm2, clusterVariables="Subject", k=5, seed=321) # 5-fold CV of clusters
+
+library("glmmTMB")
+# from ?glmmTMB
+(m1 &lt;- glmmTMB(count ~ mined + (1|site),
+               zi=~mined,
+               family=poisson, data=Salamanders))
+cv(m1, seed=97816, k=5, clusterVariables="site") # 5-fold CV of clusters
+cv(m1, seed=34506, k=5) # 5-fold CV of cases
 </code></pre>
 
 <hr>
-<h2 id='models'>Cross-Validate Several Models Fit to the Same Data</h2><span id='topic+models'></span><span id='topic+cv.modList'></span><span id='topic+print.cvModList'></span><span id='topic+plot.cvModList'></span>
+<h2 id='cv.modList'>Cross-Validate Several Models Fit to the Same Data</h2><span id='topic+cv.modList'></span><span id='topic+models'></span><span id='topic+print.cvModList'></span><span id='topic+plot.cvModList'></span><span id='topic+as.data.frame.cvModList'></span>
 
 <h3>Description</h3>
 
 <p>A <code><a href="#topic+cv">cv</a>()</code> method for an object of class  <code>"modlist"</code>,
 created by the <code>models()</code> function. This <code>cv()</code> method simplifies
-the process of cross-validating several models on the same set of CV folds.
-<code>models()</code> performs some
+the process of cross-validating several models on the same set of CV folds
+and may also be used for recursive CV, where CV is used to select one from among
+several models. <code>models()</code> performs some
 &quot;sanity&quot; checks, warning if the models are of different classes, and
 reporting an error if they are fit to apparently different data sets or
 different response variables.
@@ -1075,10 +1174,20 @@ different response variables.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>models(...)
+<pre><code class='language-R'>## S3 method for class 'modList'
+cv(
+  model,
+  data,
+  criterion = mse,
+  k,
+  reps = 1L,
+  seed,
+  quietly = TRUE,
+  recursive = FALSE,
+  ...
+)
 
-## S3 method for class 'modList'
-cv(model, data, criterion = mse, k, reps = 1, seed, quietly = TRUE, ...)
+models(...)
 
 ## S3 method for class 'cvModList'
 print(x, ...)
@@ -1094,98 +1203,113 @@ plot(
   main,
   axis.args = list(labels = names(x), las = 3L),
   col = palette()[2L],
-  lwd = 2,
+  lwd = 2L,
   grid = TRUE,
   ...
 )
+
+## S3 method for class 'cvModList'
+as.data.frame(x, row.names = NULL, optional = TRUE, ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="models_+3A_...">...</code></td>
-<td>
-<p>for <code>models()</code>, two or more competing models fit to the
-the same data; the several models may be named.
-For <code>cv()</code>, additional arguments to be passed to the <code>cv()</code> method
-applied to each model. For the <code>print()</code>
-method, arguments to be passed to the <code>print()</code> method for
-the individual model cross-validations. For the <code>plot()</code>,
-method, arguments to be passed to the base <code><a href="base.html#topic+plot">plot</a>()</code>
-function.</p>
-</td></tr>
-<tr><td><code id="models_+3A_model">model</code></td>
+<tr><td><code id="cv.modList_+3A_model">model</code></td>
 <td>
 <p>a list of regression model objects,
 created by <code>models()</code>.</p>
 </td></tr>
-<tr><td><code id="models_+3A_data">data</code></td>
+<tr><td><code id="cv.modList_+3A_data">data</code></td>
 <td>
 <p>(required) the data set to which the models were fit.</p>
 </td></tr>
-<tr><td><code id="models_+3A_criterion">criterion</code></td>
+<tr><td><code id="cv.modList_+3A_criterion">criterion</code></td>
 <td>
 <p>the CV criterion (&quot;cost&quot; or lack-of-fit) function, defaults to
 <code><a href="#topic+mse">mse</a></code>.</p>
 </td></tr>
-<tr><td><code id="models_+3A_k">k</code></td>
+<tr><td><code id="cv.modList_+3A_k">k</code></td>
 <td>
 <p>the number of CV folds; may be omitted, in which case the value
 will depend on the default for the <code>cv()</code> method invoked for the
 individual models.</p>
 </td></tr>
-<tr><td><code id="models_+3A_reps">reps</code></td>
+<tr><td><code id="cv.modList_+3A_reps">reps</code></td>
 <td>
-<p>number of replications of CV for each model.</p>
+<p>number of replications of CV for each model (default is 1).</p>
 </td></tr>
-<tr><td><code id="models_+3A_seed">seed</code></td>
+<tr><td><code id="cv.modList_+3A_seed">seed</code></td>
 <td>
 <p>(optional) seed for R's pseudo-random-number generator,
 to be used to create the same set of CV folds for all of the models;
-if omitted, a seed will be randomly generated and saved.</p>
+if omitted, a seed will be randomly generated and saved. Not used for
+leave-one-out CV.</p>
 </td></tr>
-<tr><td><code id="models_+3A_quietly">quietly</code></td>
+<tr><td><code id="cv.modList_+3A_quietly">quietly</code></td>
 <td>
 <p>if <code>TRUE</code> (the default), simple messages (for example about the
 value to which the random-number generator seed is set), but not warnings or
 errors, are suppressed.</p>
 </td></tr>
-<tr><td><code id="models_+3A_x">x</code></td>
+<tr><td><code id="cv.modList_+3A_recursive">recursive</code></td>
+<td>
+<p>if <code>TRUE</code> (the default is <code>FALSE</code>), cross-validation
+is performed recursively to select a &quot;best&quot; model deleting each fold in turn
+by calculating the CV estimate of the criterion for the remaining folds;
+this is equivalent to employing the <code><a href="#topic+selectModelList">selectModelList</a>()</code> model-selection
+procedure.</p>
+</td></tr>
+<tr><td><code id="cv.modList_+3A_...">...</code></td>
+<td>
+<p>for <code>cv.modList()</code>, additional arguments to be passed to the <code>cv()</code> method
+applied to each model.
+</p>
+<p>For <code>models()</code>, two or more competing models fit to the
+the same data; the several models may be named.
+</p>
+<p>For the <code>print()</code> method, arguments to be passed to the <code>print()</code> method for
+the individual model cross-validations.
+</p>
+<p>For the <code>plot()</code> method, arguments to be passed to the base <code><a href="base.html#topic+plot">plot</a>()</code>
+function.</p>
+</td></tr>
+<tr><td><code id="cv.modList_+3A_x">x</code></td>
 <td>
 <p>an object of class <code>"cvModList"</code> to be printed or plotted.</p>
 </td></tr>
-<tr><td><code id="models_+3A_y">y</code></td>
+<tr><td><code id="cv.modList_+3A_y">y</code></td>
 <td>
 <p>the name of the element in each <code>"cv"</code> object to be
 plotted; defaults to <code>"adj CV crit"</code>, if it exists, or to
 <code>"CV crit"</code>.</p>
 </td></tr>
-<tr><td><code id="models_+3A_spread">spread</code></td>
+<tr><td><code id="cv.modList_+3A_spread">spread</code></td>
 <td>
 <p>if <code>"range"</code>, the default, show the range of CV criteria
 for each model along with their average; if <code>"sd"</code>, show the average
 plus or minus 1 standard deviation.</p>
 </td></tr>
-<tr><td><code id="models_+3A_confint">confint</code></td>
+<tr><td><code id="cv.modList_+3A_confint">confint</code></td>
 <td>
 <p>if <code>TRUE</code> (the default) and if confidence intervals are
 in any of the <code>"cv"</code> objects, then plot the confidence intervals around the
 CV criteria.</p>
 </td></tr>
-<tr><td><code id="models_+3A_xlab">xlab</code></td>
+<tr><td><code id="cv.modList_+3A_xlab">xlab</code></td>
 <td>
 <p>label for the x-axis (defaults to blank).</p>
 </td></tr>
-<tr><td><code id="models_+3A_ylab">ylab</code></td>
+<tr><td><code id="cv.modList_+3A_ylab">ylab</code></td>
 <td>
 <p>label for the y-axis (if missing, a label is constructed).</p>
 </td></tr>
-<tr><td><code id="models_+3A_main">main</code></td>
+<tr><td><code id="cv.modList_+3A_main">main</code></td>
 <td>
 <p>main title for the graph (if missing, a label is constructed).</p>
 </td></tr>
-<tr><td><code id="models_+3A_axis.args">axis.args</code></td>
+<tr><td><code id="cv.modList_+3A_axis.args">axis.args</code></td>
 <td>
 <p>a list of arguments for the <code><a href="graphics.html#topic+axis">axis</a>()</code>
 function, used to draw the horizontal axis. In addition to
@@ -1193,18 +1317,30 @@ the axis arguments given explicitly, <code>side=1</code> (the horizontal
 axis) and <code>at=seq(along=x)</code> (i.e., 1 to the number of models)
 are used and can't be modified.</p>
 </td></tr>
-<tr><td><code id="models_+3A_col">col</code></td>
+<tr><td><code id="cv.modList_+3A_col">col</code></td>
 <td>
 <p>color for the line and points, defaults to the second
 element of the color palette; see <code><a href="grDevices.html#topic+palette">palette</a>()</code>.</p>
 </td></tr>
-<tr><td><code id="models_+3A_lwd">lwd</code></td>
+<tr><td><code id="cv.modList_+3A_lwd">lwd</code></td>
 <td>
 <p>line width for the line (defaults to 2).</p>
 </td></tr>
-<tr><td><code id="models_+3A_grid">grid</code></td>
+<tr><td><code id="cv.modList_+3A_grid">grid</code></td>
 <td>
 <p>if <code>TRUE</code> (the default), include grid lines on the graph.</p>
+</td></tr>
+<tr><td><code id="cv.modList_+3A_row.names">row.names</code></td>
+<td>
+<p>optional row names for the result,
+defaults to <code>NULL</code>.</p>
+</td></tr>
+<tr><td><code id="cv.modList_+3A_optional">optional</code></td>
+<td>
+<p>to match the <code><a href="base.html#topic+as.data.frame">as.data.frame</a>()</code> generic function;
+if <code>FALSE</code> (the default is <code>TRUE</code>), then the names of the columns
+of the returned data frame, including the names of coefficients,
+are coerced to syntactically correct names.</p>
 </td></tr>
 </table>
 
@@ -1212,7 +1348,8 @@ element of the color palette; see <code><a href="grDevices.html#topic+palette">p
 <h3>Value</h3>
 
 <p><code>models()</code> returns a <code>"modList"</code> object, the
-<code>cv()</code> method for which returns a <code>"cvModList"</code> object.
+<code>cv()</code> method for which returns a <code>"cvModList"</code> object,
+or, when <code>recursive=TRUE</code>, an object of class <code>c("cvSelect", "cv")</code>.
 </p>
 
 
@@ -1220,23 +1357,28 @@ element of the color palette; see <code><a href="grDevices.html#topic+palette">p
 
 
 <ul>
-<li> <p><code>models()</code>: create a list of models
+<li> <p><code>cv(modList)</code>: <code>cv()</code> method for <code>"modList"</code> objects.
 </p>
 </li>
-<li> <p><code>cv(modList)</code>: <code>cv()</code> method for <code>"modList"</code> objects
+<li> <p><code>models()</code>: create a list of models.
 </p>
 </li>
-<li> <p><code>print(cvModList)</code>: <code>print()</code> method for <code>"cvModList"</code> objects
+<li> <p><code>print(cvModList)</code>: <code>print()</code> method for <code>"cvModList"</code> objects.
 </p>
 </li>
-<li> <p><code>plot(cvModList)</code>: <code>plot()</code> method for <code>"cvModList"</code> objects
+<li> <p><code>plot(cvModList)</code>: <code>plot()</code> method for <code>"cvModList"</code> objects.
+</p>
+</li>
+<li> <p><code>as.data.frame(cvModList)</code>: <code>as.data.frame()</code> method for
+<code>"cvModList"</code> objects.
 </p>
 </li></ul>
 
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+cv">cv</a></code>, <code><a href="#topic+cvMixed">cvMixed</a></code>.
+<p><code><a href="#topic+cv">cv</a></code>, <code><a href="#topic+cv.merMod">cv.merMod</a></code>,
+<code><a href="#topic+selectModelList">selectModelList</a></code>.
 </p>
 
 
@@ -1248,11 +1390,437 @@ m2 &lt;- lm(prestige ~ income + education + type, data=Duncan)
 m3 &lt;- lm(prestige ~ (income + education)*type, data=Duncan)
 (cv.models &lt;- cv(models(m1=m1, m2=m2, m3=m3),
                  data=Duncan, seed=7949, reps=5))
+D.cv.models &lt;- as.data.frame(cv.models)
+head(D.cv.models)
+summary(D.cv.models, criterion ~ model + rep, include="folds")
 plot(cv.models)
 (cv.models.ci &lt;- cv(models(m1=m1, m2=m2, m3=m3),
                     data=Duncan, seed=5962, confint=TRUE, level=0.50))
                  # nb: n too small for accurate CIs
 plot(cv.models.ci)
+(cv.models.recursive &lt;- cv(models(m1=m1, m2=m2, m3=m3),
+                           data=Duncan, seed=5962,
+                           recursive=TRUE, save.model=TRUE))
+cv.models.recursive$selected.model
+</code></pre>
+
+<hr>
+<h2 id='cvCompute'>Utility Functions for the cv Package</h2><span id='topic+cvCompute'></span><span id='topic+cvMixed'></span><span id='topic+cvSelect'></span><span id='topic+folds'></span><span id='topic+fold'></span><span id='topic+fold.folds'></span><span id='topic+print.folds'></span><span id='topic+GetResponse'></span><span id='topic+GetResponse.default'></span><span id='topic+GetResponse.merMod'></span><span id='topic+GetResponse.lme'></span><span id='topic+GetResponse.glmmTMB'></span><span id='topic+GetResponse.modList'></span>
+
+<h3>Description</h3>
+
+<p>These functions are primarily useful for writing methods for the
+<code><a href="#topic+cv">cv</a>()</code> generic function. They are used internally in the package
+and can also be used for extensions (see the vignette &quot;Extending the cv package,
+<code>vignette("cv-extend", package="cv")</code>).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>cvCompute(
+  model,
+  data = insight::get_data(model),
+  criterion = mse,
+  criterion.name,
+  k = 10L,
+  reps = 1L,
+  seed,
+  details = k &lt;= 10L,
+  confint,
+  level = 0.95,
+  method = NULL,
+  ncores = 1L,
+  type = "response",
+  start = FALSE,
+  f,
+  fPara = f,
+  locals = list(),
+  model.function = NULL,
+  model.function.name = NULL,
+  ...
+)
+
+cvMixed(
+  model,
+  package,
+  data = insight::get_data(model),
+  criterion = mse,
+  criterion.name,
+  k,
+  reps = 1L,
+  confint,
+  level = 0.95,
+  seed,
+  details,
+  ncores = 1L,
+  clusterVariables,
+  predict.clusters.args = list(object = model, newdata = data),
+  predict.cases.args = list(object = model, newdata = data),
+  blups,
+  fixed.effects,
+  ...
+)
+
+cvSelect(
+  procedure,
+  data,
+  criterion = mse,
+  criterion.name,
+  model,
+  y.expression,
+  k = 10L,
+  confint = n &gt;= 400,
+  level = 0.95,
+  reps = 1L,
+  save.coef,
+  details = k &lt;= 10L,
+  save.model = FALSE,
+  seed,
+  ncores = 1L,
+  ...
+)
+
+folds(n, k)
+
+fold(folds, i, ...)
+
+## S3 method for class 'folds'
+fold(folds, i, ...)
+
+## S3 method for class 'folds'
+print(x, ...)
+
+GetResponse(model, ...)
+
+## Default S3 method:
+GetResponse(model, ...)
+
+## S3 method for class 'merMod'
+GetResponse(model, ...)
+
+## S3 method for class 'lme'
+GetResponse(model, ...)
+
+## S3 method for class 'glmmTMB'
+GetResponse(model, ...)
+
+## S3 method for class 'modList'
+GetResponse(model, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="cvCompute_+3A_model">model</code></td>
+<td>
+<p>a regression model object.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_data">data</code></td>
+<td>
+<p>data frame to which the model was fit (not usually necessary,
+except for <code>cvSelect()</code>).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_criterion">criterion</code></td>
+<td>
+<p>cross-validation criterion (&quot;cost&quot; or lack-of-fit) function of form <code>f(y, yhat)</code>
+where <code>y</code> is the observed values of the response and
+<code>yhat</code> the predicted values; the default is <code><a href="#topic+mse">mse</a></code>
+(the mean-squared error).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_criterion.name">criterion.name</code></td>
+<td>
+<p>a character string giving the name of the CV criterion function
+in the returned <code>"cv"</code> object).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_k">k</code></td>
+<td>
+<p>perform k-fold cross-validation (default is <code>10</code>); <code>k</code>
+may be a number or <code>"loo"</code> or <code>"n"</code> for n-fold (leave-one-out)
+cross-validation; for <code>folds()</code>, <code>k</code> must be a number.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_reps">reps</code></td>
+<td>
+<p>number of times to replicate k-fold CV (default is <code>1</code>).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_seed">seed</code></td>
+<td>
+<p>for R's random number generator; optional, if not
+supplied a random seed will be selected and saved; not needed
+for n-fold cross-validation.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_details">details</code></td>
+<td>
+<p>if <code>TRUE</code> (the default if the number of
+folds <code>k &lt;= 10</code>), save detailed information about the value of the
+CV criterion for the cases in each fold and the regression coefficients
+with that fold deleted.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_confint">confint</code></td>
+<td>
+<p>if <code>TRUE</code> (the default if the number of cases is 400
+or greater), compute a confidence interval for the bias-corrected CV
+criterion, if the criterion is the average of casewise components.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_level">level</code></td>
+<td>
+<p>confidence level (default <code>0.95</code>).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_method">method</code></td>
+<td>
+<p>computational method to apply; use by some <code><a href="#topic+cv">cv</a>()</code>
+methods.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_ncores">ncores</code></td>
+<td>
+<p>number of cores to use for parallel computations
+(default is <code>1</code>, i.e., computations aren't done in parallel).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_type">type</code></td>
+<td>
+<p>used by some <code><a href="#topic+cv">cv</a>()</code> methods, such as the default method,
+where <code>type</code> is passed to the <code>type</code> argument of <code>predict()</code>;
+the default is <code>type="response"</code>, which is appropriate, e.g., for a <code>"glm"</code> model
+and may be recognized or ignored by <code>predict()</code> methods for other model classes.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_start">start</code></td>
+<td>
+<p>used by some <code><a href="#topic+cv">cv</a>()</code> methods;
+if <code>TRUE</code> (the default is <code>FALSE</code>), the <code>start</code> argument,
+set to the vector of regression coefficients for the model fit to the full data, is passed
+to <code>update()</code>, possibly making the CV updates faster, e.g. for a GLM.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_f">f</code></td>
+<td>
+<p>function to be called by <code>cvCompute()</code> for each fold.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_fpara">fPara</code></td>
+<td>
+<p>function to be called by <code>cvCompute()</code> for each fold
+using parallel computation.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_locals">locals</code></td>
+<td>
+<p>a named list of objects that are required in the local environment
+of <code>cvCompute()</code> for <code>f()</code> or <code>fPara()</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_model.function">model.function</code></td>
+<td>
+<p>a regression function, typically for a new <code>cv()</code> method,
+residing in a package that's not a declared dependency of the <span class="pkg">cv</span> package,
+e.g., <code>nnet::multinom</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_model.function.name">model.function.name</code></td>
+<td>
+<p>the quoted name of the regression function, e.g.,
+<code>"multinom"</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_...">...</code></td>
+<td>
+<p>to match generic; passed to <code>predict()</code> for the default method,
+and to <code>fPara()</code> (for parallel computations) in <code>cvCompute()</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_package">package</code></td>
+<td>
+<p>the name of the package in which mixed-modeling function (or functions) employed resides;
+used to get the namespace of the package.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_clustervariables">clusterVariables</code></td>
+<td>
+<p>a character vector of names of the variables
+defining clusters for a mixed model with nested or crossed random effects;
+if missing, cross-validation is performed for individual cases rather than
+for clusters</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_predict.clusters.args">predict.clusters.args</code></td>
+<td>
+<p>a list of arguments to be used to predict
+the whole data set from a mixed model when performing CV on clusters;
+the first two elements should be
+<code>model</code> and <code>newdata</code>; see the &quot;Extending the cv package&quot; vignette
+(<code>vignette("cv-extend", package="cv")</code>).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_predict.cases.args">predict.cases.args</code></td>
+<td>
+<p>a list of arguments to be used to predict
+the whole data set from a mixed model when performing CV on cases;
+the first two elements should be
+<code>model</code> and <code>newdata</code>; see the &quot;Extending the cv package&quot; vignette
+(<code>vignette("cv-extend", package="cv")</code>).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_blups">blups</code></td>
+<td>
+<p>a function to be used to compute BLUPs for
+case-based CV when <code>details = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_fixed.effects">fixed.effects</code></td>
+<td>
+<p>a function to be used to compute fixed-effect
+coefficients for cluster-based CV when <code>details = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_procedure">procedure</code></td>
+<td>
+<p>a model-selection procedure function (see Details).</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_y.expression">y.expression</code></td>
+<td>
+<p>normally the response variable is found from the
+<code>model</code> argument; but if, for a particular selection procedure, the
+<code>model</code> argument is absent, or if the response can't be inferred from the
+model, the response can be specified by an expression, such as <code>expression(log(income))</code>,
+to be evaluated within the data set provided by the <code>data</code> argument.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_save.coef">save.coef</code></td>
+<td>
+<p>save the coefficients from the selected models? Deprecated
+in favor of the <code>details</code> argument; if specified, <code>details</code> is set
+is set to the value of <code>save.coef</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_save.model">save.model</code></td>
+<td>
+<p>save the model that's selected using the <em>full</em> data set.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_n">n</code></td>
+<td>
+<p>number of cases, for constructed folds.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_folds">folds</code></td>
+<td>
+<p>an object of class <code>"folds"</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_i">i</code></td>
+<td>
+<p>a fold number for an object of class <code>"folds"</code>.</p>
+</td></tr>
+<tr><td><code id="cvCompute_+3A_x">x</code></td>
+<td>
+<p>a <code>"cv"</code>, <code>"cvList"</code>, or <code>"folds"</code> object to be printed</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The utility functions return various kinds of objects:
+</p>
+
+<ul>
+<li> <p><code>cvCompute()</code> returns an object of class <code>"cv"</code>, with the CV criterion
+(<code>"CV crit"</code>), the bias-adjusted CV criterion (<code>"adj CV crit"</code>),
+the criterion for the model applied to the full data (<code>"full crit"</code>),
+the confidence interval and level for the bias-adjusted CV criterion (<code>"confint"</code>),
+the number of folds (<code>"k"</code>), and the seed for R's random-number
+generator (<code>"seed"</code>). If <code>details=TRUE</code>, then the returned object
+will also include a <code>"details"</code> component, which is a list of two
+elements: <code>"criterion"</code>, containing the CV criterion computed for the
+cases in each fold; and <code>"coefficients"</code>, regression coefficients computed
+for the model with each fold deleted.  Some <code>cv()</code> methods calling <code>cvCompute()</code>
+may return a subset of these components and may add additional information.
+If <code>reps</code> &gt; <code>1</code>, then an object of class <code>"cvList"</code> is returned,
+which is literally a list of <code>"cv"</code> objects.
+</p>
+</li>
+<li> <p><code>cvMixed()</code> also returns an object of class <code>"cv"</code> or
+<code>"cvList"</code>.
+</p>
+</li>
+<li> <p><code>cvSelect</code> returns an object of class
+<code>"cvSelect"</code> inheriting from <code>"cv"</code>, or an object of
+class <code>"cvSelectList"</code> inheriting from <code>"cvList"</code>.
+</p>
+</li>
+<li> <p><code>folds()</code> returns an object of class folds, for which
+there are <code>fold()</code> and <code>print()</code> methods.
+</p>
+</li>
+<li> <p><code>GetResponse()</code> returns the (numeric) response variable
+from the model.
+</p>
+<p>The supplied <code>default</code> method returns the <code>model$y</code> component
+of the model object, or, if <code>model</code> is an S4 object, the result
+returned by the <code><a href="insight.html#topic+get_response">get_response</a>()</code> function in
+the <span class="pkg">insight</span> package. If this result is <code>NULL</code>, the result of
+<code>model.response(model.frame(model))</code> is returned, checking in any case whether
+the result is a numeric vector.
+</p>
+<p>There are also  <code>"lme"</code>, <code>"merMod"</code>
+and <code>"glmmTMB"</code> methods that convert factor
+responses to numeric 0/1 responses, as would be appropriate
+for a generalized linear mixed model with a binary response.
+</p>
+</li></ul>
+
+
+
+<h3>Functions</h3>
+
+
+<ul>
+<li> <p><code>cvCompute()</code>: used internally by <code>cv()</code> methods (not for direct use);
+exported to support new <code>cv()</code> methods.
+</p>
+</li>
+<li> <p><code>cvMixed()</code>: used internally by <code>cv()</code> methods
+for mixed-effect models (not for direct use);
+exported to support new <code>cv()</code> methods.
+</p>
+</li>
+<li> <p><code>cvSelect()</code>: used internally by <code>cv()</code> methods for
+cross-validating a model-selection procedure; may also be called
+directly for this purpose, but use via <code>cv()</code> is preferred.
+<code>cvSelect()</code> is exported primarily to support new model-selection procedures.
+</p>
+</li>
+<li> <p><code>folds()</code>: used internally by <code>cv()</code> methods (not for direct use).
+</p>
+</li>
+<li> <p><code>fold()</code>: to extract a fold from a <code>"folds"</code> object.
+</p>
+</li>
+<li> <p><code>fold(folds)</code>: <code>fold()</code> method for <code>"folds"</code> objects.
+</p>
+</li>
+<li> <p><code>print(folds)</code>: <code>print()</code> method for <code>"folds"</code> objects.
+</p>
+</li>
+<li> <p><code>GetResponse()</code>: function to return the response variable
+from a regression model.
+</p>
+</li>
+<li> <p><code>GetResponse(default)</code>: default method.
+</p>
+</li>
+<li> <p><code>GetResponse(merMod)</code>: <code>"merMod"</code> method.
+</p>
+</li>
+<li> <p><code>GetResponse(lme)</code>: <code>"lme"</code> method.
+</p>
+</li>
+<li> <p><code>GetResponse(glmmTMB)</code>: <code>"glmmTMB"</code> method.
+</p>
+</li>
+<li> <p><code>GetResponse(modList)</code>: <code>"modList"</code> method.
+</p>
+</li></ul>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cv">cv</a></code>, <code><a href="#topic+cv.merMod">cv.merMod</a></code>,
+<code><a href="#topic+cv.function">cv.function</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>fit &lt;- lm(mpg ~ gear, mtcars)
+GetResponse(fit)
+
+set.seed(123)
+(ffs &lt;- folds(n=22, k=5))
+fold(ffs, 2)
+
 </code></pre>
 
 <hr>
@@ -1328,7 +1896,8 @@ the latter doesn't and is therefore faster.
 value measuring lack-of-fit. <code>mse()</code> returns the mean-squared error;
 <code>rmse()</code> returns the root-mean-squared error;
 <code>medAbsErr()</code> returns the median absolute error;
-and BayesRule()<code>and</code>BayesRule2()' return the proportion of misclassified cases.
+and <code>BayesRule()</code> and
+<code>BayesRule2()</code> return the proportion of misclassified cases.
 </p>
 
 
@@ -1336,26 +1905,27 @@ and BayesRule()<code>and</code>BayesRule2()' return the proportion of misclassif
 
 
 <ul>
-<li> <p><code>mse()</code>: Mean-square error
+<li> <p><code>mse()</code>: Mean-square error.
 </p>
 </li>
-<li> <p><code>rmse()</code>: Root-mean-square error
+<li> <p><code>rmse()</code>: Root-mean-square error.
 </p>
 </li>
-<li> <p><code>medAbsErr()</code>: Median absolute error
+<li> <p><code>medAbsErr()</code>: Median absolute error.
 </p>
 </li>
-<li> <p><code>BayesRule()</code>: Bayes Rule for a binary response
+<li> <p><code>BayesRule()</code>: Bayes Rule for a binary response.
 </p>
 </li>
-<li> <p><code>BayesRule2()</code>: Bayes rule for a binary response (without bounds checking)
+<li> <p><code>BayesRule2()</code>: Bayes rule for a binary response (without bounds checking).
 </p>
 </li></ul>
 
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+cv">cv</a></code>, <code><a href="#topic+cvSelect">cvSelect</a></code>
+<p><code><a href="#topic+cv">cv</a></code>, <code><a href="#topic+cv.merMod">cv.merMod</a></code>,
+<code><a href="#topic+cv.function">cv.function</a></code>.
 </p>
 
 

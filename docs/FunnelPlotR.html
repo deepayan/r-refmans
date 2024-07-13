@@ -51,7 +51,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.4.2</td>
+<td>0.5.0</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -84,16 +84,15 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>dplyr, ggrepel, ggplot2, scales</td>
+<td>dplyr, ggrepel, ggplot2, scales, rlang</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>testthat (&ge; 3.0.0), knitr, rmarkdown, COUNT, tidyr, covr,
-Cairo</td>
+<td>testthat (&ge; 3.0.0), knitr, rmarkdown, COUNT, tidyr, covr</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -109,7 +108,7 @@ Cairo</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-06-01 15:47:22 UTC; Christopher</td>
+<td>2024-04-12 08:08:53 UTC; ChrisMainey(Birmingh</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -125,7 +124,7 @@ Cairo</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-06-01 16:50:02 UTC</td>
+<td>2024-04-12 08:40:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -188,6 +187,22 @@ Cairo</td>
 <h3>Arguments</h3>
 
 <table>
+<tr><td><code id="build_limits_lookup_+3A_min_x">min_x</code></td>
+<td>
+<p>Minimum predicted value for range of x-axis</p>
+</td></tr>
+<tr><td><code id="build_limits_lookup_+3A_max_x">max_x</code></td>
+<td>
+<p>Maximum predicted value for range of x-axis</p>
+</td></tr>
+<tr><td><code id="build_limits_lookup_+3A_min_y">min_y</code></td>
+<td>
+<p>Minimum ratio value for range of y-axis</p>
+</td></tr>
+<tr><td><code id="build_limits_lookup_+3A_max_y">max_y</code></td>
+<td>
+<p>Maximum ratio value for range of y-axis</p>
+</td></tr>
 <tr><td><code id="build_limits_lookup_+3A_draw_adjusted">draw_adjusted</code></td>
 <td>
 <p>TRUE/FALSE Use overdispersion adjustment</p>
@@ -211,26 +226,6 @@ Cairo</td>
 <tr><td><code id="build_limits_lookup_+3A_multiplier">multiplier</code></td>
 <td>
 <p>Multiply ratio value by an amount.  Default is 1, but some mortality ratios use 100, for example.</p>
-</td></tr>
-<tr><td><code id="build_limits_lookup_+3A_min_preds">min_preds</code></td>
-<td>
-<p>Minimum predicted value for range of x-axis</p>
-</td></tr>
-<tr><td><code id="build_limits_lookup_+3A_max_preds">max_preds</code></td>
-<td>
-<p>Maximum predicted value for range of x-axis</p>
-</td></tr>
-<tr><td><code id="build_limits_lookup_+3A_min_ratio">min_ratio</code></td>
-<td>
-<p>Minimum ratio value for range of y-axis</p>
-</td></tr>
-<tr><td><code id="build_limits_lookup_+3A_max_ratio">max_ratio</code></td>
-<td>
-<p>Maximum ratio value for range of y-axis</p>
-</td></tr>
-<tr><td><code id="build_limits_lookup_+3A_draw_unadjusted">draw_unadjusted</code></td>
-<td>
-<p>TRUE/FALSE Draw Poisson distribution limits?</p>
 </td></tr>
 </table>
 
@@ -327,7 +322,8 @@ Cairo</td>
   data_type,
   sr_method,
   theme,
-  plot_cols
+  plot_cols,
+  max.overlaps
 )
 </code></pre>
 
@@ -490,6 +486,7 @@ and constructing an additive random effects models, originally used for meta-ana
 <h3>Usage</h3>
 
 <pre><code class='language-R'>funnel_plot(
+  .data,
   numerator,
   denominator,
   group,
@@ -515,7 +512,8 @@ and constructing an additive random effects models, originally used for meta-ana
   OD_adjust,
   xrange,
   yrange,
-  SHMI_rounding = TRUE
+  SHMI_rounding = TRUE,
+  max.overlaps = 10
 )
 </code></pre>
 
@@ -523,6 +521,10 @@ and constructing an additive random effects models, originally used for meta-ana
 <h3>Arguments</h3>
 
 <table>
+<tr><td><code id="funnel_plot_+3A_.data">.data</code></td>
+<td>
+<p>A data frame containing a numerator, denominator and grouping field.</p>
+</td></tr>
 <tr><td><code id="funnel_plot_+3A_numerator">numerator</code></td>
 <td>
 <p>A vector of the numerator (observed events/counts) values.  Used as numerator of the Y-axis</p>
@@ -658,6 +660,10 @@ Default is hex colours: c(&quot;#FF7F0EFF&quot;, &quot;#FF7F0EFF&quot;, &quot;#1
 <td>
 <p>TRUE/FALSE, for SHMI calculation (standardised ratio, with SHMI truncation etc.), should you round the expected values to 2 decimal places (TRUE) or not (FALSE)</p>
 </td></tr>
+<tr><td><code id="funnel_plot_+3A_max.overlaps">max.overlaps</code></td>
+<td>
+<p>Exclude text labels that overlap too many things. Defaults to 10. (inheritted from geom_label_repel)</p>
+</td></tr>
 </table>
 
 
@@ -745,8 +751,8 @@ mod&lt;- glm(los ~ hmo + died + age80 + factor(type)
 medpar$prds&lt;- predict(mod, type="response")
 
 # Draw plot, returning just the plot object
-fp&lt;-funnel_plot(denominator=medpar$prds, numerator=medpar$los,
-group = medpar$provnum, limit=95, title="An example funnel plot")
+fp&lt;-funnel_plot(medpar, denominator=prds, numerator=los,
+group = provnum, limit=95, title="An example funnel plot")
 
 # Methods for viewing/extracting
 print(fp)

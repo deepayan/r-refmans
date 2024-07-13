@@ -20,6 +20,7 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#addDayNightInfoPerEcho'><p>addDayNightInfoPerEcho</p></a></li>
 <li><a href='#classAbbreviations'><p>Default class abbreviations table of the birdscanR package</p></a></li>
+<li><a href='#computeDensity'><p>computeDensity</p></a></li>
 <li><a href='#computeMTR'><p>computeMTR</p></a></li>
 <li><a href='#computeObservationTime'><p>computeObservationTime</p></a></li>
 <li><a href='#convertTimeZone'><p>Converts timestamps from radar time zone to an user-defined time zone</p></a></li>
@@ -28,6 +29,7 @@ function processMathHTML() {
 <li><a href='#filterData'><p>filterData</p></a></li>
 <li><a href='#filterEchoData'><p>filterEchoData</p></a></li>
 <li><a href='#filterProtocolData'><p>filterProtocolData</p></a></li>
+<li><a href='#getBatClassification'><p>Get a BirdScan 'batClassification' table</p></a></li>
 <li><a href='#getCollectionTable'><p>Get BirdScan collection table</p></a></li>
 <li><a href='#getEchoFeatures'><p>Get BirdScan echo features</p></a></li>
 <li><a href='#getEchoValidationTable'><p>Get a BirdScan echo validation table</p></a></li>
@@ -45,6 +47,7 @@ database.</a></li>
 <li><a href='#plotExploration'><p>plotExploration</p></a></li>
 <li><a href='#plotLongitudinalMTR'><p>plotLongitudinalMTR</p></a></li>
 <li><a href='#QUERY'><p>Query 'SQL' database</p></a></li>
+<li><a href='#reclassToBats'><p>integrate bat classification</p></a></li>
 <li><a href='#saveMTR'><p>saveMTR</p></a></li>
 <li><a href='#savePlotToFile'><p>savePlotToFile</p></a></li>
 <li><a href='#twilight'><p>Get the nautical, civil, and solar dawn and dusk for a given timerange</p>
@@ -57,7 +60,7 @@ and locations.</a></li>
 <table>
 <tr>
 <td>Version:</td>
-<td>0.2.0</td>
+<td>0.3.0</td>
 </tr>
 <tr>
 <td>Title:</td>
@@ -66,7 +69,7 @@ Radars</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Extract data from 'Birdscan MR1' 'SQL' vertical-looking radar databases, filter, and process them to Migration Traffic Rates (#objects per hour and km) of, for example birds, and insects. Object classifications in the 'Birdscan MR1' databases are based on the dataset of Haest et al. (2021) &lt;<a href="https://doi.org/10.5281%2Fzenodo.5734960">doi:10.5281/zenodo.5734960</a>&gt;). Migration Traffic Rates can be calculated separately for different height bins (with a height resolution of choice) as well as over time periods of choice (e.g., 1/2 hour, 1 hour, 1 day, day/night, the full time period of observation, and anything in between). Two plotting functions are also included to explore the data in the 'SQL' databases and the resulting Migration Traffic Rate results. For details on the Migration Traffic Rate calculation procedures, see Schmid et al. (2019) &lt;<a href="https://doi.org/10.1111%2Fecog.04025">doi:10.1111/ecog.04025</a>&gt;.</td>
+<td>Extract data from 'Birdscan MR1' 'SQL' vertical-looking radar databases, filter, and process them to Migration Traffic Rates (#objects per hour and km) or density (#objects per km3) of, for example birds, and insects. Object classifications in the 'Birdscan MR1' databases are based on the dataset of Haest et al. (2021) &lt;<a href="https://doi.org/10.5281%2Fzenodo.5734960">doi:10.5281/zenodo.5734960</a>&gt;). Migration Traffic Rates and densities can be calculated separately for different height bins (with a height resolution of choice) as well as over time periods of choice (e.g., 1/2 hour, 1 hour, 1 day, day/night, the full time period of observation, and anything in between). Two plotting functions are also included to explore the data in the 'SQL' databases and the resulting Migration Traffic Rate results. For details on the Migration Traffic Rate calculation procedures, see Schmid et al. (2019) &lt;<a href="https://doi.org/10.1111%2Fecog.04025">doi:10.1111/ecog.04025</a>&gt;.</td>
 </tr>
 <tr>
 <td>Type:</td>
@@ -86,7 +89,7 @@ Radars</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.2</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -111,8 +114,8 @@ Radars</td>
 <tr>
 <td>Imports:</td>
 <td>DBI, dplyr, ggplot2, grDevices, magrittr, suntools, methods,
-modi, reshape2, RODBC, RPostgreSQL, rstudioapi, sp, stats,
-tibble, tidyr, utils</td>
+modi, reshape2, RODBC, RPostgreSQL, rlang, rstudioapi, sp,
+stats, tibble, tidyr, utils</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -124,7 +127,7 @@ tibble, tidyr, utils</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-06 08:26:07 UTC; bha</td>
+<td>2024-07-05 09:35:46 UTC; bha</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -146,7 +149,7 @@ tibble, tidyr, utils</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-06 08:40:06 UTC</td>
+<td>2024-07-05 09:50:06 UTC</td>
 </tr>
 </table>
 <hr>
@@ -288,6 +291,264 @@ MR1.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>data(classAbbreviations)
+</code></pre>
+
+<hr>
+<h2 id='computeDensity'>computeDensity</h2><span id='topic+computeDensity'></span>
+
+<h3>Description</h3>
+
+<p>This function will estimate the density (expressed as #objects / km3)
+based on the observations in your database. Note that this function only works
+properly on Birdscan MR1 database versions &gt;= 1.7.0.4 as the variable
+feature37.speed is required for the density calculation.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>computeDensity(
+  dbName,
+  echoes,
+  classSelection,
+  altitudeRange,
+  altitudeBinSize,
+  timeRange,
+  timeBinDuration_sec,
+  timeZone,
+  sunriseSunset,
+  sunOrCivil = "civil",
+  crepuscule = "nauticalSolar",
+  protocolData,
+  visibilityData,
+  manualBlindTimes = NULL,
+  saveBlindTimes = FALSE,
+  blindTimesOutputDir = getwd(),
+  blindTimeAsMtrZero = NULL,
+  propObsTimeCutoff = 0,
+  computePerDayNight = FALSE,
+  computePerDayCrepusculeNight = FALSE,
+  computeAltitudeDistribution = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="computeDensity_+3A_dbname">dbName</code></td>
+<td>
+<p>Character string, containing the name of the database you are
+processing</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_echoes">echoes</code></td>
+<td>
+<p>dataframe with the echo data from the data list created by the
+function ‘extractDBData’ or a subset of it created by the function
+‘filterEchoData’.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_classselection">classSelection</code></td>
+<td>
+<p>character string vector with all classes which should
+be used to calculate the density. The density and number of Echoes will be calculated
+for each class as well as for all classes together.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_altituderange">altitudeRange</code></td>
+<td>
+<p>numeric vector of length 2 with the start and end of the
+altitude range in meter a.g.l.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_altitudebinsize">altitudeBinSize</code></td>
+<td>
+<p>numeric, size of the altitude bins in meter.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_timerange">timeRange</code></td>
+<td>
+<p>Character vector of length 2, with start and end of time
+range, formatted as &quot;%Y-%m-%d %H:%M&quot;</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_timebinduration_sec">timeBinDuration_sec</code></td>
+<td>
+<p>duration of timeBins in seconds (numeric). for
+values &lt;= 0 a duration of 1 hour will be set</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_timezone">timeZone</code></td>
+<td>
+<p>time zone in which the time bins should be created as string,
+e.g. &quot;Etc/GMT0&quot;</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_sunrisesunset">sunriseSunset</code></td>
+<td>
+<p>dataframe with sunrise/sunset, and civil and nautical
+dawn/dusk. Computed with the function 'twilight'.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_sunorcivil">sunOrCivil</code></td>
+<td>
+<p>sunrise/sunset or civil dawn/dusk used to split day and
+night. Supported values: &quot;sun&quot; or &quot;civil&quot;. Default: &quot;civil&quot;</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_crepuscule">crepuscule</code></td>
+<td>
+<p>optional character variable, Set to “nauticalSolar” to use
+the time between nautical dusk/dawn and sunrise/sunset times to define the
+crepuscular period, or to &quot;nauticalCivil&quot; to use the time between nautical
+and civil dusk/dawn to define the crepuscular period, or to &quot;civilSolar&quot; to use
+the time between civil dusk/dawn and sunrise/sunset times to define the
+crepuscular period. Default is &quot;nauticalSolar&quot;.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_protocoldata">protocolData</code></td>
+<td>
+<p>dataframe with the protocol data from the data list
+created by the function <code>extractDBData</code> or a subset of it created by the
+function <code>filterProtocolData</code>.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_visibilitydata">visibilityData</code></td>
+<td>
+<p>dataframe with the visibility data from the data list
+created by the function ‘extractDBData’.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_manualblindtimes">manualBlindTimes</code></td>
+<td>
+<p>dataframe with the manual blind times created by the
+function <code>loadManualBlindTimes</code>.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_saveblindtimes">saveBlindTimes</code></td>
+<td>
+<p>Logical, determines whether to save the blind times to
+a file. Default: False.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_blindtimesoutputdir">blindTimesOutputDir</code></td>
+<td>
+<p>Character string containing the path to save the
+blind times to. Default: 'your-working-directory'</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_blindtimeasmtrzero">blindTimeAsMtrZero</code></td>
+<td>
+<p>character string vector with the blind time types
+which should be treated as observation time with MTR zero.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_propobstimecutoff">propObsTimeCutoff</code></td>
+<td>
+<p>numeric between 0 and 1. If the density is computed per
+day and night, time bins with a proportional observation time smaller than
+propObsTimeCutoff are ignored when combining the time bins. If the density is
+computed for each time bin, the parameter is ignored.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_computeperdaynight">computePerDayNight</code></td>
+<td>
+<p>logical, TRUE: density is computed per day and night.
+The time bins of each day and night will be combined and the mean density is
+computed for each day and night. The spread (first and third Quartile) for
+each day and night are also computed. The spread is dependent on the chosen
+time bin duration/amount of time bins; When FALSE: density is computed for each
+time bin. This option computes the density for each time bin defined in the time
+bin dataframe. The time bins that were split due to sunrise/sunset during the
+time bin will be combined to one bin.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_computeperdaycrepusculenight">computePerDayCrepusculeNight</code></td>
+<td>
+<p>logical, TRUE: density is computed per
+crepusculeMorning, day, crepusculeEvening, and night. The time bins of each
+of these diel phases will be combined and the mean density is computed for each
+phase. The spread (first and third Quartile) for each phase is also computed.
+The spread is dependent on the chosen time bin duration/amount of time bins;
+When FALSE: density is computed for each time bin. This option computes the density
+for each time bin defined in the time bin dataframe. The time bins that were
+split due to sunrise/sunset during the time bin will be combined to one bin.
+Default = FALSE.</p>
+</td></tr>
+<tr><td><code id="computeDensity_+3A_computealtitudedistribution">computeAltitudeDistribution</code></td>
+<td>
+<p>logical, TRUE: compute the mean height and
+altitude distribution of density for the pre-defined quantiles 0.05, 0.25, 0.5,
+0.75, 0.95</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Density
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Birgen Haest, <a href="mailto:birgen.haest@vogelwarte.ch">birgen.haest@vogelwarte.ch</a>;
+Fabian Hertner, <a href="mailto:fabian.hertner@swiss-birdradar.com">fabian.hertner@swiss-birdradar.com</a>;
+Baptiste Schmid, <a href="mailto:baptiste.schmid@vogelwarte.ch">baptiste.schmid@vogelwarte.ch</a>;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# Set server, database, and other input settings
+# ===========================================================================
+  dbServer       = "MACHINE\\SERVERNAME"     # Set the name of your SQL server
+  dbName         = "db_Name"                   # Set the name of your database
+  dbDriverChar   = "SQL Server"                # Set either "SQL Server" or "PostgreSQL"
+  mainOutputDir  = file.path(".", "results")
+  radarTimeZone  = "Etc/GMT0"
+  targetTimeZone = "Etc/GMT0"
+  listOfRfFeaturesToExtract = c(167, 168)
+  siteLocation   = c(47.494427, 8.716432)
+  sunOrCivil     = "civil"
+  crepuscule     = "nauticalSolar"
+  timeRangeData  = c("2021-01-15 00:00", "2021-01-31 00:00")
+ 
+# Get data
+# ===========================================================================
+  dbData = extractDbData(dbDriverChar                   = dbDriverChar,
+                         dbServer                       = dbServer, 
+                         dbName                         = dbName, 
+                         saveDbToFile                   = TRUE,
+                         dbDataDir                      = mainOutputDir,
+                         radarTimeZone                  = radarTimeZone,
+                         targetTimeZone                 = targetTimeZone,
+                         listOfRfFeaturesToExtract      = listOfRfFeaturesToExtract,
+                         siteLocation                   = siteLocation, 
+                         sunOrCivil                     = sunOrCivil, 
+                         crepuscule                     = crepuscule)
+                         
+# Get sunrise/sunset 
+# ===========================================================================
+  sunriseSunset = twilight(timeRange = timeRangeData,
+                           latLon    = c(47.494427, 8.716432),
+                           timeZone  = targetTimeZone)
+                          
+# Get manual blind times
+# ===========================================================================
+  data(manualBlindTimes)
+  cManualBlindTimes = manualBlindTimes
+
+# Compute migration traffic rate
+# ===========================================================================
+  classSelection.density = c("insect")
+  densityData = computeDensity(dbName                       = dbName, 
+                               echoes                       = dbData$echoData, 
+                               classSelection               = classSelection.density, 
+                               altitudeRange                = c(25, 1025),
+                               altitudeBinSize              = 50,
+                               timeRange                    = timeRangeData, 
+                               timeBinDuration_sec          = 1800,
+                               timeZone                     = targetTimeZone,
+                               sunriseSunset                = sunriseSunset,
+                               sunOrCivil                   = "civil",
+                               crepuscule                   = crepuscule,
+                               protocolData                 = dbData$protocolData, 
+                               visibilityData               = dbData$visibilityData,
+                               manualBlindTimes             = cManualBlindTimes,
+                               saveBlindTimes               = FALSE,
+                               blindTimesOutputDir          = getwd(),
+                               blindTimeAsMtrZero           = NULL,
+                               propObsTimeCutoff            = 0, 
+                               computePerDayNight           = FALSE,
+                               computePerDayCrepusculeNight = FALSE 
+                               computeAltitudeDistribution  = TRUE)   
+
+## End(Not run)
+
 </code></pre>
 
 <hr>
@@ -901,7 +1162,8 @@ crepuscular period. Default is &quot;nauticalSolar&quot;.</p>
 
 <p>a list of R objects with data extracted from the Database: 'echoData',
 'protocolData', 'siteData', 'visibilityData', 'timeBinData', 'rfFeatures',
-'availableClasses', 'classProbabilitiesAndMtrFactors'
+'availableClasses', 'availableBatClasses', 'classProbabilitiesAndMtrFactors',
+'batProbabilitiesAndMtrFactors'
 </p>
 
 
@@ -1350,6 +1612,78 @@ Birgen Haest, <a href="mailto:birgen.haest@vogelwarte.ch">birgen.haest@vogelwart
   filteredProtocolData = filterProtocolData(protocolData       = dbData$protocolData,
                                             pulseTypeSelection = pulseLengthSelection, 
                                             rotationSelection  = rotationSelection)   
+
+## End(Not run)
+
+</code></pre>
+
+<hr>
+<h2 id='getBatClassification'>Get a BirdScan 'batClassification' table</h2><span id='topic+getBatClassification'></span>
+
+<h3>Description</h3>
+
+<p>gets  the 'rfClasses' table from a 'Birdscan MR1' 'SQL'
+database
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getBatClassification(dbConnection, dbDriverChar)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getBatClassification_+3A_dbconnection">dbConnection</code></td>
+<td>
+<p>a valid  database connection</p>
+</td></tr>
+<tr><td><code id="getBatClassification_+3A_dbdriverchar">dbDriverChar</code></td>
+<td>
+<p>dbDriverChar 'SQL Server' The name of the driver. Should
+be either 'SQL Server' or 'PostgreSQL'. If 'PostgreSQL', it connects to
+cloud.birdradar.com</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing three variables: (1) batClassificationTable: The
+'batClassification' database table; (2) classProbabilitiesAndMtrFactors: A
+dataframe containing the classification probabilities for all classes for
+each object; and (3) availableClasses: the classes used for the
+classification of the objects.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Fabian Hertner, <a href="mailto:fabian.hertner@swiss-birdradar.com">fabian.hertner@swiss-birdradar.com</a>;
+Birgen Haest, <a href="mailto:birgen.haest@vogelwarte.ch">birgen.haest@vogelwarte.ch</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# Set server and database settings
+# ===========================================================================
+  dbServer       = "MACHINE\\SERVERNAME"     # Set the name of your SQL server
+  dbName         = "db_Name"                   # Set the name of your database
+  dbDriverChar   = "SQL Server"                # Set either "SQL Server" or "PostgreSQL"
+
+# Open the connection with the database
+# ===========================================================================
+  dsn = paste0("driver=", dbDriverChar, ";server=", dbServer,
+               ";database=", dbName,
+               ";uid=", rstudioapi::askForPassword("Database user"),
+               ";pwd=", rstudioapi::askForPassword("Database password"))
+  dbConnection = RODBC::odbcDriverConnect(dsn)
+
+rfClassification = getBatClassification(dbConnection, dbDriverChar)
 
 ## End(Not run)
 
@@ -2652,6 +2986,96 @@ Birgen Haest, <a href="mailto:birgen.haest@vogelwarte.ch">birgen.haest@vogelwart
 
 ## End(Not run)
   
+</code></pre>
+
+<hr>
+<h2 id='reclassToBats'>integrate bat classification</h2><span id='topic+reclassToBats'></span>
+
+<h3>Description</h3>
+
+<p>reclassifies echoes based on bat classification
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>reclassToBats(
+  echoData = NULL,
+  batClassProbabilitiesAndMtrFactors = NULL,
+  reclassToBatCutoff = -1
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="reclassToBats_+3A_echodata">echoData</code></td>
+<td>
+<p>echodata dataframe, output from extractDbData</p>
+</td></tr>
+<tr><td><code id="reclassToBats_+3A_batclassprobabilitiesandmtrfactors">batClassProbabilitiesAndMtrFactors</code></td>
+<td>
+<p>probabilities of bat classification,
+output from extractDbData'</p>
+</td></tr>
+<tr><td><code id="reclassToBats_+3A_reclasstobatcutoff">reclassToBatCutoff</code></td>
+<td>
+<p>Threshold (0..1), classification of echoes with
+bat probability higher than reclassToBatCutoff will be set to 'bat'</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>echoData dataframe
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Fabian Hertner, <a href="mailto:fabian.hertner@swiss-birdradar.com">fabian.hertner@swiss-birdradar.com</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# Set server, database, and other input settings
+# ===========================================================================
+  dbServer       = "MACHINE\\SERVERNAME"     # Set the name of your SQL server
+  dbName         = "db_Name"                   # Set the name of your database
+  dbDriverChar   = "SQL Server"                # Set either "SQL Server" or "PostgreSQL"
+  mainOutputDir  = file.path(".", "results")
+  radarTimeZone  = "Etc/GMT0"
+  targetTimeZone = "Etc/GMT0"
+  listOfRfFeaturesToExtract = c(167, 168)
+  siteLocation   = c(47.494427, 8.716432)
+  sunOrCivil   = "civil"
+ 
+# Get data
+# ===========================================================================
+  dbData = extractDbData(dbDriverChar                   = dbDriverChar,
+                         dbServer                       = dbServer, 
+                         dbName                         = dbName, 
+                         saveDbToFile                   = TRUE,
+                         dbDataDir                      = mainOutputDir,
+                         radarTimeZone                  = radarTimeZone,
+                         targetTimeZone                 = targetTimeZone,
+                         listOfRfFeaturesToExtract      = listOfRfFeaturesToExtract,
+                         siteLocation                   = siteLocation, 
+                         sunOrCivil                   = sunOrCivil,
+                         crepuscule                     = "nauticalSolar")
+#' 
+# Reclass To Bats
+# ===========================================================================
+  dbData$echoData = reclassToBats(echoData = dbData$echoData,
+                                  batClassProbabilitiesAndMtrFactors = 
+                                      dbData$batClassProbabilitiesAndMtrFactors,
+                                  reclassToBatCutoff = 0.5)
+
+## End(Not run)
 </code></pre>
 
 <hr>

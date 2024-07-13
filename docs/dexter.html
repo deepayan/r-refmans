@@ -85,7 +85,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.4.0</td>
+<td>1.5.0</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -122,7 +122,7 @@ function processMathHTML() {
 <tr>
 <td>Imports:</td>
 <td>RSQLite (&ge; 2.2.7), DBI (&ge; 1.0.0), MASS (&ge; 7.3), tidyr (&ge;
-1.2.0), rlang (&ge; 0.4.1), dplyr (&ge; 1.1.0), Rcpp (&ge; 1.0.1),
+1.2.0), rlang (&ge; 1.0.0), dplyr (&ge; 1.1.0), Rcpp (&ge; 1.0.1),
 RcppArmadillo (&ge; 0.12.6.6.0), graphics, grDevices, methods,
 utils</td>
 </tr>
@@ -132,7 +132,7 @@ utils</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.2</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -148,7 +148,7 @@ utils</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-01-19 07:57:20 UTC; jessek</td>
+<td>2024-07-05 09:05:51 UTC; jessek</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -163,7 +163,7 @@ utils</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-01-19 10:10:06 UTC</td>
+<td>2024-07-05 09:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -738,19 +738,40 @@ variance-covariance matrix (CML only) or <code>posterior</code> for all draws of
 </table>
 
 
+<h3>Details</h3>
+
+<p>The parametrisation of IRT models is far from uniform and depends on the author. Dexter uses the following parametrisation for the 
+extended Nominal Response Model (NRM):
+</p>
+<p style="text-align: center;"><code class="reqn">
+P(X=a_j|\beta,\theta) = \frac{\exp\left(a_j\theta-\sum_{g=1}^{j}\beta_g(a_g-a_{g-1})\right)}{1+\sum_h \exp\left(a_h\theta-\sum_{g=1}^{h}\beta_g(a_g-a_{g-1})\right)}
+</code>
+</p>
+ 
+<p>where <code class="reqn">a_j</code> is a shorthand for the integer score belonging to the j-th category of an item. 
+</p>
+<p>For dichotomous items with <code class="reqn">a_1=1</code> (i.e. the only possible scores are 0 and 1)
+this formula simplifies to the standard Rasch model: <code class="reqn">P(x=1|\beta,\theta)=\frac{\exp(\theta-\beta)}{1+\exp(\theta-\beta)}</code>. For polytomous items, 
+when all scores are equal to the categories (i.e. <code class="reqn">a_j=j</code> for all <code class="reqn">j</code>) 
+the NRM is equal to the Partial Credit Model, although with a different parametrisation than is commonly used. 
+For dichotomous items and for all polytomous items where <code class="reqn">a_j-a_{j-1}</code> is constant, the formulation is equal to the OPLM.
+</p>
+
+
 <h3>Value</h3>
 
-<p>Depends on the calibration method and the value of 'what'. For 'items' 
+<p>Depends on the calibration method and the value of 'what'. For <code>what="items"</code>: 
 </p>
 
 <dl>
-<dt>CML</dt><dd><p>a data.frame with columns: item_id, item_score, beta, SE_beta</p>
+<dt>CML calibration</dt><dd><p>a data.frame with columns: item_id, item_score, beta, SE_beta</p>
 </dd>
-<dt>Bayes</dt><dd><p>a data.frame with columns: item_id, item_score, mean_beta, SD_beta, &lt;hpd_b_left&gt;, &lt;hpd_b_right&gt;</p>
+<dt>Bayesian calibration</dt><dd><p>a data.frame with columns: item_id, item_score, mean_beta, SD_beta, &lt;hpd_b_left&gt;, &lt;hpd_b_right&gt;</p>
 </dd>
 </dl>
 
-<p>The posterior distribution and variance covariance matrix are returned as matrices.
+<p>If <code>what="var"</code> or <code>what="posterior"</code> then  a matrix is returned with the variance-covariance matrix or the posterior draws 
+respectively.
 </p>
 
 <hr>
@@ -1369,7 +1390,7 @@ or <code>open_project</code></p>
 
 <p>These functions are meant for people who want to develop their own models based
 on the data management structure of dexter. The benefit is some extra speed and less memory usage 
-compared to using 'get_responses' or 'get_testscores'.
+compared to using <code>get_responses</code> or <code>get_testscores</code>.
 The return value of get_resp_data can be used as the 'dataSrc' argument in analysis functions.
 </p>
 
@@ -1402,7 +1423,7 @@ get_resp_matrix(dataSrc, qtpredicate = NULL, env = NULL)
 </td></tr>
 <tr><td><code id="get_resp_data_+3A_qtpredicate">qtpredicate</code></td>
 <td>
-<p>quoted predicate</p>
+<p>quoted predicate, e.g. <code>quote(booklet_id=='bk01')</code></p>
 </td></tr>
 <tr><td><code id="get_resp_data_+3A_extra_columns">extra_columns</code></td>
 <td>
@@ -1736,13 +1757,33 @@ for a single item, an arbitrary group of items or all items
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>information(parms, items = NULL, booklet_id = NULL, which.draw = NULL)
+<pre><code class='language-R'>information(
+  parms,
+  items = NULL,
+  booklet_id = NULL,
+  parms_draw = c("average", "sample")
+)
 
-expected_score(parms, items = NULL, booklet_id = NULL, which.draw = NULL)
+expected_score(
+  parms,
+  items = NULL,
+  booklet_id = NULL,
+  parms_draw = c("average", "sample")
+)
 
-r_score(parms, items = NULL, booklet_id = NULL, which.draw = NULL)
+r_score(
+  parms,
+  items = NULL,
+  booklet_id = NULL,
+  parms_draw = c("average", "sample")
+)
 
-p_score(parms, items = NULL, booklet_id = NULL, which.draw = NULL)
+p_score(
+  parms,
+  items = NULL,
+  booklet_id = NULL,
+  parms_draw = c("average", "sample")
+)
 </code></pre>
 
 
@@ -1762,10 +1803,11 @@ depending on parametrization, a column named either beta/delta, eta or b</p>
 <td>
 <p>id of a single booklet (e.g. the test information function), if items is not NULL this is ignored</p>
 </td></tr>
-<tr><td><code id="information_+3A_which.draw">which.draw</code></td>
+<tr><td><code id="information_+3A_parms_draw">parms_draw</code></td>
 <td>
-<p>the number of the random draw (only applicable if calibration method was Bayes). If NULL, the mean 
-beta parameter will be used</p>
+<p>when the item parameters are estimated with method &quot;Bayes&quot; (see: <code><a href="#topic+fit_enorm">fit_enorm</a></code>), 
+parms_draw specifies whether to use a sample (a different item parameter draw for each output column) or the posterior mean
+of the item draws. Alternatively, it can be an integer specifying a specific draw. It is ignored when parms is not estimated Bayesianly.</p>
 </td></tr>
 </table>
 
@@ -1883,8 +1925,8 @@ in an error.
 
 <h3>Description</h3>
 
-<p>Estimates correlations between latent traits. Use an item_property to distinguish the different scales. 
-This function uses plausible values so results may differ slightly between calls.
+<p>Estimates correlations between latent traits using plausible values as described in Marsman, et al. (2022). 
+An item_property is used to distinguish the different scales.
 </p>
 
 
@@ -1935,10 +1977,23 @@ value must be between 0 and 1.</p>
 </table>
 
 
+<h3>Details</h3>
+
+<p>This function uses plausible values so results may differ slightly between calls.
+</p>
+
+
 <h3>Value</h3>
 
 <p>List containing a estimated correlation matrix, the corresponding standard deviations, 
 and the lower and upper limits of the highest posterior density interval
+</p>
+
+
+<h3>References</h3>
+
+<p>Marsman, M., Bechger, T. M., &amp; Maris, G. K. (2022). Composition algorithms for conditional distributions. 
+In Essays on Contemporary Psychometrics (pp. 219-250). Cham: Springer International Publishing.
 </p>
 
 <hr>
@@ -1992,6 +2047,7 @@ and the lower and upper limits of the highest posterior density interval
   nPS = 1,
   prior_dist = c("normal", "mixture"),
   keep.observed = TRUE,
+  by_item = FALSE,
   merge_within_persons = FALSE
 )
 </code></pre>
@@ -2029,7 +2085,7 @@ of the item draws. Alternatively, it can be an integer specifying a specific dra
 <tr><td><code id="plausible_scores_+3A_covariates">covariates</code></td>
 <td>
 <p>name or a vector of names of the variables to group the population, used to update the prior.
-A covariate must be a discrete person covariate (e.g. not a float) that indicates nominal categories, e.g. gender or school
+A covariate must be a discrete person covariate that indicates nominal categories, e.g. gender or school
 If dataSrc is a data.frame, it must contain the covariate.</p>
 </td></tr>
 <tr><td><code id="plausible_scores_+3A_nps">nPS</code></td>
@@ -2045,6 +2101,10 @@ A mixture is only possible when there are no covariates.</p>
 <td>
 <p>If responses to one or more of the items have been observed,
 the user can choose to keep these observations or generate new ones.</p>
+</td></tr>
+<tr><td><code id="plausible_scores_+3A_by_item">by_item</code></td>
+<td>
+<p>return scores per item instead of sumscores</p>
 </td></tr>
 <tr><td><code id="plausible_scores_+3A_merge_within_persons">merge_within_persons</code></td>
 <td>
@@ -2120,9 +2180,9 @@ If dataSrc is a data.frame, it must contain the covariate.</p>
 </td></tr>
 <tr><td><code id="plausible_values_+3A_parms_draw">parms_draw</code></td>
 <td>
-<p>when the item parameters are estimated Bayesianly (see: <code><a href="#topic+fit_enorm">fit_enorm</a></code>), 
-parms_draw specifies whether to use a sample(a different item parameter draw for each plausible values draw) or the posterior mean
-of the item draws. Alternatively, it can be an integer specifying a specific draw. Ignored when parms is not estimated Bayesianly.</p>
+<p>when the item parameters are estimated with method &quot;Bayes&quot; (see: <code><a href="#topic+fit_enorm">fit_enorm</a></code>), 
+parms_draw specifies whether to use a sample (a different item parameter draw for each plausible values draw) or the posterior mean
+of the item draws. Alternatively, it can be an integer specifying a specific draw. It is ignored when parms is not estimated Bayesianly.</p>
 </td></tr>
 <tr><td><code id="plausible_values_+3A_prior_dist">prior_dist</code></td>
 <td>
@@ -2938,7 +2998,7 @@ To easily apply this procedure, we advise to use the free digital 3DC applicatio
 can be downloaded from the Cito website, see the 
 <a href="https://www.cito.com/our-expertise/implementation/3dc">3DC application download page</a>. 
 If you want to apply the 3DC method using paper forms instead, you can use the plot method to generate the forms
-from thests_par object.
+from the sts_par object.
 </p>
 <p>Although the 3DC method is used as explained in Keuning et. al., the method we use for computing the forms is a simple
 maximum likelihood scaling from an IRT model, described in Moe and Verhelst (2017)

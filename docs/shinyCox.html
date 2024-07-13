@@ -20,10 +20,13 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#cox_KM_plots'><p>Generate Cox-model predicted Kaplan-Meier plots</p></a></li>
 <li><a href='#cox_times_table'><p>Create table of Cox-model predicted probabilities</p></a></li>
+<li><a href='#get_confint'><p>Get confidence intervals for predicted survival curves</p></a></li>
 <li><a href='#make_coxph'><p>Wrapper to create <code>survival::coxph()</code> object suitable for <code>shine_coxph()</code></p></a></li>
 <li><a href='#predict_one_coxfit'><p>Compute Cox-model predicted survival function</p></a></li>
+<li><a href='#predict_se'><p>Creates predicted survival and standard errors for confidence intervals</p></a></li>
 <li><a href='#prep_coxfit'><p>Create simplified <code>coxph()</code> object for shiny app</p></a></li>
 <li><a href='#shine_coxph'><p>Generates a shiny app for predictions from Cox model(s)</p></a></li>
+<li><a href='#surv_pred_info'><p>Obtains information for standard errors of predictions</p></a></li>
 </ul>
 </div>
 <hr>
@@ -36,7 +39,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.1</td>
+<td>1.1.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -49,7 +52,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>License:</td>
-<td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
+<td><a href="https://www.r-project.org/Licenses/LGPL-3">LGPL (&ge; 3)</a></td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -77,7 +80,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -85,7 +88,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-08-22 17:43:48 UTC; harry</td>
+<td>2024-05-29 03:13:34 UTC; harryc</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -104,7 +107,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-08-23 17:10:02 UTC</td>
+<td>2024-05-30 02:40:11 UTC</td>
 </tr>
 </table>
 <hr>
@@ -122,7 +125,7 @@ app, although it is fully possible to do so.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>cox_KM_plots(KM.hat, clrs = NULL)
+<pre><code class='language-R'>cox_KM_plots(KM.hat, clrs = NULL, confint, ylab = "Prob")
 </code></pre>
 
 
@@ -136,6 +139,15 @@ app, although it is fully possible to do so.
 <tr><td><code id="cox_KM_plots_+3A_clrs">clrs</code></td>
 <td>
 <p>color of lines</p>
+</td></tr>
+<tr><td><code id="cox_KM_plots_+3A_confint">confint</code></td>
+<td>
+<p>logical value to determine if confidence intervals should be
+plotted</p>
+</td></tr>
+<tr><td><code id="cox_KM_plots_+3A_ylab">ylab</code></td>
+<td>
+<p>text label for y-axis</p>
 </td></tr>
 </table>
 
@@ -299,6 +311,83 @@ cox_times_table(KM.hat, fixTimes = "100")
 </code></pre>
 
 <hr>
+<h2 id='get_confint'>Get confidence intervals for predicted survival curves</h2><span id='topic+get_confint'></span>
+
+<h3>Description</h3>
+
+<p>Creates confidence levels for plotting predicted survival curves.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_confint(p, se, conf.type, conf.int, ulimit = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="get_confint_+3A_p">p</code></td>
+<td>
+<p>Vector of survival probabilities</p>
+</td></tr>
+<tr><td><code id="get_confint_+3A_se">se</code></td>
+<td>
+<p>Vector of standard errors</p>
+</td></tr>
+<tr><td><code id="get_confint_+3A_conf.type">conf.type</code></td>
+<td>
+<p>Type of confidence interval, includes 'plain', 'log',
+'log-log', 'logit', and 'arcsin'.</p>
+</td></tr>
+<tr><td><code id="get_confint_+3A_conf.int">conf.int</code></td>
+<td>
+<p>The level for two-sided confidence interval on the predicted
+survival curve, default is 0.95.</p>
+</td></tr>
+<tr><td><code id="get_confint_+3A_ulimit">ulimit</code></td>
+<td>
+<p>Should upper bound be limited to 1, default is 'TRUE'</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>list of length two, containing the lower and upper confidence levels
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+library(survival)
+library(shinyCox)
+colondeaths &lt;- colon[colon$etype == 2, ]
+split_colon &lt;- split(colondeaths, colondeaths$rx)
+
+colon_arm1 &lt;- split_colon$Obs
+colon1ph &lt;- coxph(Surv(time, status) ~ factor(extent) + nodes + strata(surg)
+                  + factor(differ),
+                  colon_arm1,
+                  x = TRUE, model = TRUE)
+
+new.data = cbind.data.frame(`factor(extent)` = 3,
+                         `surg` = "surg=0",`factor(differ)` = 2,`nodes` = 5)
+
+
+coxfit = prep_coxfit(colon1ph)
+coxlist = surv_pred_info(colon1ph)
+
+for_ci = predict_se(coxlist, coxfit, new.data)
+
+get_confint(for_ci$surv, for_ci$std.err, conf.int = 0.95,
+            conf.type = "log-log")
+
+</code></pre>
+
+<hr>
 <h2 id='make_coxph'>Wrapper to create <code>survival::coxph()</code> object suitable for <code><a href="#topic+shine_coxph">shine_coxph()</a></code></h2><span id='topic+make_coxph'></span>
 
 <h3>Description</h3>
@@ -412,6 +501,75 @@ bladderfit &lt;- prep_coxfit(bladderph)
 newdata &lt;- bladder[1, ]
 predictions &lt;- predict_one_coxfit(bladderfit, newdata)
 
+
+</code></pre>
+
+<hr>
+<h2 id='predict_se'>Creates predicted survival and standard errors for confidence intervals</h2><span id='topic+predict_se'></span>
+
+<h3>Description</h3>
+
+<p>Adapted from parts of <code><a href="survival.html#topic+survfit.coxph">survfit.coxph()</a></code>, computes predictions for
+standard errors based on <code><a href="#topic+surv_pred_info">surv_pred_info()</a></code> output and <code>newdata</code> from the
+shiny app.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>predict_se(listsurv, coxfit, newdata)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="predict_se_+3A_listsurv">listsurv</code></td>
+<td>
+<p>Output from <code><a href="#topic+surv_pred_info">surv_pred_info()</a></code> function</p>
+</td></tr>
+<tr><td><code id="predict_se_+3A_coxfit">coxfit</code></td>
+<td>
+<p><code>coxfit</code> object created for predictions. Used to find strata</p>
+</td></tr>
+<tr><td><code id="predict_se_+3A_newdata">newdata</code></td>
+<td>
+<p>Data used to make predicted standard errors</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a list of number of subjects for each curve, times at which the
+curve has a step, number at risk for each time, number of events at each
+time, number censored at each time (no event but exit risk set), estimated
+survival, cumulative hazard at each transition, and standard error of the
+cumulative hazard.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+  library(survival)
+  library(shinyCox)
+  colondeaths &lt;- colon[colon$etype == 2, ]
+  split_colon &lt;- split(colondeaths, colondeaths$rx)
+
+  colon_arm1 &lt;- split_colon$Obs
+  colon1ph &lt;- coxph(Surv(time, status) ~
+  factor(extent) + nodes + strata(surg) + factor(differ), colon_arm1, x =
+  TRUE, model = TRUE)
+
+  new.data = cbind.data.frame(`factor(extent)` = 3, `surg` =
+  "surg=0",`factor(differ)` = 2,`nodes` = 5)
+
+
+  coxfit = prep_coxfit(colon1ph)
+  coxlist = surv_pred_info(colon1ph)
+
+  predict_se(coxlist, coxfit, new.data)
 
 </code></pre>
 
@@ -580,6 +738,82 @@ with meaningful names prior to using <code><a href="survival.html#topic+coxph">s
   # Remove app from directory once finished
   unlink(paste0(tempdir(),"/",filedir), recursive = TRUE)
 
+
+</code></pre>
+
+<hr>
+<h2 id='surv_pred_info'>Obtains information for standard errors of predictions</h2><span id='topic+surv_pred_info'></span>
+
+<h3>Description</h3>
+
+<p>Computes necessary information to calculate standard errors and
+confidence intervals in shiny app. This is adapted from parts of
+<code><a href="survival.html#topic+survfit.coxph">survfit.coxph()</a></code>. This function is meant to be used in conjunction with
+<code><a href="#topic+predict_se">predict_se()</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>surv_pred_info(model, ctype, individual = FALSE, id, se.fit = TRUE, stype = 2)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="surv_pred_info_+3A_model">model</code></td>
+<td>
+<p>a <code>coxph</code> object</p>
+</td></tr>
+<tr><td><code id="surv_pred_info_+3A_ctype">ctype</code></td>
+<td>
+<p>whether the cumulative hazard computation should have a
+correction for ties, 1=no, 2=yes.</p>
+</td></tr>
+<tr><td><code id="surv_pred_info_+3A_individual">individual</code></td>
+<td>
+<p>deprecated argument, replaced by <code>id</code></p>
+</td></tr>
+<tr><td><code id="surv_pred_info_+3A_id">id</code></td>
+<td>
+<p>optional variable name of subject identifiers. Not supported in app</p>
+</td></tr>
+<tr><td><code id="surv_pred_info_+3A_se.fit">se.fit</code></td>
+<td>
+<p>a logical value indicating whether standard errors should be
+computed. Default is TRUE for standard models, FALSE for multi-state (code
+not yet present for that case.)</p>
+</td></tr>
+<tr><td><code id="surv_pred_info_+3A_stype">stype</code></td>
+<td>
+<p>computation of the survival curve, 1=direct, 2=exponential of
+the cumulative hazard. Default is 2.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of information needed for computing predicted standard
+errors.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+library(survival)
+
+colondeaths &lt;- colon[colon$etype == 2, ]
+split_colon &lt;- split(colondeaths, colondeaths$rx)
+colon_arm1 &lt;- split_colon$Obs
+
+colon1ph &lt;- coxph(Surv(time, status) ~ factor(extent) + nodes + strata(surg)
+                   + factor(differ),
+                   colon_arm1,
+                   x = TRUE, model = TRUE)
+surv_pred_info(colon1ph)
 
 </code></pre>
 

@@ -30,6 +30,7 @@ function processMathHTML() {
 <li><a href='#get_layer_estimates'><p>Get Estimates</p></a></li>
 <li><a href='#prepare_spatial_filter'><p>Prepare JSON for use as a spatial filter based on feature geometry or</p>
 bounding box input</a></li>
+<li><a href='#query_layer_attachments'><p>Query and download attachments</p></a></li>
 <li><a href='#truncate_layer'><p>Truncate a Feature Layer</p></a></li>
 <li><a href='#update_params'><p>Modify query parameters</p></a></li>
 </ul>
@@ -48,7 +49,7 @@ bounding box input</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.0</td>
+<td>0.3.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -67,8 +68,9 @@ bounding box input</a></li>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>arcgisutils (&ge; 0.2.0), cli, httr2 (&ge; 1.0.0), jsonify,
-lifecycle, RcppSimdJson, rlang, sf, terra, utils</td>
+<td>arcgisutils (&ge; 0.2.0), arcpbf (&ge; 0.1.2), cli, httr2 (&ge;
+1.0.0), jsonify, lifecycle, RcppSimdJson, rlang, sf, terra,
+utils</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
@@ -84,12 +86,21 @@ vctrs</td>
 <td>3</td>
 </tr>
 <tr>
+<td>URL:</td>
+<td><a href="https://r.esri.com/arcgislayers/">https://r.esri.com/arcgislayers/</a>,
+<a href="https://github.com/R-ArcGIS/arcgislayers">https://github.com/R-ArcGIS/arcgislayers</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/R-ArcGIS/arcgislayers/issues">https://github.com/R-ArcGIS/arcgislayers/issues</a></td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>no</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-26 17:54:40 UTC; josiahparry</td>
+<td>2024-07-05 14:28:14 UTC; josiahparry</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -110,7 +121,7 @@ vctrs</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-27 17:00:05 UTC</td>
+<td>2024-07-05 15:00:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -673,10 +684,14 @@ arc_raster(
 <h3>Description</h3>
 
 <p><code><a href="#topic+arc_read">arc_read()</a></code> combines the functionality of <code><a href="#topic+arc_open">arc_open()</a></code> with <code><a href="#topic+arc_select">arc_select()</a></code>
-or <code><a href="#topic+arc_raster">arc_raster()</a></code> to read an ArcGIS <code>FeatureLayer</code>, <code>Table</code>, or <code>ImageServer</code> to an
-<code>sf</code> or <code>SpatRaster</code> object. Optionally, set, check, or modify
-names for the returned data frame or sf object using the <code>col_names</code> and
-<code>name_repair</code> parameters.
+or <code><a href="#topic+arc_raster">arc_raster()</a></code> to read an ArcGIS <code>FeatureLayer</code>, <code>Table</code>, or <code>ImageServer</code>
+to an <code>sf</code> or <code>SpatRaster</code> object. Optionally, set, check, or modify names
+for the returned data frame or sf object using the <code>col_names</code> and
+<code>name_repair</code> parameters. For ease of use and convenience, <code><a href="#topic+arc_read">arc_read()</a></code>
+allows users to access and query a FeatureLayer, Table, or ImageServer with a
+single function call instead of combining <code><a href="#topic+arc_open">arc_open()</a></code> and <code><a href="#topic+arc_select">arc_select()</a></code>.
+The conventions of <code>col_select</code> are based on functions for reading tabular
+data in the <code>{readr}</code> package.
 </p>
 
 
@@ -686,11 +701,12 @@ names for the returned data frame or sf object using the <code>col_names</code> 
   url,
   col_names = TRUE,
   col_select = NULL,
-  n_max = getOption("arcgislayers.n_max", default = 10000),
+  n_max = Inf,
   name_repair = "unique",
   crs = NULL,
   ...,
   fields = NULL,
+  alias = c("drop", "label", "replace"),
   token = arc_token()
 )
 </code></pre>
@@ -705,12 +721,21 @@ names for the returned data frame or sf object using the <code>col_names</code> 
 </td></tr>
 <tr><td><code id="arc_read_+3A_col_names">col_names</code></td>
 <td>
-<p>Default <code>TRUE</code>. If <code>TRUE</code>, use the default column names for
-the feature. If <code>col_names</code> is a character vector with the same length as
-the number of columns in the layer, the default names are replaced with the
-new names. If <code>col_names</code> has one fewer name than the default column names,
-the existing sf column name is retained. If <code>col_names</code> is the string
-<code>"alias"</code>, names are set to match the alias names for the layer, if available.</p>
+<p>Default <code>TRUE</code>. Column names or name handling rule.
+<code>col_names</code> can be <code>TRUE</code>, <code>FALSE</code>, <code>NULL</code>, or a character vector:
+</p>
+
+<ul>
+<li><p> If <code>TRUE</code>, use existing default column names for the layer or table.
+If <code>FALSE</code> or <code>NULL</code>, column names will be generated automatically: X1, X2,
+X3 etc.
+</p>
+</li>
+<li><p> If <code>col_names</code> is a character vector, values replace the existing column
+names. <code>col_names</code> can't be length 0 or longer than the number of fields in
+the returned layer.
+</p>
+</li></ul>
 </td></tr>
 <tr><td><code id="arc_read_+3A_col_select">col_select</code></td>
 <td>
@@ -719,7 +744,7 @@ returned. By default, all fields are returned.</p>
 </td></tr>
 <tr><td><code id="arc_read_+3A_n_max">n_max</code></td>
 <td>
-<p>Defaults to 10000 or an option set with
+<p>Defaults to <code>Inf</code> or an option set with
 <code style="white-space: pre;">&#8288;options("arcgislayers.n_max" = &lt;max records&gt;)&#8288;</code>. Maximum number of records
 to return.</p>
 </td></tr>
@@ -741,8 +766,26 @@ server-side. Ignored if x is a <code>Table</code>.</p>
 </td></tr>
 <tr><td><code id="arc_read_+3A_fields">fields</code></td>
 <td>
-<p>a character vector of the field names that you wish to be
-returned. By default all fields are returned.</p>
+<p>Default <code>NULL</code>. a character vector of the field names to
+returned. By default all fields are returned. Ignored if <code>col_names</code> is
+supplied.</p>
+</td></tr>
+<tr><td><code id="arc_read_+3A_alias">alias</code></td>
+<td>
+<p>Use of field alias values. Default <code style="white-space: pre;">&#8288;c("drop", "label", "replace"),&#8288;</code>. There are three options:
+</p>
+
+<ul>
+<li> <p><code>"drop"</code>, field alias values are ignored.
+</p>
+</li>
+<li> <p><code>"label"</code>: field alias values are assigned as a label attribute for each field.
+</p>
+</li>
+<li> <p><code>"replace"</code>: field alias values replace existing column names. <code>col_names</code>
+must <code>TRUE</code> for this option to be applied.
+</p>
+</li></ul>
 </td></tr>
 <tr><td><code id="arc_read_+3A_token">token</code></td>
 <td>
@@ -763,10 +806,16 @@ returned. By default all fields are returned.</p>
 </p>
 
 
+<h3>See Also</h3>
+
+<p><code><a href="#topic+arc_select">arc_select()</a></code>; <code><a href="#topic+arc_raster">arc_raster()</a></code>
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-  furl &lt;- "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census#' /MapServer/3"
+  furl &lt;- "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/3"
 
   # read entire service
   arc_read(furl)
@@ -915,30 +964,30 @@ avoid time outs.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-  # define the feature layer url
-  furl &lt;- paste0(
-    "https://services3.arcgis.com/ZvidGQkLaDJxRSJ2/arcgis/rest",
-    "/services/PLACES_LocalData_for_BetterHealth/FeatureServer/0"
-  )
+# define the feature layer url
+furl &lt;- paste0(
+  "https://services3.arcgis.com/ZvidGQkLaDJxRSJ2/arcgis/rest",
+  "/services/PLACES_LocalData_for_BetterHealth/FeatureServer/0"
+)
 
-  flayer &lt;- arc_open(furl)
+flayer &lt;- arc_open(furl)
 
-  arc_select(
-    flayer,
-    fields = c("StateAbbr", "TotalPopulation")
-  )
+arc_select(
+  flayer,
+  fields = c("StateAbbr", "TotalPopulation")
+)
 
-  arc_select(
-    flayer,
-    fields = c("OBJECTID", "PlaceName"),
-    where = "TotalPopulation &gt; 1000000"
-  )
+arc_select(
+  flayer,
+  fields = c("OBJECTID", "PlaceName"),
+  where = "TotalPopulation &gt; 1000000"
+)
 
 ## End(Not run)
 </code></pre>
 
 <hr>
-<h2 id='clear_query'>Utility functions</h2><span id='topic+clear_query'></span><span id='topic+list_fields'></span><span id='topic+list_items'></span><span id='topic+refresh_layer'></span>
+<h2 id='clear_query'>Utility functions</h2><span id='topic+clear_query'></span><span id='topic+list_fields'></span><span id='topic+pull_field_aliases'></span><span id='topic+list_items'></span><span id='topic+refresh_layer'></span>
 
 <h3>Description</h3>
 
@@ -951,6 +1000,8 @@ avoid time outs.
 <pre><code class='language-R'>clear_query(x)
 
 list_fields(x)
+
+pull_field_aliases(x)
 
 list_items(x)
 
@@ -987,6 +1038,9 @@ refresh_layer(x)
 resource picking up any changes that may have been made upstream.
 Returns an object of class <code>x</code>.
 </p>
+</li>
+<li> <p><code>pull_field_aliases()</code> returns a named list of the field aliases from a <code>FeatureLayer</code> or <code>Table</code>
+</p>
 </li></ul>
 
 
@@ -1000,30 +1054,29 @@ Returns an object of class <code>x</code>.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-  furl &lt;- paste0(
-    "https://services3.arcgis.com/ZvidGQkLaDJxRSJ2/arcgis/rest/services/",
-    "PLACES_LocalData_for_BetterHealth/FeatureServer/0"
-  )
+furl &lt;- paste0(
+  "https://services3.arcgis.com/ZvidGQkLaDJxRSJ2/arcgis/rest/services/",
+  "PLACES_LocalData_for_BetterHealth/FeatureServer/0"
+)
 
-  flayer &lt;- arc_open(furl)
+flayer &lt;- arc_open(furl)
 
-  # list fields available in a layer
-  list_fields(flayer)
+# list fields available in a layer
+list_fields(flayer)
 
-  # remove any queries stored in the query attribute
-  clear_query(update_params(flayer, outFields = "*"))
+# remove any queries stored in the query attribute
+clear_query(update_params(flayer, outFields = "*"))
 
-  # refresh metadata of an object
-  refresh_layer(flayer)
+# refresh metadata of an object
+refresh_layer(flayer)
 
-  map_url &lt;- paste0(
-    "https://services.arcgisonline.com/ArcGIS/rest/services/",
-    "World_Imagery/MapServer"
-  )
+map_url &lt;- paste0(
+  "https://services.arcgisonline.com/ArcGIS/rest/services/",
+  "World_Imagery/MapServer"
+)
 
-  # list all items in a server object
-  list_items(arc_open(map_url))
-
+# list all items in a server object
+list_items(arc_open(map_url))
 
 ## End(Not run)
 </code></pre>
@@ -1381,6 +1434,140 @@ geometries are checked for validity before conversion.
 </code></pre>
 
 <hr>
+<h2 id='query_layer_attachments'>Query and download attachments</h2><span id='topic+query_layer_attachments'></span><span id='topic+download_attachments'></span>
+
+<h3>Description</h3>
+
+<p>Get metadata about attachments associated with features in a layer.
+Query attachment information using <code>query_layer_attachments()</code> and
+download attachments using <code>download_attachments()</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>query_layer_attachments(
+  x,
+  definition_expression = "1=1",
+  attachments_definition_expression = NULL,
+  object_ids = NULL,
+  global_ids = NULL,
+  attachment_types = NULL,
+  keywords = NULL,
+  ...,
+  token = arc_token()
+)
+
+download_attachments(
+  attachments,
+  out_dir,
+  ...,
+  overwrite = FALSE,
+  .progress = TRUE,
+  token = arc_token()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="query_layer_attachments_+3A_x">x</code></td>
+<td>
+<p>an object of class <code>FeatureLayer</code>, <code>Table</code>, or <code>ImageServer</code>.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_definition_expression">definition_expression</code></td>
+<td>
+<p>default <code>1 = 1</code>. A SQL where clause that is applied to the layer. Only those records that conform to this expression will be returned. This parameter is required if neither <code>object_ids</code> or <code>global_ids</code> have been defined.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_attachments_definition_expression">attachments_definition_expression</code></td>
+<td>
+<p>default <code>NULL</code>. A SQL where calsue that is applied to the attachment metadata.
+only attachments that conform to this expression will be returned.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_object_ids">object_ids</code></td>
+<td>
+<p>mutually exclusive with <code>definition_expression</code> and <code>global_ids</code>. The object IDs of the features to query attachments of.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_global_ids">global_ids</code></td>
+<td>
+<p>mutally exclusive with <code>definition_expression</code> and <code>object_ids</code>. The global IDs of the features to query attachments of.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_attachment_types">attachment_types</code></td>
+<td>
+<p>default <code>NULL</code>. A character vector of attachment types to filter on.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_keywords">keywords</code></td>
+<td>
+<p>default <code>NULL</code>. A character vector of the keywords to filter on.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_...">...</code></td>
+<td>
+<p>unused</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_token">token</code></td>
+<td>
+<p>your authorization token.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_attachments">attachments</code></td>
+<td>
+<p>a <code>data.frame</code> created by <code>query_layer_attachments()</code>. Must contain the columns <code>name</code>, <code>url</code>, and <code>contentType</code>.</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_out_dir">out_dir</code></td>
+<td>
+<p>the path to the folder to download the file</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_overwrite">overwrite</code></td>
+<td>
+<p>default <code>FALSE</code>. A</p>
+</td></tr>
+<tr><td><code id="query_layer_attachments_+3A_.progress">.progress</code></td>
+<td>
+<p>default <code>TRUE.</code> Whether a progress bar should be provided.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>query_layer_attachments()</code> returns a data.frame.
+</p>
+<p><code>download_attachments()</code> returns a list. If an error occurs, the condition is captured and returned in the list.
+Otherwise the path to the file that was downloaded is returned.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://developers.arcgis.com/rest/services-reference/enterprise/query-attachments-feature-service-layer/">ArcGIS REST API Documentation</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# create a url path that isn't too wide for CRAN
+furl &lt;- paste(
+  c(
+    "https://services1.arcgis.com/hLJbHVT9ZrDIzK0I",
+    "arcgis/rest/services/v8_Wide_Area_Search_Form_Feature_Layer___a2fe9c",
+    "FeatureServer/0"
+  ),
+  collapse = "/"
+)
+# connect to the layer
+layer &lt;- arc_open(furl)
+
+# get the attachment info
+att &lt;- query_layer_attachments(layer)
+
+# download them to a path
+download_attachments(att, "layer_attachments")
+
+## End(Not run)
+</code></pre>
+
+<hr>
 <h2 id='truncate_layer'>Truncate a Feature Layer</h2><span id='topic+truncate_layer'></span>
 
 <h3>Description</h3>
@@ -1488,13 +1675,13 @@ layer. None of the layer features will be deleted when <code>TRUE</code>.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-  furl &lt;- paste0(
-    "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/",
-    "USA_Major_Cities_/FeatureServer/0"
-  )
+furl &lt;- paste0(
+  "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/",
+  "USA_Major_Cities_/FeatureServer/0"
+)
 
- flayer &lt;- arc_open(furl)
- update_params(flayer, outFields = "NAME")
+flayer &lt;- arc_open(furl)
+update_params(flayer, outFields = "NAME")
 
 ## End(Not run)
 </code></pre>

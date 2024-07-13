@@ -36,10 +36,9 @@ VDJ library overall or by cluster</a></li>
 <li><a href='#getSharedClones'><p>Compute a list of clonotypes that are shared between seurat clusters</p></a></li>
 <li><a href='#integrate_tcr'><p>DEFUNCT: Integrate a single TCR library into Seurat object metadata</p></a></li>
 <li><a href='#mergeCloneSizes'><p>Merge a list of Clustered Clonotype Frequency Tables</p></a></li>
-<li><a href='#mini_clonotype_data'><p>Artificially generated T cell receptor library</p></a></li>
-<li><a href='#mini_seurat_obj'><p>Artificially generated Seurat object</p></a></li>
 <li><a href='#overlayLegend'><p>overlay a clone size legend on an APackOfTheClones plot</p></a></li>
 <li><a href='#removeLegend'><p>Remove current APackOfTheClones legend</p></a></li>
+<li><a href='#renameApotcRun'><p>Rename an APackOfTheClones run</p></a></li>
 <li><a href='#RunAPOTC'><p>Run the APackOfTheClones method on a combined Seurat object for</p>
 downstream visualization of clonal expansion</a></li>
 <li><a href='#showCloneHighlight'><p>Highlight specific clones on an APackOfTheClones ggplot</p></a></li>
@@ -61,7 +60,7 @@ Profiles</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.1.0</td>
+<td>1.2.0</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -77,7 +76,7 @@ Profiles</td>
 </tr>
 <tr>
 <td>Depends:</td>
-<td>R (&ge; 4.0.0)</td>
+<td>R (&ge; 4.1.0)</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -131,7 +130,7 @@ methods, Rcpp, rlang, Seurat, SeuratObject</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-04-05 08:47:48 UTC; qile</td>
+<td>2024-04-16 09:36:49 UTC; qile</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -143,7 +142,7 @@ methods, Rcpp, rlang, Seurat, SeuratObject</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-04-05 09:03:00 UTC</td>
+<td>2024-04-16 09:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -314,8 +313,8 @@ clusters repulse each other per iteration, and vice versa.</p>
 </td></tr>
 <tr><td><code id="AdjustAPOTC_+3A_relocate_cluster">relocate_cluster</code></td>
 <td>
-<p>numeric of arbitrary length. Indicates which
-cluster(s) to relocate to new coordinates</p>
+<p>Numeric or Character. Indicates which
+cluster(s) based on the index or label to relocate to new coordinates.</p>
 </td></tr>
 <tr><td><code id="AdjustAPOTC_+3A_relocation_coord">relocation_coord</code></td>
 <td>
@@ -328,8 +327,9 @@ syntax if <code>relocate_cluster</code> has length 1.</p>
 </td></tr>
 <tr><td><code id="AdjustAPOTC_+3A_nudge_cluster">nudge_cluster</code></td>
 <td>
-<p>numeric of arbitrary length. Indicates which
-cluster(s) to &quot;nudge&quot;/translate their coordinate(s) by.</p>
+<p>Numeric or Character. Indicates which
+cluster(s) based on the index or label to &quot;nudge&quot;/translate their
+coordinate(s) by.</p>
 </td></tr>
 <tr><td><code id="AdjustAPOTC_+3A_nudge_vector">nudge_vector</code></td>
 <td>
@@ -343,8 +343,8 @@ syntactic sugar for translating a single cluster if the input of
 </td></tr>
 <tr><td><code id="AdjustAPOTC_+3A_recolor_cluster">recolor_cluster</code></td>
 <td>
-<p>numeric of arbitrary length. Indicates which
-cluster(s) to change their color by.</p>
+<p>Numeric or Character. Indicates which
+cluster(s) based on the index or label to change their color by.</p>
 </td></tr>
 <tr><td><code id="AdjustAPOTC_+3A_new_color">new_color</code></td>
 <td>
@@ -409,7 +409,7 @@ of the progress.</p>
 <pre><code class='language-R'># do an APackOfTheClones run
 pbmc &lt;- RunAPOTC(get(data("combined_pbmc")), verbose = FALSE)
 
-# adjust the rad_scale_factor, and nudge cluster 1 by (1, 1)
+# adjust the rad_scale_factor, and nudge cluster 1 by x = 1, y = 1
 pbmc &lt;- AdjustAPOTC(
     pbmc,
     new_rad_scale_factor = 0.9,
@@ -421,17 +421,22 @@ pbmc &lt;- AdjustAPOTC(
 # plot the result
 APOTCPlot(pbmc)
 
+# rename some labels
+pbmc &lt;- AdjustAPOTC(
+    pbmc, rename_label = c(2, 5), new_label = c("Foo", "Bar")
+)
+
 # perhaps multiple clusters need to be relocated and repulsed
 pbmc &lt;- AdjustAPOTC(
     pbmc,
-    relocate_cluster = c(5, 10),
+    relocate_cluster = c("Foo", "C10"), # using labels works too
     relocation_coord = list(c(2, 3.5), c(0, 5)),
     repulse = TRUE,
     verbose = FALSE
 )
 
 # plot again to check results
-APOTCPlot(pbmc)
+APOTCPlot(pbmc, show_labels = TRUE, verbose = FALSE)
 
 </code></pre>
 
@@ -489,6 +494,7 @@ the plot of the latest run.
   legend_text_size = 5,
   add_legend_background = TRUE,
   add_legend_centerspace = 0,
+  detail = TRUE,
   verbose = TRUE
 )
 </code></pre>
@@ -556,13 +562,12 @@ there was no input for the <code>...</code> and <code>extra_filter</code> parame
 </td></tr>
 <tr><td><code id="APOTCPlot_+3A_show_shared">show_shared</code></td>
 <td>
-<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a> The output of
-<a href="#topic+getSharedClones">getSharedClones</a> can be inputted here, and the resulting plot will overlay
-lines between clone circles if that clonotype is common between clusters.
-Note that the input <em><strong>must</strong></em> be generated from data in the correct
-<code>APackOfTheClones</code> run, and the behavior is undefined otherwise and will
-likely error. The next 4 arguments allow for aesthetic customization of these
-line links.</p>
+<p>The output of <a href="#topic+getSharedClones">getSharedClones</a> can be inputted here,
+and the resulting plot will overlay lines between clone circles if that
+clonotype is common between clusters. Note that the input <em><strong>must</strong></em> be
+generated from data in the correct <code>APackOfTheClones</code> run, and the behavior
+is undefined otherwise and will likely error. The next 4 arguments allow for
+aesthetic customization of these line links.</p>
 </td></tr>
 <tr><td><code id="APOTCPlot_+3A_only_link">only_link</code></td>
 <td>
@@ -685,6 +690,15 @@ changed between the circle sizes on the left side of the legend and the
 numbers on the right. Useful to set to around 0.5 (or more / less) when there
 are particularly large clone sizes that may cover the numbers.</p>
 </td></tr>
+<tr><td><code id="APOTCPlot_+3A_detail">detail</code></td>
+<td>
+<p>logical. If <code>FALSE</code>, will only plot entire clusters as one
+large circle, which may be useful in cases where there are a high number
+of clones resulting in a large number of circles on the resulting ggplot,
+which has increased plotting times, and certain aspects of the plot needs
+to be finely adjusted with <a href="#topic+AdjustAPOTC">AdjustAPOTC</a> or simply inspected. This should
+not be set to <code>FALSE</code> for the actual clonal expansion plot.</p>
+</td></tr>
 <tr><td><code id="APOTCPlot_+3A_verbose">verbose</code></td>
 <td>
 <p>logical. Decides if visual cues are displayed to the R console
@@ -758,7 +772,7 @@ clonal_packing_plot &lt;- APOTCPlot(combined_pbmc)
 
 <h3>Description</h3>
 
-<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt='[Stable]' /></a>
 </p>
 <p>Generated with <code>scRepertoire::combineExpression</code>. To construct this object
 from scratch, try:
@@ -913,7 +927,12 @@ VDJ library overall or by cluster</h2><span id='topic+countCloneSizes'></span>
 
 <p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt='[Stable]' /></a>
 </p>
-<p>Get clonotype frequencies from a seurat object's meta.data slot.
+<p>Get clonotype frequencies from a seurat object's metadata, either as one
+whole table, or in a list of tables, based on the current / some custom
+ident of each cell. Note that depending on the ident (indicated by the
+<code>by_cluster</code> argument) there may be more or less clonotypes counted based
+on the number of rows containing NA for that column of that ident if it
+isn't the active ident.
 </p>
 
 
@@ -971,18 +990,22 @@ are named. Additionally, this means any subsequent arguments <em>must</em> be na
 </td></tr>
 <tr><td><code id="countCloneSizes_+3A_by_cluster">by_cluster</code></td>
 <td>
-<p>If <code>TRUE</code>, will output a list of table objects, with the
-table at each index corresponding to each seurat cluster index. Each table's
-names are the clonotype name indicated by <code>clonecall</code> after filtering, while
-the values are the actual clone sizes. Else, outputs just the aggregate clone
-sizes for all cells. Note that if <code>FALSE</code>, the output should be identical to
-that produced by <code>mergeCloneSizes(countCloneSizes(..., by_cluster = TRUE))</code></p>
+<p>Logical or Character. If <code>TRUE</code>, will output a list of
+table objects, with the table at each index corresponding to level in
+Idents(). Each table's names are the clonotype name indicated by <code>clonecall</code>
+after filtering, while the values are the actual clone sizes. If <code>FALSE</code>,
+outputs just the aggregate clone sizes for all cells. Note that if <code>FALSE</code>,
+the output should be identical to that produced by
+<code>mergeCloneSizes(countCloneSizes(..., by_cluster = TRUE))</code>. Otherwise, this
+argument can also be a character indicating some column in the seurat object
+metadata to use a cell identity guiding (e.g. <code>"seurat_clusters"</code>).</p>
 </td></tr>
 <tr><td><code id="countCloneSizes_+3A_sort_decreasing">sort_decreasing</code></td>
 <td>
 <p>a logical or NULL. If <code>TRUE</code>/<code>FALSE</code>, sorts each/the
-table by clonotype frequency with largest/smallest clones first, and if
-NULL, no order is guaranteed but the output is deterministic.</p>
+table by clonotype frequency with largest/smallest clones first with a stable
+sorting algorithm, and if NULL, no order is guaranteed but the output is
+deterministic.</p>
 </td></tr>
 </table>
 
@@ -1248,15 +1271,19 @@ getReductionCentroids(combined_pbmc, reduction = "umap")
 
 <h3>Description</h3>
 
-<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt='[Stable]' /></a>
 </p>
-<p>This function is a convenience function for users to get a list of clonotypes
-which are shared between seurat clusters. If <code>run_id</code> is inputted, then the
-function will attempt to get the shared clonotypes from the corresponding
-APackOfTheClones run generated from <a href="#topic+RunAPOTC">RunAPOTC</a>. Otherwise, it will use the
-filtering / subsetting parameters to generate the shared clones by
-internally running <a href="#topic+RunAPOTC">RunAPOTC</a> with the same parameters and returning the
-shared clones.
+<p>This function allows users to get a list of clonotypes that are shared
+between clusters based on the levels of the active cell identities / some
+custom identity based on the <code>alt_ident</code>. A list is returned with its
+<em><strong>names</strong></em> being the shared clonotypes, and the values are numeric vectors
+indicating the index of the clusters that clonotype is found in. The index
+corresponds to the index in the default levels of the factored identities.
+</p>
+<p>If <code>run_id</code> is inputted, then the function will attempt to get the shared
+clonotypes from the corresponding APackOfTheClones run generated from
+<a href="#topic+RunAPOTC">RunAPOTC</a>. Otherwise, it will use the filtering / subsetting parameters
+to generate the shared clones.
 </p>
 
 
@@ -1268,11 +1295,13 @@ shared clones.
   clonecall = "strict",
   ...,
   extra_filter = NULL,
+  alt_ident = NULL,
   run_id = NULL,
   top = NULL,
   top_per_cl = NULL,
   intop = NULL,
-  intop_per_cl = NULL
+  intop_per_cl = NULL,
+  publicity = c(2L, Inf)
 )
 </code></pre>
 
@@ -1326,6 +1355,14 @@ one wanted to filter by the length of the amino acid sequence of TCRs, one
 could pass in something like <code>extra_filter = "nchar(CTaa) - 1 &gt; 10"</code>. When
 involving characters, ensure to enclose with single quotes.</p>
 </td></tr>
+<tr><td><code id="getSharedClones_+3A_alt_ident">alt_ident</code></td>
+<td>
+<p>character. By default, cluster identity is assumed to be
+whatever is in <code>Idents(seurat_obj)</code>, and clones will be grouped by the active
+ident. However, <code>alt_ident</code> could be set as the name of some column in the
+meta data of the seurat object to be grouped by. This column is meant to have
+been a product of <code>Seurat::StashIdent</code> or manually added.</p>
+</td></tr>
 <tr><td><code id="getSharedClones_+3A_run_id">run_id</code></td>
 <td>
 <p>character. This will be the ID associated with the data of a
@@ -1342,7 +1379,9 @@ there was no input for the <code>...</code> and <code>extra_filter</code> parame
 <td>
 <p>integer or numeric in (0, 1) - if not null, filters the output
 clones so that only the shared clonotypes with counts the top <code>top</code> count /
-proportion (for numeric in (0, 1) input) shared clones are kept.</p>
+proportion (for numeric in (0, 1) input) shared clones are kept. For cases
+where several clonotypes tie in size, the clonotype(s) added are not
+guaranteed but deterministic given the other arguments are identical.</p>
 </td></tr>
 <tr><td><code id="getSharedClones_+3A_top_per_cl">top_per_cl</code></td>
 <td>
@@ -1350,7 +1389,9 @@ proportion (for numeric in (0, 1) input) shared clones are kept.</p>
 output clones so that for each seurat cluster, only the clonotypes with the
 <code>top_per_cl</code> frequency/count is preserved when aggregating shared clones,
 in the same way as the above. Note that if inputted in conjunction with
-<code>top</code>, it will get the <em>intersection</em> of the clonotypes filtered each way.</p>
+<code>top</code>, it will get the <em>intersection</em> of the clonotypes filtered each way.
+For cases where several clonotypes tie in size, the clonotype(s) added are
+not guaranteed but deterministic given the other arguments are identical.</p>
 </td></tr>
 <tr><td><code id="getSharedClones_+3A_intop">intop</code></td>
 <td>
@@ -1368,6 +1409,13 @@ which, its very likely that not all those clones end up being shared.</p>
 the raw <em>clustered</em> clone sizes before computing shared clones, so that
 for every clone in a seurat cluster, the top <code>intop_per_cl</code> count /
 proportion (for numeric in (0, 1) input) clones are kept.</p>
+</td></tr>
+<tr><td><code id="getSharedClones_+3A_publicity">publicity</code></td>
+<td>
+<p>numeric pair. A simple filter range of
+<code>c(lowerbound, upperbound)</code> to retain only shared clones with their
+&quot;publicity&quot; - number of clusters they are present in - within this
+range.</p>
 </td></tr>
 </table>
 
@@ -1493,121 +1541,6 @@ NULL, no order is guaranteed but the output is deterministic.</p>
 mergeCloneSizes(clustered_clone_sizes)
 
 </code></pre>
-
-<hr>
-<h2 id='mini_clonotype_data'>Artificially generated T cell receptor library</h2><span id='topic+mini_clonotype_data'></span>
-
-<h3>Description</h3>
-
-<p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated"><img src="../help/figures/lifecycle-deprecated.svg" alt='[Deprecated]' /></a>
-</p>
-<p>A generated dataframe of a T-cell receptor (TCR) library generated from
-single cell immune profiling. It is a subset the full dataframe
-which would usually have up to 18 columns containing different data,
-because the intended purpose of this object is to test various functions
-in 'APackOfTheClones'. The dataframe compliments <code>mini_seurat_obj</code> and
-can be integrated into it with <code>integrate_tcr</code>.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>data("mini_clonotype_data")
-</code></pre>
-
-
-<h3>Format</h3>
-
-<p><code>data.frame</code>
-A data frame with 80 rows and 2 columns:
-</p>
-
-<dl>
-<dt>barcode</dt><dd><p>barcodes corresponding to each sequenced cell</p>
-</dd>
-<dt>raw_clonotype_id</dt><dd><p>clonotype information for each cell</p>
-</dd>
-</dl>
-
-
-
-<h3>Details</h3>
-
-<p>Note that the clonotypes in the <code>raw_clonotype_id</code> column
-actually do not contain all of clonotype<code>1</code>...clonotype<code>n</code>
-</p>
-
-
-<h3>See Also</h3>
-
-<p><a href="#topic+mini_seurat_obj">mini_seurat_obj</a>
-</p>
-
-<hr>
-<h2 id='mini_seurat_obj'>Artificially generated Seurat object</h2><span id='topic+mini_seurat_obj'></span>
-
-<h3>Description</h3>
-
-<p>A generated 'SeuratObject' of a small single-sample sc-RNAseq experiment.
-Has a corresponding T-cell receptor library generated from
-single cell immune profiling, named <code>"mini_clonotype_data"</code>
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>data("mini_seurat_obj")
-</code></pre>
-
-
-<h3>Format</h3>
-
-<p>A Seurat object with the following slots filled
-</p>
-
-<dl>
-<dt>assays</dt><dd>
-<p>Currently only contains one assay (&quot;RNA&quot; - scRNA-seq expression data)
-</p>
-<ul>
-<li><p>counts - Raw expression data
-</p>
-</li>
-<li><p>data - Normalized expression data
-</p>
-</li>
-<li><p>scale.data - Scaled expression data
-</p>
-</li>
-<li><p>var.features - names of the current features selected as variable
-</p>
-</li>
-<li><p>meta.features - Assay level metadata such as mean and variance
-</p>
-</li></ul>
-</dd>
-<dt>meta.data</dt><dd><p>Cell level metadata</p>
-</dd>
-<dt>active.assay</dt><dd><p>Current default assay</p>
-</dd>
-<dt>active.ident</dt><dd><p>Current default idents</p>
-</dd>
-<dt>graphs</dt><dd><p>Neighbor graphs computed, currently stores the SNN</p>
-</dd>
-<dt>reductions</dt><dd><p>Dimensional reductions: PCA, UMAP, and tSNE</p>
-</dd>
-<dt>version</dt><dd><p>Seurat version used to create the object</p>
-</dd>
-<dt>commands</dt><dd><p>Command history</p>
-</dd>
-</dl>
-
-
-
-<h3>See Also</h3>
-
-<p><a href="#topic+mini_clonotype_data">mini_clonotype_data</a>
-</p>
 
 <hr>
 <h2 id='overlayLegend'>overlay a clone size legend on an APackOfTheClones plot</h2><span id='topic+overlayLegend'></span>
@@ -1750,14 +1683,16 @@ interfere with any other ggplot functionality. (As far as currently known)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># create a plot with a legend
+<pre><code class='language-R'>library(magrittr)
+
+# create a plot with a legend
 apotc_plot &lt;- vizAPOTC(get(data("combined_pbmc")), verbose = FALSE)
 
 # reposition the legend to top right
 overlayLegend(apotc_plot, legend_position = "top right")
 
 # use different sizes and label - may be nice to use the pipe
-apotc_plot |&gt; overlayLegend(
+apotc_plot %&gt;% overlayLegend(
     legend_sizes = c(1, 3, 7, 9),
     legend_label = "odd sizes"
 )
@@ -1824,6 +1759,66 @@ apotc_plot
 </code></pre>
 
 <hr>
+<h2 id='renameApotcRun'>Rename an APackOfTheClones run</h2><span id='topic+renameApotcRun'></span>
+
+<h3>Description</h3>
+
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#stable"><img src="../help/figures/lifecycle-stable.svg" alt='[Stable]' /></a>
+</p>
+<p>A function to rename an APackOfTheClones run identified by its run id in
+a Seurat object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>renameApotcRun(seurat_obj, old_run_id, new_run_id)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="renameApotcRun_+3A_seurat_obj">seurat_obj</code></td>
+<td>
+<p>A Seurat object containing APackOfTheClones data - the
+output of <a href="#topic+RunAPOTC">RunAPOTC</a></p>
+</td></tr>
+<tr><td><code id="renameApotcRun_+3A_old_run_id">old_run_id</code></td>
+<td>
+<p>Character. The current id of the APackOfTheClones run to
+be renamed.</p>
+</td></tr>
+<tr><td><code id="renameApotcRun_+3A_new_run_id">new_run_id</code></td>
+<td>
+<p>Character. The new id to assign to the APackOfTheClones
+run.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A Seurat object with the APackOfTheClones run renamed.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>pbmc &lt;- RunAPOTC(
+    seurat_obj = get(data("combined_pbmc")),
+    reduction_base = "umap",
+    clonecall = "strict",
+    run_id = "run1",
+    verbose = FALSE
+)
+
+pbmc &lt;- renameApotcRun(pbmc, "run1", "new_run")
+# Now "run1" has been renamed to "new_run"
+
+</code></pre>
+
+<hr>
 <h2 id='RunAPOTC'>Run the APackOfTheClones method on a combined Seurat object for
 downstream visualization of clonal expansion</h2><span id='topic+RunAPOTC'></span>
 
@@ -1835,7 +1830,8 @@ downstream visualization of clonal expansion</h2><span id='topic+RunAPOTC'></spa
 clonal expansion plot (<a href="#topic+APOTCPlot">APOTCPlot</a>) and stores it in the seurat object.
 Gets sizes of unique clones and utilizes a circle-packing algorithm to
 pack circles representing individual clones in approximately the same
-dimensional reduction (<code>reduction_base</code>) coordinates.
+dimensional reduction (<code>reduction_base</code>) coordinates based on some cell
+ident (defaults to the active ident).
 </p>
 <p>The parameter <code>extra_filter</code> along with an unlimited number of additional
 keyword arguments can be used to filter the cells by certain conditions
@@ -1866,6 +1862,7 @@ with the <a href="#topic+AdjustAPOTC">AdjustAPOTC</a> function.
   clonecall = "strict",
   ...,
   extra_filter = NULL,
+  alt_ident = NULL,
   run_id = NULL,
   clone_scale_factor = "auto",
   rad_scale_factor = 0.95,
@@ -1929,6 +1926,14 @@ alternative / addition to the filtering keyword arguments. For example, if
 one wanted to filter by the length of the amino acid sequence of TCRs, one
 could pass in something like <code>extra_filter = "nchar(CTaa) - 1 &gt; 10"</code>. When
 involving characters, ensure to enclose with single quotes.</p>
+</td></tr>
+<tr><td><code id="RunAPOTC_+3A_alt_ident">alt_ident</code></td>
+<td>
+<p>character. By default, cluster identity is assumed to be
+whatever is in <code>Idents(seurat_obj)</code>, and clones will be grouped by the active
+ident. However, <code>alt_ident</code> could be set as the name of some column in the
+meta data of the seurat object to be grouped by. This column is meant to have
+been a product of <code>Seurat::StashIdent</code> or manually added.</p>
 </td></tr>
 <tr><td><code id="RunAPOTC_+3A_run_id">run_id</code></td>
 <td>
@@ -2004,6 +2009,12 @@ of the progress.</p>
 
 <h3>Details</h3>
 
+<p>Note that the subsetting arguments <code>...</code> and <code>extra_filter</code> are only a
+quick convenience to subset based on metadata, and the <code>subset</code> S3 method
+defined in <code>Seurat</code> is much more mature are has more features. Additionally,
+users need to work with data subsets are recommended to and likely already
+are working with seurat objects subsetted/split with <code>Seurat::SplitObject</code>.
+</p>
 <p>All APackOfTheClones run data is stored in the Seurat object under
 <code>seurat_object@misc$APackOfTheClones</code>, which is a list of S4 objects of the
 type &quot;ApotcData&quot;, with each element corresponding to a unique run. The id of
@@ -2011,11 +2022,9 @@ each run is the name of each element in the list. The user
 <em><strong>really shouldn't</strong></em> manually modify anything in the list as it may cause
 unexpected behavior with many other functions.
 </p>
-<p>Additionally, it also logs a seurat command associated with the run in the
+<p>Additionally, it logs a seurat command associated with the run in the
 <code>seurat_object@commands</code> slot as a &quot;SeuratCommand&quot; object (from Seurat),
 where the name of the object in the list is formatted as <code>RunAPOTC.run_id</code>.
-Again, the user should not modify anything in these objects as they are used
-by some related functions, mainly <a href="#topic+AdjustAPOTC">AdjustAPOTC</a>.
 </p>
 
 
@@ -2025,6 +2034,17 @@ by some related functions, mainly <a href="#topic+AdjustAPOTC">AdjustAPOTC</a>.
 necessary for visualizing the clonal expansion of the cells with <a href="#topic+APOTCPlot">APOTCPlot</a>
 and has a friendly user interface to modify certain attributes with
 <a href="#topic+AdjustAPOTC">AdjustAPOTC</a>.
+</p>
+
+
+<h3>Cluster labelling</h3>
+
+<p>For the ident that was used to cluster the clones, labels for each cluster
+are inferred and stored in the run so that they can be used by other
+functions and optionally overlaid on the plot over clusters. If the levels
+of the ident used is a naturally ordered integer sequence, then the labels
+generated would be <code style="white-space: pre;">&#8288;"C1", "C2", "C3" ... &#8288;</code>, else they would be the actual
+ident levels themselves.
 </p>
 
 
@@ -2159,17 +2179,18 @@ equivalent to simply not highlighting anything and a warning will be shown.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>data("combined_pbmc")
+<pre><code class='language-R'>library(magrittr)
+data("combined_pbmc")
 
 # piping the plot can be nice to read syntatically -
 # By default, assigns unique colors to highlights and everything else is gray
-vizAPOTC(combined_pbmc, clonecall = "aa", verbose = FALSE) |&gt;
+vizAPOTC(combined_pbmc, clonecall = "aa", verbose = FALSE) %&gt;%
     showCloneHighlight("CASLSGSARQLTF_CASSSTVAGEQYF")
 
 # one useful application is to highlight shared clones - beware that the
 # clonotype sequences may get extremely long in the legend
 shared_aa_clones &lt;- names(getSharedClones(combined_pbmc, clonecall = "aa"))
-vizAPOTC(combined_pbmc, clonecall = "aa", verbose = FALSE) |&gt;
+vizAPOTC(combined_pbmc, clonecall = "aa", verbose = FALSE) %&gt;%
     showCloneHighlight(shared_aa_clones)
 
 </code></pre>
@@ -2197,6 +2218,7 @@ ggplot2 object of the clonal expansion plot with a circle size legend
   clonecall = "strict",
   ...,
   extra_filter = NULL,
+  alt_ident = NULL,
   clone_scale_factor = "auto",
   rad_scale_factor = 0.95,
   order_clones = TRUE,
@@ -2227,6 +2249,7 @@ ggplot2 object of the clonal expansion plot with a circle size legend
   legend_text_size = 5,
   add_legend_background = TRUE,
   add_legend_centerspace = 0,
+  detail = TRUE,
   verbose = TRUE
 )
 </code></pre>
@@ -2238,7 +2261,7 @@ ggplot2 object of the clonal expansion plot with a circle size legend
 <tr><td><code id="vizAPOTC_+3A_seurat_obj">seurat_obj</code></td>
 <td>
 <p>A seurat object that has been integrated with clonotype
-data.</p>
+data with <code>scRepertoire::combineExpression</code>.</p>
 </td></tr>
 <tr><td><code id="vizAPOTC_+3A_reduction_base">reduction_base</code></td>
 <td>
@@ -2279,6 +2302,14 @@ alternative / addition to the filtering keyword arguments. For example, if
 one wanted to filter by the length of the amino acid sequence of TCRs, one
 could pass in something like <code>extra_filter = "nchar(CTaa) - 1 &gt; 10"</code>. When
 involving characters, ensure to enclose with single quotes.</p>
+</td></tr>
+<tr><td><code id="vizAPOTC_+3A_alt_ident">alt_ident</code></td>
+<td>
+<p>character. By default, cluster identity is assumed to be
+whatever is in <code>Idents(seurat_obj)</code>, and clones will be grouped by the active
+ident. However, <code>alt_ident</code> could be set as the name of some column in the
+meta data of the seurat object to be grouped by. This column is meant to have
+been a product of <code>Seurat::StashIdent</code> or manually added.</p>
 </td></tr>
 <tr><td><code id="vizAPOTC_+3A_clone_scale_factor">clone_scale_factor</code></td>
 <td>
@@ -2329,13 +2360,12 @@ clusters repulse each other per iteration, and vice versa.</p>
 </td></tr>
 <tr><td><code id="vizAPOTC_+3A_show_shared">show_shared</code></td>
 <td>
-<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a> The output of
-<a href="#topic+getSharedClones">getSharedClones</a> can be inputted here, and the resulting plot will overlay
-lines between clone circles if that clonotype is common between clusters.
-Note that the input <em><strong>must</strong></em> be generated from data in the correct
-<code>APackOfTheClones</code> run, and the behavior is undefined otherwise and will
-likely error. The next 4 arguments allow for aesthetic customization of these
-line links.</p>
+<p>The output of <a href="#topic+getSharedClones">getSharedClones</a> can be inputted here,
+and the resulting plot will overlay lines between clone circles if that
+clonotype is common between clusters. Note that the input <em><strong>must</strong></em> be
+generated from data in the correct <code>APackOfTheClones</code> run, and the behavior
+is undefined otherwise and will likely error. The next 4 arguments allow for
+aesthetic customization of these line links.</p>
 </td></tr>
 <tr><td><code id="vizAPOTC_+3A_only_link">only_link</code></td>
 <td>
@@ -2458,6 +2488,15 @@ changed between the circle sizes on the left side of the legend and the
 numbers on the right. Useful to set to around 0.5 (or more / less) when there
 are particularly large clone sizes that may cover the numbers.</p>
 </td></tr>
+<tr><td><code id="vizAPOTC_+3A_detail">detail</code></td>
+<td>
+<p>logical. If <code>FALSE</code>, will only plot entire clusters as one
+large circle, which may be useful in cases where there are a high number
+of clones resulting in a large number of circles on the resulting ggplot,
+which has increased plotting times, and certain aspects of the plot needs
+to be finely adjusted with <a href="#topic+AdjustAPOTC">AdjustAPOTC</a> or simply inspected. This should
+not be set to <code>FALSE</code> for the actual clonal expansion plot.</p>
+</td></tr>
 <tr><td><code id="vizAPOTC_+3A_verbose">verbose</code></td>
 <td>
 <p>logical. Decides if visual cues are displayed to the R console
@@ -2466,12 +2505,33 @@ of the progress.</p>
 </table>
 
 
+<h3>Details</h3>
+
+<p>Note that the subsetting arguments <code>...</code> and <code>extra_filter</code> are only a
+quick convenience to subset based on metadata, and the <code>subset</code> S3 method
+defined in <code>Seurat</code> is much more mature are has more features. Additionally,
+users need to work with data subsets are recommended to and likely already
+are working with seurat objects subsetted/split with <code>Seurat::SplitObject</code>.
+</p>
+
+
 <h3>Value</h3>
 
 <p>A ggplot object of the APackOfTheClones clonal expansion plot of the
 seurat object. There is an additional 10th element in the object named
 <code>"APackOfTheClones"</code> used by other functions in this package and shouldn't
 interfere with any other ggplot functionality. (As far as currently known)
+</p>
+
+
+<h3>Cluster labelling</h3>
+
+<p>For the ident that was used to cluster the clones, labels for each cluster
+are inferred and stored in the run so that they can be used by other
+functions and optionally overlaid on the plot over clusters. If the levels
+of the ident used is a naturally ordered integer sequence, then the labels
+generated would be <code style="white-space: pre;">&#8288;"C1", "C2", "C3" ... &#8288;</code>, else they would be the actual
+ident levels themselves.
 </p>
 
 

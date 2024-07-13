@@ -13,7 +13,7 @@ function processMathHTML() {
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
     onload="processMathHTML();"></script>
 <link rel="stylesheet" type="text/css" href="R-nav.css" />
-</head><body><div class="container"><nav aria-label="Topic Navigation">
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
 <div class="dropdown-menu">
 <h1>Package {meteo}</h1>
 <h2>Contents</h2>
@@ -31,7 +31,8 @@ function processMathHTML() {
 <li><a href='#dtempc'><p>Mean daily temperature in degrees Celsius for July 2011</p></a></li>
 <li><a href='#dtempc_ogimet'><p>Mean daily temperature in degrees Celsius for the year 2019 for Serbia</p></a></li>
 <li><a href='#dwdsp'><p>Daily mean wind speed in m/s for July 2011</p></a></li>
-<li><a href='#get_meteo'><p>Get daily meteorological data for specific location and dates.</p></a></li>
+<li><a href='#get_coordinates'><p>Get lon/lat coordinates for a specific location name.</p></a></li>
+<li><a href='#get_meteo'><p>Get daily, monthly, or annual; aggregated or long-term means meteorological data for specific location(s) and date(s).</p></a></li>
 <li><a href='#meteo2STFDF'><p>Create an object of STFDF-class class from two data frames (observation and stations)</p></a></li>
 <li><a href='#near.obs'><p>Finds n nearest observations from given locations.</p></a></li>
 <li><a href='#near.obs.soil'><p>Finds n nearest observations from given locations for soil mapping.</p></a></li>
@@ -61,11 +62,11 @@ function processMathHTML() {
 <table>
 <tr>
 <td>Version:</td>
-<td>2.0-2</td>
+<td>2.0-3</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-10-09</td>
+<td>2024-04-16</td>
 </tr>
 <tr>
 <td>Type:</td>
@@ -77,8 +78,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Title:</td>
-<td>RFSI and Spatio-Temporal Geostatistical Interpolation for
-Meteorological and Other Environmental Variables</td>
+<td>RFSI &amp; STRK Interpolation for Meteo and Environmental Variables</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -100,7 +100,7 @@ Meteorological and Other Environmental Variables</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>RFSI and spatio-temporal geostatistical interpolation for meteorological and other environmental variables. Global spatio-temporal models calculated using publicly available data are stored in package.</td>
+<td>Random Forest Spatial Interpolation (RFSI, Sekulić et al. (2020) &lt;<a href="https://doi.org/10.3390%2Frs12101687">doi:10.3390/rs12101687</a>&gt;) and spatio-temporal geostatistical (spatio-temporal regression Kriging (STRK)) interpolation for meteorological (Kilibarda et al. (2014) &lt;<a href="https://doi.org/10.1002%2F2013JD020803">doi:10.1002/2013JD020803</a>&gt;, Sekulić et al. (2020) &lt;<a href="https://doi.org/10.1007%2Fs00704-019-03077-3">doi:10.1007/s00704-019-03077-3</a>&gt;) and other environmental variables. Contains global spatio-temporal models calculated using publicly available data.</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -120,7 +120,8 @@ Meteorological and Other Environmental Variables</td>
 <td>Imports:</td>
 <td>methods, utils, stats, DescTools, caret, data.table, dplyr,
 sp, spacetime, gstat, foreach, parallel, snowfall, doParallel,
-plyr, units, nabor, CAST, ranger, sf, sftime, raster, terra</td>
+plyr, units, nabor, CAST, ranger, sf, sftime, raster, terra,
+jsonlite</td>
 </tr>
 <tr>
 <td>BugReports:</td>
@@ -136,7 +137,7 @@ plyr, units, nabor, CAST, ranger, sf, sftime, raster, terra</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-14 07:56:58 UTC; sekulic</td>
+<td>2024-04-18 16:06:24 UTC; sekulic</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -144,7 +145,7 @@ plyr, units, nabor, CAST, ranger, sf, sftime, raster, terra</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-14 12:50:11 UTC</td>
+<td>2024-04-18 18:12:48 UTC</td>
 </tr>
 </table>
 <hr>
@@ -233,7 +234,7 @@ mtry &lt;- 3:(2+2*max(n.obs))
 tgrid = expand.grid(min.node.size=min.node.size, num.trees=ntree,
                     mtry=mtry, n.obs=n.obs, sample.fraction=sample.fraction)
 
-## Not run: 
+
 # do cross-validation
 rfsi_cv &lt;- cv.rfsi(formula=fm.RFSI, # without nearest obs
                    data = data,
@@ -245,7 +246,7 @@ rfsi_cv &lt;- cv.rfsi(formula=fm.RFSI, # without nearest obs
                    seed = 42,
                    acc.metric = "RMSE", # R2, CCC, MAE
                    output.format = "data.frame",
-                   cpus=detectCores()-1,
+                   cpus=2, # detectCores()-1,
                    progress=1,
                    importance = "impurity")
 summary(rfsi_cv)
@@ -258,7 +259,6 @@ acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "MAE")
 acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "NMAE")
 acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "CCC")
 
-## End(Not run)
 </code></pre>
 
 <hr>
@@ -434,11 +434,6 @@ library(meteo)
 demo(meuse, echo=FALSE)
 meuse &lt;- meuse[complete.cases(meuse@data),]
 data = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
-# data = terra::vect(meuse)
-# data.frame
-# data &lt;- as.data.frame(meuse)
-# data$id = 1:nrow(data)
-# data.staid.x.y.z &lt;- c(15,"x","y",NA)
 fm.RFSI &lt;- as.formula("zinc ~ dist + soil + ffreq")
 
 # making tgrid
@@ -450,13 +445,10 @@ ntree &lt;- 250 # 500
 mtry &lt;- 3:(2+2*max(n.obs))
 tgrid = expand.grid(min.node.size=min.node.size, num.trees=ntree,
                     mtry=mtry, n.obs=n.obs, sample.fraction=sample.fraction)
-## Not run: 
+
 # Cross-validation of RFSI
 rfsi_cv &lt;- cv.rfsi(formula=fm.RFSI, # without nearest obs
                    data = data,
-                   # data.staid.x.y.z = c("id", "x", "y", NA), # only if class(data) == data.frame
-                   # s.crs=NA,
-                   # t.crs=NA,
                    tgrid = tgrid, # combinations for tuning
                    tgrid.n = 2, # number of randomly selected combinations from tgrid for tuning
                    tune.type = "LLO", # Leave-Location-Out CV
@@ -464,20 +456,19 @@ rfsi_cv &lt;- cv.rfsi(formula=fm.RFSI, # without nearest obs
                    seed = 42,
                    acc.metric = "RMSE", # R2, CCC, MAE
                    output.format = "sf", # "data.frame", # "SpatVector",
-                   cpus=detectCores()-1,
+                   cpus=2, # detectCores()-1,
                    progress=1,
                    importance = "impurity") # ranger parameter
 
 summary(rfsi_cv)
 rfsi_cv$dif &lt;- rfsi_cv$obs - rfsi_cv$pred
-# plot(rfsi_cv["dif"])
-# spplot(rfsi_cv[, , "obs"])
+plot(rfsi_cv["dif"])
+plot(rfsi_cv[, , "obs"])
 acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "R2")
 acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "RMSE")
 acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "MAE")
 acc.metric.fun(rfsi_cv$obs, rfsi_cv$pred, "CCC")
 
-## End(Not run)
 </code></pre>
 
 <hr>
@@ -737,7 +728,9 @@ results &lt;- cv.strk(data = stfdf,
                    progress = TRUE
 )
 
-# stplot(results[,,"pred"])
+
+stplot(results[,,"pred"])
+
 summary(results)
 # accuracy
 acc.metric.fun(results@data$obs, results@data$pred, "R2")
@@ -881,7 +874,7 @@ str(data.df)
 <h3>Examples</h3>
 
 <pre><code class='language-R'>library(terra)
-## load data 
+# load data 
 data(dem_twi_srb)
 terra::unwrap(dem_twi_srb)
 </code></pre>
@@ -940,7 +933,7 @@ terra::unwrap(dem_twi_srb)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data 
+<pre><code class='language-R'># load data 
 data(dprec)
 str(dprec)
 </code></pre>
@@ -999,7 +992,7 @@ str(dprec)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data
+<pre><code class='language-R'># load data
 data(dslp)
 str(dslp)
 </code></pre>
@@ -1058,7 +1051,7 @@ str(dslp)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data 
+<pre><code class='language-R'># load data 
 data(dsndp)
 str(dsndp)
 </code></pre>
@@ -1117,7 +1110,7 @@ str(dsndp)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data 
+<pre><code class='language-R'># load data 
 data(dtemp_maxc)
 str(dtemp_maxc)
 </code></pre>
@@ -1176,7 +1169,7 @@ str(dtemp_maxc)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data
+<pre><code class='language-R'># load data
 data(dtemp_minc)
 str(dtemp_minc)
 </code></pre>
@@ -1235,7 +1228,7 @@ str(dtemp_minc)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data 
+<pre><code class='language-R'># load data 
 data(dtempc)
 str(dtempc)
 </code></pre>
@@ -1304,7 +1297,7 @@ str(dtempc)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data 
+<pre><code class='language-R'># load data 
 data(dtempc_ogimet)
 str(dtempc)
 </code></pre>
@@ -1363,53 +1356,38 @@ str(dtempc)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data 
+<pre><code class='language-R'># load data 
 data(dwdsp)
 str(dwdsp)
 </code></pre>
 
 <hr>
-<h2 id='get_meteo'>Get daily meteorological data for specific location and dates.</h2><span id='topic+get_meteo'></span>
+<h2 id='get_coordinates'>Get lon/lat coordinates for a specific location name.</h2><span id='topic+get_coordinates'></span>
 
 <h3>Description</h3>
 
-<p>The function gives back daily metorological data for specific location and dates for Europe for 1991-2020 period (from MeteoEurope1km dataset).</p>
+<p>The function gives back lon/lat coordinates for a specific location name using Nominatim (https://nominatim.org/) service.</p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_meteo(loc,
-          dates,
-          var = "tmean",
-          source = "MeteoEurope1km")
+<pre><code class='language-R'>get_coordinates(location_name = "Belgrade")
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="get_meteo_+3A_loc">loc</code></td>
+<tr><td><code id="get_coordinates_+3A_location_name">location_name</code></td>
 <td>
-<p><code>sf</code>, <code>SpatVector</code>, <a href="base.html#topic+data.frame">data.frame</a>, <code>matrix</code>, <code>numeric</code> or <code>integer</code>; Locations in WGS84 (EPSG:4326). If <a href="base.html#topic+data.frame">data.frame</a> or <code>matrix</code> columns are lon/lat.</p>
-</td></tr>
-<tr><td><code id="get_meteo_+3A_dates">dates</code></td>
-<td>
-<p><code>Date</code> or <code>character</code>; Date(s).</p>
-</td></tr>
-<tr><td><code id="get_meteo_+3A_var">var</code></td>
-<td>
-<p><code>character</code>; Daily meteorological variable. Possible values are: <code>"tmean"</code> (default), <code>"tmax"</code>, <code>"tmin"</code>, <code>"prcp"</code>, or <code>"slp"</code>.</p>
-</td></tr>
-<tr><td><code id="get_meteo_+3A_source">source</code></td>
-<td>
-<p><code>character</code>; Data source. Possible values are: <code>"MeteoEurope1km"</code> (default).</p>
+<p><code>character</code>; Location name (e.g. &quot;Belgrade&quot;).</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p><a href="base.html#topic+data.frame">data.frame</a> object with daily meteorological values for specific locations (rows) and specific dates (columns). First column is location ID.</p>
+<p><code>numeric</code> vector with lon/lat values for a specific location name.</p>
 
 
 <h3>Author(s)</h3>
@@ -1419,27 +1397,117 @@ str(dwdsp)
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+pred.strk">pred.strk</a></code>
+<p><code><a href="#topic+get_meteo">get_meteo</a></code>
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>library(terra)
+<pre><code class='language-R'>
+coords &lt;- get_coordinates("Belgrade")
+str(coords)
 
-loc &lt;- c(21, 45)
-# loc &lt;- as.data.frame(rbind(c(21, 45),
-#                            c(21,45.5),
-#                            c(21.5,45),
-#                            c(21.5,45.5)))
+</code></pre>
 
-dates &lt;- as.Date("2020-12-25")
-# dates &lt;- seq(as.Date("2020-12-25"), as.Date("2020-12-31"), by="day")
+<hr>
+<h2 id='get_meteo'>Get daily, monthly, or annual; aggregated or long-term means meteorological data for specific location(s) and date(s).</h2><span id='topic+get_meteo'></span>
 
-tmean &lt;- get_meteo(loc,
-                   dates,
-                   var = "tmean", # "tmax" "tmin" "prcp" "slp"
-                   source = "MeteoEurope1km")
+<h3>Description</h3>
+
+<p>The function gives back daily, monthly, or annual and aggregated or long-term means metorological data for specific location(s) and date(s) for entire World for 1961-2020 period from DailyMeteo portal (https://app.dailymeteo.com/).</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_meteo(loc,
+          var = "tmean",
+          agg_level = "agg",
+          time_scale = "day",
+          time,
+          from,
+          to,
+          api_key)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="get_meteo_+3A_loc">loc</code></td>
+<td>
+<p><code>sf</code>, <code>SpatVector</code>, <a href="base.html#topic+data.frame">data.frame</a>, <code>matrix</code>, <code>numeric</code> or <code>integer</code>; Location(s) in WGS84 (EPSG:4326). If <a href="base.html#topic+data.frame">data.frame</a> or <code>matrix</code> columns are lon/lat. See <code><a href="#topic+get_coordinates">get_coordinates</a></code>.</p>
+</td></tr>
+<tr><td><code id="get_meteo_+3A_var">var</code></td>
+<td>
+<p><code>character</code>; Meteorological variable. Possible values are: <code>"tmean"</code> (mean temperature, default), <code>"tmax"</code> (maximum temperature), <code>"tmin"</code> (minimum temperature), <code>"prcp"</code> (total precipitation), or <code>"slp"</code> (sea-level pressure).</p>
+</td></tr>
+<tr><td><code id="get_meteo_+3A_agg_level">agg_level</code></td>
+<td>
+<p><code>character</code>; Aggregation level. Possible values are: <code>"agg"</code> (aggregated, default) or <code>"ltm"</code> (long-term mean).</p>
+</td></tr>
+<tr><td><code id="get_meteo_+3A_time_scale">time_scale</code></td>
+<td>
+<p><code>character</code>; Time scale. Possible values are: <code>"day"</code> (daily, default), <code>"mon"</code> (monthly), or <code>"ann"</code> (annual).</p>
+</td></tr>
+<tr><td><code id="get_meteo_+3A_time">time</code></td>
+<td>
+<p><code>character</code>; Vector of time references. If specified, ignore <code>from</code> and <code>to</code>. If <code>time_scale="day"</code> then format is <code>'YYYY-MM-DD'</code>. If <code>time_scale="mon"</code> then the format is <code>'YYYY-MM'</code>. If <code>time_scale="ann"</code> then format is <code>'YYYY'</code> (e.g. if <code>time_scale="day"</code> then <code>c('2020-01-01,2020-01-02')</code>; if <code>time_scale="mon"</code> then <code>c('2020-01,2020-02')</code>; if <code>time_scale="ann"</code> then <code>c('2020,2019')</code>).</p>
+</td></tr>
+<tr><td><code id="get_meteo_+3A_from">from</code></td>
+<td>
+<p><code>character</code>; Time reference from. Format is the same as for the parameter <code>time</code></p>
+</td></tr>
+<tr><td><code id="get_meteo_+3A_to">to</code></td>
+<td>
+<p><code>character</code>; Time reference to. Format is the same as for the parameter <code>time</code></p>
+</td></tr>
+<tr><td><code id="get_meteo_+3A_api_key">api_key</code></td>
+<td>
+<p><code>character</code>; API key. Check DailyMeteo portal (https://app.dailymeteo.com/)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><a href="base.html#topic+data.frame">data.frame</a> object with columns <code>loc</code> (location index from <code>loc</code> argument), <code>timestamp</code> (time reference), and <code>value</code> (meteorological value).</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Aleksandar Sekulić <a href="mailto:asekulic@grf.bg.ac.rs">asekulic@grf.bg.ac.rs</a></p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+get_coordinates">get_coordinates</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+loc &lt;- get_coordinates("Belgrade")
+loc &lt;- rbind(loc, get_coordinates("Kopaonik"))
+loc
+api_key &lt;- "" # get API key from DailyMeteo portal (https://app.dailymeteo.com/)
+result &lt;- get_meteo(loc = loc,
+                   var = "tmean",
+                   agg_level = "agg",
+                   time_scale = "day",
+                   from = "2020-01-01",
+                   to = "2020-01-02", # or use time = c("2020-01-01", "2020-01-02"),
+                   api_key = api_key)
+# result
+#   loc  timestamp value
+# 1   1 2020-01-01   0.7
+# 2   1 2020-01-02   1.0
+# 3   2 2020-01-01  -9.2
+# 4   2 2020-01-02  -8.6
+# 5   3 2020-01-01  -9.2
+# 6   3 2020-01-02  -8.6
+
+## End(Not run)
 </code></pre>
 
 <hr>
@@ -1520,9 +1588,9 @@ tmean &lt;- get_meteo(loc,
 <pre><code class='language-R'># prepare data
 # load observation - data.frame of mean temperatures
 data(dtempc) 
-# str(dtempc)
+str(dtempc)
 data(stations)
-# str(stations)
+str(stations)
 lonmin=18 ;lonmax=22.5 ; latmin=40 ;latmax=46
 library(sp)
 library(spacetime)
@@ -1531,7 +1599,7 @@ serbia = point.in.polygon(stations$lon, stations$lat, c(lonmin,lonmax,lonmax,lon
 st= stations[ serbia!=0, ] # stations in Serbia approx.
 # create STFDF
 temp &lt;- meteo2STFDF(dtempc,st, crs= CRS('+proj=longlat +datum=WGS84'))
-# str(temp)
+str(temp)
 
 </code></pre>
 
@@ -1826,8 +1894,11 @@ summary(nearest_obs)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>data(nlmodis20110704)
-# spplot(nlmodis20110704)
+<pre><code class='language-R'>library(sp)
+data(nlmodis20110704)
+
+spplot(nlmodis20110704)
+
 </code></pre>
 
 <hr>
@@ -1857,8 +1928,11 @@ summary(nearest_obs)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>data(nlmodis20110712)
-# spplot(nlmodis20110712)
+<pre><code class='language-R'>library(sp)
+data(nlmodis20110712)
+
+spplot(nlmodis20110712)
+
 </code></pre>
 
 <hr>
@@ -1878,8 +1952,11 @@ summary(nearest_obs)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>data(NLpol)
-##  plot(NLpol) ...
+<pre><code class='language-R'>library(sp)
+data(NLpol)
+
+plot(NLpol)
+
 </code></pre>
 
 <hr>
@@ -2024,21 +2101,13 @@ library(meteo)
 demo(meuse, echo=FALSE)
 meuse &lt;- meuse[complete.cases(meuse@data),]
 data = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
-# data = terra::vect(meuse)
-# data.frame
-# data &lt;- as.data.frame(meuse)
-# data$id = 1:nrow(data)
-# data.staid.x.y.z &lt;- c("id","x","y",NA)
 fm.RFSI &lt;- as.formula("zinc ~ dist + soil + ffreq")
 
 # fit the RFSI model
 rfsi_model &lt;- rfsi(formula = fm.RFSI,
                    data = data, # meuse.df (use data.staid.x.y.z)
-                   # data.staid.x.y.z = data.staid.x.y.z, # only if class(data) == data.frame
                    n.obs = 5, # number of nearest observations
-                   # s.crs = st_crs(data), # nedded only if the coordinates are lon/lat (WGS84)
-                   # p.crs = st_crs(data), # nedded only if the coordinates are lon/lat (WGS84)
-                   cpus = detectCores()-1,
+                   cpus = 2, # detectCores()-1,
                    progress = TRUE,
                    # ranger parameters
                    importance = "impurity",
@@ -2058,39 +2127,28 @@ sort(rfsi_model$variable.importance)
 sum("obs" == substr(rfsi_model$forest$independent.variable.names, 1, 3))
 
 # Make RFSI prediction
-# data.frame
-# newdata &lt;- as.data.frame(meuse.grid)
-# newdata$id &lt;- 1:nrow(newdata)
-# newdata &lt;- meuse.grid
 newdata &lt;- terra::rast(meuse.grid)
 class(newdata)
 
 # prediction
+
 rfsi_prediction &lt;- pred.rfsi(model = rfsi_model,
                              data = data, # meuse.df (use data.staid.x.y.z)
                              obs.col = "zinc",
-                             # data.staid.x.y.z = data.staid.x.y.z, # data.frame
                              newdata = newdata, # meuse.grid.df (use newdata.staid.x.y.z)
-                             # newdata.staid.x.y.z = c("id", "x", "y", NA), # data.frame
                              output.format = "SpatRaster", # "sf", # "SpatVector", 
                              zero.tol = 0,
-                             # s.crs = st_crs(data), # meuse@proj4string, # NA # st_crs(data)
-                             # newdata.s.crs = st_crs(data), # meuse@proj4string, # NA
-                             # p.crs = st_crs(data), # meuse@proj4string, # NA
-                             cpus = 1, # detectCores()-1,
+                             cpus = 2, # detectCores()-1,
                              progress = TRUE,
                              # type = "quantiles", # for quantile regression
                              # quantiles = c(0.1, 0.5, 0.9) # for quantile regression
 )
 class(rfsi_prediction)
 names(rfsi_prediction)
-# head(rfsi_prediction)
+head(rfsi_prediction)
+plot(rfsi_prediction)
+plot(rfsi_prediction['pred'])
 
-# plot(rfsi_prediction)
-# plot(rfsi_prediction['pred'])
-# plot(rfsi_prediction['quantile..0.1'])
-# plot(rfsi_prediction['quantile..0.5'])
-# plot(rfsi_prediction['quantile..0.9'])
 </code></pre>
 
 <hr>
@@ -2287,7 +2345,7 @@ stations.staid.lon.lat = c(1,2,3)
 crs = CRS('+proj=longlat +datum=WGS84')
 delta = NULL
 
-## Not run: 
+
 # create STFDF
 stfdf &lt;- meteo2STFDF(obs = dtempc,
                      stations = st,
@@ -2312,14 +2370,14 @@ results &lt;- pred.strk(data = stfdf, # observations
 )
 class(results)
 # plot prediction
-# results@sp=as(results@sp,'SpatialPixelsDataFrame')
-# stplot(results[,,"pred", drop= FALSE], col.regions=bpy.colors())
-# stplot(results[,,"var", drop= FALSE], col.regions=bpy.colors())
+results@sp=as(results@sp,'SpatialPixelsDataFrame')
+stplot(results[,,"pred", drop= FALSE], col.regions=bpy.colors())
+stplot(results[,,"var", drop= FALSE], col.regions=bpy.colors())
 
-## End(Not run)
 
-## Not run: 
-### Example with data.frames and parallel processing - SpatRaster output
+
+# Example with data.frames and parallel processing - SpatRaster output
+
 library(terra)
 library(doParallel)
 # create data.frame
@@ -2339,15 +2397,14 @@ results &lt;- pred.strk(data = stfdf.df,
                      time.nmax = 2,
                      parallel.processing = TRUE,
                      pp.type = "doParallel", # "snowfall"
-                     cpus = 1, # detectCores()-1,
+                     cpus = 2, # detectCores()-1,
                      computeVar = TRUE,
                      progress = TRUE
 )
 # plot prediction
-# plot(results$`2011-07-06`[["pred"]])
-# plot(results$`2011-07-06`[["var"]])
+plot(results$`2011-07-06`[["pred"]])
+plot(results$`2011-07-06`[["var"]])
 
-## End(Not run)
 </code></pre>
 
 <hr>
@@ -2393,9 +2450,11 @@ str(regdata)
 library(sp) # spplot
 library(spacetime) # stplot
 
-# stplot(regdata[,,'modis']) # plot modis data
-# spplot(regdata@sp,zcol='twi', col.regions = bpy.colors() ) # plot TWI
-# spplot(regdata@sp,zcol='dem', col.regions = bpy.colors() ) # plot dem
+
+stplot(regdata[,,'modis']) # plot modis data
+spplot(regdata@sp,zcol='twi', col.regions = bpy.colors() ) # plot TWI
+spplot(regdata@sp,zcol='dem', col.regions = bpy.colors() ) # plot dem
+
 </code></pre>
 
 <hr>
@@ -2480,10 +2539,14 @@ library(spacetime) # stplot
    # # sf
    # NLpol &lt;- st_as_sf(NLpol) #, crs = st_crs(4326))
    
-   # plot(nlmodis20110712)
+   
+   plot(nlmodis20110712)
+   
    # fill spatial gaps
    r=rfillspgaps(nlmodis20110712,NLpol)
-   # plot(r)
+   
+   plot(r)
+   
   
 </code></pre>
 
@@ -2581,7 +2644,7 @@ library(spacetime) # stplot
   library(raster)
   NLpol@proj4string &lt;- nlmodis20110704@proj4string
   
-  ## Not run: 
+  
   nlmodis20110704 &lt;- rfillspgaps(nlmodis20110704,NLpol)
   nlmodis20110712 &lt;- rfillspgaps(nlmodis20110712,NLpol)
   
@@ -2600,11 +2663,10 @@ library(spacetime) # stplot
                   time= as.Date(c('2011-07-04','2011-07-12')), 
                   data.frame(modis=df[,'modis']))
   
-  # stplot(stMODIS, col.regions=bpy.colors())
+  stplot(stMODIS, col.regions=bpy.colors())
   stMODIS &lt;- rfilltimegaps(stMODIS)
-  # stplot(stMODIS, col.regions=bpy.colors())
+  stplot(stMODIS, col.regions=bpy.colors())
   
-## End(Not run)
 </code></pre>
 
 <hr>
@@ -2758,21 +2820,13 @@ library(meteo)
 demo(meuse, echo=FALSE)
 meuse &lt;- meuse[complete.cases(meuse@data),]
 data = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
-# data = terra::vect(meuse)
-# data.frame
-# data &lt;- as.data.frame(meuse)
-# data$id = 1:nrow(data)
-# data.staid.x.y.z &lt;- c(15,"x","y",NA)
 fm.RFSI &lt;- as.formula("zinc ~ dist + soil + ffreq")
 
 # fit the RFSI model
 rfsi_model &lt;- rfsi(formula = fm.RFSI,
                    data = data, # meuse.df (use data.staid.x.y.z)
-                   # data.staid.x.y.z = data.staid.x.y.z, # only if class(data) == data.frame
                    n.obs = 5, # number of nearest observations
-                   # s.crs = st_crs(data), # nedded only if the coordinates are lon/lat (WGS84)
-                   # p.crs = st_crs(data), # nedded only if the coordinates are lon/lat (WGS84)
-                   cpus = detectCores()-1,
+                   cpus = 2, # detectCores()-1,
                    progress = TRUE,
                    # ranger parameters
                    importance = "impurity",
@@ -2856,7 +2910,7 @@ data(stations)
 str(dtempc)
 str(stations)
 
-## Not run: 
+
 # create STFDF - from 2 data frames
 temp &lt;- meteo2STFDF(dtempc,
                     stations,
@@ -2867,7 +2921,6 @@ nrow(temp@sp) # number of stations before removing dupl.
 temp2 &lt;-rm.dupl(temp, zcol = 1, zero.tol = 50) # 50 km
 nrow(temp2@sp) # number of stations after
 
-## End(Not run)
 </code></pre>
 
 <hr>
@@ -2925,13 +2978,15 @@ nrow(temp2@sp) # number of stations after
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data:
+<pre><code class='language-R'># load data:
 data(stations)
 str(stations)
 library(sp)
 coordinates(stations) &lt;-~ lon +lat
 stations@proj4string &lt;-CRS('+proj=longlat +datum=WGS84')
-# plot(stations)
+
+plot(stations)
+
 </code></pre>
 
 <hr>
@@ -2988,13 +3043,15 @@ stations@proj4string &lt;-CRS('+proj=longlat +datum=WGS84')
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## load data:
+<pre><code class='language-R'># load data:
 data(stations_ogimet)
 str(stations)
 library(sp)
 coordinates(stations) &lt;-~ lon +lat
 stations@proj4string &lt;-CRS('+proj=longlat +datum=WGS84')
-# plot(stations)
+
+plot(stations)
+
 </code></pre>
 
 <hr>
@@ -3133,27 +3190,32 @@ tgeom_vect2 &lt;- temp_geom(day = 1,
 
 <pre><code class='language-R'>library(sp)
 library(spacetime)
-## create one point from lon lat
+# create one point from lon lat
 pos &lt;- SpatialPoints(coords = cbind(19.22,45.33)) 
-## temp_geom for 1st Jan 2011
+# temp_geom for 1st Jan 2011
 tg1 &lt;- tgeom2STFDF(pos,as.POSIXct("2011-01-01") )  
 tg1
 
-## temp_geom for the 2011 at pos location
+# temp_geom for the 2011 at pos location
 tg365&lt;- tgeom2STFDF(pos,time = seq(as.POSIXct("2011-01-01"), as.POSIXct("2011-12-31"), 
                     by="day") ) 
-# stplot(tg365, mode='ts')
+
+stplot(tg365, mode='ts')
+
 
 data(regdata) 
-## DEM and TWI data for Serbia at 1 km resolution
-# str(regdata@sp)
-# spplot(regdata@sp, zcol='dem', col.regions=bpy.colors() )
+# DEM and TWI data for Serbia at 1 km resolution
 
-## temp_geom for Serbia 1st and 2nd Jully 2011
+str(regdata@sp)
+spplot(regdata@sp, zcol='dem', col.regions=bpy.colors() )
+
+
+# temp_geom for Serbia 1st and 2nd Jully 2011
 tgSrb&lt;- tgeom2STFDF(regdata@sp,time = seq(as.POSIXct("2011-07-01"), 
                     as.POSIXct("2011-07-02"), by="day") ) 
 
-## temp_geom for "2011-07-01" , "2011-07-02"
+# temp_geom for "2011-07-01" , "2011-07-02"
+
 # stplot(tgSrb, col.regions = bpy.colors() ) 
 
 </code></pre>
@@ -3175,7 +3237,7 @@ tgSrb&lt;- tgeom2STFDF(regdata@sp,time = seq(as.POSIXct("2011-07-01"),
        aspoints= NA, 
        asfiles=FALSE,
        tilename="tile",
-       tiles_folder=paste(getwd(),'tiles',sep='/'),
+       tiles_folder='tiles',
        parallel.processing=FALSE,
        cpus=6,
        ...)
@@ -3260,9 +3322,11 @@ tiles = tiling(rast,
 # number of tiles
 length(tiles)
 
-# plot(rast)
-# plot(tiles[[1]] , pch='-' ,col ='green', add=T)
-# plot(tiles[[2]], pch='.', add=T)
+
+plot(rast)
+plot(tiles[[1]] , pch='-' ,col ='green', add=TRUE)
+plot(tiles[[2]], pch='.', add=TRUE)
+
 
 str(tiles[[1]])
 
@@ -3495,11 +3559,6 @@ library(meteo)
 demo(meuse, echo=FALSE)
 meuse &lt;- meuse[complete.cases(meuse@data),]
 data = st_as_sf(meuse, coords = c("x", "y"), crs = 28992, agr = "constant")
-# data = terra::vect(meuse)
-# data.frame
-# data &lt;- as.data.frame(meuse)
-# data$id = 1:nrow(data)
-# data.staid.x.y.z &lt;- c(15,"x","y",NA)
 fm.RFSI &lt;- as.formula("zinc ~ dist + soil + ffreq")
 
 # making tgrid
@@ -3512,7 +3571,7 @@ mtry &lt;- 3:(2+2*max(n.obs))
 tgrid = expand.grid(min.node.size=min.node.size, num.trees=ntree,
                     mtry=mtry, n.obs=n.obs, sample.fraction=sample.fraction)
 
-## Not run: 
+
 # Tune RFSI model
 rfsi_tuned &lt;- tune.rfsi(formula = fm.RFSI,
                         data = data,
@@ -3526,7 +3585,7 @@ rfsi_tuned &lt;- tune.rfsi(formula = fm.RFSI,
                         seed = 42,
                         acc.metric = "RMSE", # R2, CCC, MAE
                         fit.final.model = TRUE,
-                        cpus = detectCores()-1,
+                        cpus = 2, # detectCores()-1,
                         progress = TRUE,
                         importance = "impurity") # ranger parameter
 
@@ -3538,7 +3597,6 @@ rfsi_tuned$final.model
 # OOB prediction error (MSE):       46666.51 
 # R squared (OOB):                  0.6517336 
 
-## End(Not run)
 </code></pre>
 
 <hr>

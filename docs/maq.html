@@ -20,6 +20,7 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#average_gain'><p>Get estimate of gain given a spend level.</p></a></li>
 <li><a href='#difference_gain'><p>Get estimate of difference in gain given a spend level with paired standard errors.</p></a></li>
+<li><a href='#get_aipw_scores'><p>Construct evaluation scores via augmented inverse-propensity weighting.</p></a></li>
 <li><a href='#get_ipw_scores'><p>Construct evaluation scores via inverse-propensity weighting.</p></a></li>
 <li><a href='#integrated_difference'><p>Get estimate of the area between two Qini curves with paired standard errors.</p></a></li>
 <li><a href='#maq'><p>Fit a Multi-Armed Qini.</p></a></li>
@@ -39,11 +40,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.1</td>
+<td>0.4.0</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Evaluate treatment rules for costly and mutually exclusive treatment arms with Qini curves as proposed in Sverdrup, Wu, Athey, and Wager (2023) &lt;<a href="https://doi.org/10.48550/arXiv.2306.11979">doi:10.48550/arXiv.2306.11979</a>&gt;.</td>
+<td>Evaluate treatment rules for costly and mutually exclusive treatment arms with Qini curves as proposed in Sverdrup, Wu, Athey, and Wager (2023) &lt;<a href="https://doi.org/10.48550%2FarXiv.2306.11979">doi:10.48550/arXiv.2306.11979</a>&gt;.</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -91,7 +92,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-08 02:27:05 UTC; erikcs</td>
+<td>2024-04-18 16:05:03 UTC; erikcs</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -102,7 +103,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Maintainer:</td>
-<td>Erik Sverdrup &lt;erikcs@stanford.edu&gt;</td>
+<td>Erik Sverdrup &lt;erik.sverdrup@monash.edu&gt;</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -110,7 +111,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-08 03:00:02 UTC</td>
+<td>2024-04-18 17:52:53 UTC</td>
 </tr>
 </table>
 <hr>
@@ -187,6 +188,119 @@ function processMathHTML() {
 </p>
 
 <hr>
+<h2 id='get_aipw_scores'>Construct evaluation scores via augmented inverse-propensity weighting.</h2><span id='topic+get_aipw_scores'></span>
+
+<h3>Description</h3>
+
+<p>A simple convenience function to construct an AIPW-based evaluation score given estimates
+of conditional means and treatment propensities.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_aipw_scores(Y, W, mu.hat, W.hat = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="get_aipw_scores_+3A_y">Y</code></td>
+<td>
+<p>The observed outcome.</p>
+</td></tr>
+<tr><td><code id="get_aipw_scores_+3A_w">W</code></td>
+<td>
+<p>The observed treatment assignment (must be a factor vector,
+where the first factor level is the control arm).</p>
+</td></tr>
+<tr><td><code id="get_aipw_scores_+3A_mu.hat">mu.hat</code></td>
+<td>
+<p>A matrix of conditional mean estimates for each arm, <code class="reqn">E[Y_i | W_i = k, X_i]</code>.</p>
+</td></tr>
+<tr><td><code id="get_aipw_scores_+3A_w.hat">W.hat</code></td>
+<td>
+<p>Optional treatment propensities. If these vary by unit and arm, then
+this should be a matrix with the treatment assignment
+probability of units to arms, with columns corresponding to the levels of <code>W</code>.
+If these only vary by arm, a vector can also be supplied.
+If W.hat is NULL (Default), then the assignment probabilities are assumed to be uniform
+and the same for each arm.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An <code class="reqn">n \cdot K</code> matrix of evaluation scores
+(eqn (13) in the multi-armed Qini paper).
+</p>
+
+
+<h3>References</h3>
+
+<p>Robins, James M, Andrea Rotnitzky, and Lue Ping Zhao.
+&quot;Estimation of regression coefficients when some regressors are not always observed.&quot;
+Journal of the American statistical Association, 89(427), 1994.
+</p>
+<p>Sverdrup, Erik, Han Wu, Susan Athey, and Stefan Wager.
+&quot;Qini Curves for Multi-Armed Treatment Rules&quot;.
+arXiv preprint arXiv:2306.11979, 2023.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+if (require("grf", quietly = TRUE)) {
+# Simulate data with two treatment arms (k = 1, 2) and a control arm (k = 0).
+n &lt;- 3000
+p &lt;- 5
+X &lt;- matrix(runif(n * p), n, p)
+W &lt;- as.factor(sample(c("0", "1", "2"), n, replace = TRUE))
+Y &lt;- X[, 1] + X[, 2] * (W == "1") + 1.5 * X[, 3] * (W == "2") + rnorm(n)
+
+# Fit a CATE estimator on a training sample.
+train &lt;- sample(1:n, n/2)
+tau.forest &lt;- grf::multi_arm_causal_forest(X[train, ], Y[train], W[train])
+
+# Predict CATEs on held out evaluation data.
+test &lt;- -train
+tau.hat &lt;- predict(tau.forest, X[test, ], drop = TRUE)$predictions
+# Form costs.
+cost &lt;- cbind(X[test, 4] / 4, X[test, 5])
+
+# Estimate nuisance components for test set AIPW scores.
+X.test &lt;- X[test, ]
+Y.test &lt;- Y[test]
+W.test &lt;- W[test]
+
+# Fit models for E[Y | W = k, X], k = 0, 1, 2, using for example separate random forests.
+Y0.forest &lt;- grf::regression_forest(X.test[W.test == 0, ], Y.test[W.test == 0])
+Y1.forest &lt;- grf::regression_forest(X.test[W.test == 1, ], Y.test[W.test == 1])
+Y2.forest &lt;- grf::regression_forest(X.test[W.test == 2, ], Y.test[W.test == 2])
+mu.hat = cbind(
+   mu0 = predict(Y0.forest, X.test)$predictions,
+   mu1 = predict(Y1.forest, X.test)$predictions,
+   mu2 = predict(Y2.forest, X.test)$predictions
+)
+
+# If unknown, estimate the propensity scores E[W = k | X].
+W.hat &lt;- predict(grf::probability_forest(X.test, W.test))$predictions
+
+# Form doubly robust scores.
+DR.scores &lt;- get_aipw_scores(Y.test, W.test, mu.hat, W.hat)
+
+# Fit a Qini curve estimated with forest-based AIPW.
+qini &lt;- maq(tau.hat, cost, DR.scores, R = 200)
+plot(qini)
+}
+
+
+</code></pre>
+
+<hr>
 <h2 id='get_ipw_scores'>Construct evaluation scores via inverse-propensity weighting.</h2><span id='topic+get_ipw_scores'></span>
 
 <h3>Description</h3>
@@ -249,7 +363,7 @@ n &lt;- 5000
 W &lt;- as.factor(sample(c("A", "B", "C"), n, replace = TRUE))
 Y &lt;- 42 * (W == "B") - 42 * (W == "C") + rnorm(n)
 IPW.scores &lt;- get_ipw_scores(Y, W)
-# An estimate of E[Y(B) - Y(A)] and E[Y(C) - Y(A)]. Should be approx 42 and -42.
+# An IPW-based estimate of E[Y(B) - Y(A)] and E[Y(C) - Y(A)]. Should be approx 42 and -42.
 colMeans(IPW.scores)
 
 # Draw non-uniformly from the different arms.
@@ -545,7 +659,8 @@ integrated_difference(ma.qini, qini.arm1, spend = 0.3)
 <h3>Description</h3>
 
 <p>Plot the estimated curve <code class="reqn">Q(B), B \in (0, B_{max}]</code>. If the underlying estimated policy
-<code class="reqn">\pi_B</code> entails treating zero units, then this function returns an empty value.
+<code class="reqn">\pi_B</code> entails treating zero units (that is, all the estimated treatment effects are
+negative) then this function returns an empty value.
 </p>
 
 
@@ -581,7 +696,7 @@ plot(
 <tr><td><code id="plot.maq_+3A_horizontal.line">horizontal.line</code></td>
 <td>
 <p>Whether to draw a horizontal line where the Qini curve plateaus.
-Only applies if add = TRUE and the maq object is fit with a maximum <code>budget</code> that is sufficient
+Only applies if the maq object is fit with a maximum <code>budget</code> that is sufficient
 to treat all units that are expected to benefit.
 Default is TRUE.</p>
 </td></tr>

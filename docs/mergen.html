@@ -26,6 +26,8 @@ function processMathHTML() {
 <li><a href='#extractInstallPkg'><p>extract package names and install them</p></a></li>
 <li><a href='#fileHeaderPrompt'><p>Extract file headers from files in prompt</p></a></li>
 <li><a href='#promptContext'><p>Predefined prompt contexts for prompt engineering</p></a></li>
+<li><a href='#runCodeInResponse'><p>Executes the code in the received response from the agent</p></a></li>
+<li><a href='#sampleResponse'><p>Sample more solutions when non-executable code returned by the agent</p></a></li>
 <li><a href='#selfcorrect'><p>Self correct the code returned by the agent</p></a></li>
 <li><a href='#sendPrompt'><p>Send a prompt to a specified language model agent and return the response.</p></a></li>
 <li><a href='#setupAgent'><p>set up an online LLM API for subsequent tasks</p></a></li>
@@ -46,11 +48,20 @@ Analysis</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.0</td>
+<td>0.2.1</td>
 </tr>
 <tr>
 <td>Description:</td>
 <td>Employing artificial intelligence to convert data analysis questions into executable code, explanations, and algorithms. The self-correction feature ensures the generated code is optimized for performance and accuracy. 'mergen' features a user-friendly chat interface, enabling users to interact with the AI agent and extract valuable insights from their data effortlessly.</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="https://github.com/BIMSBbioinfo/mergen">https://github.com/BIMSBbioinfo/mergen</a>,
+<a href="https://bioinformatics.mdc-berlin.de/mergen/">https://bioinformatics.mdc-berlin.de/mergen/</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/BIMSBbioinfo/mergen/issues">https://github.com/BIMSBbioinfo/mergen/issues</a></td>
 </tr>
 <tr>
 <td>License:</td>
@@ -83,11 +94,12 @@ purrr (&ge; 0.3.4),</td>
 <td>'setupAgent.R' 'parseBotResponse.R' 'sendPrompt.R'
 'executeCode.R' 'selfcorrect.R' 'clean_code_blocks.R'
 'extractInstallPkg.R' 'extractFilenames.R' 'fileHeaderPrompt.R'
-'test-helper-test_argument_validation.R' 'promptContext.R'</td>
+'test-helper-test_argument_validation.R' 'promptContext.R'
+'runCodeInResponse.R'</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Config/testthat/edition:</td>
@@ -99,7 +111,7 @@ purrr (&ge; 0.3.4),</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-12-07 23:03:43 UTC; aakalin</td>
+<td>2024-06-27 07:22:12 UTC; aakalin</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -117,7 +129,7 @@ purrr (&ge; 0.3.4),</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-12-08 11:20:05 UTC</td>
+<td>2024-06-27 10:00:06 UTC</td>
 </tr>
 </table>
 <hr>
@@ -148,7 +160,7 @@ it using either the standard CRAN repository or the Bioconductor repository.
 
 <h3>Value</h3>
 
-<p>No value returned. Called for installation of package.
+<p>TRUE if the package is already installed or can be installed. FALSE otherwise
 </p>
 
 
@@ -368,7 +380,8 @@ and installs them as needed.
 
 <h3>Value</h3>
 
-<p>No value returned. Called for installation of package.
+<p>final status of the packages as a logical vector, TRUE if packages is already installed
+or could be installed. FALSE if the package can't be install.
 </p>
 
 
@@ -458,6 +471,227 @@ Valid options are &quot;simple&quot;, &quot;actAs&quot;, &quot;CoT&quot; and &qu
 </p>
 
 <hr>
+<h2 id='runCodeInResponse'>Executes the code in the received response from the agent</h2><span id='topic+runCodeInResponse'></span>
+
+<h3>Description</h3>
+
+<p>The function extracts and executes the code in the response. If required it can
+try to correct errors in the code via different strategies.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>runCodeInResponse(
+  response,
+  prompt = NULL,
+  agent = NULL,
+  context = NULL,
+  correction = c("none", "selfcorrect", "sampleMore", "sampleThenCorrect",
+    "correctThenSample"),
+  attempts = 3,
+  output.file = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="runCodeInResponse_+3A_response">response</code></td>
+<td>
+<p>response to be parsed for code and executed</p>
+</td></tr>
+<tr><td><code id="runCodeInResponse_+3A_prompt">prompt</code></td>
+<td>
+<p>prompt for the response, if correction=&quot;none&quot; it is not needed</p>
+</td></tr>
+<tr><td><code id="runCodeInResponse_+3A_agent">agent</code></td>
+<td>
+<p>AI agent, if correction=&quot;none&quot; it is not needed</p>
+</td></tr>
+<tr><td><code id="runCodeInResponse_+3A_context">context</code></td>
+<td>
+<p>context for the prompt, if correction=&quot;none&quot; it is not needed</p>
+</td></tr>
+<tr><td><code id="runCodeInResponse_+3A_correction">correction</code></td>
+<td>
+<p>&quot;none&quot; no code correction is needed. &quot;selfcorrect&quot; feedback the errors to LLM and ask for fix.
+&quot;sampleMore&quot; sample responses for the #prompt until an executable code is returned or number of attempts reached.
+&quot;correctThenSample&quot; first try self-correct &quot;attempt&quot; number of times.
+If no executable code is returned. It will sample new responses &quot;attempt&quot; number of times or until executable code</p>
+</td></tr>
+<tr><td><code id="runCodeInResponse_+3A_attempts">attempts</code></td>
+<td>
+<p>Numeric value denoting how many times the code should be sent back for fixing.</p>
+</td></tr>
+<tr><td><code id="runCodeInResponse_+3A_output.file">output.file</code></td>
+<td>
+<p>Optional output file created holding parsed code</p>
+</td></tr>
+<tr><td><code id="runCodeInResponse_+3A_...">...</code></td>
+<td>
+<p>arguments to sendPrompt()</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following elements:
+</p>
+<table>
+<tr><td><code>init.response</code></td>
+<td>
+<p>A character vector representing the initial prompt response.</p>
+</td></tr>
+<tr><td><code>init.blocks</code></td>
+<td>
+<p>A list of initial blocks.</p>
+</td></tr>
+<tr><td><code>final.blocks</code></td>
+<td>
+<p>A list of final blocks.</p>
+</td></tr>
+<tr><td><code>code.works</code></td>
+<td>
+<p>A boolean value indicating whether the code works.</p>
+</td></tr>
+<tr><td><code>exec.result</code></td>
+<td>
+<p>A character string representing the execution results.</p>
+</td></tr>
+<tr><td><code>tried.attempts</code></td>
+<td>
+<p>An integer representing the number of attempts.</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+selfcorrect">selfcorrect</a></code>,<code><a href="#topic+sampleResponse">sampleResponse</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+
+resp.list &lt;- runCodeInResponse(agent,prompt,context=rbionfoExp,correction="sampleMore",attempt=2)
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='sampleResponse'>Sample more solutions when non-executable code returned by the agent</h2><span id='topic+sampleResponse'></span>
+
+<h3>Description</h3>
+
+<p>The function attempts to sample more solutions by the agent when
+the code returned by the agent is faulty. The function simply asks for solutions
+until an executable code is returned or until number of attempts is reached.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>sampleResponse(
+  agent,
+  prompt,
+  context = rbionfoExp,
+  attempts = 3,
+  output.file = NULL,
+  responseWithError = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="sampleResponse_+3A_agent">agent</code></td>
+<td>
+<p>An object containing the agent's information (e.g., type and model).</p>
+</td></tr>
+<tr><td><code id="sampleResponse_+3A_prompt">prompt</code></td>
+<td>
+<p>The prompt text to send to the language model.</p>
+</td></tr>
+<tr><td><code id="sampleResponse_+3A_context">context</code></td>
+<td>
+<p>Optional context to provide alongside the prompt (default is rbionfoExp).</p>
+</td></tr>
+<tr><td><code id="sampleResponse_+3A_attempts">attempts</code></td>
+<td>
+<p>Numeric value denoting how many times the code should be sent back for fixing.</p>
+</td></tr>
+<tr><td><code id="sampleResponse_+3A_output.file">output.file</code></td>
+<td>
+<p>Optional output file created holding parsed code</p>
+</td></tr>
+<tr><td><code id="sampleResponse_+3A_responsewitherror">responseWithError</code></td>
+<td>
+<p>a list of response and errors returned from executeCode().
+First element is expected to be the response and the second element is the error list returned by executeCode().</p>
+</td></tr>
+<tr><td><code id="sampleResponse_+3A_...">...</code></td>
+<td>
+<p>Additional arguments to be passed to the <code><a href="#topic+sendPrompt">sendPrompt</a></code> function.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the following elements:
+</p>
+<table>
+<tr><td><code>init.response</code></td>
+<td>
+<p>A character vector representing the initial prompt response.</p>
+</td></tr>
+<tr><td><code>init.blocks</code></td>
+<td>
+<p>A list of initial blocks.</p>
+</td></tr>
+<tr><td><code>final.blocks</code></td>
+<td>
+<p>A list of final blocks.</p>
+</td></tr>
+<tr><td><code>code.works</code></td>
+<td>
+<p>A boolean value indicating whether the code works.</p>
+</td></tr>
+<tr><td><code>exec.result</code></td>
+<td>
+<p>A character string representing the execution results.</p>
+</td></tr>
+<tr><td><code>tried.attempts</code></td>
+<td>
+<p>An integer representing the number of attempts.</p>
+</td></tr>
+</table>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+promptContext">promptContext</a></code> for predefined contexts to use.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+
+resp.list &lt;- sampleResponse(agent,prompt,context=rbionfoExp, max_tokens = 500)
+
+## End(Not run)
+</code></pre>
+
+<hr>
 <h2 id='selfcorrect'>Self correct the code returned by the agent</h2><span id='topic+selfcorrect'></span>
 
 <h3>Description</h3>
@@ -476,6 +710,8 @@ error messages function returns the original response.
   context = rbionfoExp,
   attempts = 3,
   output.file = NULL,
+  responseWithError = NULL,
+  history = NULL,
   ...
 )
 </code></pre>
@@ -503,6 +739,15 @@ error messages function returns the original response.
 <tr><td><code id="selfcorrect_+3A_output.file">output.file</code></td>
 <td>
 <p>Optional output file created holding parsed code</p>
+</td></tr>
+<tr><td><code id="selfcorrect_+3A_responsewitherror">responseWithError</code></td>
+<td>
+<p>a list of response and errors returned from executeCode().</p>
+</td></tr>
+<tr><td><code id="selfcorrect_+3A_history">history</code></td>
+<td>
+<p>a list of previous response and prompts. Default is NULL and should be stayed as is for most use cases.
+First element is expected to be the response and the second element is the error list returned by executeCode().</p>
 </td></tr>
 <tr><td><code id="selfcorrect_+3A_...">...</code></td>
 <td>
@@ -572,8 +817,9 @@ response &lt;- selfcorrect(agent,prompt,context=rbionfoExp, max_tokens = 500)
 <pre><code class='language-R'>sendPrompt(
   agent,
   prompt,
-  context = rbionfoExp,
+  context = promptContext(type = "simple"),
   return.type = c("text", "object"),
+  previous.msgs = NULL,
   ...
 )
 </code></pre>
@@ -592,15 +838,25 @@ response &lt;- selfcorrect(agent,prompt,context=rbionfoExp, max_tokens = 500)
 </td></tr>
 <tr><td><code id="sendPrompt_+3A_context">context</code></td>
 <td>
-<p>Optional context to provide alongside the prompt (default is rbionfoExp).</p>
+<p>Optional context to provide alongside the prompt (default is promptContext(type = &quot;simple&quot;)).</p>
 </td></tr>
 <tr><td><code id="sendPrompt_+3A_return.type">return.type</code></td>
 <td>
-<p>The type of output to return, either the text response (&quot;text&quot;) or the entire response object (&quot;object&quot;).</p>
+<p>The type of output to return, either the text response (&quot;text&quot;) or
+the entire response object (&quot;object&quot;).</p>
+</td></tr>
+<tr><td><code id="sendPrompt_+3A_previous.msgs">previous.msgs</code></td>
+<td>
+<p>a list of lists for previous prompts and responses.
+Useful to add context of the previous messages for the API.
+this argument works with openai and generic models, but not with replicate API.
+Default: NULL</p>
 </td></tr>
 <tr><td><code id="sendPrompt_+3A_...">...</code></td>
 <td>
-<p>Additional arguments to be passed to the prompt function.</p>
+<p>Additional arguments to be passed to the LLM API. Such as maximum tokens, (&quot;max_tokens&quot;), to be returned.
+Users can also also provide other arguments in openai API-like
+arguments documented on [the official documentation](https://platform.openai.com/docs/api-reference/chat/create). Other APIs are also following similar argument naming patterns.</p>
 </td></tr>
 </table>
 
@@ -623,9 +879,29 @@ response &lt;- selfcorrect(agent,prompt,context=rbionfoExp, max_tokens = 500)
 agent &lt;- setupAgent(name="openai",type="chat",model="gpt-4",
                     ai_api_key=Sys.getenv("OPENAI_API_KEY"))
 prompt &lt;- "tell me a joke"
-response &lt;- sendPrompt(agent, prompt)
+response &lt;- sendPrompt(agent, prompt,context="")
 
-response &lt;- sendPrompt(agent,prompt,context=rbionfoExp,return.type="text", max_tokens = 500)
+# increase tokens, it is important for getting longer responses
+response &lt;- sendPrompt(agent,prompt,context="",return.type="text", max_tokens = 500)
+
+# get previous messages into the context
+prompt="what about 2010?"
+response &lt;- sendPrompt(agent,prompt,context="",
+                       return.type="text",
+                       previous.msgs=list(
+                                          list(
+                                               "role" = "user",
+                                                "content" = "Who won the world
+                                                 series in 2020?"
+                                                 ),
+                                          list(
+                                                "role" = "assistant",
+                                              "content" = "The Los Angeles Dodgers"
+                                              )
+                                          )
+                       )
+
+
 
 ## End(Not run)
 </code></pre>
@@ -642,9 +918,10 @@ response &lt;- sendPrompt(agent,prompt,context=rbionfoExp,return.type="text", ma
 <h3>Usage</h3>
 
 <pre><code class='language-R'>setupAgent(
-  name = c("openai", "replicate"),
+  name = c("openai", "replicate", "generic"),
   type = NULL,
   model = NULL,
+  url = NULL,
   ai_api_key = Sys.getenv("AI_API_KEY")
 )
 </code></pre>
@@ -655,7 +932,11 @@ response &lt;- sendPrompt(agent,prompt,context=rbionfoExp,return.type="text", ma
 <table>
 <tr><td><code id="setupAgent_+3A_name">name</code></td>
 <td>
-<p>Name of the API you want to use. Currently supported APIs are &quot;openai&quot; and &quot;replicate&quot;</p>
+<p>A string for the name of the API, one of &quot;openai&quot;, &quot;replicate&quot; or &quot;generic&quot;.
+Currently supported APIs are &quot;openai&quot; and &quot;replicate&quot;. If the user wishes to use
+another API that has similar syntax to openai API this is also supported via the
+the &quot;generic&quot; option. In this case, the user should also provide a url for the API
+using the</p>
 </td></tr>
 <tr><td><code id="setupAgent_+3A_type">type</code></td>
 <td>
@@ -693,9 +974,13 @@ For openAI chat model examples are:
 <li><p> llama-2-13b-chat ( as 'f4e2de70d66816a838a89eeeb621910adffb0dd0baba3976c96980970978018d')</p>
 </li></ul>
 
-<p>For a full list of openAI models
-<a href="https://platform.openai.com/docs/models/overview">click here</a>. For a full list of Replicate models,
-<a href="https://replicate.com/collections/language-models">click here</a>.</p>
+<p>For a full list of openAI models see
+https://platform.openai.com/docs/models/overview/. For a full list of Replicate models,
+see https://replicate.com/collections/language-models.</p>
+</td></tr>
+<tr><td><code id="setupAgent_+3A_url">url</code></td>
+<td>
+<p>the url for the API in case the API &quot;generic&quot; is selected. (Default: NULL)</p>
 </td></tr>
 <tr><td><code id="setupAgent_+3A_ai_api_key">ai_api_key</code></td>
 <td>

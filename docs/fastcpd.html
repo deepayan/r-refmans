@@ -29,7 +29,6 @@ ARIMA(<code class="reqn">p</code>, <code class="reqn">d</code>, <code class="req
 <li><a href='#fastcpd_garch'><p>Find change points efficiently in GARCH(<code class="reqn">p</code>, <code class="reqn">q</code>) models</p></a></li>
 <li><a href='#fastcpd_lasso'><p>Find change points efficiently in penalized linear regression models</p></a></li>
 <li><a href='#fastcpd_lm'><p>Find change points efficiently in linear regression models</p></a></li>
-<li><a href='#fastcpd_ma'><p>Find change points efficiently in MA(<code class="reqn">q</code>) models</p></a></li>
 <li><a href='#fastcpd_mean'><p>Find change points efficiently in mean change models</p></a></li>
 <li><a href='#fastcpd_meanvariance'><p>Find change points efficiently in mean variance change models</p></a></li>
 <li><a href='#fastcpd_poisson'><p>Find change points efficiently in Poisson regression models</p></a></li>
@@ -66,7 +65,7 @@ Signal Processing</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.13.1</td>
+<td>0.14.3</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -101,19 +100,19 @@ Signal Processing</a></li>
 <tr>
 <td>Imports:</td>
 <td>fastglm, forecast, glmnet, Matrix, methods, Rcpp (&ge; 0.11.0),
-stats, tseries, utils</td>
+stats, tseries</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>abind, breakfast, changepoint, cpm, CptNonPar, ecp, fpop,
-ggplot2, gridExtra, InspectChangepoint, jointseg, knitr,
-lubridate, matrixStats, mcp, mockthat, mosum, mvtnorm, not,
-numDeriv, Rbeast, rmarkdown, segmented, stepR, strucchange,
-testthat (&ge; 3.0.0), VARDetect, wbs, xml2, zoo</td>
+<td>abind, breakfast, changepoint, cpm, CptNonPar, dplyr, fpop,
+ggplot2, gridExtra, jointseg, knitr, lubridate, matrixStats,
+mockthat, mvtnorm, not, numDeriv, RcppClock, reshape2,
+rmarkdown, segmented, stepR, testthat (&ge; 3.0.0), VARDetect,
+wbs, xml2, zoo</td>
 </tr>
 <tr>
 <td>LinkingTo:</td>
-<td>progress, Rcpp, RcppArmadillo, testthat</td>
+<td>progress, Rcpp, RcppArmadillo, RcppClock, testthat</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -129,7 +128,8 @@ testthat (&ge; 3.0.0), VARDetect, wbs, xml2, zoo</td>
 </tr>
 <tr>
 <td>Config/testthat/start-first:</td>
-<td>vignettes-comparison-pelt, fastcpd_ts</td>
+<td>vignettes-comparison-pelt,
+examples-fastcpd_arima, examples-fastcpd_ts</td>
 </tr>
 <tr>
 <td>Encoding:</td>
@@ -149,7 +149,7 @@ testthat (&ge; 3.0.0), VARDetect, wbs, xml2, zoo</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-31 00:10:48 UTC; doccstat</td>
+<td>2024-04-23 02:31:08 UTC; doccstat</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -167,7 +167,7 @@ testthat (&ge; 3.0.0), VARDetect, wbs, xml2, zoo</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-04-01 15:50:06 UTC</td>
+<td>2024-04-26 11:50:07 UTC</td>
 </tr>
 </table>
 <hr>
@@ -208,47 +208,47 @@ testthat (&ge; 3.0.0), VARDetect, wbs, xml2, zoo</td>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  p &lt;- ggplot2::ggplot(bitcoin, ggplot2::aes(x = date, y = price)) +
+    ggplot2::geom_line()
+  print(p)
 
-ggplot2::ggplot(bitcoin, ggplot2::aes(x = date, y = price)) +
-  ggplot2::geom_line()
+  result &lt;- suppressWarnings(fastcpd.garch(
+    diff(log(bitcoin$price[600:900])), c(1, 1),
+    beta = "BIC", cost_adjustment = "BIC"
+  ))
+  summary(result)
+  bitcoin$date[result@cp_set + 600]
+  plot(result)
 
-result &lt;- suppressWarnings(
-  fastcpd.garch(diff(log(bitcoin$price[200:500])), c(1, 1), beta = "BIC")
-)
-summary(result)
-bitcoin$date[result@cp_set + 200]
-plot(result)
-
-cp_dates &lt;- bitcoin[200 + result@cp_set + 1, "date"]
-ggplot2::ggplot(
-  data = data.frame(
-    x = bitcoin$date[200:500], y = bitcoin$price[200:500]
-  ),
-  ggplot2::aes(x = x, y = y)
-) +
-  ggplot2::geom_line(color = "blue") +
-  ggplot2::geom_vline(
-    xintercept = cp_dates,
-    color = "red",
-    linetype = "dotted",
-    linewidth = 0.5,
-    alpha = 0.7
+  cp_dates &lt;- bitcoin[600 + result@cp_set + 1, "date"]
+  ggplot2::ggplot(
+    data = data.frame(
+      x = bitcoin$date[600:900], y = bitcoin$price[600:900]
+    ),
+    ggplot2::aes(x = x, y = y)
   ) +
-  ggplot2::labs(
-    x = "Year",
-    y = "Bitcoin price in USD"
-  ) +
-  ggplot2::annotate(
-    "text",
-    x = cp_dates,
-    y = 200,
-    label = as.character(cp_dates),
-    color = "blue"
-  ) +
-  ggplot2::theme_bw()
+    ggplot2::geom_line(color = "steelblue") +
+    ggplot2::geom_vline(
+      xintercept = cp_dates,
+      color = "red",
+      linetype = "dotted",
+      linewidth = 0.5,
+      alpha = 0.7
+    ) +
+    ggplot2::labs(
+      x = "Year",
+      y = "Bitcoin price in USD"
+    ) +
+    ggplot2::annotate(
+      "text",
+      x = cp_dates,
+      y = 2000,
+      label = as.character(cp_dates),
+      color = "steelblue"
+    ) +
+    ggplot2::theme_bw()
+}
 
 </code></pre>
 
@@ -270,13 +270,13 @@ parameters and returns a <a href="#topic+fastcpd-class">fastcpd</a> object.
   beta = "MBIC",
   cost_adjustment = "MBIC",
   family = NULL,
-  convexity_coef = 0,
   cost = NULL,
   cost_gradient = NULL,
   cost_hessian = NULL,
   line_search = c(1),
   lower = rep(-Inf, p),
   upper = rep(Inf, p),
+  pruning_coef = 0,
   segment_count = 10,
   trim = 0.02,
   momentum_coef = 0,
@@ -299,15 +299,15 @@ parameters and returns a <a href="#topic+fastcpd-class">fastcpd</a> object.
 <td>
 <p>A formula object specifying the model to be fitted. The
 (optional) response variable should be on the LHS of the formula, while the
-covariates should be on the RHS. The naming of variables used in the
-formula should be consistent with the column names in the data frame
-provided in <code>data</code>. The intercept term should be removed from the
-formula. The response variable is not needed for mean/variance change
-models and time series models. By default, an intercept column will be
-added to the data, similar to the <code><a href="stats.html#topic+lm">lm()</a></code> function.
+covariates should be on the RHS. The naming of variables used in the formula
+should be consistent with the column names in the data frame provided in
+<code>data</code>. The intercept term should be removed from the formula.
+The response variable is not needed for mean/variance change models and time
+series models. By default, an intercept column will be added to the data,
+similar to the <code><a href="stats.html#topic+lm">lm()</a></code> function.
 Thus, it is suggested that users should remove the intercept term by
-appending <code>- 1</code> to the formula. Note that the <a href="#topic+fastcpd.family">fastcpd.family</a>
-functions do not require a formula input.</p>
+appending <code>- 1</code> to the formula. Note that the <a href="#topic+fastcpd.family">fastcpd.family</a> functions
+do not require a formula input.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_data">data</code></td>
 <td>
@@ -321,52 +321,52 @@ accepted in the <a href="#topic+fastcpd.family">fastcpd.family</a> functions.</p
 <td>
 <p>Penalty criterion for the number of change points. This parameter
 takes a string value of <code>"BIC"</code>, <code>"MBIC"</code>, <code>"MDL"</code> or a
-numeric value. If a numeric value is provided, the value will be used as
-the penalty. By default, the mBIC criterion is used, where
-<code class="reqn">\beta = (d + 2) \log(T) / 2</code>. This
-parameter usage should be paired with <code>cost_adjustment</code> described
+numeric value.
+If a numeric value is provided, the value will be used as the penalty.
+By default, the mBIC criterion is used, where
+<code class="reqn">\beta = (p + 2) \log(T) / 2</code>.
+This parameter usage should be paired with <code>cost_adjustment</code> described
 below. Discussions about the penalty criterion can be found in the
 references.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_cost_adjustment">cost_adjustment</code></td>
 <td>
-<p>Cost adjustment criterion. It can be <code>"BIC"</code>,
-<code>"MBIC"</code>, <code>"MDL"</code> or <code>NULL</code>. By default, the cost adjustment
-criterion is set to be <code>"MBIC"</code>. The <code>"MBIC"</code> and <code>"MDL"</code>
-criteria modify the cost function by adding a negative adjustment term to
-the cost function. <code>"BIC"</code> or <code>NULL</code> does not modify the cost
-function. Details can in found in the references.</p>
+<p>Cost adjustment criterion.
+It can be <code>"BIC"</code>, <code>"MBIC"</code>, <code>"MDL"</code> or <code>NULL</code>.
+By default, the cost adjustment criterion is set to be <code>"MBIC"</code>.
+The <code>"MBIC"</code> and <code>"MDL"</code> criteria modify the cost function by
+adding a negative adjustment term to the cost function.
+<code>"BIC"</code> or <code>NULL</code> does not modify the cost function.
+Details can in found in the references.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_family">family</code></td>
 <td>
-<p>Family class of the change point model. It can be <code>"mean"</code>
-for mean change, <code>"variance"</code> for variance change,
-<code>"meanvariance"</code> or <code>"mv"</code>, for mean and/or variance change,
-<code>"lm"</code> for linear regression, <code>"binomial"</code> for logistic
-regression, <code>"poisson"</code> for Poisson regression, <code>"lasso"</code> for
-penalized linear regression, <code>"ar"</code> for AR(<code class="reqn">p</code>) models,
-<code>"ma"</code> for MA(<code class="reqn">q</code>) models,
+<p>Family class of the change point model. It can be
+<code>"mean"</code> for mean change,
+<code>"variance"</code> for variance change,
+<code>"meanvariance"</code> for mean and/or variance change,
+<code>"lm"</code> for linear regression,
+<code>"binomial"</code> for logistic regression,
+<code>"poisson"</code> for Poisson regression,
+<code>"lasso"</code> for penalized linear regression,
+<code>"ar"</code> for AR(<code class="reqn">p</code>) models,
 <code>"arma"</code> for ARMA(<code class="reqn">p</code>, <code class="reqn">q</code>) models,
 <code>"arima"</code> for ARIMA(<code class="reqn">p</code>, <code class="reqn">d</code>, <code class="reqn">q</code>) models,
 <code>"garch"</code> for GARCH(<code class="reqn">p</code>, <code class="reqn">q</code>) models,
 <code>"var"</code> for VAR(<code class="reqn">p</code>) models and
-<code>"custom"</code> for user specified custom models. Omitting this parameter
-is the same as specifying the parameter to be <code>"custom"</code> or
-<code>NULL</code>, in which case, users must specify the custom cost function.</p>
-</td></tr>
-<tr><td><code id="fastcpd_+3A_convexity_coef">convexity_coef</code></td>
-<td>
-<p>Convexity coefficient used in the pruning condition.
-If set to be <code>-Inf</code>, no pruning will be performed.</p>
+<code>"custom"</code> for user-specified custom models.
+Omitting this parameter is the same as specifying the parameter to be
+<code>"custom"</code> or <code>NULL</code>, in which case, users must specify the
+custom cost function.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_cost">cost</code></td>
 <td>
 <p>Cost function to be used. <code>cost</code>, <code>cost_gradient</code>, and
 <code>cost_hessian</code> should not be specified at the same time with
 <code>family</code> as built-in families have cost functions implemented in C++
-to provide better performance. If not specified, the default is the
-negative log-likelihood for the corresponding family. Custom cost functions
-can be provided in the following two formats:
+to provide better performance. If not specified, the default is the negative
+log-likelihood for the corresponding family. Custom cost functions can be
+provided in the following two formats:
 </p>
 
 <ul>
@@ -379,41 +379,41 @@ can be provided in the following two formats:
 
 <p>Users can specify a loss function using the second format that will be used
 to calculate the cost value. In both formats, the input data is a subset of
-the original data frame in the form of a matrix (matrix with a single
-column in the case of a univariate data set). In the first format, the
-specified cost function directly calculates the cost value. <code><a href="#topic+fastcpd">fastcpd()</a></code>
-performs the vanilla PELT algorithm, and <code>cost_gradient</code> and
-<code>cost_hessian</code> should not be provided since no parameter updating is
-necessary for vanilla PELT. In the second format, the loss function
-<code class="reqn">\sum_{i = s}^t l(z_i, \theta)</code>
-is provided, which has to be optimized over the parameter <code class="reqn">\theta</code> to
+the original data frame in the form of a matrix
+(a matrix with a single column in the case of a univariate data set).
+In the first format, the specified cost function directly calculates the cost
+value. <code><a href="#topic+fastcpd">fastcpd()</a></code> performs the vanilla PELT algorithm, and
+<code>cost_gradient</code> and <code>cost_hessian</code> should not be provided since no
+parameter updating is necessary for vanilla PELT.
+In the second format, the loss function
+<code class="reqn">\sum_{i = s}^t l(z_i, \theta)</code> is
+provided, which has to be optimized over the parameter <code class="reqn">\theta</code> to
 obtain the cost value. A detailed discussion about the custom cost function
 usage can be found in the references.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_cost_gradient">cost_gradient</code></td>
 <td>
 <p>Gradient of the custom cost function. Example usage:
-Example usage:
 </p>
 <div class="sourceCode r"><pre>cost_gradient = function(data, theta) {
   ...
   return(gradient)
 }
 </pre></div>
-<p>The gradient function takes two inputs, the first being a matrix
-representing a segment of the data, similar to the format used in the
-<code>cost</code> function, and the second being the parameter that needs to be
-optimized. The gradient function returns the value of the gradient of the
-loss function, i.e.,
+<p>The gradient function takes two inputs, the first being a matrix representing
+a segment of the data, similar to the format used in the <code>cost</code>
+function, and the second being the parameter that needs to be optimized.
+The gradient function returns the value of the gradient of the loss function,
+i.e.,
 <code class="reqn">\sum_{i = s}^t \nabla l(z_i, \theta)</code>.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_cost_hessian">cost_hessian</code></td>
 <td>
 <p>Hessian of the custom loss function. The Hessian function
 takes two inputs, the first being a matrix representing a segment of the
-data, similar to the format used in the <code>cost</code> function, and the
-second being the parameter that needs to be optimized. The gradient
-function returns the Hessian of the loss function, i.e.,
+data, similar to the format used in the <code>cost</code> function, and the second
+being the parameter that needs to be optimized. The gradient function returns
+the Hessian of the loss function, i.e.,
 <code class="reqn">\sum_{i = s}^t \nabla^2 l(z_i, \theta)</code>.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_line_search">line_search</code></td>
@@ -425,16 +425,26 @@ usage of <code>line_search</code> can be found in the references.</p>
 <tr><td><code id="fastcpd_+3A_lower">lower</code></td>
 <td>
 <p>Lower bound for the parameters. Used to specify the domain of
-the parameters after each gradient descent step. If not specified, the
-lower bound will be set to be <code>-Inf</code> for all parameters. <code>lower</code>
-is especially useful when the estimated parameters take only positive
-values, such as the noise variance.</p>
+the parameters after each gradient descent step. If not specified, the lower
+bound is set to be <code>-Inf</code> for all parameters. <code>lower</code> is especially
+useful when the estimated parameters take only positive values, such as the
+noise variance.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_upper">upper</code></td>
 <td>
 <p>Upper bound for the parameters. Used to specify the domain of
-the parameters after each gradient descent step. If not specified, the
-upper bound will be set to be <code>Inf</code> for all parameters.</p>
+the parameters after each gradient descent step. If not specified, the upper
+bound is set to be <code>Inf</code> for all parameters.</p>
+</td></tr>
+<tr><td><code id="fastcpd_+3A_pruning_coef">pruning_coef</code></td>
+<td>
+<p>Pruning coefficient $c_0$ used in the pruning step of the
+PELT algorithm with the default value 0. If <code>cost_adjustment</code> is
+specified as <code>"MBIC"</code>, an adjustment term <code class="reqn">p\log(2)</code>
+will be added to the pruning coefficient. If <code>cost_adjustment</code> is
+specified as <code>"MDL"</code>, an adjustment term <code class="reqn">p\log_2(2)</code>
+will be added to the pruning coefficient. Detailed discussion about the
+pruning coefficient can be found in the references.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_segment_count">segment_count</code></td>
 <td>
@@ -447,7 +457,7 @@ guess affects the initial estimates of the parameters in SeGD.</p>
 <p>Trimming for the boundary change points so that a change point
 close to the boundary will not be counted as a change point. This
 parameter also specifies the minimum distance between two change points.
-If.   several change points have mutual distances smaller than
+If several change points have mutual distances smaller than
 <code>trim * nrow(data)</code>, those change points will be merged into one
 single change point. The value of this parameter should be between
 0 and 1.</p>
@@ -464,22 +474,19 @@ maintaining a momentum from previous update is desired. Default value is
 <p>A function can be specified such that an adaptive
 number of multiple epochs can be utilized to improve the algorithm's
 performance. <code>multiple_epochs</code> is a function of the length of the data
-segment. The function returns an integer indicating how many epochs should
-be performed apart from the default update. By default, the function
-returns zero, meaning no multiple epochs will be used to update the
-parameters. Example usage:
+segment. The function returns an integer indicating how many epochs should be
+performed apart from the default update. By default, the function returns
+zero, meaning no multiple epochs will be used to update the parameters.
+Example usage:
 </p>
 <div class="sourceCode r"><pre>multiple_epochs = function(segment_length) {
-  if (segment_length &lt; n / segment_count / 4 * 1) 3
-  else if (segment_length &lt; n / segment_count / 4 * 2) 2
-  else if (segment_length &lt; n / segment_count / 4 * 3) 1
+  if (segment_length &lt; 100) 1
   else 0
 }
 </pre></div>
-<p>This function will perform three epochs for the first quarter of the data,
-two epochs for the second quarter of the data, one epoch for the third
-quarter of the data, and no additional epoch for the last quarter of the
-data.</p>
+<p>This function will let SeGD perform parameter updates with an additional
+epoch for each segment with a length less than 100 and no additional epoch
+for segments with lengths greater or equal to 100.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_epsilon">epsilon</code></td>
 <td>
@@ -513,13 +520,12 @@ will help with the computational cost.</p>
 <tr><td><code id="fastcpd_+3A_vanilla_percentage">vanilla_percentage</code></td>
 <td>
 <p>The parameter <code class="reqn">v</code> is between zero and one.
-For each segment, when its length is no more than <code class="reqn">vT</code>, the cost
-value will be computed by performing an exact minimization of the loss
-function over the parameter. When its length is greater than
-<code class="reqn">vT</code>, the cost value is approximated through SeGD.
-Therefore, this parameter induces an algorithm that can be interpreted as
-an interpolation between dynamic programming with SeGD (<code class="reqn">v = 0</code>) and
-the vanilla PELT (<code class="reqn">v = 1</code>).
+For each segment, when its length is no more than <code class="reqn">vT</code>, the cost value
+will be computed by performing an exact minimization of the loss function
+over the parameter. When its length is greater than <code class="reqn">vT</code>, the cost value
+is approximated through SeGD. Therefore, this parameter induces an algorithm
+that can be interpreted as an interpolation between dynamic programming with
+SeGD (<code class="reqn">v = 0</code>) and the vanilla PELT (<code class="reqn">v = 1</code>).
 The readers are referred to the references for more details.</p>
 </td></tr>
 <tr><td><code id="fastcpd_+3A_warm_start">warm_start</code></td>
@@ -537,6 +543,12 @@ current segment. This parameter is only used for the <code>"glm"</code> families
 <li> <p><code>include.mean</code> is used to determine if a mean/intercept term
 should be included in the ARIMA(<code class="reqn">p</code>, <code class="reqn">d</code>, <code class="reqn">q</code>) or
 GARCH(<code class="reqn">p</code>, <code class="reqn">q</code>) models.
+</p>
+</li>
+<li> <p><code>r.clock</code> is used to create an <code>RcppClock</code> object to record
+the time spent in the C++ code. Default is an empty string. If set to
+any non-empty string, an object with specified name will be created.
+Usage: <code>library(RcppClock); plot(VARIABLE_NAME)</code>.
 </p>
 </li>
 <li> <p><code>r.progress</code> is used to control the progress bar. By default the
@@ -566,12 +578,14 @@ responses.
 
 <h3>References</h3>
 
-<p>Zhang X, Dawn T (2023). &ldquo;Sequential Gradient Descent and Quasi-Newton's
-Method for Change-Point Analysis.&rdquo; In Ruiz, Francisco, Dy, Jennifer,
-van de Meent, Jan-Willem (eds.), <em>Proceedings of The 26th International
-Conference on Artificial Intelligence and Statistics</em>, volume 206 series
-Proceedings of Machine Learning Research, 1129-1143.
-<a href="https://proceedings.mlr.press/v206/zhang23b.html">https://proceedings.mlr.press/v206/zhang23b.html</a>.
+<p>Xingchi Li, Xianyang Zhang (2024). &ldquo;fastcpd: Fast Change Point Detection
+in R.&rdquo; <em>arXiv:2404.05933</em>, <a href="https://arxiv.org/abs/2404.05933">https://arxiv.org/abs/2404.05933</a>.
+</p>
+<p>Xianyang Zhang, Trisha Dawn (2023). &ldquo;Sequential Gradient Descent and
+Quasi-Newton's Method for Change-Point Analysis.&rdquo; In Ruiz, Francisco,
+Dy, Jennifer, van de Meent, Jan-Willem (eds.), <em>Proceedings of The 26th
+International Conference on Artificial Intelligence and Statistics</em>,
+volume 206 series Proceedings of Machine Learning Research, 1129-1143.
 </p>
 
 
@@ -585,88 +599,83 @@ Proceedings of Machine Learning Research, 1129-1143.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-set.seed(1)
-n &lt;- 200
-p &lt;- 4
-d &lt;- 2
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta_1 &lt;- matrix(runif(8, -3, -1), nrow = p)
-theta_2 &lt;- matrix(runif(8, -1, 3), nrow = p)
-y &lt;- rbind(
-  x[1:125, ] %*% theta_1 + mvtnorm::rmvnorm(125, rep(0, d), 3 * diag(d)),
-  x[126:n, ] %*% theta_2 + mvtnorm::rmvnorm(75, rep(0, d), 3 * diag(d))
-)
-result_mlm &lt;- fastcpd(
-  cbind(y.1, y.2) ~ . - 1, cbind.data.frame(y = y, x = x), family = "lm"
-)
-summary(result_mlm)
-if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-set.seed(1)
-n &lt;- 400 + 300 + 500
-p &lt;- 5
-x &lt;- mvtnorm::rmvnorm(n, mean = rep(0, p), sigma = diag(p))
-theta &lt;- rbind(
-  mvtnorm::rmvnorm(1, mean = rep(0, p - 3), sigma = diag(p - 3)),
-  mvtnorm::rmvnorm(1, mean = rep(5, p - 3), sigma = diag(p - 3)),
-  mvtnorm::rmvnorm(1, mean = rep(9, p - 3), sigma = diag(p - 3))
-)
-theta &lt;- cbind(theta, matrix(0, 3, 3))
-theta &lt;- theta[rep(seq_len(3), c(400, 300, 500)), ]
-y_true &lt;- rowSums(x * theta)
-factor &lt;- c(
-  2 * stats::rbinom(400, size = 1, prob = 0.95) - 1,
-  2 * stats::rbinom(300, size = 1, prob = 0.95) - 1,
-  2 * stats::rbinom(500, size = 1, prob = 0.95) - 1
-)
-y &lt;- factor * y_true + stats::rnorm(n)
-data &lt;- cbind.data.frame(y, x)
-huber_threshold &lt;- 1
-huber_loss &lt;- function(data, theta) {
-  residual &lt;- data[, 1] - data[, -1, drop = FALSE] %*% theta
-  indicator &lt;- abs(residual) &lt;= huber_threshold
-  sum(
-    residual^2 / 2 * indicator +
-      huber_threshold * (
-        abs(residual) - huber_threshold / 2
-      ) * (1 - indicator)
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  n &lt;- 200
+  p &lt;- 4
+  d &lt;- 2
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta_1 &lt;- matrix(runif(8, -3, -1), nrow = p)
+  theta_2 &lt;- matrix(runif(8, -1, 3), nrow = p)
+  y &lt;- rbind(
+    x[1:125, ] %*% theta_1 + mvtnorm::rmvnorm(125, rep(0, d), 3 * diag(d)),
+    x[126:n, ] %*% theta_2 + mvtnorm::rmvnorm(75, rep(0, d), 3 * diag(d))
   )
+  result_mlm &lt;- fastcpd(
+    cbind(y.1, y.2) ~ . - 1, cbind.data.frame(y = y, x = x), family = "lm"
+  )
+  summary(result_mlm)
 }
-huber_loss_gradient &lt;- function(data, theta) {
-  residual &lt;- c(data[nrow(data), 1] - data[nrow(data), -1] %*% theta)
-  if (abs(residual) &lt;= huber_threshold) {
-    -residual * data[nrow(data), -1]
-  } else {
-    -huber_threshold * sign(residual) * data[nrow(data), -1]
+if (
+  requireNamespace("mvtnorm", quietly = TRUE) &amp;&amp;
+    requireNamespace("stats", quietly = TRUE)
+) {
+  set.seed(1)
+  n &lt;- 400 + 300 + 500
+  p &lt;- 5
+  x &lt;- mvtnorm::rmvnorm(n, mean = rep(0, p), sigma = diag(p))
+  theta &lt;- rbind(
+    mvtnorm::rmvnorm(1, mean = rep(0, p - 3), sigma = diag(p - 3)),
+    mvtnorm::rmvnorm(1, mean = rep(5, p - 3), sigma = diag(p - 3)),
+    mvtnorm::rmvnorm(1, mean = rep(9, p - 3), sigma = diag(p - 3))
+  )
+  theta &lt;- cbind(theta, matrix(0, 3, 3))
+  theta &lt;- theta[rep(seq_len(3), c(400, 300, 500)), ]
+  y_true &lt;- rowSums(x * theta)
+  factor &lt;- c(
+    2 * stats::rbinom(400, size = 1, prob = 0.95) - 1,
+    2 * stats::rbinom(300, size = 1, prob = 0.95) - 1,
+    2 * stats::rbinom(500, size = 1, prob = 0.95) - 1
+  )
+  y &lt;- factor * y_true + stats::rnorm(n)
+  data &lt;- cbind.data.frame(y, x)
+  huber_threshold &lt;- 1
+  huber_loss &lt;- function(data, theta) {
+    residual &lt;- data[, 1] - data[, -1, drop = FALSE] %*% theta
+    indicator &lt;- abs(residual) &lt;= huber_threshold
+    sum(
+      residual^2 / 2 * indicator +
+        huber_threshold * (
+          abs(residual) - huber_threshold / 2
+        ) * (1 - indicator)
+    )
   }
-}
-huber_loss_hessian &lt;- function(data, theta) {
-  residual &lt;- c(data[nrow(data), 1] - data[nrow(data), -1] %*% theta)
-  if (abs(residual) &lt;= huber_threshold) {
-    outer(data[nrow(data), -1], data[nrow(data), -1])
-  } else {
-    0.01 * diag(length(theta))
+  huber_loss_gradient &lt;- function(data, theta) {
+    residual &lt;- c(data[nrow(data), 1] - data[nrow(data), -1] %*% theta)
+    if (abs(residual) &lt;= huber_threshold) {
+      -residual * data[nrow(data), -1]
+    } else {
+      -huber_threshold * sign(residual) * data[nrow(data), -1]
+    }
   }
+  huber_loss_hessian &lt;- function(data, theta) {
+    residual &lt;- c(data[nrow(data), 1] - data[nrow(data), -1] %*% theta)
+    if (abs(residual) &lt;= huber_threshold) {
+      outer(data[nrow(data), -1], data[nrow(data), -1])
+    } else {
+      0.01 * diag(length(theta))
+    }
+  }
+  huber_regression_result &lt;- fastcpd(
+    formula = y ~ . - 1,
+    data = data,
+    beta = (p + 1) * log(n) / 2,
+    cost = huber_loss,
+    cost_gradient = huber_loss_gradient,
+    cost_hessian = huber_loss_hessian
+  )
+  summary(huber_regression_result)
 }
-huber_regression_result &lt;- fastcpd(
-  formula = y ~ . - 1,
-  data = data,
-  beta = (p + 1) * log(n) / 2,
-  cost = huber_loss,
-  cost_gradient = huber_loss_gradient,
-  cost_hessian = huber_loss_hessian
-)
-summary(huber_regression_result)
-
-if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
 
 set.seed(1)
 p &lt;- 5
@@ -723,44 +732,42 @@ result_custom_two_epochs &lt;- fastcpd(
 summary(result_custom_two_epochs)
 
 
-if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-set.seed(1)
-n &lt;- 480
-p_true &lt;- 6
-p &lt;- 50
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta_0 &lt;- rbind(
-  runif(p_true, -5, -2),
-  runif(p_true, -3, 3),
-  runif(p_true, 2, 5),
-  runif(p_true, -5, 5)
-)
-theta_0 &lt;- cbind(theta_0, matrix(0, ncol = p - p_true, nrow = 4))
-y &lt;- c(
-  x[1:80, ] %*% theta_0[1, ] + rnorm(80, 0, 1),
-  x[81:200, ] %*% theta_0[2, ] + rnorm(120, 0, 1),
-  x[201:320, ] %*% theta_0[3, ] + rnorm(120, 0, 1),
-  x[321:n, ] %*% theta_0[4, ] + rnorm(160, 0, 1)
-)
-small_lasso_data &lt;- cbind.data.frame(y, x)
-result_no_vp &lt;- fastcpd.lasso(
-  small_lasso_data,
-  beta = "BIC",
-  cost_adjustment = NULL,
-  convexity_coef = 0
-)
-summary(result_no_vp)
-result_20_vp &lt;- fastcpd.lasso(
-  small_lasso_data,
-  beta = "BIC",
-  cost_adjustment = NULL,
-  vanilla_percentage = 0.2,
-  convexity_coef = 0
-)
-summary(result_20_vp)
+if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  n &lt;- 480
+  p_true &lt;- 6
+  p &lt;- 50
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta_0 &lt;- rbind(
+    runif(p_true, -5, -2),
+    runif(p_true, -3, 3),
+    runif(p_true, 2, 5),
+    runif(p_true, -5, 5)
+  )
+  theta_0 &lt;- cbind(theta_0, matrix(0, ncol = p - p_true, nrow = 4))
+  y &lt;- c(
+    x[1:80, ] %*% theta_0[1, ] + rnorm(80, 0, 1),
+    x[81:200, ] %*% theta_0[2, ] + rnorm(120, 0, 1),
+    x[201:320, ] %*% theta_0[3, ] + rnorm(120, 0, 1),
+    x[321:n, ] %*% theta_0[4, ] + rnorm(160, 0, 1)
+  )
+  small_lasso_data &lt;- cbind.data.frame(y, x)
+  result_no_vp &lt;- fastcpd.lasso(
+    small_lasso_data,
+    beta = "BIC",
+    cost_adjustment = NULL,
+    pruning_coef = 0
+  )
+  summary(result_no_vp)
+  result_20_vp &lt;- fastcpd.lasso(
+    small_lasso_data,
+    beta = "BIC",
+    cost_adjustment = NULL,
+    vanilla_percentage = 0.2,
+    pruning_coef = 0
+  )
+  summary(result_20_vp)
+}
 
 </code></pre>
 
@@ -820,11 +827,7 @@ mean should be included in the model. The default value is <code>TRUE</code>.</p
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-set.seed(1)
+<pre><code class='language-R'>set.seed(1)
 n &lt;- 1000
 x &lt;- rep(0, n + 3)
 for (i in 1:600) {
@@ -898,10 +901,6 @@ mean should be included in the model. The default value is <code>TRUE</code>.</p
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
 set.seed(1)
 n &lt;- 271
 w &lt;- rnorm(n + 1, 0, 3)
@@ -982,10 +981,6 @@ model.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
 set.seed(1)
 n &lt;- 300
 w &lt;- rnorm(n + 3, 0, 3)
@@ -1005,7 +1000,9 @@ result &lt;- suppressWarnings(
     segment_count = 3,
     lower = c(rep(-1, 3 + 2), 1e-10),
     upper = c(rep(1, 3 + 2), Inf),
-    line_search = c(1, 0.1, 1e-2)
+    line_search = c(1, 0.1, 1e-2),
+    beta = "BIC",
+    cost_adjustment = "BIC"
   )
 )
 summary(result)
@@ -1064,24 +1061,20 @@ column.</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>for (package in c("ggplot2", "mvtnorm")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  n &lt;- 500
+  p &lt;- 4
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta &lt;- rbind(rnorm(p, 0, 1), rnorm(p, 2, 1))
+  y &lt;- c(
+    rbinom(300, 1, 1 / (1 + exp(-x[1:300, ] %*% theta[1, ]))),
+    rbinom(200, 1, 1 / (1 + exp(-x[301:n, ] %*% theta[2, ])))
   )
+  result &lt;- suppressWarnings(fastcpd.binomial(cbind(y, x)))
+  summary(result)
+  plot(result)
 }
-
-set.seed(1)
-n &lt;- 500
-p &lt;- 4
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta &lt;- rbind(rnorm(p, 0, 1), rnorm(p, 2, 1))
-y &lt;- c(
-  rbinom(300, 1, 1 / (1 + exp(-x[1:300, ] %*% theta[1, ]))),
-  rbinom(200, 1, 1 / (1 + exp(-x[301:n, ] %*% theta[2, ])))
-)
-result &lt;- suppressWarnings(fastcpd.binomial(cbind(y, x)))
-summary(result)
-plot(result)
 </code></pre>
 
 <hr>
@@ -1100,8 +1093,8 @@ models.
 <code><a href="#topic+fastcpd.meanvariance">fastcpd.meanvariance()</a></code> for basic statistics change models;
 <code><a href="#topic+fastcpd.lm">fastcpd.lm()</a></code>, <code><a href="#topic+fastcpd.binomial">fastcpd.binomial()</a></code>, <code><a href="#topic+fastcpd.poisson">fastcpd.poisson()</a></code>,
 <code><a href="#topic+fastcpd.lasso">fastcpd.lasso()</a></code> for regression coefficients change models;
-<code><a href="#topic+fastcpd.ar">fastcpd.ar()</a></code>, <code><a href="#topic+fastcpd.var">fastcpd.var()</a></code>, <code><a href="#topic+fastcpd.ma">fastcpd.ma()</a></code>, <code><a href="#topic+fastcpd.arima">fastcpd.arima()</a></code>,
-<code><a href="#topic+fastcpd.arma">fastcpd.arma()</a></code>, <code><a href="#topic+fastcpd.garch">fastcpd.garch()</a></code> for change in time series models.
+<code><a href="#topic+fastcpd.ar">fastcpd.ar()</a></code>, <code><a href="#topic+fastcpd.var">fastcpd.var()</a></code>, <code><a href="#topic+fastcpd.arima">fastcpd.arima()</a></code>, <code><a href="#topic+fastcpd.arma">fastcpd.arma()</a></code>,
+<code><a href="#topic+fastcpd.garch">fastcpd.garch()</a></code> for change in time series models.
 </p>
 
 <hr>
@@ -1160,10 +1153,6 @@ the GARCH model.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
 set.seed(1)
 n &lt;- 400
 sigma_2 &lt;- rep(1, n + 1)
@@ -1236,36 +1225,65 @@ column.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-for (package in c("ggplot2", "mvtnorm")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+if (
+  requireNamespace("dplyr", quietly = TRUE) &amp;&amp;
+    requireNamespace("ggplot2", quietly = TRUE) &amp;&amp;
+    requireNamespace("mvtnorm", quietly = TRUE) &amp;&amp;
+    requireNamespace("reshape2", quietly = TRUE)
+) {
+  set.seed(1)
+  n &lt;- 480
+  p_true &lt;- 5
+  p &lt;- 50
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta_0 &lt;- rbind(
+    runif(p_true, -5, -2),
+    runif(p_true, -3, 3),
+    runif(p_true, 2, 5),
+    runif(p_true, -5, 5)
   )
-}
+  theta_0 &lt;- cbind(theta_0, matrix(0, ncol = p - p_true, nrow = 4))
+  y &lt;- c(
+    x[1:80, ] %*% theta_0[1, ] + rnorm(80, 0, 1),
+    x[81:200, ] %*% theta_0[2, ] + rnorm(120, 0, 1),
+    x[201:320, ] %*% theta_0[3, ] + rnorm(120, 0, 1),
+    x[321:n, ] %*% theta_0[4, ] + rnorm(160, 0, 1)
+  )
+  result &lt;- fastcpd.lasso(
+    cbind(y, x),
+    multiple_epochs = function(segment_length) if (segment_length &lt; 30) 1 else 0
+  )
+  summary(result)
+  plot(result)
 
-set.seed(1)
-n &lt;- 480
-p_true &lt;- 6
-p &lt;- 50
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta_0 &lt;- rbind(
-  runif(p_true, -5, -2),
-  runif(p_true, -3, 3),
-  runif(p_true, 2, 5),
-  runif(p_true, -5, 5)
-)
-theta_0 &lt;- cbind(theta_0, matrix(0, ncol = p - p_true, nrow = 4))
-y &lt;- c(
-  x[1:80, ] %*% theta_0[1, ] + rnorm(80, 0, 1),
-  x[81:200, ] %*% theta_0[2, ] + rnorm(120, 0, 1),
-  x[201:320, ] %*% theta_0[3, ] + rnorm(120, 0, 1),
-  x[321:n, ] %*% theta_0[4, ] + rnorm(160, 0, 1)
-)
-result &lt;- fastcpd.lasso(
-  cbind(y, x),
-  multiple_epochs = function(segment_length) if (segment_length &lt; 30) 1 else 0
-)
-summary(result)
-plot(result)
+  thetas &lt;- result@thetas
+  thetas &lt;- cbind.data.frame(thetas, t(theta_0))
+  names(thetas) &lt;- c(
+    "segment 1", "segment 2", "segment 3", "segment 4",
+    "segment 1 truth", "segment 2 truth", "segment 3 truth", "segment 4 truth"
+  )
+  thetas$coordinate &lt;- c(seq_len(p_true), rep("rest", p - p_true))
+  molten &lt;- reshape2::melt(thetas, id.vars = "coordinate")
+  molten &lt;- dplyr::mutate(
+    molten,
+    segment = gsub("segment ", "", variable),
+    segment = gsub(" truth", "", segment),
+    height = as.numeric(gsub("segment.*", "", segment)) +
+      0.2 * as.numeric(grepl("truth", variable)),
+    parameter = ifelse(grepl("truth", variable), "truth", "estimated")
+  )
+  ggplot2::ggplot() +
+    ggplot2::geom_point(
+      data = molten,
+      ggplot2::aes(
+        x = value, y = height, shape = coordinate, color = parameter
+      ),
+      size = 4
+    ) +
+    ggplot2::ylim(0.8, 4.4) +
+    ggplot2::ylab("segment") +
+    ggplot2::theme_bw()
+}
 
 </code></pre>
 
@@ -1320,121 +1338,35 @@ column.</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>for (package in c("ggplot2", "mvtnorm")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  n &lt;- 300
+  p &lt;- 4
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta_0 &lt;- rbind(c(1, 3.2, -1, 0), c(-1, -0.5, 2.5, -2), c(0.8, 0, 1, 2))
+  y &lt;- c(
+    x[1:100, ] %*% theta_0[1, ] + rnorm(100, 0, 3),
+    x[101:200, ] %*% theta_0[2, ] + rnorm(100, 0, 3),
+    x[201:n, ] %*% theta_0[3, ] + rnorm(100, 0, 3)
   )
+  result_lm &lt;- fastcpd.lm(cbind(y, x))
+  summary(result_lm)
+  plot(result_lm)
+
+  set.seed(1)
+  n &lt;- 600
+  p &lt;- 4
+  d &lt;- 2
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta_1 &lt;- matrix(runif(8, -3, -1), nrow = p)
+  theta_2 &lt;- matrix(runif(8, -1, 3), nrow = p)
+  y &lt;- rbind(
+    x[1:350, ] %*% theta_1 + mvtnorm::rmvnorm(350, rep(0, d), 3 * diag(d)),
+    x[351:n, ] %*% theta_2 + mvtnorm::rmvnorm(250, rep(0, d), 3 * diag(d))
+  )
+  result_mlm &lt;- fastcpd.lm(cbind.data.frame(y = y, x = x), p.response = 2)
+  summary(result_mlm)
 }
-
-set.seed(1)
-n &lt;- 300
-p &lt;- 4
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta_0 &lt;- rbind(c(1, 3.2, -1, 0), c(-1, -0.5, 2.5, -2), c(0.8, 0, 1, 2))
-y &lt;- c(
-  x[1:100, ] %*% theta_0[1, ] + rnorm(100, 0, 3),
-  x[101:200, ] %*% theta_0[2, ] + rnorm(100, 0, 3),
-  x[201:n, ] %*% theta_0[3, ] + rnorm(100, 0, 3)
-)
-result_lm &lt;- fastcpd.lm(cbind(y, x))
-summary(result_lm)
-plot(result_lm)
-
-set.seed(1)
-n &lt;- 600
-p &lt;- 4
-d &lt;- 2
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta_1 &lt;- matrix(runif(8, -3, -1), nrow = p)
-theta_2 &lt;- matrix(runif(8, -1, 3), nrow = p)
-y &lt;- rbind(
-  x[1:350, ] %*% theta_1 + mvtnorm::rmvnorm(350, rep(0, d), 3 * diag(d)),
-  x[351:n, ] %*% theta_2 + mvtnorm::rmvnorm(250, rep(0, d), 3 * diag(d))
-)
-result_mlm &lt;- fastcpd.lm(cbind.data.frame(y = y, x = x), p.response = 2)
-summary(result_mlm)
-</code></pre>
-
-<hr>
-<h2 id='fastcpd_ma'>Find change points efficiently in MA(<code class="reqn">q</code>) models</h2><span id='topic+fastcpd_ma'></span><span id='topic+fastcpd.ma'></span>
-
-<h3>Description</h3>
-
-<p><code><a href="#topic+fastcpd_ma">fastcpd_ma()</a></code> and <code><a href="#topic+fastcpd.ma">fastcpd.ma()</a></code> are
-wrapper functions of <code><a href="#topic+fastcpd">fastcpd()</a></code> to find change points in
-MA(<code class="reqn">q</code>) models. The function is similar to <code><a href="#topic+fastcpd">fastcpd()</a></code>
-except that the data is by default a one-column matrix or univariate vector
-and thus a formula is not required here.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>fastcpd_ma(data, order = 0, ...)
-
-fastcpd.ma(data, order = 0, ...)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="fastcpd_ma_+3A_data">data</code></td>
-<td>
-<p>A numeric vector, a matrix, a data frame or a time series object.</p>
-</td></tr>
-<tr><td><code id="fastcpd_ma_+3A_order">order</code></td>
-<td>
-<p>A positive integer or a vector of length three with the first
-two elements being zeros specifying the order of the MA model.</p>
-</td></tr>
-<tr><td><code id="fastcpd_ma_+3A_...">...</code></td>
-<td>
-<p>Other arguments passed to <code><a href="#topic+fastcpd">fastcpd()</a></code>, for example,
-<code>segment_count</code>. One special argument can be passed here is
-<code>include.mean</code>, which is a logical value indicating whether the
-mean should be included in the model. The default value is <code>TRUE</code>.</p>
-</td></tr>
-</table>
-
-
-<h3>Value</h3>
-
-<p>A <a href="#topic+fastcpd-class">fastcpd</a> object.
-</p>
-
-
-<h3>See Also</h3>
-
-<p><code><a href="#topic+fastcpd">fastcpd()</a></code>
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>
-if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-set.seed(1)
-n &lt;- 400
-w &lt;- rnorm(n + 4, 0, 0.1)
-x &lt;- rep(NA, n)
-for (i in 1:200) {
-  x[i] &lt;- w[i + 4] - 5 / 3 * w[i + 3] + 11 / 12 * w[i + 2] - 5 / 12 * w[i + 1] +
-    1 / 6 * w[i]
-}
-for (i in 201:n) {
-  x[i] &lt;- w[i + 4] - 4 / 3 * w[i + 3] + 7 / 9 * w[i + 2] - 16 / 27 * w[i + 1] +
-    4 / 27 * w[i]
-}
-result &lt;- suppressMessages(
-  fastcpd.ma(x, 4, include.mean = FALSE, trim = 0)
-)
-summary(result)
-plot(result)
-
 </code></pre>
 
 <hr>
@@ -1487,27 +1419,42 @@ fastcpd.mean(data, ...)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-set.seed(1)
-p &lt;- 3
-data &lt;- rbind(
-  mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(100, p)),
-  mvtnorm::rmvnorm(400, mean = rep(50, p), sigma = diag(100, p)),
-  mvtnorm::rmvnorm(300, mean = rep(2, p), sigma = diag(100, p))
-)
-result &lt;- fastcpd.mean(data)
-summary(result)
-# Test `fastcpd.mean()` running time. The running time is expected to be less
-# than 1.5 seconds.
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  p &lt;- 3
+  data &lt;- rbind(
+    mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(100, p)),
+    mvtnorm::rmvnorm(400, mean = rep(50, p), sigma = diag(100, p)),
+    mvtnorm::rmvnorm(300, mean = rep(2, p), sigma = diag(100, p))
+  )
+  result &lt;- fastcpd.mean(data)
+  summary(result)
+}
 set.seed(1)
 data &lt;- c(rnorm(10000), rnorm(1000) + 1)
 (result_time &lt;- system.time(
   result &lt;- fastcpd.mean(data, r.progress = FALSE, cp_only = TRUE)
 ))
 result@cp_set
+
+set.seed(1)
+data &lt;- c(rnorm(10000), rnorm(10000, 1), rnorm(10000))
+(result_time &lt;- system.time(
+  result &lt;- fastcpd.mean(data, r.progress = FALSE, cp_only = TRUE)
+))
+result@cp_set
+
+
+set.seed(1)
+data &lt;- c(rnorm(10000), rnorm(10000, 1), rnorm(10000))
+(result_time &lt;- system.time(
+  result &lt;- fastcpd.mean(
+    data, beta = "BIC", cost_adjustment = "BIC",
+    r.progress = FALSE, cp_only = TRUE
+  )
+))
+result@cp_set
+
 </code></pre>
 
 <hr>
@@ -1565,23 +1512,56 @@ fastcpd.mv(data, ...)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  p &lt;- 1
+  result &lt;- fastcpd.mv(
+    rbind(
+      mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(400, mean = rep(10, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(100, p)),
+      mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(400, mean = rep(10, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(300, mean = rep(10, p), sigma = diag(100, p))
+    )
+  )
+  summary(result)
+  plot(result)
+}
+if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  p &lt;- 4
+  result &lt;- fastcpd.mv(
+    rbind(
+      mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(400, mean = rep(10, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(100, p)),
+      mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(400, mean = rep(10, p), sigma = diag(1, p)),
+      mvtnorm::rmvnorm(300, mean = rep(10, p), sigma = diag(100, p))
+    )
+  )
+  summary(result)
+}
 
 set.seed(1)
-p &lt;- 3
-result &lt;- fastcpd.mv(
-  rbind(
-    mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(1, p)),
-    mvtnorm::rmvnorm(400, mean = rep(10, p), sigma = diag(1, p)),
-    mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(50, p)),
-    mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(1, p)),
-    mvtnorm::rmvnorm(400, mean = rep(10, p), sigma = diag(1, p)),
-    mvtnorm::rmvnorm(300, mean = rep(10, p), sigma = diag(50, p))
+data &lt;- c(rnorm(2000, 0, 1), rnorm(2000, 1, 1), rnorm(2000, 1, 2))
+(result_time &lt;- system.time(
+  result &lt;- fastcpd.variance(data, r.progress = FALSE, cp_only = TRUE)
+))
+result@cp_set
+
+
+set.seed(1)
+data &lt;- c(rnorm(2000, 0, 1), rnorm(2000, 1, 1), rnorm(2000, 1, 2))
+(result_time &lt;- system.time(
+  result &lt;- fastcpd.variance(
+    data, beta = "BIC", cost_adjustment = "BIC",
+    r.progress = TRUE, cp_only = TRUE
   )
-)
-summary(result)
+))
+result@cp_set
+
 </code></pre>
 
 <hr>
@@ -1636,27 +1616,23 @@ column.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-for (package in c("ggplot2", "mvtnorm")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  n &lt;- 1100
+  p &lt;- 3
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  delta &lt;- rnorm(p)
+  theta_0 &lt;- c(1, 0.3, -1)
+  y &lt;- c(
+    rpois(500, exp(x[1:500, ] %*% theta_0)),
+    rpois(300, exp(x[501:800, ] %*% (theta_0 + delta))),
+    rpois(200, exp(x[801:1000, ] %*% theta_0)),
+    rpois(100, exp(x[1001:1100, ] %*% (theta_0 - delta)))
   )
+  result &lt;- fastcpd.poisson(cbind(y, x))
+  summary(result)
+  plot(result)
 }
-
-set.seed(1)
-n &lt;- 1100
-p &lt;- 3
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-delta &lt;- rnorm(p)
-theta_0 &lt;- c(1, 0.3, -1)
-y &lt;- c(
-  rpois(500, exp(x[1:500, ] %*% theta_0)),
-  rpois(300, exp(x[501:800, ] %*% (theta_0 + delta))),
-  rpois(200, exp(x[801:1000, ] %*% theta_0)),
-  rpois(100, exp(x[1001:1100, ] %*% (theta_0 - delta)))
-)
-result &lt;- fastcpd.poisson(cbind(y, x))
-summary(result)
-plot(result)
 
 </code></pre>
 
@@ -1708,13 +1684,6 @@ specifying the order of the time series. Possible combinations with
 <li> <p><code>"var"</code>, NUMERIC(1): VAR(<code class="reqn">p</code>) model using linear regression.
 </p>
 </li>
-<li> <p><code>"ma"</code>, NUMERIC(1): MA(<code class="reqn">q</code>) model using <code><a href="forecast.html#topic+Arima">forecast::Arima()</a></code>.
-</p>
-</li>
-<li> <p><code>"ma"</code>, NUMERIC(3): ARIMA(0, 0, <code class="reqn">q</code>) model using
-<code><a href="forecast.html#topic+Arima">forecast::Arima()</a></code>, where <code class="reqn">q</code> is the third element of the vector.
-</p>
-</li>
 <li> <p><code>"arima"</code>, NUMERIC(3): ARIMA(<code class="reqn">p</code>, <code class="reqn">d</code>, <code class="reqn">q</code>) model
 using <code><a href="forecast.html#topic+Arima">forecast::Arima()</a></code>.
 </p>
@@ -1749,26 +1718,26 @@ mean should be included in the model. The default value is <code>TRUE</code>.</p
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
 set.seed(1)
-n &lt;- 250
-x &lt;- rep(0, n + 1)
-for (i in 1:180) {
-  x[i + 1] &lt;- 0.8 * x[i] + rnorm(1, 0, 2)
+n &lt;- 400
+w &lt;- rnorm(n + 4, 0, 0.1)
+x &lt;- rep(NA, n)
+for (i in 1:200) {
+  x[i] &lt;- w[i + 4] - 5 / 3 * w[i + 3] + 11 / 12 * w[i + 2] - 5 / 12 * w[i + 1] +
+    1 / 6 * w[i]
 }
-for (i in 181:n) {
-  x[i + 1] &lt;- 0.1 * x[i] + rnorm(1, 0, 2)
+for (i in 201:n) {
+  x[i] &lt;- w[i + 4] - 4 / 3 * w[i + 3] + 7 / 9 * w[i + 2] - 16 / 27 * w[i + 1] +
+    4 / 27 * w[i]
 }
 result &lt;- fastcpd.ts(
-  x[1 + seq_len(n)],
-  "arima",
-  c(1, 0, 0),
-  include.mean = FALSE,
-  trim = 0,
-  beta = (1 + 1 + 1) * log(n) / 2 * 3
+  x,
+  "arma",
+  c(0, 4),
+  lower = c(-2, -2, -2, -2, 1e-10),
+  upper = c(2, 2, 2, 2, Inf),
+  line_search = c(1, 0.1, 1e-2),
+  trim = 0.05
 )
 summary(result)
 plot(result)
@@ -1895,20 +1864,47 @@ fastcpd.variance(data, ...)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
+<pre><code class='language-R'>set.seed(1)
+data &lt;- c(rnorm(300, 0, 1), rnorm(400, 0, 100), rnorm(300, 0, 1))
+result &lt;- fastcpd.variance(data)
+summary(result)
+if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  p &lt;- 3
+  result &lt;- fastcpd.variance(
+    rbind(
+      mvtnorm::rmvnorm(
+        300, rep(0, p), crossprod(matrix(runif(p^2) * 2 - 1, p))
+      ),
+      mvtnorm::rmvnorm(
+        400, rep(0, p), crossprod(matrix(runif(p^2) * 2 - 1, p))
+      ),
+      mvtnorm::rmvnorm(
+        300, rep(0, p), crossprod(matrix(runif(p^2) * 2 - 1, p))
+      )
+    )
+  )
+  summary(result)
+}
 
 set.seed(1)
-p &lt;- 3
-result &lt;- fastcpd.variance(
-  rbind(
-    mvtnorm::rmvnorm(300, rep(0, p), crossprod(matrix(runif(p^2) * 2 - 1, p))),
-    mvtnorm::rmvnorm(400, rep(0, p), crossprod(matrix(runif(p^2) * 2 - 1, p))),
-    mvtnorm::rmvnorm(300, rep(0, p), crossprod(matrix(runif(p^2) * 2 - 1, p)))
+data &lt;- c(rnorm(3000, 0, 1), rnorm(3000, 0, 2), rnorm(3000, 0, 1))
+(result_time &lt;- system.time(
+  result &lt;- fastcpd.variance(data, r.progress = FALSE, cp_only = TRUE)
+))
+result@cp_set
+
+
+set.seed(1)
+data &lt;- c(rnorm(3000, 0, 1), rnorm(3000, 0, 2), rnorm(3000, 0, 1))
+(result_time &lt;- system.time(
+  result &lt;- fastcpd.variance(
+    data, beta = "BIC", cost_adjustment = "BIC",
+    r.progress = FALSE, cp_only = TRUE
   )
-)
-summary(result)
+))
+result@cp_set
+
 </code></pre>
 
 <hr>
@@ -2139,24 +2135,25 @@ of segments.</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>for (package in c("ggplot2", "mvtnorm")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  p &lt;- 1
+  x &lt;- mvtnorm::rmvnorm(300, rep(0, p), diag(p))
+  theta_0 &lt;- matrix(c(1, -1, 0.5))
+  y &lt;- c(
+    x[1:100, ] * theta_0[1, ] + rnorm(100, 0, 1),
+    x[101:200, ] * theta_0[2, ] + rnorm(100, 0, 1),
+    x[201:300, ] * theta_0[3, ] + rnorm(100, 0, 1)
   )
-}
+  result &lt;- fastcpd.lm(cbind(y, x), r.clock = "fastcpd_profiler")
+  summary(result)
+  plot(result)
 
-set.seed(1)
-p &lt;- 1
-x &lt;- mvtnorm::rmvnorm(300, rep(0, p), diag(p))
-theta_0 &lt;- matrix(c(1, -1, 0.5))
-y &lt;- c(
-  x[1:100, ] * theta_0[1, ] + rnorm(100, 0, 1),
-  x[101:200, ] * theta_0[2, ] + rnorm(100, 0, 1),
-  x[201:300, ] * theta_0[3, ] + rnorm(100, 0, 1)
-)
-result &lt;- fastcpd.lm(cbind(y, x))
-summary(result)
-plot(result)
+  if (requireNamespace("RcppClock", quietly = TRUE)) {
+    library(RcppClock)
+    plot(fastcpd_profiler)
+  }
+}
 </code></pre>
 
 <hr>
@@ -2396,43 +2393,41 @@ Affymetrix HG-U95A and HG-U95Av2 microarrays
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-for (package in c("ggplot2", "gridExtra")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  result &lt;- fastcpd.mean(transcriptome$"10", trim = 0.005)
+  summary(result)
+  plot(result)
+
+  result_all &lt;- fastcpd.mean(
+    transcriptome,
+    beta = (ncol(transcriptome) + 1) * log(nrow(transcriptome)) / 2 * 5,
+    trim = 0
   )
-}
 
-result &lt;- fastcpd.mean(transcriptome$"10", trim = 0.005)
-summary(result)
-plot(result)
-
-result_all &lt;- fastcpd.mean(
-  transcriptome,
-  beta = (ncol(transcriptome) + 1) * log(nrow(transcriptome)) / 2 * 5,
-  trim = 0
-)
-
-plots &lt;- lapply(
-  seq_len(ncol(transcriptome)), function(i) {
-    ggplot2::ggplot(
-      data = data.frame(
-        x = seq_along(transcriptome[, i]), y = transcriptome[, i]
-      ),
-      ggplot2::aes(x = x, y = y)
-    ) +
-      ggplot2::geom_line(color = "blue") +
-      ggplot2::geom_vline(
-        xintercept = result_all@cp_set,
-        color = "red",
-        linetype = "dotted",
-        linewidth = 0.5,
-        alpha = 0.7
+  plots &lt;- lapply(
+    seq_len(ncol(transcriptome)), function(i) {
+      ggplot2::ggplot(
+        data = data.frame(
+          x = seq_along(transcriptome[, i]), y = transcriptome[, i]
+        ),
+        ggplot2::aes(x = x, y = y)
       ) +
-      ggplot2::theme_void()
-  }
-)
+        ggplot2::geom_line(color = "steelblue") +
+        ggplot2::geom_vline(
+          xintercept = result_all@cp_set,
+          color = "red",
+          linetype = "dotted",
+          linewidth = 0.5,
+          alpha = 0.7
+        ) +
+        ggplot2::theme_void()
+    }
+  )
 
-gridExtra::grid.arrange(grobs = plots, ncol = 1, nrow = ncol(transcriptome))
+  if (requireNamespace("gridExtra", quietly = TRUE)) {
+    gridExtra::grid.arrange(grobs = plots, ncol = 1, nrow = ncol(transcriptome))
+  }
+}
 
 </code></pre>
 
@@ -2483,51 +2478,51 @@ gridExtra::grid.arrange(grobs = plots, ncol = 1, nrow = ncol(transcriptome))
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>for (package in c("ggplot2", "lubridate", "zoo")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+<pre><code class='language-R'>if (
+  requireNamespace("ggplot2", quietly = TRUE) &amp;&amp;
+    requireNamespace("lubridate", quietly = TRUE) &amp;&amp;
+    requireNamespace("zoo", quietly = TRUE)
+) {
+  result_ar &lt;- fastcpd.ar(diff(uk_seatbelts[, "drivers"], 12), 1, beta = "BIC")
+  summary(result_ar)
+  plot(result_ar)
+
+  result_lm &lt;- suppressMessages(fastcpd.lm(
+    diff(uk_seatbelts[, c("drivers", "kms", "PetrolPrice", "law")], lag = 12)
+  ))
+  cp_dates &lt;- as.Date("1969-01-01", format = "%Y-%m-%d")
+  cp_dates &lt;- cp_dates + lubridate::period(month = 1 + result_lm@cp_set + 12)
+  cp_dates &lt;- zoo::as.yearmon(cp_dates)
+
+  dates &lt;- zoo::as.yearmon(time(uk_seatbelts))
+
+  uk_seatbelts_df &lt;- data.frame(
+    dates = dates,
+    drivers = c(uk_seatbelts[, "drivers"]),
+    color = as.factor((dates &lt; cp_dates[1]) + (dates &lt; cp_dates[2]))
   )
+
+  ggplot2::ggplot() +
+    ggplot2::geom_line(
+      data = uk_seatbelts_df,
+      mapping = ggplot2::aes(x = dates, y = drivers, color = color)
+    ) +
+    ggplot2::geom_vline(
+      xintercept = cp_dates,
+      linetype = "dashed",
+      color = "red"
+    ) +
+    zoo::scale_x_yearmon() +
+    ggplot2::annotate(
+      "text",
+      x = cp_dates,
+      y = 1025,
+      label = as.character(cp_dates),
+      color = "blue"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "none")
 }
-
-result_ar &lt;- fastcpd.ar(diff(uk_seatbelts[, "drivers"], 12), 1, beta = "BIC")
-summary(result_ar)
-plot(result_ar)
-
-result_lm &lt;- suppressMessages(fastcpd.lm(
-  diff(uk_seatbelts[, c("drivers", "kms", "PetrolPrice", "law")], lag = 12)
-))
-cp_dates &lt;- as.Date("1969-01-01", format = "%Y-%m-%d")
-cp_dates &lt;- cp_dates + lubridate::period(month = 1 + result_lm@cp_set + 12)
-cp_dates &lt;- zoo::as.yearmon(cp_dates)
-
-dates &lt;- zoo::as.yearmon(time(uk_seatbelts))
-
-uk_seatbelts_df &lt;- data.frame(
-  dates = dates,
-  drivers = c(uk_seatbelts[, "drivers"]),
-  color = as.factor((dates &lt; cp_dates[1]) + (dates &lt; cp_dates[2]))
-)
-
-ggplot2::ggplot() +
-  ggplot2::geom_line(
-    data = uk_seatbelts_df,
-    mapping = ggplot2::aes(x = dates, y = drivers, color = color)
-  ) +
-  ggplot2::geom_vline(
-    xintercept = cp_dates,
-    linetype = "dashed",
-    color = "red"
-  ) +
-  zoo::scale_x_yearmon() +
-  ggplot2::annotate(
-    "text",
-    x = cp_dates,
-    y = 1025,
-    label = as.character(cp_dates),
-    color = "blue"
-  ) +
-  ggplot2::theme_bw() +
-  ggplot2::theme(legend.position = "none")
 </code></pre>
 
 <hr>
@@ -2641,35 +2636,36 @@ for outlier detection.</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  n &lt;- 300
+  p &lt;- 4
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta &lt;- rbind(c(1, 3.2, -1, 0), c(-1, -0.5, 2.5, -2), c(0.8, 0, 1, 2))
+  y &lt;- c(
+    x[1:100, ] %*% theta[1, ] + rnorm(100, 0, 3),
+    x[101:200, ] %*% theta[2, ] + rnorm(100, 0, 3),
+    x[201:n, ] %*% theta[3, ] + rnorm(100, 0, 3)
+  )
+  (sigma2 &lt;- variance.lm(cbind(y, x)))
 
-set.seed(1)
-n &lt;- 300
-p &lt;- 4
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta &lt;- rbind(c(1, 3.2, -1, 0), c(-1, -0.5, 2.5, -2), c(0.8, 0, 1, 2))
-y &lt;- c(
-  x[1:100, ] %*% theta[1, ] + rnorm(100, 0, 3),
-  x[101:200, ] %*% theta[2, ] + rnorm(100, 0, 3),
-  x[201:300, ] %*% theta[3, ] + rnorm(100, 0, 3)
-)
-(sigma2 &lt;- variance.lm(cbind(y, x)))
-
-set.seed(1)
-n &lt;- 300
-p &lt;- 4
-d &lt;- 2
-x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
-theta &lt;- cbind(c(1, 3.2, -1, 0), c(-1, -0.5, 2.5, -2), c(0.8, 0, 1, 2))
-theta &lt;- cbind(theta, theta)
-y &lt;- rbind(
-  x[1:100, ] %*% theta[, 1:2] + mvtnorm::rmvnorm(100, rep(0, d), 3 * diag(d)),
-  x[101:200, ] %*% theta[, 3:4] + mvtnorm::rmvnorm(100, rep(0, d), 3 * diag(d)),
-  x[201:300, ] %*% theta[, 5:6] + mvtnorm::rmvnorm(100, rep(0, d), 3 * diag(d))
-)
-(sigma &lt;- variance.lm(cbind(y, x), d = d))
+  set.seed(1)
+  n &lt;- 300
+  p &lt;- 4
+  d &lt;- 2
+  x &lt;- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
+  theta &lt;- cbind(c(1, 3.2, -1, 0), c(-1, -0.5, 2.5, -2), c(0.8, 0, 1, 2))
+  theta &lt;- cbind(theta, theta)
+  y &lt;- rbind(
+    x[1:100, ] %*% theta[, 1:2] +
+      mvtnorm::rmvnorm(100, rep(0, d), diag(3, d)),
+    x[101:200, ] %*% theta[, 3:4] +
+      mvtnorm::rmvnorm(100, rep(0, d), diag(3, d)),
+    x[201:n, ] %*% theta[, 5:6] +
+      mvtnorm::rmvnorm(100, rep(0, d), diag(3, d))
+  )
+  (sigma &lt;- variance.lm(cbind(y, x), d = d))
+}
 </code></pre>
 
 <hr>
@@ -2708,18 +2704,16 @@ value representing the variance.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("mvtnorm", quietly = TRUE)) utils::install.packages(
-  "mvtnorm", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-set.seed(1)
-p &lt;- 3
-data &lt;- rbind(
-  mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(100, p)),
-  mvtnorm::rmvnorm(400, mean = rep(50, p), sigma = diag(100, p)),
-  mvtnorm::rmvnorm(300, mean = rep(2, p), sigma = diag(100, p))
-)
-(sigma &lt;- variance.mean(data))
+<pre><code class='language-R'>if (requireNamespace("mvtnorm", quietly = TRUE)) {
+  set.seed(1)
+  p &lt;- 3
+  data &lt;- rbind(
+    mvtnorm::rmvnorm(300, mean = rep(0, p), sigma = diag(100, p)),
+    mvtnorm::rmvnorm(400, mean = rep(50, p), sigma = diag(100, p)),
+    mvtnorm::rmvnorm(300, mean = rep(2, p), sigma = diag(100, p))
+  )
+  (sigma &lt;- variance.mean(data))
+}
 </code></pre>
 
 <hr>
@@ -2768,7 +2762,7 @@ Signal Processing</h2><span id='topic+well_log'></span>
 
 <p>This is the well-known well-log dataset used in many changepoint
 papers obtained from Alan Turing Institute GitHub repository and licensed
-under the MIT license. Outliers with value less or equal to 1e5 are removed.
+under the MIT license.
 </p>
 
 
@@ -2780,7 +2774,7 @@ under the MIT license. Outliers with value less or equal to 1e5 are removed.
 
 <h3>Format</h3>
 
-<p>A Time-Series of length 3989.
+<p>A Time-Series of length 4050.
 </p>
 
 
@@ -2792,53 +2786,37 @@ under the MIT license. Outliers with value less or equal to 1e5 are removed.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-result &lt;- fastcpd.mean(well_log, trim = 0.003)
-summary(result)
-plot(result)
-if (!requireNamespace("ggplot2", quietly = TRUE)) utils::install.packages(
-  "ggplot2", repos = "https://cloud.r-project.org", quiet = TRUE
-)
-
-result &lt;- fastcpd.mean(
-  well_log, beta = (1 + 2) * log(length(well_log)) / 2 * 6, trim = 0.002
-)
+<pre><code class='language-R'>result &lt;- fastcpd.mean(well_log, trim = 0.001)
 summary(result)
 plot(result)
 
-for (package in c("ggplot2", "matrixStats")) {
-  if (!requireNamespace(package, quietly = TRUE)) utils::install.packages(
-    package, repos = "https://cloud.r-project.org", quiet = TRUE
+if (requireNamespace("matrixStats", quietly = TRUE)) {
+  sigma2 &lt;- variance.median(well_log)
+  median_loss &lt;- function(data) {
+    sum(abs(data - matrixStats::colMedians(data))) / sqrt(sigma2) / 2
+  }
+  result &lt;- fastcpd(
+    formula = ~ x - 1,
+    data = cbind.data.frame(x = well_log),
+    cost = median_loss,
+    trim = 0.002
   )
-}
+  summary(result)
 
-sigma2 &lt;- variance.median(well_log)
-median_loss &lt;- function(data) {
-  sum(abs(data - matrixStats::colMedians(data))) / sqrt(sigma2) / 2
-}
-result &lt;- fastcpd(
-  formula = ~ x - 1,
-  data = cbind.data.frame(x = well_log),
-  cost = median_loss,
-  trim = 0.002
-)
-summary(result)
+  segment_starts &lt;- c(1, result@cp_set)
+  segment_ends &lt;- c(result@cp_set - 1, length(well_log))
+  residual &lt;- NULL
+  for (segment_index in seq_along(segment_starts)) {
+    segment &lt;-
+      well_log[segment_starts[segment_index]:segment_ends[segment_index]]
+    residual &lt;- c(residual, segment - median(segment))
+  }
 
-segment_starts &lt;- c(1, result@cp_set)
-segment_ends &lt;- c(result@cp_set - 1, length(well_log))
-residual &lt;- NULL
-for (segment_index in seq_along(segment_starts)) {
-  segment &lt;- well_log[segment_starts[segment_index]:segment_ends[segment_index]]
-  residual &lt;- c(residual, segment - median(segment))
+  result@residuals &lt;- matrix(residual)
+  result@family &lt;- "mean"
+  result@data &lt;- data.frame(x = c(well_log))
+  plot(result)
 }
-
-result@residuals &lt;- residual
-result@family &lt;- "mean"
-result@data &lt;- data.frame(x = c(well_log))
-plot(result)
 
 </code></pre>
 

@@ -27,6 +27,7 @@ function processMathHTML() {
 <li><a href='#aum_line_search_grid'><p>aum line search grid</p></a></li>
 <li><a href='#aum_linear_model'><p>aum linear model</p></a></li>
 <li><a href='#aum_linear_model_cv'><p>aum linear model cv</p></a></li>
+<li><a href='#aum_linear_model_ls'><p>aum linear model ls</p></a></li>
 <li><a href='#fn.not.zero'>
 <p>Penalized models with non-zero fn at penalty=0</p></a></li>
 <li><a href='#neg.zero.fp'>
@@ -34,6 +35,7 @@ function processMathHTML() {
 <li><a href='#plot.aum_diffs'><p>plot aum diffs</p></a></li>
 <li><a href='#plot.aum_line_search'><p>plot aum line search</p></a></li>
 <li><a href='#plot.aum_line_search_grid'><p>plot aum line search grid</p></a></li>
+<li><a href='#set_loss_plot'><p>set loss plot</p></a></li>
 </ul>
 </div>
 <hr>
@@ -50,14 +52,18 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2023.6.14</td>
+<td>2024.6.19</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Standard template library sort is
- used to implement an efficient  
- algorithm &lt;<a href="https://doi.org/10.48550/arXiv.2107.01285">doi:10.48550/arXiv.2107.01285</a>&gt; for computing Area Under Minimum and
- directional derivatives.</td>
+<td>Efficient algorithms
+ <a href="https://jmlr.org/papers/v24/21-0751.html">https://jmlr.org/papers/v24/21-0751.html</a>
+ for computing Area Under Minimum,
+ directional derivatives, and
+ line search optimization of a linear model,
+ with objective defined as either
+ max Area Under the Curve or
+ min Area Under Minimum.</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -82,8 +88,8 @@ function processMathHTML() {
 <tr>
 <td>Suggests:</td>
 <td>testthat, kernlab, nc, ggplot2, WeightedROC, penaltyLearning,
-knitr, markdown, mlbench, lattice, directlabels,
-microbenchmark, covr, atime, ggrepel</td>
+knitr, markdown, mlbench, directlabels, microbenchmark, covr,
+atime, ggrepel</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -95,7 +101,7 @@ microbenchmark, covr, atime, ggrepel</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-06-14 19:57:46 UTC; tdhock</td>
+<td>2024-06-20 13:21:27 UTC; tdhock</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -112,7 +118,7 @@ microbenchmark, covr, atime, ggrepel</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-06-14 20:22:05 UTC</td>
+<td>2024-06-20 21:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -476,7 +482,10 @@ complexity is O(B) and time complexity is O( (I+B)log B ).</p>
 <pre><code class='language-R'>aum_line_search(error.diff.df, 
     feature.mat, weight.vec, 
     pred.vec = NULL, 
-    maxIterations = nrow(error.diff.df))</code></pre>
+    maxIterations = nrow(error.diff.df), 
+    feature.mat.search = feature.mat, 
+    error.diff.search = error.diff.df, 
+    maxStepSize = -1)</code></pre>
 
 
 <h3>Arguments</h3>
@@ -505,6 +514,18 @@ example-specific error functions.</p>
 <p>max number of line search iterations, either a positive integer or
 &quot;max.auc&quot; or &quot;min.aum&quot; indicating to keep going until AUC
 decreases or AUM increases.</p>
+</td></tr>
+<tr><td><code id="aum_line_search_+3A_feature.mat.search">feature.mat.search</code></td>
+<td>
+<p>feature matrix to use in line search, default is subtrain, can be validation</p>
+</td></tr>
+<tr><td><code id="aum_line_search_+3A_error.diff.search">error.diff.search</code></td>
+<td>
+<p><code><a href="#topic+aum_diffs">aum_diffs</a></code> data frame to use in line search, default is subtrain, can be validation</p>
+</td></tr>
+<tr><td><code id="aum_line_search_+3A_maxstepsize">maxStepSize</code></td>
+<td>
+<p>max step size to explore.</p>
 </td></tr>
 </table>
 
@@ -535,53 +556,135 @@ if(requireNamespace("ggplot2"))plot(bin.diffs)
 bin.line.search &lt;- aum::aum_line_search(bin.diffs, pred.vec=c(10,-10))
 if(requireNamespace("ggplot2"))plot(bin.line.search)
 
-## Example 2: two changepoint examples, one with three breakpoints.
-data(neuroblastomaProcessed, package="penaltyLearning", envir=environment())
-nb.err &lt;- with(neuroblastomaProcessed$errors, data.frame(
-  example=paste0(profile.id, ".", chromosome),
-  min.lambda,
-  max.lambda,
-  fp, fn))
-(nb.diffs &lt;- aum::aum_diffs_penalty(nb.err, c("1.1", "4.2")))
-if(requireNamespace("ggplot2"))plot(nb.diffs)
-nb.line.search &lt;- aum::aum_line_search(nb.diffs, pred.vec=c(1,-1))
-if(requireNamespace("ggplot2"))plot(nb.line.search)
-aum::aum_line_search(nb.diffs, pred.vec=c(1,-1)-c(1,-1)*0.5)
+if(requireNamespace("penaltyLearning")){
 
-## Example 3: all changepoint examples, with linear model.
-X.sc &lt;- scale(neuroblastomaProcessed$feature.mat)
-keep &lt;- apply(is.finite(X.sc), 2, all)
-X.keep &lt;- X.sc[1:50,keep]
-weight.vec &lt;- rep(0, ncol(X.keep))
-(nb.diffs &lt;- aum::aum_diffs_penalty(nb.err, rownames(X.keep)))
-nb.weight.search &lt;- aum::aum_line_search(
-  nb.diffs,
-  feature.mat=X.keep,
-  weight.vec=weight.vec, 
-  maxIterations = 200)
-if(requireNamespace("ggplot2"))plot(nb.weight.search)
+  ## Example 2: two changepoint examples, one with three breakpoints.
+  data(neuroblastomaProcessed, package="penaltyLearning", envir=environment())
+  nb.err &lt;- with(neuroblastomaProcessed$errors, data.frame(
+    example=paste0(profile.id, ".", chromosome),
+    min.lambda,
+    max.lambda,
+    fp, fn))
+  (nb.diffs &lt;- aum::aum_diffs_penalty(nb.err, c("1.1", "4.2")))
+  if(requireNamespace("ggplot2"))plot(nb.diffs)
+  nb.line.search &lt;- aum::aum_line_search(nb.diffs, pred.vec=c(1,-1))
+  if(requireNamespace("ggplot2"))plot(nb.line.search)
+  aum::aum_line_search(nb.diffs, pred.vec=c(1,-1)-c(1,-1)*0.5)
 
-## Alternate viz with x=iteration instead of step size.
-nb.weight.full &lt;- aum::aum_line_search(
-  nb.diffs,
-  feature.mat=X.keep,
-  weight.vec=weight.vec, 
-  maxIterations = 1000)
-library(data.table)
-weight.result.tall &lt;- suppressWarnings(melt(
-  nb.weight.full$line_search_result[, iteration:=1:.N][, .(
-    iteration, auc, q.size,
-    log10.step.size=log10(step.size),
-    log10.aum=log10(aum))],
-  id.vars="iteration"))
-if(require(ggplot2)){
+  ## Example 3: all changepoint examples, with linear model.
+  X.sc &lt;- scale(neuroblastomaProcessed$feature.mat)
+  keep &lt;- apply(is.finite(X.sc), 2, all)
+  X.subtrain &lt;- X.sc[1:50,keep]
+  weight.vec &lt;- rep(0, ncol(X.subtrain))
+  (diffs.subtrain &lt;- aum::aum_diffs_penalty(nb.err, rownames(X.subtrain)))
+  nb.weight.search &lt;- aum::aum_line_search(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec, 
+    maxIterations = 200)
+  if(requireNamespace("ggplot2"))plot(nb.weight.search)
+
+  ## Stop line search after finding a (local) max AUC or min AUM.
+  max.auc.search &lt;- aum::aum_line_search(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec,
+    maxIterations="max.auc")
+  min.aum.search &lt;- aum::aum_line_search(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec,
+    maxIterations="min.aum")
+  if(require("ggplot2")){
+    plot(nb.weight.search)+
+      geom_point(aes(
+        step.size, auc),
+        data=data.table(max.auc.search[["line_search_result"]], panel="auc"),
+        color="red")+
+      geom_point(aes(
+        step.size, aum),
+        data=data.table(min.aum.search[["line_search_result"]], panel="aum"),
+        color="red")
+  }
+
+  ## Alternate viz with x=iteration instead of step size.
+  nb.weight.full &lt;- aum::aum_line_search(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec, 
+    maxIterations = 1000)
+  library(data.table)
+  weight.result.tall &lt;- suppressWarnings(melt(
+    nb.weight.full$line_search_result[, iteration:=1:.N][, .(
+      iteration, auc, q.size,
+      log10.step.size=log10(step.size),
+      log10.aum=log10(aum))],
+    id.vars="iteration"))
+  if(require(ggplot2)){
+    ggplot()+
+      geom_point(aes(
+        iteration, value),
+        shape=1,
+        data=weight.result.tall)+
+      facet_grid(variable ~ ., scales="free")+
+      scale_y_continuous("")
+  }
+
+  ## Example 4: line search on validation set.
+  X.validation &lt;- X.sc[101:300,keep]
+  diffs.validation &lt;- aum::aum_diffs_penalty(nb.err, rownames(X.validation))
+  valid.search &lt;- aum::aum_line_search(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec, 
+    maxIterations = 2000,
+    feature.mat.search=X.validation,
+    error.diff.search=diffs.validation)
+  if(requireNamespace("ggplot2"))plot(valid.search)
+
+  ## validation set max auc, min aum.
+  max.auc.valid &lt;- aum::aum_line_search(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec,
+    maxIterations="max.auc",
+    feature.mat.search=X.validation,
+    error.diff.search=diffs.validation)
+  min.aum.valid &lt;- aum::aum_line_search(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec,
+    maxIterations="min.aum",
+    feature.mat.search=X.validation,
+    error.diff.search=diffs.validation)
+  if(require("ggplot2")){
+    plot(valid.search)+
+      geom_point(aes(
+        step.size, auc),
+        data=data.table(max.auc.valid[["line_search_result"]], panel="auc"),
+        color="red")+
+      geom_point(aes(
+        step.size, aum),
+        data=data.table(min.aum.valid[["line_search_result"]], panel="aum"),
+        color="red")
+  }
+
+  ## compare subtrain and validation
+  both.results &lt;- rbind(
+    data.table(valid.search$line_search_result, set="validation"),
+    data.table(nb.weight.search$line_search_result, set="subtrain"))
+  both.max &lt;- rbind(
+    data.table(max.auc.valid$line_search_result, set="validation"),
+    data.table(max.auc.search$line_search_result, set="subtrain"))
   ggplot()+
+    geom_vline(aes(
+      xintercept=step.size, color=set),
+      data=both.max)+
     geom_point(aes(
-      iteration, value),
+      step.size, auc, color=set),
       shape=1,
-      data=weight.result.tall)+
-    facet_grid(variable ~ ., scales="free")+
-    scale_y_continuous("")
+      data=both.results)
+
 }
 
 </code></pre>
@@ -660,30 +763,34 @@ if(requireNamespace("ggplot2"))plot(bin.diffs)
 bin.line.search &lt;- aum::aum_line_search_grid(bin.diffs, pred.vec=c(-10,10))
 if(requireNamespace("ggplot2"))plot(bin.line.search)
 
-## Example 2: two changepoint examples, one with three breakpoints.
-data(neuroblastomaProcessed, package="penaltyLearning", envir=environment())
-nb.err &lt;- with(neuroblastomaProcessed$errors, data.frame(
-  example=paste0(profile.id, ".", chromosome),
-  min.lambda,
-  max.lambda,
-  fp, fn))
-(nb.diffs &lt;- aum::aum_diffs_penalty(nb.err, c("4.2", "1.1")))
-if(requireNamespace("ggplot2"))plot(nb.diffs)
-(nb.line.search &lt;- aum::aum_line_search_grid(nb.diffs, pred.vec=c(-1,1)))
-if(requireNamespace("ggplot2"))plot(nb.line.search)
+if(requireNamespace("penaltyLearning")){
 
-## Example 3: 50 changepoint examples, with linear model.
-X.sc &lt;- scale(neuroblastomaProcessed$feature.mat[1:50,])
-keep &lt;- apply(is.finite(X.sc), 2, all)
-X.keep &lt;- X.sc[,keep]
-weight.vec &lt;- rep(0, ncol(X.keep))
-nb.diffs &lt;- aum::aum_diffs_penalty(nb.err, rownames(X.keep))
-nb.weight.search &lt;- aum::aum_line_search_grid(
-  nb.diffs,
-  feature.mat=X.keep,
-  weight.vec=weight.vec,
-  maxIterations = 200)
-if(requireNamespace("ggplot2"))plot(nb.weight.search)
+  ## Example 2: two changepoint examples, one with three breakpoints.
+  data(neuroblastomaProcessed, package="penaltyLearning", envir=environment())
+  nb.err &lt;- with(neuroblastomaProcessed$errors, data.frame(
+    example=paste0(profile.id, ".", chromosome),
+    min.lambda,
+    max.lambda,
+    fp, fn))
+  (diffs.subtrain &lt;- aum::aum_diffs_penalty(nb.err, c("4.2", "1.1")))
+  if(requireNamespace("ggplot2"))plot(diffs.subtrain)
+  (nb.line.search &lt;- aum::aum_line_search_grid(diffs.subtrain, pred.vec=c(-1,1)))
+  if(requireNamespace("ggplot2"))plot(nb.line.search)
+
+  ## Example 3: 50 changepoint examples, with linear model.
+  X.sc &lt;- scale(neuroblastomaProcessed$feature.mat[1:50,])
+  keep &lt;- apply(is.finite(X.sc), 2, all)
+  X.subtrain &lt;- X.sc[,keep]
+  weight.vec &lt;- rep(0, ncol(X.subtrain))
+  diffs.subtrain &lt;- aum::aum_diffs_penalty(nb.err, rownames(X.subtrain))
+  nb.weight.search &lt;- aum::aum_line_search_grid(
+    diffs.subtrain,
+    feature.mat=X.subtrain,
+    weight.vec=weight.vec,
+    maxIterations = 200)
+  if(requireNamespace("ggplot2"))plot(nb.weight.search)
+
+}
 
 ## Example 4: counting intersections and intervals at each
 ## iteration/step size, when there are ties.
@@ -718,7 +825,8 @@ descent with exact line search.</p>
     diff.list, max.steps = NULL, 
     improvement.thresh = NULL, 
     maxIterations = "min.aum", 
-    initial.weight.fun = NULL)</code></pre>
+    initial.weight.fun = NULL, 
+    line.search.set = "subtrain")</code></pre>
 
 
 <h3>Arguments</h3>
@@ -743,18 +851,23 @@ both).</p>
 <tr><td><code id="aum_linear_model_+3A_improvement.thresh">improvement.thresh</code></td>
 <td>
 <p>non-negative real number: keep doing gradient descent while the
-improvement in AUM is greater than this number (specify either
+improvement in objective is greater than this number (specify either
 this or <code>max.steps</code>, not both).</p>
 </td></tr>
 <tr><td><code id="aum_linear_model_+3A_maxiterations">maxIterations</code></td>
 <td>
-<p>max number of iterations of exact line search, default is number
-of subtrain examples.</p>
+<p>max number of iterations of exact line search. If &quot;max.auc&quot; then
+the objective for <code>improvement.thresh</code> is max AUC, otherwise
+objective is min AUM. Default is &quot;min.aum&quot; </p>
 </td></tr>
 <tr><td><code id="aum_linear_model_+3A_initial.weight.fun">initial.weight.fun</code></td>
 <td>
 <p>Function for computing initial weights, default NULL means use a
 random standard normal vector.</p>
+</td></tr>
+<tr><td><code id="aum_linear_model_+3A_line.search.set">line.search.set</code></td>
+<td>
+<p>set to use for line search, subtrain or validation.</p>
 </td></tr>
 </table>
 
@@ -897,6 +1010,80 @@ cbind(
     small.step.model[["min.valid.aum"]][["aum_mean"]]))
 
 </code></pre>
+
+<hr>
+<h2 id='aum_linear_model_ls'>aum linear model ls</h2><span id='topic+aum_linear_model_ls'></span>
+
+<h3>Description</h3>
+
+<p>Learn a linear model with weights that minimize AUM. Weights are
+initialized as a vector of zeros, then optimized using gradient
+descent with exact line search.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>aum_linear_model_ls(feature.list, 
+    diff.list, max.steps = NULL, 
+    improvement.thresh = NULL, 
+    maxIterations = "min.aum", 
+    initial.weight.fun = NULL)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="aum_linear_model_ls_+3A_feature.list">feature.list</code></td>
+<td>
+<p>List with named elements subtrain and validation, each
+should be a scaled feature matrix.</p>
+</td></tr>
+<tr><td><code id="aum_linear_model_ls_+3A_diff.list">diff.list</code></td>
+<td>
+<p>List with named elements subtrain and validation, each
+should be a data table of differences in error functions.</p>
+</td></tr>
+<tr><td><code id="aum_linear_model_ls_+3A_max.steps">max.steps</code></td>
+<td>
+<p>positive integer: max number of steps of gradient descent with
+exact line search (specify either this or <code>improvement.thresh</code>, not
+both).</p>
+</td></tr>
+<tr><td><code id="aum_linear_model_ls_+3A_improvement.thresh">improvement.thresh</code></td>
+<td>
+<p>non-negative real number: keep doing gradient descent while the
+improvement in objective is greater than this number (specify either
+this or <code>max.steps</code>, not both).</p>
+</td></tr>
+<tr><td><code id="aum_linear_model_ls_+3A_maxiterations">maxIterations</code></td>
+<td>
+<p>max number of iterations of exact line search. If &quot;max.auc&quot; then
+the objective for <code>improvement.thresh</code> is max AUC, otherwise
+objective is min AUM. Default is &quot;min.aum&quot; </p>
+</td></tr>
+<tr><td><code id="aum_linear_model_ls_+3A_initial.weight.fun">initial.weight.fun</code></td>
+<td>
+<p>Function for computing initial weights, default NULL means use a
+random standard normal vector.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Linear model represented as a list of class <code><a href="#topic+aum_linear_model">aum_linear_model</a></code> with
+named elements: loss is a data table of values for subtrain and
+optionally validation at each step, weight.vec is the final vector
+of weights learned via gradient descent, intercept is the value
+which results in minimal total error (FP+FN), learned via a linear
+scan over all possible values given the final weight vector, and
+search is a data table with one row for each step (best step size
+and number of iterations of line search).</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Toby Dylan Hocking &lt;toby.hocking@r-project.org&gt; [aut, cre], Jadon Fowler [aut] (Contributed exact line search C++ code)</p>
 
 <hr>
 <h2 id='fn.not.zero'>
@@ -1077,6 +1264,39 @@ plot(x,
 <h3>Value</h3>
 
 <p>ggplot.</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Toby Dylan Hocking &lt;toby.hocking@r-project.org&gt; [aut, cre], Jadon Fowler [aut] (Contributed exact line search C++ code)</p>
+
+<hr>
+<h2 id='set_loss_plot'>set loss plot</h2><span id='topic+set_loss_plot'></span>
+
+<h3>Description</h3>
+
+<p>plot subtrain/validation loss.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>set_loss_plot(loss.dt, 
+    set.colors = c(subtrain = "black", 
+        validation = "red"))</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="set_loss_plot_+3A_loss.dt">loss.dt</code></td>
+<td>
+<p>loss.dt </p>
+</td></tr>
+<tr><td><code id="set_loss_plot_+3A_set.colors">set.colors</code></td>
+<td>
+<p>set.colors </p>
+</td></tr>
+</table>
 
 
 <h3>Author(s)</h3>

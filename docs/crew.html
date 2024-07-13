@@ -82,7 +82,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.9.1</td>
+<td>0.9.5</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -137,7 +137,7 @@ testthat (&ge; 3.0.0)</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-25 16:17:21 UTC; C240390</td>
+<td>2024-06-24 13:32:56 UTC; C240390</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -156,7 +156,7 @@ testthat (&ge; 3.0.0)</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-25 16:40:02 UTC</td>
+<td>2024-06-24 14:30:05 UTC</td>
 </tr>
 </table>
 <hr>
@@ -646,6 +646,8 @@ of the return value will contain the result of the task.
 </dd>
 <dt><code>seconds_timeout</code></dt><dd><p>See <code><a href="#topic+crew_client">crew_client()</a></code>.</p>
 </dd>
+<dt><code>retry_tasks</code></dt><dd><p>See <code><a href="#topic+crew_client">crew_client()</a></code></p>
+</dd>
 <dt><code>relay</code></dt><dd><p>Relay object for event-driven programming on a downstream
 condition variable.</p>
 </dd>
@@ -710,6 +712,7 @@ condition variable.</p>
   tls = NULL,
   seconds_interval = NULL,
   seconds_timeout = NULL,
+  retry_tasks = NULL,
   relay = NULL
 )</pre></div>
 
@@ -733,6 +736,8 @@ condition variable.</p>
 <dt><code>seconds_interval</code></dt><dd><p>Argument passed from <code><a href="#topic+crew_client">crew_client()</a></code>.</p>
 </dd>
 <dt><code>seconds_timeout</code></dt><dd><p>Argument passed from <code><a href="#topic+crew_client">crew_client()</a></code>.</p>
+</dd>
+<dt><code>retry_tasks</code></dt><dd><p>Argument passed from <code><a href="#topic+crew_client">crew_client()</a></code>.</p>
 </dd>
 <dt><code>relay</code></dt><dd><p>Argument passed from <code><a href="#topic+crew_client">crew_client()</a></code>.</p>
 </dd>
@@ -1006,6 +1011,9 @@ from the last call to <code style="white-space: pre;">&#8288;map(error = "stop)&
 </dd>
 <dt><code>backlog</code></dt><dd><p>Character vector of explicitly backlogged tasks.</p>
 </dd>
+<dt><code>autoscaling</code></dt><dd><p><code>TRUE</code> or <code>FALSE</code>, whether async <code>later</code>-based
+auto-scaling is currently running</p>
+</dd>
 </dl>
 
 </div>
@@ -1046,10 +1054,19 @@ from the last call to <code style="white-space: pre;">&#8288;map(error = "stop)&
 <li> <p><a href="#method-crew_class_controller-start"><code>crew_class_controller$start()</code></a>
 </p>
 </li>
+<li> <p><a href="#method-crew_class_controller-started"><code>crew_class_controller$started()</code></a>
+</p>
+</li>
 <li> <p><a href="#method-crew_class_controller-launch"><code>crew_class_controller$launch()</code></a>
 </p>
 </li>
 <li> <p><a href="#method-crew_class_controller-scale"><code>crew_class_controller$scale()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-crew_class_controller-autoscale"><code>crew_class_controller$autoscale()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-crew_class_controller-descale"><code>crew_class_controller$descale()</code></a>
 </p>
 </li>
 <li> <p><a href="#method-crew_class_controller-push"><code>crew_class_controller$push()</code></a>
@@ -1483,6 +1500,50 @@ with the launcher.
 
 
 <hr>
+<a id="method-crew_class_controller-started"></a>
+
+
+
+<h4>Method <code>started()</code></h4>
+
+<p>Check whether the controller is started.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>crew_class_controller$started(controllers = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
+compatible with the analogous method of controller groups.</p>
+</dd>
+</dl>
+
+</div>
+
+
+
+<h5>Details</h5>
+
+<p>Actually checks whether the client is started.
+</p>
+
+
+
+<h5>Returns</h5>
+
+<p><code>TRUE</code> if the controller is started, <code>FALSE</code> otherwise.
+</p>
+
+
+<hr>
 <a id="method-crew_class_controller-launch"></a>
 
 
@@ -1580,6 +1641,90 @@ For finer control of the number of workers launched,
 call <code>launch()</code> on the controller with the exact desired
 number of workers.
 </p>
+
+
+
+<h5>Returns</h5>
+
+<p><code>NULL</code> (invisibly).
+</p>
+
+
+<hr>
+<a id="method-crew_class_controller-autoscale"></a>
+
+
+
+<h4>Method <code>autoscale()</code></h4>
+
+<p>Run worker auto-scaling in a private <code>later</code> loop
+every <code>controller$client$seconds_interval</code> seconds.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>crew_class_controller$autoscale(controllers = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
+compatible with the analogous method of controller groups.</p>
+</dd>
+</dl>
+
+</div>
+
+
+
+<h5>Details</h5>
+
+<p>Call <code>controller$descale()</code> to terminate the
+auto-scaling loop.
+</p>
+
+
+
+<h5>Returns</h5>
+
+<p><code>NULL</code> (invisibly).
+</p>
+
+
+<hr>
+<a id="method-crew_class_controller-descale"></a>
+
+
+
+<h4>Method <code>descale()</code></h4>
+
+<p>Terminate the auto-scaling loop started by
+<code>controller$autoscale()</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>crew_class_controller$descale(controllers = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
+compatible with the analogous method of controller groups.</p>
+</dd>
+</dl>
+
+</div>
 
 
 
@@ -2047,7 +2192,7 @@ and columns corresponding to the output of <code>pop()</code>.
   scale = TRUE,
   collect = NULL,
   throttle = TRUE,
-  error = "silent",
+  error = NULL,
   controllers = NULL
 )</pre></div>
 
@@ -2073,7 +2218,7 @@ within the last <code>seconds_interval</code> seconds. <code>FALSE</code> to aut
 every time <code>scale()</code> is called. Throttling avoids
 overburdening the <code>mirai</code> dispatcher and other resources.</p>
 </dd>
-<dt><code>error</code></dt><dd><p>Character of length 1, choice of action if
+<dt><code>error</code></dt><dd><p><code>NULL</code> or character of length 1, choice of action if
 the popped task threw an error. Possible values:
 </p>
 
@@ -2085,7 +2230,7 @@ a value.
 <li> <p><code>"warn"</code>: throw a warning.
 </p>
 </li>
-<li> <p><code>"silent"</code>: do nothing special.
+<li> <p><code>NULL</code> or <code>"silent"</code>: do not react to errors.
 </p>
 </li></ul>
 </dd>
@@ -2176,6 +2321,7 @@ warning messages that the task may have generated, <code>NA</code> otherwise.
 <div class="r"><pre>crew_class_controller$collect(
   scale = TRUE,
   throttle = TRUE,
+  error = NULL,
   controllers = NULL
 )</pre></div>
 
@@ -2195,6 +2341,22 @@ within the last <code>seconds_interval</code> seconds. <code>FALSE</code> to aut
 every time <code>scale()</code> is called. Throttling avoids
 overburdening the <code>mirai</code> dispatcher and other resources.</p>
 </dd>
+<dt><code>error</code></dt><dd><p><code>NULL</code> or character of length 1, choice of action if
+the popped task threw an error. Possible values:
+</p>
+
+<ul>
+<li> <p><code>"stop"</code>: throw an error in the main R session instead of returning
+a value.
+</p>
+</li>
+<li> <p><code>"warn"</code>: throw a warning.
+</p>
+</li>
+<li> <p><code>NULL</code> or <code>"silent"</code>: do not react to errors.
+</p>
+</li></ul>
+</dd>
 <dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
 compatible with the analogous method of controller groups.</p>
 </dd>
@@ -2207,7 +2369,8 @@ compatible with the analogous method of controller groups.</p>
 <h5>Returns</h5>
 
 <p>A <code>tibble</code> of results and metadata of all resolved tasks,
-with one row per task.
+with one row per task. Returns <code>NULL</code> if there are no tasks
+to collect.
 </p>
 
 
@@ -2228,8 +2391,8 @@ pop or collect one or more tasks.
 <div class="r"><pre>crew_class_controller$promise(
   mode = "one",
   seconds_interval = 0.1,
-  scale = TRUE,
-  throttle = TRUE,
+  scale = NULL,
+  throttle = NULL,
   controllers = NULL
 )</pre></div>
 
@@ -2277,18 +2440,13 @@ to any error callbacks registered with the promise.
 <code>later::later()</code> polling interval to asynchronously check if
 the promise can be resolved.</p>
 </dd>
-<dt><code>scale</code></dt><dd><p>Logical of length 1,
-whether to automatically call <code>scale()</code>
-to auto-scale workers to meet the demand of the task load.
-Scaling up on <code>pop()</code> may be important
-for transient or nearly transient workers that tend to drop off
-quickly after doing little work.
-See also the <code>throttle</code> argument.</p>
+<dt><code>scale</code></dt><dd><p>Deprecated on 2024-04-10 (version 0.9.1.9003)
+and no longer used. Now, <code>promise()</code> always turns on auto-scaling
+in a private <code>later</code> loop (if not already activated).</p>
 </dd>
-<dt><code>throttle</code></dt><dd><p><code>TRUE</code> to skip auto-scaling if it already happened
-within the last <code>seconds_interval</code> seconds. <code>FALSE</code> to auto-scale
-every time <code>scale()</code> is called. Throttling avoids
-overburdening the <code>mirai</code> dispatcher and other resources.</p>
+<dt><code>throttle</code></dt><dd><p>Deprecated on 2024-04-10 (version 0.9.1.9003)
+and no longer used. Now, <code>promise()</code> always turns on auto-scaling
+in a private <code>later</code> loop (if not already activated).</p>
 </dd>
 <dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
 compatible with the analogous method of controller groups.</p>
@@ -2690,10 +2848,19 @@ condition variable.</p>
 <li> <p><a href="#method-crew_class_controller_group-start"><code>crew_class_controller_group$start()</code></a>
 </p>
 </li>
+<li> <p><a href="#method-crew_class_controller_group-started"><code>crew_class_controller_group$started()</code></a>
+</p>
+</li>
 <li> <p><a href="#method-crew_class_controller_group-launch"><code>crew_class_controller_group$launch()</code></a>
 </p>
 </li>
 <li> <p><a href="#method-crew_class_controller_group-scale"><code>crew_class_controller_group$scale()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-crew_class_controller_group-autoscale"><code>crew_class_controller_group$autoscale()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-crew_class_controller_group-descale"><code>crew_class_controller_group$descale()</code></a>
 </p>
 </li>
 <li> <p><a href="#method-crew_class_controller_group-push"><code>crew_class_controller_group$push()</code></a>
@@ -3126,6 +3293,50 @@ Set to <code>NULL</code> to select all controllers.</p>
 
 
 <hr>
+<a id="method-crew_class_controller_group-started"></a>
+
+
+
+<h4>Method <code>started()</code></h4>
+
+<p>Check whether all the given controllers are started.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>crew_class_controller_group$started(controllers = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>controllers</code></dt><dd><p>Character vector of controller names.
+Set to <code>NULL</code> to select all controllers.</p>
+</dd>
+</dl>
+
+</div>
+
+
+
+<h5>Details</h5>
+
+<p>Actually checks whether all the given clients are started.
+</p>
+
+
+
+<h5>Returns</h5>
+
+<p><code>TRUE</code> if the controllers are started, <code>FALSE</code> if any are not.
+</p>
+
+
+<hr>
 <a id="method-crew_class_controller_group-launch"></a>
 
 
@@ -3205,6 +3416,82 @@ Set to <code>NULL</code> to select all controllers.</p>
 
 <p>See the <code>scale()</code> method in individual controller classes.
 </p>
+
+
+
+<h5>Returns</h5>
+
+<p><code>NULL</code> (invisibly).
+</p>
+
+
+<hr>
+<a id="method-crew_class_controller_group-autoscale"></a>
+
+
+
+<h4>Method <code>autoscale()</code></h4>
+
+<p>Run worker auto-scaling in a private <code>later</code> loop
+every <code>controller$client$seconds_interval</code> seconds.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>crew_class_controller_group$autoscale(controllers = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
+compatible with the analogous method of controller groups.</p>
+</dd>
+</dl>
+
+</div>
+
+
+
+<h5>Returns</h5>
+
+<p><code>NULL</code> (invisibly).
+</p>
+
+
+<hr>
+<a id="method-crew_class_controller_group-descale"></a>
+
+
+
+<h4>Method <code>descale()</code></h4>
+
+<p>Terminate the auto-scaling loop started by
+<code>controller$autoscale()</code>.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>crew_class_controller_group$descale(controllers = NULL)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
+compatible with the analogous method of controller groups.</p>
+</dd>
+</dl>
+
+</div>
 
 
 
@@ -3670,7 +3957,7 @@ columns corresponding to the output of <code>pop()</code>.
   scale = TRUE,
   collect = NULL,
   throttle = TRUE,
-  error = "silent",
+  error = NULL,
   controllers = NULL
 )</pre></div>
 
@@ -3692,7 +3979,7 @@ within the last <code>seconds_interval</code> seconds. <code>FALSE</code> to aut
 every time <code>scale()</code> is called. Throttling avoids
 overburdening the <code>mirai</code> dispatcher and other resources.</p>
 </dd>
-<dt><code>error</code></dt><dd><p>Character of length 1, choice of action if
+<dt><code>error</code></dt><dd><p><code>NULL</code> or character of length 1, choice of action if
 the popped task threw an error. Possible values:
 </p>
 
@@ -3704,7 +3991,7 @@ a value.
 <li> <p><code>"warn"</code>: throw a warning.
 </p>
 </li>
-<li> <p><code>"silent"</code>: do nothing special.
+<li> <p><code>NULL</code> or <code>"silent"</code>: do not react to errors.
 </p>
 </li></ul>
 </dd>
@@ -3742,6 +4029,7 @@ for ordinary controllers.
 <div class="r"><pre>crew_class_controller_group$collect(
   scale = TRUE,
   throttle = TRUE,
+  error = NULL,
   controllers = NULL
 )</pre></div>
 
@@ -3760,6 +4048,22 @@ to auto-scale workers to meet the demand of the task load.</p>
 within the last <code>seconds_interval</code> seconds. <code>FALSE</code> to auto-scale
 every time <code>scale()</code> is called. Throttling avoids
 overburdening the <code>mirai</code> dispatcher and other resources.</p>
+</dd>
+<dt><code>error</code></dt><dd><p><code>NULL</code> or character of length 1, choice of action if
+the popped task threw an error. Possible values:
+</p>
+
+<ul>
+<li> <p><code>"stop"</code>: throw an error in the main R session instead of returning
+a value.
+</p>
+</li>
+<li> <p><code>"warn"</code>: throw a warning.
+</p>
+</li>
+<li> <p><code>NULL</code> or <code>"silent"</code>: do not react to errors.
+</p>
+</li></ul>
 </dd>
 <dt><code>controllers</code></dt><dd><p>Character vector of controller names.
 Set to <code>NULL</code> to select all controllers.</p>
@@ -3795,8 +4099,8 @@ pop or collect one or more tasks.
 <div class="r"><pre>crew_class_controller_group$promise(
   mode = "one",
   seconds_interval = 0.1,
-  scale = TRUE,
-  throttle = TRUE,
+  scale = NULL,
+  throttle = NULL,
   controllers = NULL
 )</pre></div>
 
@@ -3844,18 +4148,13 @@ to any error callbacks registered with the promise.
 <code>later::later()</code> polling interval to asynchronously check if
 the promise can be resolved.</p>
 </dd>
-<dt><code>scale</code></dt><dd><p>Logical of length 1,
-whether to automatically call <code>scale()</code>
-to auto-scale workers to meet the demand of the task load.
-Scaling up on <code>pop()</code> may be important
-for transient or nearly transient workers that tend to drop off
-quickly after doing little work.
-See also the <code>throttle</code> argument.</p>
+<dt><code>scale</code></dt><dd><p>Deprecated on 2024-04-10 (version 0.9.1.9003)
+and no longer used. Now, <code>promise()</code> always turns on auto-scaling
+in a private <code>later</code> loop (if not already activated).</p>
 </dd>
-<dt><code>throttle</code></dt><dd><p><code>TRUE</code> to skip auto-scaling if it already happened
-within the last <code>seconds_interval</code> seconds. <code>FALSE</code> to auto-scale
-every time <code>scale()</code> is called. Throttling avoids
-overburdening the <code>mirai</code> dispatcher and other resources.</p>
+<dt><code>throttle</code></dt><dd><p>Deprecated on 2024-04-10 (version 0.9.1.9003)
+and no longer used. Now, <code>promise()</code> always turns on auto-scaling
+in a private <code>later</code> loop (if not already activated).</p>
 </dd>
 <dt><code>controllers</code></dt><dd><p>Not used. Included to ensure the signature is
 compatible with the analogous method of controller groups.</p>
@@ -6652,7 +6951,8 @@ crew_clean()
   tls_enable = NULL,
   tls_config = NULL,
   seconds_interval = 0.5,
-  seconds_timeout = 5
+  seconds_timeout = 5,
+  retry_tasks = TRUE
 )
 </code></pre>
 
@@ -6705,6 +7005,15 @@ such as checking <code>mirai::status()</code></p>
 <p>Number of seconds until timing
 out while waiting for certain synchronous operations to complete,
 such as checking <code>mirai::status()</code>.</p>
+</td></tr>
+<tr><td><code id="crew_client_+3A_retry_tasks">retry_tasks</code></td>
+<td>
+<p><code>TRUE</code> to automatically retry a task in the event of
+an unexpected worker exit. <code>FALSE</code> to give up on the first exit and
+return a <code>mirai</code> error code (code number 19).
+<code>TRUE</code> (default) is recommended in most situations.
+Use <code>FALSE</code> for debugging purposes, e.g. to confirm that a task
+is causing a worker to run out of memory or crash in some other way.</p>
 </td></tr>
 </table>
 
@@ -6862,6 +7171,7 @@ launch workers on local processes.
   seconds_idle = Inf,
   seconds_wall = Inf,
   seconds_exit = NULL,
+  retry_tasks = TRUE,
   tasks_max = Inf,
   tasks_timers = 0L,
   reset_globals = TRUE,
@@ -6954,6 +7264,15 @@ See the <code>walltime</code> argument of <code>mirai::daemon()</code>.</p>
 <td>
 <p>Deprecated on 2023-09-21 in version 0.5.0.9002.
 No longer necessary.</p>
+</td></tr>
+<tr><td><code id="crew_controller_local_+3A_retry_tasks">retry_tasks</code></td>
+<td>
+<p><code>TRUE</code> to automatically retry a task in the event of
+an unexpected worker exit. <code>FALSE</code> to give up on the first exit and
+return a <code>mirai</code> error code (code number 19).
+<code>TRUE</code> (default) is recommended in most situations.
+Use <code>FALSE</code> for debugging purposes, e.g. to confirm that a task
+is causing a worker to run out of memory or crash in some other way.</p>
 </td></tr>
 <tr><td><code id="crew_controller_local_+3A_tasks_max">tasks_max</code></td>
 <td>

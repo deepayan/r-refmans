@@ -22,6 +22,10 @@ function processMathHTML() {
 <li><a href='#Autoencoder'>
 <p>Autoencoder NN</p></a></li>
 <li><a href='#BP-class'><p>Class <code>"BP"</code></p></a></li>
+<li><a href='#LVQs_recall'>
+<p>Classify Data Using LVQs Code-Book Vectors</p></a></li>
+<li><a href='#LVQs_train'>
+<p>Train a Supervised LVQ</p></a></li>
 <li><a href='#LVQs-class'><p>Class <code>"LVQs"</code></p></a></li>
 <li><a href='#LVQu'>
 <p>Unsupervised LVQ</p></a></li>
@@ -46,7 +50,7 @@ in R</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.5</td>
+<td>0.2.8</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -68,7 +72,7 @@ in R</td>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>Rcpp , methods</td>
+<td>Rcpp , methods, graphics, utils, class</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -100,7 +104,7 @@ in R</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-09 19:15:03 UTC; vniko</td>
+<td>2024-06-10 15:54:10 UTC; Billy</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -108,7 +112,7 @@ in R</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-09 20:40:02 UTC</td>
+<td>2024-06-10 16:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -563,6 +567,282 @@ plot(iris_s, pch=bp_classification, main="Iris classified by a partialy trained 
 </code></pre>
 
 <hr>
+<h2 id='LVQs_recall'>
+Classify Data Using LVQs Code-Book Vectors
+</h2><span id='topic+LVQs_recall'></span>
+
+<h3>Description</h3>
+
+<p>This function simplifies applying a trained supervised Learning Vector Quantizer Neural Network (LVQ NN) to data (as compared to using the <code><a href="#topic+LVQs">LVQs</a></code> module directly). It uses the codebook vector information returned by <code><a href="#topic+LVQs_train">LVQs_train</a></code> to assign data to classes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>LVQs_recall(codebook_info,
+			data,
+			k = 1,
+			recall_rewards_limit = 1,
+			verbose = FALSE,
+			...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="LVQs_recall_+3A_codebook_info">codebook_info</code></td>
+<td>
+
+<p>LVQ codebook vector information (as returned by <code><a href="#topic+LVQs_train">LVQs_train</a></code>).
+</p>
+</td></tr>
+<tr><td><code id="LVQs_recall_+3A_data">data</code></td>
+<td>
+
+<p>data to be classified, numeric matrix (2d, cases in rows, variables in columns).
+</p>
+</td></tr>
+<tr><td><code id="LVQs_recall_+3A_k">k</code></td>
+<td>
+
+<p>number of neighbours (codebook vectors) considered. See <code>help("knn",package = class)</code>.
+</p>
+</td></tr>
+<tr><td><code id="LVQs_recall_+3A_recall_rewards_limit">recall_rewards_limit</code></td>
+<td>
+
+<p>do not use codebook vectors that were rewarded less that this limit during training.
+</p>
+</td></tr>
+<tr><td><code id="LVQs_recall_+3A_verbose">verbose</code></td>
+<td>
+
+<p>show extra information and plots.
+</p>
+</td></tr>
+<tr><td><code id="LVQs_recall_+3A_...">...</code></td>
+<td>
+
+<p>additional parameters for k-Nearest Neighbour Classification function (<code>class::knn</code>), see <code>help("knn",package = class)</code>.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This is a k-Nearest Neighbor Classifier (employs <code>class::knn</code>), customized for LVQs codebook vectors.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Factor of classifications ids for <code>data</code> (as returned by function <code>class::knn</code>, see <code>help("knn",package = class)</code>).
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Vasilis N. Nikolaidis &lt;vnnikolaidis@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Simpson, P. K. (1991). Artificial neural systems: Foundations, paradigms, applications, and implementations. New York: Pergamon Press. p.88.
+</p>
+<p>Venables, W. N. &amp; Ripley, B. D. (2002) Modern Applied Statistics with S.
+Fourth Edition. Springer, New York. ISBN 0-387-95457-0
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+LVQs_train">LVQs_train</a></code>, <code><a href="#topic+LVQs">LVQs</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># start with the well-know iris dataset:
+
+DATA &lt;- iris[,1:4]
+CLASS &lt;- as.factor(iris$Species)
+
+# Randomly split the data into training and testing sets:
+
+indices &lt;- sample(1:nrow(DATA), size = .5 * nrow(DATA))
+
+train_data  &lt;- DATA[indices, ]
+train_class &lt;- CLASS[indices]
+
+test_data  &lt;- DATA[-indices, ]
+test_class &lt;- CLASS[-indices]
+
+# train LVQ using train data and class:
+
+cv &lt;- LVQs_train(train_data,
+				 train_class,
+				 number_of_output_nodes_per_class = 4)
+
+# recall (classify) test data:
+
+cl &lt;- LVQs_recall(cv, test_data)
+
+# Compare known and returned test data classifications:
+
+print(table(test_class, cl))
+</code></pre>
+
+<hr>
+<h2 id='LVQs_train'>
+Train a Supervised LVQ
+</h2><span id='topic+LVQs_train'></span>
+
+<h3>Description</h3>
+
+<p>This function simplifies training a supervised Learning Vector Quantizer Neural Network (LVQ NN), as compared to using the <code><a href="#topic+LVQs">LVQs</a></code> module directly. Once the NN is trained, the function returns a matrix containing the codebook vector information. This matrix can then be used by <code><a href="#topic+LVQs_recall">LVQs_recall</a></code> to classify other data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>LVQs_train(	train_data,
+			train_class,
+			iterations = 1000,
+			number_of_output_nodes_per_class = 1,
+			reward_coef = +0.2,
+			punish_coef = -0.2,
+			training_order = "reorder_once",
+			initialization_method = "sample",
+			recall_train_data = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="LVQs_train_+3A_train_data">train_data</code></td>
+<td>
+
+<p>training data, numeric matrix (2d, cases in rows, variables in columns).
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_train_class">train_class</code></td>
+<td>
+
+<p>vector of integers or factor containing the desired class id for each training data case (row). Expected ids start from 1.
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_iterations">iterations</code></td>
+<td>
+
+<p>integer, number of training epochs, i.e. number of times the entire training data set will be presented to the NN during training. Maximum allowed is 10000.
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_number_of_output_nodes_per_class">number_of_output_nodes_per_class</code></td>
+<td>
+
+<p>integer, number of output nodes (and thus codebook vectors) to be used per class. A single value is expected, all classes are assigned this (same) number of output nodes.
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_reward_coef">reward_coef</code></td>
+<td>
+
+<p>coefficient used when a output node (and thus codebook vector) is rewarded (has been correctly selected when a training data vector is encoded) and is adjusted closer to the data. For more, see <code>set_encoding_coefficients</code> method of <code><a href="#topic+LVQs">LVQs</a></code>
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_punish_coef">punish_coef</code></td>
+<td>
+
+<p>coefficient used when a output node (and thus codebook vector) is punished (has been incorrectly selected when a training data vector is encoded) and is adjusted away from the data. For more, see <code>set_encoding_coefficients</code> method of <code><a href="#topic+LVQs">LVQs</a></code>
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_training_order">training_order</code></td>
+<td>
+
+<p>order by which the data set vectors will be presented to LVQs for encoding during each training iteration (epoch). Options are: <code>'original'</code> (vectors are presented in the order in which they are stored, i.e. first row to last), <code>'reorder_once'</code> (vectors are randomly reordered once, then presented in this same order in all iterations), and <code>'reorder'</code> (vectors are randomly reordered before each iteration).
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_initialization_method">initialization_method</code></td>
+<td>
+
+<p>defines how the connections weights (codebook vectors) will be initialized. Options are: <code>'0to1'</code> (random values in [0 1] range, note: internal training data will also be scaled to the same range), <code>'means'</code> codebook vectors will be the corresponding class's mean vector), <code>'first'</code> (the first vector(s) of each class will be used as initial codebook vector(s), randomly re-selected if not enough are available), and <code>'sample'</code> (randomly selected vectors of each class will be used as initial codebook vectors, with replacement if not enough are available).
+</p>
+</td></tr>
+<tr><td><code id="LVQs_train_+3A_recall_train_data">recall_train_data</code></td>
+<td>
+
+<p>once training completes, recall the training data and show accuracy and confusion matrix.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This is a wrapper function which internally employs an instance of the <code><a href="#topic+LVQs">LVQs</a></code> module. For more details, see  <code><a href="#topic+LVQs">LVQs</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A numeric matrix containing the codebook vector coordinates, the number of times each vector was rewarded during encoding (second from last column named <code>'Rewards'</code>, ) and the class it corresponds to  (last column, named <code>'Class'</code>). This matrix can be used by <code><a href="#topic+LVQs_recall">LVQs_recall</a></code> function to classify other data.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Vasilis N. Nikolaidis &lt;vnnikolaidis@gmail.com&gt;
+</p>
+
+
+<h3>References</h3>
+
+<p>Simpson, P. K. (1991). Artificial neural systems: Foundations, paradigms, applications, and implementations. New York: Pergamon Press. p.88.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+LVQs_recall">LVQs_recall</a></code>, <code><a href="#topic+LVQs">LVQs</a></code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># start with the well-know iris dataset:
+
+DATA &lt;- iris[,1:4]
+CLASS &lt;- as.factor(iris$Species)
+
+# Randomly split the data into training and testing sets:
+
+indices &lt;- sample(1:nrow(DATA), size = .5 * nrow(DATA))
+
+train_data  &lt;- DATA[indices, ]
+train_class &lt;- CLASS[indices]
+
+test_data  &lt;- DATA[-indices, ]
+test_class &lt;- CLASS[-indices]
+
+# train LVQ using train data and class:
+
+cv &lt;- LVQs_train(train_data,
+				 train_class,
+				 number_of_output_nodes_per_class = 4)
+
+# recall (classify) test data:
+
+cl &lt;- LVQs_recall(cv, test_data)
+
+# Compare known and returned test data classifications:
+
+print(table(test_class, cl))
+</code></pre>
+
+<hr>
 <h2 id='LVQs-class'>Class <code>"LVQs"</code></h2><span id='topic+LVQs-class'></span><span id='topic+Rcpp_LVQs-class'></span><span id='topic+LVQs'></span>
 
 <h3>Description</h3>
@@ -597,7 +877,7 @@ plot(iris_s, pch=bp_classification, main="Iris classified by a partialy trained 
 
 
 <dl>
-<dt><code>encode(data, desired_class_ids, training_epochs)</code>:</dt><dd><p> Encode input and output (classification) for a dataset using LVQ NN. Parameters are:</p>
+<dt><code>encode(data, desired_class_ids, training_epochs)</code>:</dt><dd><p> Encode input and output (classification) for a dataset using a LVQ NN (which sets up accordingly if required). Parameters are:</p>
 </dd>
 </dl>
 
@@ -613,7 +893,47 @@ plot(iris_s, pch=bp_classification, main="Iris classified by a partialy trained 
 </li></ul>
 
 <dl>
-<dt><code>recall(data_in)</code>:</dt><dd><p> Get output (classification) for a dataset (numeric matrix <code>data_in</code>) from the (trained) LVQ NN. The <code>data_in</code> dataset should be 2-d containing  data cases (rows) to be presented to the NN and is expected to have same number or columns as the original training data. Returns a vector of integers containing a class id for each case (row).</p>
+<dt><code>recall(data_in, min_rewards)</code>:</dt><dd><p> Get output (classification) for a dataset (numeric matrix <code>data_in</code>) from the (trained) LVQ NN. The <code>data_in</code> dataset should be 2-d containing  data cases (rows) to be presented to the NN and is expected to have same number or columns as the original training data. Returns a vector of integers containing a class id for each case (row).Parameters are:
+</p>
+
+<ul>
+<li><p><code>data_in</code>: numeric 2-d matrix containing  data cases (as rows).
+</p>
+</li>
+<li><p><code>min_rewards</code>: (optional) integer, ignore output nodes that (during encoding/training) were rewarded less times that this number (default is 0, i.e. use all nodes).
+</p>
+</li></ul>
+
+</dd>
+<dt><code>setup( input_length, int number_of_classes, number_of_nodes_per_class )</code>:</dt><dd><p>Setup an untrained supervised LVQ for given input data vector dimension and number of classes. Parameters are:
+</p>
+
+<ul>
+<li><p><code>input_length</code>: integer, dimension (length) of input data vectors.
+</p>
+</li>
+<li><p><code>number_of_classes</code>: integer, number of classes in data (including empty ones).
+</p>
+</li>
+<li><p><code>number_of_nodes_per_class</code>: (optional) integer, number of output nodes (PE) to be used per class. Default is 1.
+</p>
+</li></ul>
+
+</dd>
+<dt><code>train_single (data_in, class_id, epoch)</code>:</dt><dd><p> Encode a single [input vector,class] pair in the LVQ NN. Only performs a single training iteration (multiple may be required for proper encoding). Vector length and class id should be compatible to the current NN (as resulted from the <code>encode</code>, <code>setup</code> or <code>load</code> methods). Returns <code>TRUE</code> if succesfull, <code>FALSE</code> otherwise. Parameters are:
+</p>
+
+<ul>
+<li><p><code>data_in</code>: numeric, data vector to be encoded.
+</p>
+</li>
+<li><p><code>class_id</code>: integer, id of class corresponding to the data vector.(ids start from 0).
+</p>
+</li>
+<li><p><code>epoch</code>: integer, presumed epoch during which this encoding occurs (learning rate decreases with epochs in supervised LVQ).
+</p>
+</li></ul>
+
 </dd>
 <dt><code>get_weights()</code>:</dt><dd><p>Get the current weights (codebook vector coordinates) of the 2nd component (<code>connection_set</code>). If successful, returns NumericVector of connection weights (otherwise vector of zero length).
 </p>
@@ -627,7 +947,7 @@ plot(iris_s, pch=bp_classification, main="Iris classified by a partialy trained 
 </li></ul>
 
 </dd>
-<dt><code>set_number_of_nodes_per_class( n )</code>:</dt><dd><p>Set the number of nodes in the output layer (and thus incoming connections whose weights form codebook vectors) that will be used per class. Default is 1, i.e. each class in the data to be encoded in the NN corresponds to a single node (PE) in it's output layer. Returns resulting number of nodes that will be used. Parameters are:
+<dt><code>set_number_of_nodes_per_class( n )</code>:</dt><dd><p>Set the number of nodes in the output layer (and thus incoming connections whose weights form codebook vectors) that will be used per class. Default is 1, i.e. each class in the data to be encoded in the NN corresponds to a single node (PE) in it's output layer. This method affects how the new NN topology will be created, therefore this method should be used before the NN has been set up (either by <code>encode</code> or <code>setup</code>) or after a NN topology (and NN state) has been loaded from file via <code>load</code>). Returns number of nodes to be used per class. Parameters are:
 </p>
 
 <ul>
@@ -638,31 +958,43 @@ plot(iris_s, pch=bp_classification, main="Iris classified by a partialy trained 
 </dd>
 <dt><code>get_number_of_nodes_per_class( )</code>:</dt><dd><p>Get the number of nodes in the output layer that are used per class.</p>
 </dd>
-<dt><code>setup(  input_length, int number_of_classes )</code>:</dt><dd><p>Setup an untrained supervised LVQ for given input data vector dimension and number of classes.Parameters are:
-</p>
-
-<ul>
-<li><p><code>input_length</code>: integer, dimension (length) of input data vectors.
-</p>
-</li>
-<li><p><code>number_of_classes</code>: integer, number of classes in data.
-</p>
-</li></ul>
-
-</dd>
 <dt><code>enable_punishment( )</code>:</dt><dd><p> Enables negative reinfoncement. During encoding incorrect winner nodes will be notified and incoming weights will be adjusted accordingly. Returns TRUE if punishment is enabled, FALSE otherwise. </p>
 </dd>
 <dt><code>disable_punishment( )</code>:</dt><dd><p> Disables negative reinfoncement. During encoding incorrect winner nodes will not be notified, thus incoming weights will not be adjusted accordingly. Adjustments will only occur in correct winning nodes. Returns TRUE if punishment is enabled, FALSE otherwise. </p>
 </dd>
 <dt><code>get_number_of_rewards( )</code>:</dt><dd><p> Get the number of times an output node was positively reinforced during data encoding. Returns NumericVector containing results per output node. </p>
 </dd>
+<dt><code>set_weight_limits(  min, max )</code>:</dt><dd><p>Define the minimum and maximum values that will be allowed in connection weights during encoding (limiting results of punishment). The NN must have been set up before using this method (either by <code>encode</code>, <code>setup</code> or <code>load</code>). Parameters are:
+</p>
+
+<ul>
+<li><p><code>min</code>: numeric, minimum weight allowed.
+</p>
+</li>
+<li><p><code>max</code>: numeric, maximum weight allowed.
+</p>
+</li></ul>
+
+</dd>
+<dt><code>set_encoding_coefficients( reward, punish )</code>:</dt><dd><p>Define coefficients used for reward and punishment during encoding. In this version, the actual learning rate a(t) also depends on the epoch t, i.e. a(t) = coefficient * (1 - (t/10000)). The NN must have been set up before using this method (either by <code>encode</code>, <code>setup</code> or <code>load</code>). Parameters are:
+</p>
+
+<ul>
+<li><p><code>reward</code>: numeric, coefficient used to reward a node that classified data correctly (usually positive, e.g. 0.2).
+</p>
+</li>
+<li><p><code>punish</code>: numeric, coefficient used to punish a node that classified data incorrectly (usually negative, e.g. -0.2).
+</p>
+</li></ul>
+
+</dd>
 <dt><code>print()</code>:</dt><dd><p> print NN structure. </p>
 </dd>
 <dt><code>show()</code>:</dt><dd><p> print NN structure. </p>
 </dd>
-<dt><code>load(filename)</code>:</dt><dd><p> retrieve the NN from specified file. </p>
+<dt><code>load(filename)</code>:</dt><dd><p> Retrieve the state of the NN from specified file. Note: parameters such as number of nodes per class or reward/punish coefficients are not retrieved. </p>
 </dd>
-<dt><code>save(filename)</code>:</dt><dd><p> save the NN to specified file. </p>
+<dt><code>save(filename)</code>:</dt><dd><p> Store the state of the current NN to specified file. Note: parameters such as number of nodes per class or reward/punish coefficients are not stored.</p>
 </dd>
 </dl>
 
@@ -673,9 +1005,8 @@ objectPointer (&quot;RcppClass&quot;), initialize (&quot;RcppClass&quot;), show 
 
 <h3>Note</h3>
 
-<p>The NN used in this module uses supervised training for data classification (described as Supervised Learning LVQ in Simpson (1991)). Data should be scaled in 0 to 1 range.
-</p>
-<p>(This module uses Rcpp to employ 'lvq_nn' class in nnlib2.)
+<p>This module uses Rcpp to employ 'lvq_nn' class in nnlib2.
+The NN used in this module uses supervised training for data classification (described as Supervised Learning LVQ in Simpson (1991)). By default, initial weights are random values (uniform distribution) in 0 to 1 range. As these weights represent vector coordinates (forming the class reference, prototype or codebook vectors), it is important that input data is also scaled to 0 to 1 range.
 </p>
 
 
@@ -693,81 +1024,177 @@ objectPointer (&quot;RcppClass&quot;), initialize (&quot;RcppClass&quot;), show 
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+LVQu">LVQu</a></code> (unsupervised LVQ function).
+<p><code><a href="#topic+LVQs_train">LVQs_train</a></code>, <code><a href="#topic+LVQs_recall">LVQs_recall</a></code> (LVQs helper functions) and <code><a href="#topic+LVQu">LVQu</a></code> (unsupervised LVQ function)
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># LVQ expects data in 0 to 1 range, so scale some numeric data...
+<pre><code class='language-R'># Create some compatible data (here, from iris data set):
+
+# Data should be in 0 to 1 range if random values in that range are used
+# as initial weights (the default method).
+# Thus, LVQ expects data in 0 to 1 range, scale the (numeric) data...
+
 DATA &lt;- as.matrix(iris[1:4])
 c_min &lt;- apply(DATA, 2, FUN = "min")
 c_max &lt;- apply(DATA, 2, FUN = "max")
 c_rng &lt;- c_max - c_min
 DATA &lt;- sweep(DATA, 2, FUN = "-", c_min)
 DATA &lt;- sweep(DATA, 2, FUN = "/", c_rng)
+NUM_VARIABLES &lt;- ncol(DATA)
 
-# create a vector of desired class ids (starting from 0):
+# create a vector of desired class ids (consecutive ids, starting from 0):
 CLASS &lt;- as.integer(iris$Species) - 1
 NUM_CLASSES &lt;- length(unique(CLASS))
 
-# now create the NN:
-lvq &lt;- new("LVQs")
+# avoid using data with NA or other special values:
+if (sum(is.na(DATA)) &gt; 0)
+  stop("NAs found in DATA")
+if (sum(is.na(CLASS)) &gt; 0)
+  stop("NAs found in CLASS")
 
-# Optionally, the output layer could be expanded, e.g. use 2 nodes per each class:
-lvq$set_number_of_nodes_per_class(2)
+# Example 1:
+# (Note: the example uses DATA and CLASS variables defined earlier).
 
-# Optionally, for experimentation negative reinforcement can be disabled:
-# lvq$disable_punishment()
+  # use half of the data to train, the other half to evaluate how well LVQ was
+  # trained (interlaced half is used to select members of these data sets):
 
-# train it:
-lvq$encode(DATA, CLASS, 100)
+  l1_train_dataset &lt;- DATA[c(TRUE, FALSE),]
+  l1_train_class   &lt;- CLASS[c(TRUE, FALSE)]
+  l1_test_dataset &lt;- DATA[c(FALSE, TRUE),]
+  l1_test_class   &lt;- CLASS[c(FALSE, TRUE)]
 
-# recall the same data (a simple check of how well the LVQ was trained):
-lvq_recalled_class_ids &lt;- lvq$recall(DATA)
+  # now create the NN:
+  l1 &lt;- new("LVQs")
 
-# show results:
-cat("Correct: ", sum(lvq_recalled_class_ids == CLASS), "\n")
+  # train it:
+  l1$encode(l1_train_dataset, l1_train_class, 100)
 
-# Done. Optional part for further examining results of training:
+  # recall the same data (a simple check of how well the LVQ was trained):
+  l1_recalled_class_ids &lt;- l1$recall(l1_test_dataset)
 
-# collect the connection weights (codebook vector coordinates), number
-# of rewards per node and corresponding class:
+  # show results:
+  cat(
+    "Example 1 results: Correct ",
+    sum(l1_recalled_class_ids == l1_test_class),
+    "out of",
+    nrow(l1_test_dataset),
+    ".\n"
+  )
 
-lvq_codebook_vector_info &lt;-
-	cbind(
-		matrix(
-			lvq$get_weights(),
-			ncol = ncol(DATA),
-			byrow = TRUE ),
-			lvq$get_number_of_rewards(),
-			rep( 0:(NUM_CLASSES - 1),
-				 rep(lvq$get_number_of_nodes_per_class(),
-				 NUM_CLASSES) )
-	)
+# Example 2: (playing around with some optional settings)
+# (Note: the example uses DATA, CLASS, NUM_CLASSES variables defined earlier).
 
-colnames(lvq_codebook_vector_info) &lt;- c(colnames(DATA), "Rewarded", "Class")
+  # create the NN:
+  l2 &lt;- new("LVQs")
 
-print(lvq_codebook_vector_info)
+  # Optionally, the output layer could be expanded, e.g. use 2 nodes per each class:
+  l2$set_number_of_nodes_per_class(2)
 
-# plot recalled classification:
+  # Optionally, for experimentation negative reinforcement can be disabled:
+  l2$disable_punishment()
 
-plot(
-	DATA,
-	pch = lvq_recalled_class_ids,
-	main = "LVQ recalled clusters (LVQs module)",
-	xlim = c(-0.2, 1.2),
-	ylim = c(-0.2, 1.2) )
+  # train it:
+  l2$encode(DATA, CLASS, 100)
 
-# plot connection weights (a.k.a codebook vectors):
-# the big circles are codebook vectors, (crossed-out if they were never used
-# to assign a training data point to the correct class, i.e. never rewarded)
+  # recall the same data (a simple check of how well the LVQ was trained):
+  l2_recalled_class_ids &lt;- l2$recall(DATA)
 
-points(
-	lvq_codebook_vector_info[, 1:2],
-	cex = 4,
-	pch = ifelse(lvq_codebook_vector_info[, "Rewarded"] &gt; 0,	1, 13),
-	col  = lvq_codebook_vector_info[, "Class"] + 10 )
+  # Done. Optional part for further examining results of training:
+
+  # collect the connection weights (codebook vector coordinates), number
+  # of rewards per node and corresponding class:
+
+  l2_codebook_vector_info &lt;-
+    cbind(
+      matrix(l2$get_weights(),
+             ncol = ncol(DATA),
+             byrow = TRUE),
+      l2$get_number_of_rewards(),
+      rep(
+        0:(NUM_CLASSES - 1),
+        rep(l2$get_number_of_nodes_per_class(),
+            NUM_CLASSES)
+      )
+    )
+
+  colnames(l2_codebook_vector_info) &lt;-
+    c(colnames(DATA), "Rewarded", "Class")
+
+  print(l2_codebook_vector_info)
+
+  # plot recalled classification:
+
+  plot(
+    DATA,
+    pch = l2_recalled_class_ids,
+    main = "LVQ recalled clusters (LVQs module)",
+    xlim = c(-0.2, 1.2),
+    ylim = c(-0.2, 1.2)
+  )
+
+  # plot connection weights (a.k.a codebook vectors):
+  # the big circles are codebook vectors, (crossed-out if they were never used
+  # to assign a training data point to the correct class, i.e. never rewarded)
+
+  points(
+    l2_codebook_vector_info[, 1:2],
+    cex = 4,
+    pch = ifelse(l2_codebook_vector_info[, "Rewarded"] &gt; 0,	1, 13),
+    col  = l2_codebook_vector_info[, "Class"] + 10
+  )
+
+  # show results:
+  cat(
+    "Example 2 results: Correct ",
+    sum(l2_recalled_class_ids == CLASS),
+    "out of",
+    nrow(DATA),
+    ".\n"
+  )
+
+# Example 3 (demonstrate 'setup' and some other methods it allows):
+# (Note: uses DATA, CLASS, NUM_VARIABLES, NUM_CLASSES defined earlier).
+
+  # create the NN:
+  l3 &lt;- new("LVQs")
+
+  l3_number_of_output_nodes_per_class &lt;- 3
+
+  # setup the LVQ:
+  l3$setup(NUM_VARIABLES,
+           NUM_CLASSES,
+           l3_number_of_output_nodes_per_class)
+  l3$set_weight_limits(-0.5 , 1.5)
+  l3$set_encoding_coefficients(0.2,-sum(CLASS == 0) / length(CLASS))
+
+  # experiment with setting initial weights (codebook vectors) per output node;
+  # here, weights are set to the mean vector of the training set data for the
+  # class the output node corresponds to:
+
+  class_means &lt;- aggregate(DATA, list(CLASS), FUN = mean)
+  class_means &lt;- t(class_means)[-1,]
+  l3_initial_weights &lt;- NULL
+  for (i in 1:l3_number_of_output_nodes_per_class)
+    l3_initial_weights &lt;- rbind(l3_initial_weights, class_means)
+
+  l3$set_weights(as.vector(l3_initial_weights))
+
+  # now train it:
+  l3$encode(DATA, CLASS, 100)
+
+  # recall the same data (a simple check of how well the LVQ was trained):
+  l3_recalled_class_ids &lt;- l3$recall(DATA, 0)
+
+  # show results:
+  cat(
+    "Example 3 results: Correct ",
+    sum(l3_recalled_class_ids == CLASS),
+    "out of",
+    nrow(DATA),
+    ".\n"
+  )
 </code></pre>
 
 <hr>
@@ -798,7 +1225,7 @@ Unsupervised LVQ
 <tr><td><code id="LVQu_+3A_data">data</code></td>
 <td>
 
-<p>data to be clustered, a numeric matrix, (2d, cases in rows, variables in columns). Data should be in 0 to 1 range.
+<p>data to be clustered, a numeric matrix, (2d, cases in rows, variables in columns). By default, initial weights are set to random values in [0 1], so data should also be in 0 to 1 range.
 </p>
 </td></tr>
 <tr><td><code id="LVQu_+3A_max_number_of_desired_clusters">max_number_of_desired_clusters</code></td>

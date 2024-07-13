@@ -50,7 +50,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.4-5</td>
+<td>0.5-0</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -58,7 +58,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-06-23</td>
+<td>2024-05-30</td>
 </tr>
 <tr>
 <td>BugReports:</td>
@@ -112,7 +112,7 @@ gridExtra</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-06-26 11:50:46 UTC; drizo</td>
+<td>2024-05-30 07:00:55 UTC; drizo</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -127,7 +127,7 @@ gridExtra</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-06-26 13:30:05 UTC</td>
+<td>2024-05-30 07:30:03 UTC</td>
 </tr>
 </table>
 <hr>
@@ -155,11 +155,11 @@ Type: </td><td style="text-align: left;"> Package</td>
 </tr>
 <tr>
  <td style="text-align: left;">
-Version: </td><td style="text-align: left;"> 0.4-5</td>
+Version: </td><td style="text-align: left;"> 0.5-0</td>
 </tr>
 <tr>
  <td style="text-align: left;">
-Date: </td><td style="text-align: left;"> 2023-06-23</td>
+Date: </td><td style="text-align: left;"> 2024-05-30</td>
 </tr>
 <tr>
  <td style="text-align: left;">
@@ -216,13 +216,13 @@ fitted joint models. The most important of those are included in the
 
 ## S3 method for class 'jm'
 tvROC(object, newdata, Tstart, Thoriz = NULL,
-    Dt = NULL, ...)
+    Dt = NULL, type_weights = c("model-based", "IPCW"), ...)
 
 tvAUC(object, newdata, Tstart, ...)
 
 ## S3 method for class 'jm'
 tvAUC(object, newdata, Tstart, Thoriz = NULL,
-    Dt = NULL, ...)
+    Dt = NULL, type_weights = c("model-based", "IPCW"), ...)
 
 ## S3 method for class 'tvROC'
 tvAUC(object, ...)
@@ -247,7 +247,7 @@ tvEPCE(object, newdata, Tstart, Thoriz = NULL, Dt = NULL, eps = 0.001,
     parallel = c("snow", "multicore"),
     cores = parallelly::availableCores(omit = 1L), ...)
 
-create_folds(data, V = 5, id_var = "id", seed = 123L)
+create_folds(data, V = 5, id_var = "id", strata = NULL, seed = 123L)
 </code></pre>
 
 
@@ -332,6 +332,10 @@ predicted probabilities used in the Cox model that assess calibration.</p>
 <tr><td><code id="Accuracy+2B20Measures_+3A_id_var">id_var</code></td>
 <td>
 <p>character string denoting the name of the subject id variable in <code>data</code>.</p>
+</td></tr>
+<tr><td><code id="Accuracy+2B20Measures_+3A_strata">strata</code></td>
+<td>
+<p>character vector with the names of stratifying variables.</p>
 </td></tr>
 <tr><td><code id="Accuracy+2B20Measures_+3A_seed">seed</code></td>
 <td>
@@ -624,7 +628,8 @@ Joint Models for Longitudinal and Time-to-Event Data
 <h3>Usage</h3>
 
 <pre><code class='language-R'>jm(Surv_object, Mixed_objects, time_var, recurrent = FALSE,
-  functional_forms = NULL, data_Surv = NULL, id_var = NULL, priors = NULL,
+  functional_forms = NULL, which_independent = NULL,
+  data_Surv = NULL, id_var = NULL, priors = NULL,
   control = NULL, ...)
 
 value(x)
@@ -695,6 +700,10 @@ tv(x, knots = NULL, ord = 2L)
 <tr><td><code id="jm_+3A_functional_forms">functional_forms</code></td>
 <td>
 <p>a <code>list</code> of formulas. Each formula corresponds to one longitudinal outcome and specifies the association structure between that outcome and the survival submodel as well as any interaction terms between the components of the longitudinal outcome and the survival submodel. See <b>Examples</b>.</p>
+</td></tr>
+<tr><td><code id="jm_+3A_which_independent">which_independent</code></td>
+<td>
+<p>a numeric indicator matrix denoting which outcomes are independent. It can also be the character string <code>"all"</code> in which case all longitudinal outcomes are assumed independent. Only relevant in joint models with multiple longitudinal outcomes.</p>
 </td></tr>
 <tr><td><code id="jm_+3A_data_surv">data_Surv</code></td>
 <td>
@@ -835,14 +844,20 @@ h_0. Defaults to 2.</p>
 </dd>
 <dt><code>seed</code></dt><dd><p>the seed used in the sampling procedures. Defaults to 123.</p>
 </dd>
-<dt><code>MALA</code></dt><dd><p>a <code>logical</code>; if TRUE, the MALA algorithm is used when updating the elements
+<dt><code>MALA</code></dt><dd><p><code>logical</code>; if <code>TRUE</code>, the MALA algorithm is used when updating the elements
 of the Cholesky factor of the D matrix. Defaults to <code>FALSE</code>.</p>
 </dd>
-<dt><code>save_random_effects</code></dt><dd><p>a <code>logical</code>; if TRUE, the full MCMC results of the random
+<dt><code>save_random_effects</code></dt><dd><p><code>logical</code>; if <code>TRUE</code>, the full MCMC results of the random
 effects will be saved and returned with the <code>jm</code> object. Defaults to <code>FALSE</code>.</p>
+</dd>
+<dt><code>save_logLik_contributions</code></dt><dd><p><code>logical</code>; if <code>TRUE</code>, the log-likelihood contributions are
+saved in the <code>mcmc</code> component of the <code>jm</code> object. Defaults to <code>FALSE</code></p>
 </dd>
 <dt><code>cores</code></dt><dd><p>an integer specifying the number of cores to use for running the chains in
 parallel; no point of setting this greater than <code>n_chains</code>.</p>
+</dd>
+<dt><code>parallel</code></dt><dd><p>a character string indicating how the parallel sampling of the chains will
+be performed. Options are <code>"snow"</code> (default) and <code>"multicore"</code>.</p>
 </dd>
 <dt><code>knots</code></dt><dd><p>a numeric vector with the position of the knots for the B-spline approximation
 of the log baseline hazard function.</p>
@@ -1602,14 +1617,12 @@ Predictions from Joint Models
 
 <pre><code class='language-R'>
 ## S3 method for class 'jm'
-predict(object, newdata = NULL, newdata2 = NULL, times = NULL,
-  times_per_id = FALSE, process = c("longitudinal", "event"),
-  type_pred = c("response", "link"),
-  type = c("subject_specific", "mean_subject"),
-  level = 0.95, return_newdata = FALSE, return_mcmc = FALSE,
-  n_samples = 200L, n_mcmc = 55L, parallel = c("snow", "multicore"),
-  cores = NULL, seed = 123L,
-  ...)
+predict(object,
+    newdata = NULL, newdata2 = NULL, times = NULL,
+    process = c("longitudinal", "event"),
+    type_pred = c("response", "link"),
+    type = c("subject_specific", "mean_subject"),
+    control = NULL, ...)
 
 ## S3 method for class 'predict_jm'
 plot(x, x2 = NULL, subject = 1, outcomes = 1,
@@ -1625,14 +1638,12 @@ plot(x, x2 = NULL, subject = 1, outcomes = 1,
   ...)
 
 ## S3 method for class 'jmList'
-predict(object, weights, newdata = NULL, newdata2 = NULL,
- times = NULL, times_per_id = FALSE, process = c("longitudinal", "event"),
- type_pred = c("response", "link"),
- type = c("subject_specific", "mean_subject"),
- level = 0.95, return_newdata = FALSE,
- return_mcmc = FALSE, n_samples = 200L, n_mcmc = 55L,
- parallel = c("snow", "multicore"),
- cores = parallelly::availableCores(omit = 1L), ...)
+predict(object,
+  weights, newdata = NULL, newdata2 = NULL,
+  times = NULL, process = c("longitudinal", "event"),
+  type_pred = c("response", "link"),
+  type = c("subject_specific", "mean_subject"),
+  control = NULL, ...)
 </code></pre>
 
 
@@ -1655,54 +1666,53 @@ predict(object, weights, newdata = NULL, newdata2 = NULL,
 <td>
 <p>a numeric vector of future times to calculate predictions.</p>
 </td></tr>
-<tr><td><code id="Predictions_+3A_times_per_id">times_per_id</code></td>
-<td>
-<p>logical; if <code>TRUE</code> the <code>times</code> argument is a vector of times equal to the number of
-subjects in <code>newdata</code>.</p>
-</td></tr>
 <tr><td><code id="Predictions_+3A_process">process</code></td>
 <td>
 <p>for which process to calculation predictions, for the longitudinal outcomes or the event times.</p>
-</td></tr>
-<tr><td><code id="Predictions_+3A_type_pred">type_pred</code></td>
-<td>
-<p>type of predictions; options are <code>"response"</code> using the inverse link function in GLMMs, and <code>"link"</code> that correspond to the linear predictor.</p>
 </td></tr>
 <tr><td><code id="Predictions_+3A_type">type</code></td>
 <td>
 <p>level of predictions; only relevant when <code>type_pred = "longitudinal"</code>. Option <code>type = "subject_specific"</code> combines the fixed- and random-effects parts, whereas <code>type = "mean_subject"</code> uses only the fixed effects.</p>
 </td></tr>
-<tr><td><code id="Predictions_+3A_level">level</code></td>
+<tr><td><code id="Predictions_+3A_type_pred">type_pred</code></td>
 <td>
-<p>the level of the credible interval.</p>
+<p>type of predictions; options are <code>"response"</code> using the inverse link function in GLMMs, and <code>"link"</code> that correspond to the linear predictor.</p>
 </td></tr>
-<tr><td><code id="Predictions_+3A_return_newdata">return_newdata</code></td>
+<tr><td><code id="Predictions_+3A_control">control</code></td>
 <td>
-<p>logical; should <code>predict()</code> return the predictions as extra columns in <code>newdata</code> and <code>newdata2</code>.</p>
-</td></tr>
-<tr><td><code id="Predictions_+3A_return_mcmc">return_mcmc</code></td>
-<td>
-<p>logical; if <code>TRUE</code> the mcmc sample for the predictions is returned. It can be <code>TRUE</code> only in conjuction with <code>return_newdata</code> being <code>FALSE</code>.</p>
-</td></tr>
-<tr><td><code id="Predictions_+3A_n_samples">n_samples</code></td>
-<td>
-<p>the number of samples to use from the original MCMC sample of <code>object</code>.</p>
-</td></tr>
-<tr><td><code id="Predictions_+3A_n_mcmc">n_mcmc</code></td>
-<td>
-<p>the number of Metropolis-Hastings iterations for sampling the random effects per iteration of <code>n_samples</code>; only the last iteration is retained.</p>
-</td></tr>
-<tr><td><code id="Predictions_+3A_parallel">parallel</code></td>
-<td>
-<p>character string; what type of parallel computing to use.</p>
-</td></tr>
-<tr><td><code id="Predictions_+3A_cores">cores</code></td>
-<td>
-<p>how many number of cores to use. If there more than 20 subjects in <code>newdata</code>, parallel computing is invoked with four cores by default. If <code>cores = 1</code>, no parallel computing is used.</p>
-</td></tr>
-<tr><td><code id="Predictions_+3A_seed">seed</code></td>
-<td>
-<p>an integer denoting the seed.</p>
+<p>a named <code>list</code> of control parameters:
+</p>
+
+<dl>
+<dt>all_times</dt><dd><p>logical; if <code>TRUE</code> predictions for the longitudinal outcomes are calculated for all the times
+given in the <code>times</code> argumet, not only the ones after the last longitudinal measurement.</p>
+</dd></dl>
+<p>.
+</p>
+<dl>
+<dt>times_per_id</dt><dd><p>logical; if <code>TRUE</code> the <code>times</code> argument is a vector of times equal to the number of
+subjects in <code>newdata</code>.</p>
+</dd>
+<dt>level</dt><dd><p>the level of the credible interval.</p>
+</dd>
+<dt>return_newdata</dt><dd><p>logical; should <code>predict()</code> return the predictions as extra columns in <code>newdata</code> and <code>newdata2</code>.</p>
+</dd>
+<dt>use_Y</dt><dd><p>logical; should the longitudinal measurements be used in the posterior of the random effects.</p>
+</dd>
+<dt>return_mcmc</dt><dd><p>logical; if <code>TRUE</code> the mcmc sample for the predictions is returned. It can be <code>TRUE</code> only in conjuction with <code>return_newdata</code> being <code>FALSE</code>.</p>
+</dd>
+<dt>n_samples</dt><dd><p>the number of samples to use from the original MCMC sample of <code>object</code>.</p>
+</dd>
+<dt>n_mcmc</dt><dd><p>the number of Metropolis-Hastings iterations for sampling the random effects per iteration of <code>n_samples</code>; only the last iteration is retained.</p>
+</dd>
+<dt>parallel</dt><dd><p>character string; what type of parallel computing to use. Options are <code>"snow"</code> (default) and <code>"multicore"</code>.</p>
+</dd>
+<dt>cores</dt><dd><p>how many number of cores to use. If there more than 20 subjects in <code>newdata</code>, parallel computing is invoked with four cores by default. If <code>cores = 1</code>, no parallel computing is used.</p>
+</dd>
+<dt>seed</dt><dd><p>an integer denoting the seed.</p>
+</dd>
+</dl>
+
 </td></tr>
 <tr><td><code id="Predictions_+3A_x">x</code>, <code id="Predictions_+3A_x2">x2</code></td>
 <td>
@@ -1743,7 +1753,7 @@ longitudinal outcomes are plotted.</p>
 </td></tr>
 <tr><td><code id="Predictions_+3A_...">...</code></td>
 <td>
-<p>extra aguments; currently none is used.</p>
+<p>aguments passed to control.</p>
 </td></tr>
 </table>
 
@@ -1883,19 +1893,18 @@ for data frame <code>prothros</code> the time to death or censoring.</p>
 
 <h3>Description</h3>
 
-<p>This function combines two data frames, the recurring event and terminal event 
+<p>This function combines two data frames, the recurring-event and terminal-event/competing-risks 
 datasets, into one. Each subject has as many rows in the new data frame as the 
-number of recurrent risk periods plus one for the terminal event.
+number of recurrent risk periods plus one for each terminal event/competing risk.
 </p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>rc_setup(rc_data, trm_data,
-    rc_idVar = "id", rc_statusVar = "status",
-    rc_startVar = "start", rc_stopVar = "stop",
-    trm_idVar = "id", trm_statusVar = "status",
-    trm_stopVar = "stop",
+    idVar = "id", statusVar = "status",
+    startVar = "start", stopVar = "stop",
+    trm_censLevel,
     nameStrata = "strata", nameStatus = "status")
 </code></pre>
 
@@ -1905,50 +1914,41 @@ number of recurrent risk periods plus one for the terminal event.
 <table>
 <tr><td><code id="rc_setup_+3A_rc_data">rc_data</code></td>
 <td>
-<p>the data frame containing the recurring event data with 
+<p>the data frame containing the recurring-event data with 
 multiple rows per subject.</p>
 </td></tr>
 <tr><td><code id="rc_setup_+3A_trm_data">trm_data</code></td>
 <td>
-<p>the data frame containing the terminal event data with 
-a single row per subject.</p>
+<p>the data frame containing the terminal-event/competing-risks 
+data with a single row per subject.</p>
 </td></tr>
-<tr><td><code id="rc_setup_+3A_rc_idvar">rc_idVar</code></td>
+<tr><td><code id="rc_setup_+3A_idvar">idVar</code></td>
 <td>
 <p>a character string denoting the name of the variable in
-<code>rc_data</code> that identifies the subject.</p>
+<code>rc_data</code> and <code>trm_data</code> that identifies the subject/group.</p>
 </td></tr>
-<tr><td><code id="rc_setup_+3A_rc_statusvar">rc_statusVar</code></td>
+<tr><td><code id="rc_setup_+3A_statusvar">statusVar</code></td>
 <td>
 <p>a character string denoting the name of the variable in
-<code>rc_data</code> that identifies the status variable which equals 1 if the
-subject had an event and 0 otherwise.</p>
+<code>rc_data</code> and <code>trm_data</code> that identifies the status variable. 
+In <code>rc_data</code> equals 1 if the subject had an event and 0 otherwise.
+In <code>trm_data</code> equals to the event or censoring level.</p>
 </td></tr>
-<tr><td><code id="rc_setup_+3A_rc_startvar">rc_startVar</code></td>
+<tr><td><code id="rc_setup_+3A_startvar">startVar</code></td>
 <td>
 <p>a character string denoting the name of the variable in
-<code>rc_data</code> that identifies the starting time for the interval.</p>
+<code>rc_data</code> that identifies the starting time for the risk interval.</p>
 </td></tr>
-<tr><td><code id="rc_setup_+3A_rc_stopvar">rc_stopVar</code></td>
+<tr><td><code id="rc_setup_+3A_stopvar">stopVar</code></td>
 <td>
 <p>a character string denoting the name of the variable in
-<code>rc_data</code> that identifies the stopping time for the interval.</p>
+<code>rc_data</code> and <code>trm_data</code> that identifies the event or censoring 
+time.</p>
 </td></tr>
-<tr><td><code id="rc_setup_+3A_trm_idvar">trm_idVar</code></td>
+<tr><td><code id="rc_setup_+3A_trm_censlevel">trm_censLevel</code></td>
 <td>
-<p>a character string denoting the name of the variable in
-<code>trm_data</code> that identifies the subject.</p>
-</td></tr>
-<tr><td><code id="rc_setup_+3A_trm_statusvar">trm_statusVar</code></td>
-<td>
-<p>a character string denoting the name of the variable in
-<code>trm_data</code> that identifies the status variable which equals 1 if the
-subject had the event and 0 otherwise.</p>
-</td></tr>
-<tr><td><code id="rc_setup_+3A_trm_stopvar">trm_stopVar</code></td>
-<td>
-<p>a character string denoting the name of the variable in
-<code>trm_data</code> that identifies the follow up time.</p>
+<p>a character string or a scalar denoting the censoring 
+level in the statusVar variable of <code>trm_data</code>.</p>
 </td></tr>
 <tr><td><code id="rc_setup_+3A_namestrata">nameStrata</code></td>
 <td>

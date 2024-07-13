@@ -25,12 +25,18 @@ function processMathHTML() {
 <li><a href='#gen_ci'><p>generate bootstrp ci (normal, basic and percentile)</p></a></li>
 <li><a href='#Istep_Z'><p>I-step of LUCID</p></a></li>
 <li><a href='#lucid'><p>Fit a lucid model for integrated analysis on exposure, outcome and multi-omics data, allowing for tuning</p></a></li>
-<li><a href='#plot_lucid'><p>Visualize LUCID model through a Sankey diagram</p></a></li>
-<li><a href='#predict_lucid'><p>Predict cluster assignment and outcome based on LUCID model</p></a></li>
-<li><a href='#print.sumlucid'><p>Print the output of LUCID in a nicer table</p></a></li>
+<li><a href='#plot'><p>Visualize LUCID model through a Sankey diagram</p></a></li>
+<li><a href='#predict_lucid'><p>Predict cluster assignment and outcome based on LUCID model using new data of G,Z,(Y).</p>
+If g_computation, predict cluster assignment, omics data, and outcome based on LUCID model using new data of G only
+This function can also be use to extract X assignment is using training data G,Z,Y as input.</a></li>
+<li><a href='#print.sumlucid_early'><p>Print the output of LUCID in a nicer table</p></a></li>
+<li><a href='#print.sumlucid_parallel'><p>Print the output of LUCID in a nicer table</p></a></li>
+<li><a href='#print.sumlucid_serial'><p>Print the output of LUCID in a nicer table</p></a></li>
 <li><a href='#sim_data'><p>A simulated dataset for LUCID</p></a></li>
 <li><a href='#simulated_HELIX_data'><p>A simulated HELIX dataset for LUCID</p></a></li>
-<li><a href='#summary_lucid'><p>Summarize results of the LUCID model</p></a></li>
+<li><a href='#summary.early_lucid'><p>Summarize results of the early LUCID model</p></a></li>
+<li><a href='#summary.lucid_parallel'><p>Summarize results of the parallel LUCID model</p></a></li>
+<li><a href='#summary.lucid_serial'><p>Summarize results of the serial LUCID model</p></a></li>
 <li><a href='#tune_lucid'><p>A wrapper function to perform model selection for LUCID</p></a></li>
 </ul>
 </div>
@@ -44,11 +50,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>3.0.1</td>
+<td>3.0.2</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>An implementation of estimating the Latent Unknown Clusters By Integrating Multi-omics Data (LUCID) model (Peng (2019) &lt;<a href="https://doi.org/10.1093%2Fbioinformatics%2Fbtz667">doi:10.1093/bioinformatics/btz667</a>&gt;). LUCID conducts integrated clustering using exposures, omics data (and outcome as an option). This is a major update from the last version while conserving all the previous features. This package implements three different integration strategies for multiple omics data analysis within the LUCID framework: LUCID early integration (the original LUCID model), LUCID in parallel (intermediate), and LUCID in serial (late). Automated model selection for each LUCID model is available to obtain the optimal number of latent clusters, and an integrated imputation approach is implemented to handle sporadic and list-wise missing multiple omics data.</td>
+<td>An implementation of estimating the Latent Unknown Clusters By Integrating Multi-omics Data (LUCID) model (Peng (2019) &lt;<a href="https://doi.org/10.1093%2Fbioinformatics%2Fbtz667">doi:10.1093/bioinformatics/btz667</a>&gt;). LUCID conducts integrated clustering using exposures, omics information (and outcome information as an option). This package implements three different integration strategies for multi-omics data analysis within the LUCID framework: LUCID early integration (the original LUCID model), LUCID in parallel (intermediate integration), and LUCID in serial (late integration). Automated model selection for each LUCID model is available to obtain the optimal number of latent clusters, and an integrated imputation approach is implemented to handle sporadic and list-wise missingness in multi-omics data. Lasso-type regularity for exposure and omics features were added. S3 methods for summary and plotting functions were fixed.</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -64,7 +70,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.2</td>
 </tr>
 <tr>
 <td>LazyData:</td>
@@ -89,7 +95,7 @@ utils, glasso, glmnet</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-30 23:47:30 UTC; qiranjia19961112</td>
+<td>2024-07-07 19:42:34 UTC; qiranjia19961112</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -110,7 +116,7 @@ utils, glasso, glmnet</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-31 11:30:07 UTC</td>
+<td>2024-07-08 11:10:07 UTC</td>
 </tr>
 </table>
 <hr>
@@ -242,9 +248,6 @@ seed = 1008)
 # conduct bootstrap resampling
 boot1 &lt;- boot_lucid(G = G, Z = Z, Y = Y_normal, 
 lucid_model = "early",model = fit1, R = 100)
-
-# check distribution for bootstrap replicates of the variable of interest
-plot(boot1$bootstrap, 1)
 
 # use 90% CI
 boot2 &lt;- boot_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early", 
@@ -861,7 +864,7 @@ fit5 &lt;- lucid(G = G, Z = Z, Y = Y_binary, lucid_model = "early", family = "bi
 
 # variable selection
 fit6 &lt;- lucid(G = G, Z = Z, Y = Y_binary, lucid_model = "early", 
-family = "binary", Rho_G = seq(0.01, 0.1, by = 0.01))
+family = "binary", Rho_G = seq(0.01, 0.02, by = 0.01))
 
 # LUCID in parallel
 i &lt;- 1008
@@ -873,14 +876,14 @@ Z &lt;- list(Z1 = Z1, Z2 = Z2)
 CoY &lt;- matrix(rnorm(200), nrow = 100)
 CoG &lt;- matrix(rnorm(200), nrow = 100)
 Y &lt;- rnorm(100)
-best_parallel &lt;- lucid(G = G, Z = Z, Y = Y, K = list(2:4,2),
+best_parallel &lt;- lucid(G = G, Z = Z, Y = Y, K = list(2:3,2),
 CoG = CoG, CoY = CoY, lucid_model = "parallel",
 family = "normal", init_omic.data.model = "VVV",
 seed = i, init_impute = "mix", init_par = "mclust",
 useY = TRUE)
 
 # LUCID in serial
-best_serial &lt;- lucid(G = G, Z = Z, Y = Y, K = list(2:4,2),
+best_serial &lt;- lucid(G = G, Z = Z, Y = Y, K = list(2:3,2),
 CoG = CoG, CoY = CoY, lucid_model = "serial",
 family = "normal", init_omic.data.model = "VVV",
 seed = i, init_impute = "mix", init_par = "mclust",
@@ -889,7 +892,7 @@ useY = TRUE)
 </code></pre>
 
 <hr>
-<h2 id='plot_lucid'>Visualize LUCID model through a Sankey diagram</h2><span id='topic+plot_lucid'></span>
+<h2 id='plot'>Visualize LUCID model through a Sankey diagram</h2><span id='topic+plot'></span>
 
 <h3>Description</h3>
 
@@ -903,53 +906,20 @@ color of the line represents the direction of a certain association. Only work f
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>plot_lucid(
-  x,
-  G_color = "dimgray",
-  X_color = "#eb8c30",
-  Z_color = "#2fa4da",
-  Y_color = "#afa58e",
-  pos_link_color = "#67928b",
-  neg_link_color = "#d1e5eb",
-  fontsize = 7
-)
+<pre><code class='language-R'>plot(x, ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="plot_lucid_+3A_x">x</code></td>
+<tr><td><code id="plot_+3A_x">x</code></td>
 <td>
 <p>A LUCID model fitted by <code><a href="#topic+estimate_lucid">estimate_lucid</a></code></p>
 </td></tr>
-<tr><td><code id="plot_lucid_+3A_g_color">G_color</code></td>
+<tr><td><code id="plot_+3A_...">...</code></td>
 <td>
-<p>Color of node for exposure</p>
-</td></tr>
-<tr><td><code id="plot_lucid_+3A_x_color">X_color</code></td>
-<td>
-<p>Color of node for latent cluster</p>
-</td></tr>
-<tr><td><code id="plot_lucid_+3A_z_color">Z_color</code></td>
-<td>
-<p>Color of node for omics data</p>
-</td></tr>
-<tr><td><code id="plot_lucid_+3A_y_color">Y_color</code></td>
-<td>
-<p>Color of node for outcome</p>
-</td></tr>
-<tr><td><code id="plot_lucid_+3A_pos_link_color">pos_link_color</code></td>
-<td>
-<p>Color of link corresponds to positive association</p>
-</td></tr>
-<tr><td><code id="plot_lucid_+3A_neg_link_color">neg_link_color</code></td>
-<td>
-<p>Color of link corresponds to negative association</p>
-</td></tr>
-<tr><td><code id="plot_lucid_+3A_fontsize">fontsize</code></td>
-<td>
-<p>Font size for annotation</p>
+<p>Additional arguments to specify colors and fontsize</p>
 </td></tr>
 </table>
 
@@ -972,22 +942,26 @@ cov &lt;- sim_data$Covariate
 # plot lucid model
 fit1 &lt;- estimate_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early", 
 CoY = NULL, family = "normal", K = 2, seed = 1008)
-plot_lucid(fit1)
+plot(fit1)
 
 # change node color
-plot_lucid(fit1, G_color = "yellow")
-plot_lucid(fit1, Z_color = "red")
+plot(fit1, G_color = "yellow")
+plot(fit1, Z_color = "red")
 
 # change link color
-plot_lucid(fit1, pos_link_color = "red", neg_link_color = "green")
+plot(fit1, pos_link_color = "red", neg_link_color = "green")
 </code></pre>
 
 <hr>
-<h2 id='predict_lucid'>Predict cluster assignment and outcome based on LUCID model</h2><span id='topic+predict_lucid'></span>
+<h2 id='predict_lucid'>Predict cluster assignment and outcome based on LUCID model using new data of G,Z,(Y).
+If g_computation, predict cluster assignment, omics data, and outcome based on LUCID model using new data of G only
+This function can also be use to extract X assignment is using training data G,Z,Y as input.</h2><span id='topic+predict_lucid'></span>
 
 <h3>Description</h3>
 
-<p>Predict cluster assignment and outcome based on LUCID model
+<p>Predict cluster assignment and outcome based on LUCID model using new data of G,Z,(Y).
+If g_computation, predict cluster assignment, omics data, and outcome based on LUCID model using new data of G only
+This function can also be use to extract X assignment is using training data G,Z,Y as input.
 </p>
 
 
@@ -1002,6 +976,7 @@ plot_lucid(fit1, pos_link_color = "red", neg_link_color = "green")
   CoG = NULL,
   CoY = NULL,
   response = TRUE,
+  g_computation = FALSE,
   verbose = FALSE
 )
 </code></pre>
@@ -1052,6 +1027,10 @@ Categorical variable should be transformed into dummy variables.</p>
 <p>If TRUE, when predicting binary outcome, the response will be
 returned. If FALSE, the linear predictor is returned.</p>
 </td></tr>
+<tr><td><code id="predict_lucid_+3A_g_computation">g_computation</code></td>
+<td>
+<p>If TRUE, the prediction only uses information on G.</p>
+</td></tr>
 <tr><td><code id="predict_lucid_+3A_verbose">verbose</code></td>
 <td>
 <p>A flag indicates whether detailed information
@@ -1074,6 +1053,9 @@ is printed in console. Default is FALSE.</p>
 </li>
 <li><p> pred.y: Predicted values for the response variable Y (if response is TRUE).
 </p>
+</li>
+<li><p> pred.z: Predicted values for the omics variables Z (if g_computation is TRUE).
+</p>
 </li></ol>
 
 
@@ -1095,7 +1077,7 @@ pred2 &lt;- predict_lucid(model = fit1, G = G, Z = Z, lucid_model = "early")
 </code></pre>
 
 <hr>
-<h2 id='print.sumlucid'>Print the output of LUCID in a nicer table</h2><span id='topic+print.sumlucid'></span>
+<h2 id='print.sumlucid_early'>Print the output of LUCID in a nicer table</h2><span id='topic+print.sumlucid_early'></span>
 
 <h3>Description</h3>
 
@@ -1105,7 +1087,7 @@ pred2 &lt;- predict_lucid(model = fit1, G = G, Z = Z, lucid_model = "early")
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>## S3 method for class 'sumlucid'
+<pre><code class='language-R'>## S3 method for class 'sumlucid_early'
 print(x, ...)
 </code></pre>
 
@@ -1113,13 +1095,13 @@ print(x, ...)
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="print.sumlucid_+3A_x">x</code></td>
+<tr><td><code id="print.sumlucid_early_+3A_x">x</code></td>
 <td>
-<p>An object returned by <code>summary_lucid</code></p>
+<p>An object returned by <code>summary</code></p>
 </td></tr>
-<tr><td><code id="print.sumlucid_+3A_...">...</code></td>
+<tr><td><code id="print.sumlucid_early_+3A_...">...</code></td>
 <td>
-<p>Other parameters to be passed to <code>print.sumlucid</code></p>
+<p>Other parameters to be passed to <code>print.sumlucid_serial</code></p>
 </td></tr>
 </table>
 
@@ -1146,12 +1128,80 @@ seed = 1008)
 boot1 &lt;- boot_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early", model = fit1, R = 100)
 
 # print the summary of the lucid model in a table
-print.sumlucid(summary_lucid(fit1))
-
-# print the summary of the lucid model with bootstrap CIs in a table
-print.sumlucid(summary_lucid(fit1, boot.se = boot1))
+temp &lt;- summary(fit1)
+print(temp)
 
 </code></pre>
+
+<hr>
+<h2 id='print.sumlucid_parallel'>Print the output of LUCID in a nicer table</h2><span id='topic+print.sumlucid_parallel'></span>
+
+<h3>Description</h3>
+
+<p>Print the output of LUCID in a nicer table
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'sumlucid_parallel'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="print.sumlucid_parallel_+3A_x">x</code></td>
+<td>
+<p>An object returned by <code>summary</code></p>
+</td></tr>
+<tr><td><code id="print.sumlucid_parallel_+3A_...">...</code></td>
+<td>
+<p>Other parameters to be passed to <code>print.sumlucid_parallel</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A nice table/several nice tables of the summary of the LUCID model
+</p>
+
+<hr>
+<h2 id='print.sumlucid_serial'>Print the output of LUCID in a nicer table</h2><span id='topic+print.sumlucid_serial'></span>
+
+<h3>Description</h3>
+
+<p>Print the output of LUCID in a nicer table
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'sumlucid_serial'
+print(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="print.sumlucid_serial_+3A_x">x</code></td>
+<td>
+<p>An object returned by <code>summary</code></p>
+</td></tr>
+<tr><td><code id="print.sumlucid_serial_+3A_...">...</code></td>
+<td>
+<p>Other parameters to be passed to <code>print.sumlucid_serial</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A nice table/several nice tables of the summary of the LUCID model
+</p>
 
 <hr>
 <h2 id='sim_data'>A simulated dataset for LUCID</h2><span id='topic+sim_data'></span>
@@ -1236,31 +1286,31 @@ age</p>
 
 
 <hr>
-<h2 id='summary_lucid'>Summarize results of the LUCID model</h2><span id='topic+summary_lucid'></span>
+<h2 id='summary.early_lucid'>Summarize results of the early LUCID model</h2><span id='topic+summary.early_lucid'></span>
 
 <h3>Description</h3>
 
-<p>Summarize results of the LUCID model
+<p>Summarize results of the early LUCID model
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>summary_lucid(object, boot.se = NULL)
+<pre><code class='language-R'>## S3 method for class 'early_lucid'
+summary(object, ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="summary_lucid_+3A_object">object</code></td>
+<tr><td><code id="summary.early_lucid_+3A_object">object</code></td>
 <td>
 <p>A LUCID model fitted by <code><a href="#topic+estimate_lucid">estimate_lucid</a></code></p>
 </td></tr>
-<tr><td><code id="summary_lucid_+3A_boot.se">boot.se</code></td>
+<tr><td><code id="summary.early_lucid_+3A_...">...</code></td>
 <td>
-<p>An object returned by <code><a href="#topic+boot_lucid">boot_lucid</a></code>,
-which contains the bootstrap confidence intervals</p>
+<p>Additional argument of <code>boot.se</code>, which is an object returned by <code><a href="#topic+boot_lucid">boot_lucid</a></code></p>
 </td></tr>
 </table>
 
@@ -1287,12 +1337,82 @@ seed = 1008)
 boot1 &lt;- boot_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early", model = fit1, R = 100)
 
 # summarize lucid model
-summary_lucid(fit1)
+summary(fit1)
 
 # summarize lucid model with bootstrap CIs
-summary_lucid(fit1, boot.se = boot1)
+summary(fit1, boot.se = boot1)
 
 </code></pre>
+
+<hr>
+<h2 id='summary.lucid_parallel'>Summarize results of the parallel LUCID model</h2><span id='topic+summary.lucid_parallel'></span>
+
+<h3>Description</h3>
+
+<p>Summarize results of the parallel LUCID model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'lucid_parallel'
+summary(object, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summary.lucid_parallel_+3A_object">object</code></td>
+<td>
+<p>A LUCID model fitted by <code><a href="#topic+estimate_lucid">estimate_lucid</a></code></p>
+</td></tr>
+<tr><td><code id="summary.lucid_parallel_+3A_...">...</code></td>
+<td>
+<p>Additional argument of <code>boot.se</code>, which is an object returned by <code><a href="#topic+boot_lucid">boot_lucid</a></code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list, containing the extracted key parameters from the LUCID model that can be used to print the summary table
+</p>
+
+<hr>
+<h2 id='summary.lucid_serial'>Summarize results of the serial LUCID model</h2><span id='topic+summary.lucid_serial'></span>
+
+<h3>Description</h3>
+
+<p>Summarize results of the serial LUCID model
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'lucid_serial'
+summary(object, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="summary.lucid_serial_+3A_object">object</code></td>
+<td>
+<p>A LUCID model fitted by <code><a href="#topic+estimate_lucid">estimate_lucid</a></code></p>
+</td></tr>
+<tr><td><code id="summary.lucid_serial_+3A_...">...</code></td>
+<td>
+<p>Additional argument of <code>boot.se</code>, which is an object returned by <code><a href="#topic+boot_lucid">boot_lucid</a></code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list, containing the extracted key parameters from the LUCID model that can be used to print the summary table
+</p>
 
 <hr>
 <h2 id='tune_lucid'>A wrapper function to perform model selection for LUCID</h2><span id='topic+tune_lucid'></span>
@@ -1439,19 +1559,19 @@ Y_normal &lt;- sim_data$Y_normal
 
 # find the optimal model over the grid of K
 tune_K &lt;- tune_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early",
- useY = FALSE, tol = 1e-3,
-seed = 1, K = 2:5)
+ useY = FALSE, tol = 1e-2,
+seed = 1, K = 2:3)
 
 # tune penalties
 tune_Rho_G &lt;- tune_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early",
- useY = FALSE, tol = 1e-3,
-seed = 1, K = 2, Rho_G = c(0.1, 0.2, 0.3, 0.4))
+ useY = FALSE, tol = 1e-2,
+seed = 1, K = 2, Rho_G = c(0.1, 0.2))
 tune_Rho_Z_Mu &lt;- tune_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early", 
-useY = FALSE, tol = 1e-3,
-seed = 1, K = 2, Rho_Z_Mu = c(10, 20, 30, 40))
+useY = FALSE, tol = 1e-2,
+seed = 1, K = 2, Rho_Z_Mu = c(10, 20))
 tune_Rho_Z_Cov &lt;- tune_lucid(G = G, Z = Z, Y = Y_normal, lucid_model = "early", 
-useY = FALSE, tol = 1e-3,
-seed = 1, K = 2, Rho_Z_Cov = c(0.1, 0.2, 0.3))
+useY = FALSE, tol = 1e-2,
+seed = 1, K = 2, Rho_Z_Cov = c(0.1, 0.2))
 
 ## End(Not run)
 

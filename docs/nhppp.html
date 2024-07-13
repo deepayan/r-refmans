@@ -19,7 +19,8 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#nhppp-package'><p>nhppp: Simulating Nonhomogeneous Poisson Point Processes</p></a></li>
-<li><a href='#check_ppp_sample_validity'><p>Check the validity of a ppp vector.</p></a></li>
+<li><a href='#check_ppp_sample_validity'><p>Check the validity of ppp samples</p></a></li>
+<li><a href='#check_ppp_vector_validity'><p>Check the validity of a ppp vector.</p></a></li>
 <li><a href='#compare_ppp_vectors'><p>Check that two ppp vectors Q-Q agree</p></a></li>
 <li><a href='#draw'><p>Generic function for simulating from NHPPPs given the intensity function</p>
 or the cumulative intensity function.</a></li>
@@ -40,7 +41,8 @@ The intervals need not have the same length.</a></li>
 <li><a href='#draw_sc_step_regular'><p>Sampling from NHPPPs with piecewise constant intensities</p>
 with same interval lengths (non-vectorized)</a></li>
 <li><a href='#expect_no_error'><p>Helper functions</p></a></li>
-<li><a href='#get_step_majorizer'><p>Piecewise constant (step) majorizer for K-Lipschitz functions over an interval</p></a></li>
+<li><a href='#get_step_majorizer'><p>Piecewise constant (step) majorizer for K-Lipschitz functions over an interval</p>
+(vectorized over the <code>breaks</code> argument).</a></li>
 <li><a href='#inverse_with_uniroot'><p>Numerically evaluate the inverse of a function at a specific point</p></a></li>
 <li><a href='#inverse_with_uniroot_sorted'><p>Numerically evaluate the inverse of a monotonically increasing continuous</p>
 function from R to R at specific points.</a></li>
@@ -50,6 +52,16 @@ with <code>L(t0) = 0</code></a></li>
 <li><a href='#Lambda_inv_linear_form'><p>Inverse of the definite integral of <code>l = alpha + beta*t</code> at time <code>t</code></p></a></li>
 <li><a href='#Lambda_linear_form'><p>Definite integral of <code>l = alpha + beta*t</code> at time <code>t</code></p>
 with <code>L(t0) = 0</code></a></li>
+<li><a href='#make_cumulative_Lambda_matrix'><p>Helper function for the vectorized versions of sampling functions.</p>
+Takes the usual ways that <code>lambda_mat</code> and <code>Lambda_mat</code> are specified
+and returns <code>Lambda_mat</code>.</a></li>
+<li><a href='#make_lambda_matrix'><p>Helper function for the vectorized versions of sampling functions.</p>
+Takes the usual ways that <code>lambda_mat</code> and <code>Lambda_mat</code> are specified
+and returns <code>lambda_mat</code>.</a></li>
+<li><a href='#make_range_t_matrix'><p>Helper function for the vectorized versions of sampling functions.</p>
+Takes the usual ways that <code>range_t</code> is specified
+(a 2-vector, a 1 x 2 or an r x 2 matrix) and
+returns a r x 2 matrix.</a></li>
 <li><a href='#mat_cumsum_columns'><p>Return matrix with column-wise cumulative sum</p>
 No checks for arguments is done.</a></li>
 <li><a href='#mat_cumsum_columns_with_scalar_ceiling'><p>Return matrix with column-wise cumulative sum</p>
@@ -57,6 +69,8 @@ replacing cells larger than <code>ceil</code> with <code>NA</code>.
 No checks for arguments is done.</a></li>
 <li><a href='#mat_cumsum_columns_with_vector_ceiling'><p>Return matrix with column-wise cumulative sum</p>
 replacing cells larger than <code>ceil</code> with <code>NA</code>.
+No checks for arguments is done.</a></li>
+<li><a href='#mat_diff_columns'><p>Return matrix with column-wise differencing.</p>
 No checks for arguments is done.</a></li>
 <li><a href='#ppp_n'><p>Simulate specific number of points from a homogeneous Poisson Point Process over (t_min, t_max]</p></a></li>
 <li><a href='#ppp_next_n'><p>Simulate n events from a homogeneous Poisson Point Process.</p></a></li>
@@ -67,9 +81,32 @@ No checks for arguments is done.</a></li>
 <li><a href='#rng_stream_rpois'><p>Poisson random samples from <code>rstream</code> objects</p></a></li>
 <li><a href='#rng_stream_runif'><p>Uniform random samples from <code>rstream</code> objects</p></a></li>
 <li><a href='#rng_stream_rztpois'><p>Zero-truncated Poisson random samples from <code>rstream</code> objects</p></a></li>
+<li><a href='#rztpois'><p>Zero-truncated Poisson random samples (basic R)</p></a></li>
 <li><a href='#simpson_num_integr'><p>Simpson's method to integrate a univariate function.</p></a></li>
+<li><a href='#vdraw'><p>Vectorized generic function for simulating from NHPPPs given the intensity function</p>
+or the cumulative intensity function</a></li>
+<li><a href='#vdraw_intensity_step_regular'><p>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from</p>
+an interval (thinning method) with piecewise constant_majorizers (C++)</a></li>
+<li><a href='#vdraw_intensity_step_regular_cpp'><p>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from</p>
+an interval (thinning method) with piecewise constant_majorizers (C++)</a></li>
+<li><a href='#vdraw_intensity_step_regular_R'><p>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from</p>
+an interval (thinning method) with piecewise constant_majorizers (R)</a></li>
 <li><a href='#vdraw_sc_step_regular'><p>Vectorized sampling from NHPPPs with piecewise constant intensities</p>
+with same interval lengths (R)</a></li>
+<li><a href='#vdraw_sc_step_regular_cpp'><p>Vectorized sampling from NHPPPs with piecewise constant intensities</p>
+with same interval lengths (C++)</a></li>
+<li><a href='#vdraw_sc_step_regular_R'><p>Vectorized sampling from NHPPPs with piecewise constant intensities</p>
+with same interval lengths (R)</a></li>
+<li><a href='#vztdraw_intensity_step_regular'><p>Vectorized sampling from a zero-truncated non homogeneous Poisson Point Process (NHPPP) from</p>
+an interval (thinning method) with piecewise constant_majorizers</a></li>
+<li><a href='#vztdraw_intensity_step_regular_R'><p>Vectorized sampling from a zero-truncated non homogeneous Poisson Point Process (NHPPP) from</p>
+an interval (thinning method) with piecewise constant_majorizers (R)</a></li>
+<li><a href='#vztdraw_sc_step_regular'><p>Vectorized sampling from zero-truncated NHPPPs with piecewise constant intensities</p>
 with same interval lengths</a></li>
+<li><a href='#vztdraw_sc_step_regular_cpp'><p>Vectorized sampling from zero-truncated NHPPPs with piecewise constant intensities</p>
+with same interval lengths (C++)</a></li>
+<li><a href='#vztdraw_sc_step_regular_R'><p>Vectorized sampling from zero-truncated NHPPPs with piecewise constant intensities</p>
+with same interval lengths (R)</a></li>
 <li><a href='#ztdraw_cumulative_intensity'><p>Simulate from a zero-truncated non homogeneous Poisson Point Process (zt-NHPPP) from</p>
 (t_min, t_max) (order statistics method)</a></li>
 <li><a href='#ztdraw_intensity'><p>Simulate <code>size</code> samples from a zero-truncated non homogeneous Poisson Point Process (zt-NHPPP) from</p>
@@ -93,11 +130,11 @@ with same interval lengths</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.3</td>
+<td>0.1.4</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Simulates events from one dimensional nonhomogeneous Poisson point processes (NHPPPs). Functions are based on three algorithms that provably sample from a target NHPPP: the time-transformation of a homogeneous Poisson process (of intensity one) via the inverse of the integrated intensity function (Cinlar E, "Theory of stochastic processes" (1975, ISBN:0486497996)); the generation of a Poisson number of order statistics from a fixed density function; and the thinning of a majorizing NHPPP via an acceptance-rejection scheme (Lewis PAW, Shedler, GS (1979) &lt;<a href="https://doi.org/10.1002%2Fnav.3800260304">doi:10.1002/nav.3800260304</a>&gt;).</td>
+<td>Simulates events from one dimensional nonhomogeneous Poisson point processes (NHPPPs) as per Trikalinos and Sereda (2024, &lt;<a href="https://doi.org/10.48550%2FarXiv.2402.00358">doi:10.48550/arXiv.2402.00358</a>&gt;). Functions are based on three algorithms that provably sample from a target NHPPP: the time-transformation of a homogeneous Poisson process (of intensity one) via the inverse of the integrated intensity function (Cinlar E, "Theory of stochastic processes" (1975, ISBN:0486497996)); the generation of a Poisson number of order statistics from a fixed density function; and the thinning of a majorizing NHPPP via an acceptance-rejection scheme (Lewis PAW, Shedler, GS (1979) &lt;<a href="https://doi.org/10.1002%2Fnav.3800260304">doi:10.1002/nav.3800260304</a>&gt;).</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -105,7 +142,11 @@ with same interval lengths</a></li>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>lifecycle, rstream</td>
+<td>lifecycle, rstream, Rcpp (&ge; 1.0.12)</td>
+</tr>
+<tr>
+<td>LinkingTo:</td>
+<td>Rcpp</td>
 </tr>
 <tr>
 <td>Encoding:</td>
@@ -117,11 +158,11 @@ with same interval lengths</a></li>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>testthat, withr</td>
+<td>data.table, rlecuyer, testthat, withr</td>
 </tr>
 <tr>
 <td>Config/Needs/website:</td>
@@ -129,19 +170,19 @@ with same interval lengths</a></li>
 </tr>
 <tr>
 <td>URL:</td>
-<td><a href="https://github.com/bladder-ca/nhppp-fast">https://github.com/bladder-ca/nhppp-fast</a></td>
+<td><a href="https://github.com/bladder-ca/nhppp">https://github.com/bladder-ca/nhppp</a></td>
 </tr>
 <tr>
 <td>BugReports:</td>
-<td><a href="https://github.com/bladder-ca/nhppp-fast/issues">https://github.com/bladder-ca/nhppp-fast/issues</a></td>
+<td><a href="https://github.com/bladder-ca/nhppp/issues">https://github.com/bladder-ca/nhppp/issues</a></td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
-<td>no</td>
+<td>yes</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-01 12:41:54 UTC; tom</td>
+<td>2024-05-28 22:41:00 UTC; tom</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -160,7 +201,7 @@ with same interval lengths</a></li>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-02 19:50:08 UTC</td>
+<td>2024-05-28 22:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -168,7 +209,9 @@ with same interval lengths</a></li>
 
 <h3>Description</h3>
 
-<p>Simulates events from one dimensional nonhomogeneous Poisson point processes (NHPPPs). Functions are based on three algorithms that provably sample from a target NHPPP: the time-transformation of a homogeneous Poisson process (of intensity one) via the inverse of the integrated intensity function (Cinlar E, &quot;Theory of stochastic processes&quot; (1975, ISBN:0486497996)); the generation of a Poisson number of order statistics from a fixed density function; and the thinning of a majorizing NHPPP via an acceptance-rejection scheme (Lewis PAW, Shedler, GS (1979) <a href="https://doi.org/10.1002/nav.3800260304">doi:10.1002/nav.3800260304</a>).
+<p><img src="../help/figures/logo.png" style='float: right' alt='logo' width='120' />
+</p>
+<p>Simulates events from one dimensional nonhomogeneous Poisson point processes (NHPPPs) as per Trikalinos and Sereda (2024, <a href="https://doi.org/10.48550/arXiv.2402.00358">doi:10.48550/arXiv.2402.00358</a>). Functions are based on three algorithms that provably sample from a target NHPPP: the time-transformation of a homogeneous Poisson process (of intensity one) via the inverse of the integrated intensity function (Cinlar E, &quot;Theory of stochastic processes&quot; (1975, ISBN:0486497996)); the generation of a Poisson number of order statistics from a fixed density function; and the thinning of a majorizing NHPPP via an acceptance-rejection scheme (Lewis PAW, Shedler, GS (1979) <a href="https://doi.org/10.1002/nav.3800260304">doi:10.1002/nav.3800260304</a>).
 </p>
 
 
@@ -192,16 +235,16 @@ with same interval lengths</a></li>
 </p>
 
 <ul>
-<li> <p><a href="https://github.com/bladder-ca/nhppp-fast">https://github.com/bladder-ca/nhppp-fast</a>
+<li> <p><a href="https://github.com/bladder-ca/nhppp">https://github.com/bladder-ca/nhppp</a>
 </p>
 </li>
-<li><p> Report bugs at <a href="https://github.com/bladder-ca/nhppp-fast/issues">https://github.com/bladder-ca/nhppp-fast/issues</a>
+<li><p> Report bugs at <a href="https://github.com/bladder-ca/nhppp/issues">https://github.com/bladder-ca/nhppp/issues</a>
 </p>
 </li></ul>
 
 
 <hr>
-<h2 id='check_ppp_sample_validity'>Check the validity of a ppp vector.</h2><span id='topic+check_ppp_sample_validity'></span>
+<h2 id='check_ppp_sample_validity'>Check the validity of ppp samples</h2><span id='topic+check_ppp_sample_validity'></span>
 
 <h3>Description</h3>
 
@@ -229,7 +272,7 @@ in <code style="white-space: pre;">&#8288;[t_min, t_max]&#8288;</code>, and has 
 <table>
 <tr><td><code id="check_ppp_sample_validity_+3A_times">times</code></td>
 <td>
-<p>(vector, double) the times to be checked</p>
+<p>(vector, double | matrix) the times to be checked as vectors or matrices (time-vectors in rows)</p>
 </td></tr>
 <tr><td><code id="check_ppp_sample_validity_+3A_t_min">t_min</code></td>
 <td>
@@ -248,6 +291,65 @@ in <code style="white-space: pre;">&#8288;[t_min, t_max]&#8288;</code>, and has 
 <p>(boolean) optional: at most one sample returned</p>
 </td></tr>
 <tr><td><code id="check_ppp_sample_validity_+3A_atleast1">atleast1</code></td>
+<td>
+<p>(boolean) optional: at least one sample returned</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>None
+</p>
+
+<hr>
+<h2 id='check_ppp_vector_validity'>Check the validity of a ppp vector.</h2><span id='topic+check_ppp_vector_validity'></span>
+
+<h3>Description</h3>
+
+<p>Standard checks for a vector of ordered times. Check
+that the <code>times</code> vector is sorted, has unique values, has all values
+in <code style="white-space: pre;">&#8288;[t_min, t_max]&#8288;</code>, and has length <code>size</code> (if applicable).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>check_ppp_vector_validity(
+  times,
+  t_min,
+  t_max = NULL,
+  size = NULL,
+  atmost1 = FALSE,
+  atleast1 = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="check_ppp_vector_validity_+3A_times">times</code></td>
+<td>
+<p>(vector, double) the times to be checked</p>
+</td></tr>
+<tr><td><code id="check_ppp_vector_validity_+3A_t_min">t_min</code></td>
+<td>
+<p>(double) the start of the time nterval</p>
+</td></tr>
+<tr><td><code id="check_ppp_vector_validity_+3A_t_max">t_max</code></td>
+<td>
+<p>(double) optional: the end of the time interval</p>
+</td></tr>
+<tr><td><code id="check_ppp_vector_validity_+3A_size">size</code></td>
+<td>
+<p>(double) optional: the size of the vector</p>
+</td></tr>
+<tr><td><code id="check_ppp_vector_validity_+3A_atmost1">atmost1</code></td>
+<td>
+<p>(boolean) optional: at most one sample returned</p>
+</td></tr>
+<tr><td><code id="check_ppp_vector_validity_+3A_atleast1">atleast1</code></td>
 <td>
 <p>(boolean) optional: at least one sample returned</p>
 </td></tr>
@@ -933,12 +1035,13 @@ Copied from the <code>R6</code> source code.
 </p>
 
 <hr>
-<h2 id='get_step_majorizer'>Piecewise constant (step) majorizer for K-Lipschitz functions over an interval</h2><span id='topic+get_step_majorizer'></span>
+<h2 id='get_step_majorizer'>Piecewise constant (step) majorizer for K-Lipschitz functions over an interval
+(vectorized over the <code>breaks</code> argument).</h2><span id='topic+get_step_majorizer'></span>
 
 <h3>Description</h3>
 
 <p>Return a piecewise constant (step) majorizer for K-Lipschitz functions
-over an interval.
+over an interval. The function is vectorized over the <code>breaks</code> argument.
 </p>
 
 
@@ -953,11 +1056,13 @@ over an interval.
 <table>
 <tr><td><code id="get_step_majorizer_+3A_fun">fun</code></td>
 <td>
-<p>A function object with a single argument <code>x</code></p>
+<p>A function object with a single argument <code>x</code>.
+If <code>x</code> is a matrix, <code>fun</code> should be vectorized over it.</p>
 </td></tr>
 <tr><td><code id="get_step_majorizer_+3A_breaks">breaks</code></td>
 <td>
-<p>(vector) The set of <code>M+1</code> boundaries for the <code>M</code> subintervals in <code>x</code></p>
+<p>(vector or matrix) The set of <code>M+1</code> boundaries for the <code>M</code> subintervals in <code>x</code>.
+If breaks is a matrix, each row is treated as a separate set of breaks.</p>
 </td></tr>
 <tr><td><code id="get_step_majorizer_+3A_is_monotone">is_monotone</code></td>
 <td>
@@ -1255,6 +1360,138 @@ with <code>L(t0) = 0</code></h2><span id='topic+Lambda_linear_form'></span>
 </table>
 
 <hr>
+<h2 id='make_cumulative_Lambda_matrix'>Helper function for the vectorized versions of sampling functions.
+Takes the usual ways that <code>lambda_mat</code> and <code>Lambda_mat</code> are specified
+and returns <code>Lambda_mat</code>.</h2><span id='topic+make_cumulative_Lambda_matrix'></span>
+
+<h3>Description</h3>
+
+<p>Helper function for the vectorized versions of sampling functions.
+Takes the usual ways that <code>lambda_mat</code> and <code>Lambda_mat</code> are specified
+and returns <code>Lambda_mat</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>make_cumulative_Lambda_matrix(
+  Lambda_mat = NULL,
+  lambda_mat = NULL,
+  interval_duration = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="make_cumulative_Lambda_matrix_+3A_lambda_mat">Lambda_mat</code></td>
+<td>
+<p>a matrix of cumulative intensities or missing</p>
+</td></tr>
+<tr><td><code id="make_cumulative_Lambda_matrix_+3A_lambda_mat">lambda_mat</code></td>
+<td>
+<p>a matrix of intensities or missing</p>
+</td></tr>
+<tr><td><code id="make_cumulative_Lambda_matrix_+3A_interval_duration">interval_duration</code></td>
+<td>
+<p>a vector with the same number of elements as the rows of <code>Lambda_mat</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix (r x 2), row-expanded if needed
+</p>
+
+<hr>
+<h2 id='make_lambda_matrix'>Helper function for the vectorized versions of sampling functions.
+Takes the usual ways that <code>lambda_mat</code> and <code>Lambda_mat</code> are specified
+and returns <code>lambda_mat</code>.</h2><span id='topic+make_lambda_matrix'></span>
+
+<h3>Description</h3>
+
+<p>Helper function for the vectorized versions of sampling functions.
+Takes the usual ways that <code>lambda_mat</code> and <code>Lambda_mat</code> are specified
+and returns <code>lambda_mat</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>make_lambda_matrix(
+  lambda_mat = NULL,
+  Lambda_mat = NULL,
+  interval_duration = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="make_lambda_matrix_+3A_lambda_mat">lambda_mat</code></td>
+<td>
+<p>a matrix of intensities or missing</p>
+</td></tr>
+<tr><td><code id="make_lambda_matrix_+3A_lambda_mat">Lambda_mat</code></td>
+<td>
+<p>a matrix of cumulative intensities or missing</p>
+</td></tr>
+<tr><td><code id="make_lambda_matrix_+3A_interval_duration">interval_duration</code></td>
+<td>
+<p>a vector with the same number of elements as the rows of <code>Lambda_mat</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix (r x 2), row-expanded if needed
+</p>
+
+<hr>
+<h2 id='make_range_t_matrix'>Helper function for the vectorized versions of sampling functions.
+Takes the usual ways that <code>range_t</code> is specified
+(a 2-vector, a 1 x 2 or an r x 2 matrix) and
+returns a r x 2 matrix.</h2><span id='topic+make_range_t_matrix'></span>
+
+<h3>Description</h3>
+
+<p>Helper function for the vectorized versions of sampling functions.
+Takes the usual ways that <code>range_t</code> is specified
+(a 2-vector, a 1 x 2 or an r x 2 matrix) and
+returns a r x 2 matrix.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>make_range_t_matrix(range_t, n_rows)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="make_range_t_matrix_+3A_range_t">range_t</code></td>
+<td>
+<p>a 2-vector, a 1 x 2 or an r x 2 matrix</p>
+</td></tr>
+<tr><td><code id="make_range_t_matrix_+3A_n_rows">n_rows</code></td>
+<td>
+<p>the number of rows in the fully expanded matrix (<code>r</code>)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A matrix (r x 2), row-expanded if needed
+</p>
+
+<hr>
 <h2 id='mat_cumsum_columns'>Return matrix with column-wise cumulative sum
 No checks for arguments is done.</h2><span id='topic+mat_cumsum_columns'></span>
 
@@ -1353,6 +1590,38 @@ No checks for arguments is done.
 <tr><td><code id="mat_cumsum_columns_with_vector_ceiling_+3A_ceil">ceil</code></td>
 <td>
 <p>(vector or Inf) the set of ceilings to be applied, per row of <code>X</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>matrix
+</p>
+
+<hr>
+<h2 id='mat_diff_columns'>Return matrix with column-wise differencing.
+No checks for arguments is done.</h2><span id='topic+mat_diff_columns'></span>
+
+<h3>Description</h3>
+
+<p>Return matrix with column-wise differencing.
+No checks for arguments is done.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mat_diff_columns(X)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mat_diff_columns_+3A_x">X</code></td>
+<td>
+<p>(matrix)</p>
 </td></tr>
 </table>
 
@@ -1775,6 +2044,48 @@ if no events realize, it will have 0 length
 </code></pre>
 
 <hr>
+<h2 id='rztpois'>Zero-truncated Poisson random samples (basic R)</h2><span id='topic+rztpois'></span>
+
+<h3>Description</h3>
+
+<p>Sample zero-truncated Poisson random samples (basic R)
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rztpois(size = 1, lambda = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="rztpois_+3A_size">size</code></td>
+<td>
+<p>Integer, number of samples</p>
+</td></tr>
+<tr><td><code id="rztpois_+3A_lambda">lambda</code></td>
+<td>
+<p>Positive number, the mean of the original
+(untruncated) Poisson distribution</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of non zero counts of size <code>size</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>rztpois(10, 1)
+rztpois(10, 1:10)
+</code></pre>
+
+<hr>
 <h2 id='simpson_num_integr'>Simpson's method to integrate a univariate function.</h2><span id='topic+simpson_num_integr'></span>
 
 <h3>Description</h3>
@@ -1825,8 +2136,355 @@ simpson_num_integr(sin, 0, pi/2, 100)
 </p>
 
 <hr>
+<h2 id='vdraw'>Vectorized generic function for simulating from NHPPPs given the intensity function
+or the cumulative intensity function</h2><span id='topic+vdraw'></span>
+
+<h3>Description</h3>
+
+<p>This is a wrapper to the package's specific functions, and thus slightly slower.
+For time-intensive simulations prefer one of the specific functions.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vdraw(
+  lambda = NULL,
+  lambda_args = NULL,
+  Lambda_maj_matrix = NULL,
+  lambda_maj_matrix = NULL,
+  range_t = NULL,
+  tol = 10^-6,
+  atmost1 = FALSE,
+  atleast1 = FALSE,
+  use_cpp = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vdraw_+3A_lambda">lambda</code></td>
+<td>
+<p>(function) a vectorized intensity function, with one or two arguments.
+The first is time. The optional second (should be named <code>lambda_args</code>) is a named list with additional arguments.</p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_lambda_args">lambda_args</code></td>
+<td>
+<p>(list) optional list of named arguments for <code>lambda()</code></p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_lambda_maj_matrix">Lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) for the majorizeintegrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_lambda_maj_matrix">lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, or matrix) <code>t_min</code> and <code>t_max</code>, possibly vectorized</p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_atleast1">atleast1</code></td>
+<td>
+<p>boolean, draw at least 1 event time in interval</p>
+</td></tr>
+<tr><td><code id="vdraw_+3A_use_cpp">use_cpp</code></td>
+<td>
+<p>boolean, use C++ code</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of event times
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>Z &lt;- vdraw(
+  lambda = function(x, lambda_args = NULL) 0.1 * x,
+  range_t = c(1, 10),
+  lambda_maj_matrix = matrix(rep(1, 5), nrow = 1),
+  atmost1 = FALSE, atleast1 = FALSE, use_cpp = TRUE
+)
+</code></pre>
+
+<hr>
+<h2 id='vdraw_intensity_step_regular'>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers (C++)</h2><span id='topic+vdraw_intensity_step_regular'></span>
+
+<h3>Description</h3>
+
+<p>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers.
+The majorizers are step functions over equal-length time intevals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vdraw_intensity_step_regular(
+  lambda = NULL,
+  lambda_args = NULL,
+  Lambda_maj_matrix = NULL,
+  lambda_maj_matrix = NULL,
+  range_t = NULL,
+  subinterval = NULL,
+  tol = 10^-6,
+  atmost1 = FALSE,
+  atmostB = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_lambda">lambda</code></td>
+<td>
+<p>(function) a vectorized intensity function, with one or two arguments.
+The first is time. The optional second is a named list with additional arguments.</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_lambda_args">lambda_args</code></td>
+<td>
+<p>(list) optional list of named arguments for <code>lambda()</code></p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_lambda_maj_matrix">Lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) for the majorizeintegrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_lambda_maj_matrix">lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, or matrix) <code>t_min</code> and <code>t_max</code>, possibly vectorized</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_subinterval">subinterval</code></td>
+<td>
+<p>(matrix, double) subinterval of <code>range_t</code> to sample from</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_+3A_atmostb">atmostB</code></td>
+<td>
+<p>If not NULL, draw at most B (B&gt;0) event times. NULL means ignore.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a matrix of event times (columns) per draw (rows)
+NAs are structural empty spots
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>Z &lt;- vdraw_intensity_step_regular(
+  lambda = function(x, lambda_args = NULL) 0.1 * x,
+  range_t = c(1, 10),
+  lambda_maj_matrix = matrix(rep(1, 5), nrow = 1)
+)
+</code></pre>
+
+<hr>
+<h2 id='vdraw_intensity_step_regular_cpp'>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers (C++)</h2><span id='topic+vdraw_intensity_step_regular_cpp'></span>
+
+<h3>Description</h3>
+
+<p>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers.
+The majorizers are step functions over equal-length time intevals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vdraw_intensity_step_regular_cpp(
+  lambda = NULL,
+  lambda_args = NULL,
+  Lambda_maj_matrix = NULL,
+  lambda_maj_matrix = NULL,
+  range_t = NULL,
+  subinterval = NULL,
+  tol = 10^-6,
+  atmost1 = FALSE,
+  atmostB = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_lambda">lambda</code></td>
+<td>
+<p>(function) a vectorized intensity function, with one or two arguments.
+The first is time. The optional second is a named list with additional arguments.</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_lambda_args">lambda_args</code></td>
+<td>
+<p>(list) optional list of named arguments for <code>lambda()</code></p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_lambda_maj_matrix">Lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) for the majorizeintegrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_lambda_maj_matrix">lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, or matrix) <code>t_min</code> and <code>t_max</code>, possibly vectorized</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_subinterval">subinterval</code></td>
+<td>
+<p>(matrix, double) subinterval of <code>range_t</code> to sample from</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_cpp_+3A_atmostb">atmostB</code></td>
+<td>
+<p>If not NULL, draw at most B (B&gt;0) event times. NULL means ignore.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a matrix of event times (columns) per draw (rows)
+NAs are structural empty spots
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>Z &lt;- vdraw_intensity_step_regular_cpp(
+  lambda = function(x, lambda_args = NULL) 0.1 * x,
+  range_t = c(1, 10),
+  lambda_maj_matrix = matrix(rep(1, 5), nrow = 1)
+)
+</code></pre>
+
+<hr>
+<h2 id='vdraw_intensity_step_regular_R'>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers (R)</h2><span id='topic+vdraw_intensity_step_regular_R'></span>
+
+<h3>Description</h3>
+
+<p>Vectorized sampling from a non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers.
+The majorizers are step functions over equal-length time intevals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vdraw_intensity_step_regular_R(
+  lambda = NULL,
+  lambda_args = NULL,
+  Lambda_maj_matrix = NULL,
+  lambda_maj_matrix = NULL,
+  range_t = NULL,
+  tol = 10^-6,
+  atmost1 = FALSE,
+  force_zt_majorizer = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_lambda">lambda</code></td>
+<td>
+<p>(function) a vectorized intensity function, with one or two arguments.
+The first is time. The optional second is a named list with additional arguments.</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_lambda_args">lambda_args</code></td>
+<td>
+<p>(list) optional list of named arguments for <code>lambda()</code></p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_lambda_maj_matrix">Lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) for the majorizeintegrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_lambda_maj_matrix">lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, or matrix) <code>t_min</code> and <code>t_max</code>, possibly vectorized</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_force_zt_majorizer">force_zt_majorizer</code></td>
+<td>
+<p>boolean, force the use of the zero-truncated majorizer; - used for flexibility in calling from other functions. Keep the default <code>FALSE</code> unless you know what you are doing.</p>
+</td></tr>
+<tr><td><code id="vdraw_intensity_step_regular_R_+3A_...">...</code></td>
+<td>
+<p>(any) other arguments (ignored  &ndash; used for flexibility in calling from other functions)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a matrix of event times (columns) per draw (rows)
+NAs are structural empty spots
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>Z &lt;- vdraw_intensity_step_regular_R(
+  lambda = function(x, lambda_args = NULL) 0.1 * x,
+  range_t = c(1, 10),
+  lambda_maj_matrix = matrix(rep(1, 5), nrow = 1)
+)
+</code></pre>
+
+<hr>
 <h2 id='vdraw_sc_step_regular'>Vectorized sampling from NHPPPs with piecewise constant intensities
-with same interval lengths</h2><span id='topic+vdraw_sc_step_regular'></span>
+with same interval lengths (R)</h2><span id='topic+vdraw_sc_step_regular'></span>
 
 <h3>Description</h3>
 
@@ -1842,7 +2500,9 @@ where the intervals have the same length (are &quot;regular&quot;).
   lambda_matrix = NULL,
   range_t = c(0, 10),
   tol = 10^-6,
-  atmost1 = FALSE
+  atmost1 = FALSE,
+  atleast1 = FALSE,
+  use_cpp = TRUE
 )
 </code></pre>
 
@@ -1870,6 +2530,14 @@ where the intervals have the same length (are &quot;regular&quot;).
 <td>
 <p>boolean, draw at most 1 event time</p>
 </td></tr>
+<tr><td><code id="vdraw_sc_step_regular_+3A_atleast1">atleast1</code></td>
+<td>
+<p>boolean, draw at least 1 event time (zero-truncated NHPPP)</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_+3A_use_cpp">use_cpp</code></td>
+<td>
+<p>(boolean, TRUE) use the C++ implementation of the function</p>
+</td></tr>
 </table>
 
 
@@ -1883,6 +2551,490 @@ if no events realize, it will have 0 length
 <h3>Examples</h3>
 
 <pre><code class='language-R'>x &lt;- vdraw_sc_step_regular(Lambda_matrix = matrix(1:5, nrow = 1))
+</code></pre>
+
+<hr>
+<h2 id='vdraw_sc_step_regular_cpp'>Vectorized sampling from NHPPPs with piecewise constant intensities
+with same interval lengths (C++)</h2><span id='topic+vdraw_sc_step_regular_cpp'></span>
+
+<h3>Description</h3>
+
+<p>Simulate a piecewise constant-rate Poisson Point Process over <code style="white-space: pre;">&#8288;(t_min, t_max]&#8288;</code> (inversion method)
+where the intervals have the same length (are &quot;regular&quot;).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vdraw_sc_step_regular_cpp(
+  lambda_matrix = NULL,
+  Lambda_matrix = NULL,
+  range_t = NULL,
+  subinterval = NULL,
+  tol = 10^-6,
+  atmost1 = FALSE,
+  atmostB = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vdraw_sc_step_regular_cpp_+3A_lambda_matrix">lambda_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_cpp_+3A_lambda_matrix">Lambda_matrix</code></td>
+<td>
+<p>(matrix) integrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_cpp_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, double) <code>t_min</code> and <code>t_max</code></p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_cpp_+3A_subinterval">subinterval</code></td>
+<td>
+<p>(matrix, double) subinterval of <code>range_t</code> to sample from</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_cpp_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_cpp_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_cpp_+3A_atmostb">atmostB</code></td>
+<td>
+<p>If not NULL, draw at most B (B&gt;0) event times. NULL means ignore.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of event times t
+if no events realize, it will have 0 length
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x &lt;- vdraw_sc_step_regular(Lambda_matrix = matrix(1:5, nrow = 1))
+</code></pre>
+
+<hr>
+<h2 id='vdraw_sc_step_regular_R'>Vectorized sampling from NHPPPs with piecewise constant intensities
+with same interval lengths (R)</h2><span id='topic+vdraw_sc_step_regular_R'></span>
+
+<h3>Description</h3>
+
+<p>Simulate a piecewise constant-rate Poisson Point Process over <code style="white-space: pre;">&#8288;(t_min, t_max]&#8288;</code> (inversion method)
+where the intervals have the same length (are &quot;regular&quot;).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vdraw_sc_step_regular_R(
+  Lambda_matrix = NULL,
+  lambda_matrix = NULL,
+  range_t = c(0, 10),
+  tol = 10^-6,
+  atmost1 = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vdraw_sc_step_regular_R_+3A_lambda_matrix">Lambda_matrix</code></td>
+<td>
+<p>(matrix) integrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_R_+3A_lambda_matrix">lambda_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_R_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, double) <code>t_min</code> and <code>t_max</code></p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_R_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vdraw_sc_step_regular_R_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of event times t
+if no events realize, it will have 0 length
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x &lt;- vdraw_sc_step_regular_R(Lambda_matrix = matrix(1:5, nrow = 1))
+</code></pre>
+
+<hr>
+<h2 id='vztdraw_intensity_step_regular'>Vectorized sampling from a zero-truncated non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers</h2><span id='topic+vztdraw_intensity_step_regular'></span>
+
+<h3>Description</h3>
+
+<p>Vectorized sampling from a zero-truncated non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers.
+The majorizers are step functions over equal-length time intevals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vztdraw_intensity_step_regular(
+  lambda = NULL,
+  lambda_args = NULL,
+  Lambda_maj_matrix = NULL,
+  lambda_maj_matrix = NULL,
+  range_t = NULL,
+  tol = 10^-6,
+  atmost1 = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_lambda">lambda</code></td>
+<td>
+<p>(function) a vectorized intensity function, with one or two arguments.
+The first is time. The optional second is a named list with additional arguments.</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_lambda_args">lambda_args</code></td>
+<td>
+<p>(list) optional list of named arguments for <code>lambda()</code></p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_lambda_maj_matrix">Lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) for the majorizeintegrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_lambda_maj_matrix">lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, or matrix) <code>t_min</code> and <code>t_max</code>, possibly vectorized</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_+3A_...">...</code></td>
+<td>
+<p>(any) other arguments (ignored  &ndash; used for flexibility in calling from other functions)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a matrix of event times (columns) per draw (rows)
+NAs are structural empty spots
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>Z &lt;- vztdraw_intensity_step_regular(
+  lambda = function(x, lambda_args = NULL) 0.1 * x,
+  range_t = c(1, 10),
+  lambda_maj_matrix = matrix(rep(1, 5), nrow = 1)
+)
+</code></pre>
+
+<hr>
+<h2 id='vztdraw_intensity_step_regular_R'>Vectorized sampling from a zero-truncated non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers (R)</h2><span id='topic+vztdraw_intensity_step_regular_R'></span>
+
+<h3>Description</h3>
+
+<p>Vectorized sampling from a zero-truncated non homogeneous Poisson Point Process (NHPPP) from
+an interval (thinning method) with piecewise constant_majorizers.
+The majorizers are step functions over equal-length time intevals.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vztdraw_intensity_step_regular_R(
+  lambda = NULL,
+  lambda_args = NULL,
+  Lambda_maj_matrix = NULL,
+  lambda_maj_matrix = NULL,
+  range_t = NULL,
+  tol = 10^-6,
+  atmost1 = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_lambda">lambda</code></td>
+<td>
+<p>(function) a vectorized intensity function, with one or two arguments.
+The first is time. The optional second is a named list with additional arguments.</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_lambda_args">lambda_args</code></td>
+<td>
+<p>(list) optional list of named arguments for <code>lambda()</code></p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_lambda_maj_matrix">Lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) for the majorizeintegrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_lambda_maj_matrix">lambda_maj_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, or matrix) <code>t_min</code> and <code>t_max</code>, possibly vectorized</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_tol">tol</code></td>
+<td>
+<p>(scalar, double) tolerance for the number of events</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vztdraw_intensity_step_regular_R_+3A_...">...</code></td>
+<td>
+<p>(any) other arguments (ignored  &ndash; used for flexibility in calling from other functions)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a matrix of event times (columns) per draw (rows)
+NAs are structural empty spots
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>Z &lt;- vztdraw_intensity_step_regular_R(
+  lambda = function(x, lambda_args = NULL) 0.1 * x,
+  range_t = c(1, 10),
+  lambda_maj_matrix = matrix(rep(1, 5), nrow = 1)
+)
+</code></pre>
+
+<hr>
+<h2 id='vztdraw_sc_step_regular'>Vectorized sampling from zero-truncated NHPPPs with piecewise constant intensities
+with same interval lengths</h2><span id='topic+vztdraw_sc_step_regular'></span>
+
+<h3>Description</h3>
+
+<p>Simulate a piecewise constant-rate Poisson Point Process over <code style="white-space: pre;">&#8288;(t_min, t_max]&#8288;</code> (inversion method)
+where the intervals have the same length (are &quot;regular&quot;).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vztdraw_sc_step_regular(
+  Lambda_matrix = NULL,
+  lambda_matrix = NULL,
+  range_t = c(0, 10),
+  subinterval = NULL,
+  atmost1 = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vztdraw_sc_step_regular_+3A_lambda_matrix">Lambda_matrix</code></td>
+<td>
+<p>(matrix) integrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_+3A_lambda_matrix">lambda_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, double) <code>t_min</code> and <code>t_max</code></p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_+3A_subinterval">subinterval</code></td>
+<td>
+<p>(vector, double) optional &ndash; the subinterval of <code>range_t</code> to sample. If <code>NULL</code>, the whole range_t is used.</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_+3A_...">...</code></td>
+<td>
+<p>(any) other arguments (ignored  &ndash; used for flexibility in calling from other functions)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of event times t
+if no events realize, it will have 0 length
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x &lt;- vztdraw_sc_step_regular(Lambda_matrix = matrix(1:5, nrow = 1))
+</code></pre>
+
+<hr>
+<h2 id='vztdraw_sc_step_regular_cpp'>Vectorized sampling from zero-truncated NHPPPs with piecewise constant intensities
+with same interval lengths (C++)</h2><span id='topic+vztdraw_sc_step_regular_cpp'></span>
+
+<h3>Description</h3>
+
+<p>Simulate a piecewise constant-rate Poisson Point Process over <code style="white-space: pre;">&#8288;(t_min, t_max]&#8288;</code> (inversion method)
+where the intervals have the same length (are &quot;regular&quot;).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vztdraw_sc_step_regular_cpp(
+  Lambda_matrix = NULL,
+  lambda_matrix = NULL,
+  range_t = c(0, 10),
+  subinterval = NULL,
+  atmost1 = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vztdraw_sc_step_regular_cpp_+3A_lambda_matrix">Lambda_matrix</code></td>
+<td>
+<p>(matrix) integrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_cpp_+3A_lambda_matrix">lambda_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_cpp_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, double) <code>t_min</code> and <code>t_max</code></p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_cpp_+3A_subinterval">subinterval</code></td>
+<td>
+<p>(vector, double) optional &ndash; the subinterval of <code>range_t</code> to sample. If <code>NULL</code>, the whole range_t is used.</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_cpp_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of event times t
+if no events realize, it will have 0 length
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x &lt;- vztdraw_sc_step_regular_cpp(Lambda_matrix = matrix(1:5, nrow = 1))
+</code></pre>
+
+<hr>
+<h2 id='vztdraw_sc_step_regular_R'>Vectorized sampling from zero-truncated NHPPPs with piecewise constant intensities
+with same interval lengths (R)</h2><span id='topic+vztdraw_sc_step_regular_R'></span>
+
+<h3>Description</h3>
+
+<p>Simulate a piecewise constant-rate Poisson Point Process over <code style="white-space: pre;">&#8288;(t_min, t_max]&#8288;</code> (inversion method)
+where the intervals have the same length (are &quot;regular&quot;).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vztdraw_sc_step_regular_R(
+  Lambda_matrix = NULL,
+  lambda_matrix = NULL,
+  range_t = c(0, 10),
+  atmost1 = FALSE,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vztdraw_sc_step_regular_R_+3A_lambda_matrix">Lambda_matrix</code></td>
+<td>
+<p>(matrix) integrated intensity rates at the end of each interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_R_+3A_lambda_matrix">lambda_matrix</code></td>
+<td>
+<p>(matrix) intensity rates, one per interval</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_R_+3A_range_t">range_t</code></td>
+<td>
+<p>(vector, double) <code>t_min</code> and <code>t_max</code></p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_R_+3A_atmost1">atmost1</code></td>
+<td>
+<p>boolean, draw at most 1 event time</p>
+</td></tr>
+<tr><td><code id="vztdraw_sc_step_regular_R_+3A_...">...</code></td>
+<td>
+<p>(any) other arguments (ignored  &ndash; used for flexibility in calling from other functions)</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a vector of event times t
+if no events realize, it will have 0 length
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x &lt;- vztdraw_sc_step_regular_R(Lambda_matrix = matrix(1:5, nrow = 1))
 </code></pre>
 
 <hr>

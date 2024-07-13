@@ -49,6 +49,7 @@ Data in Stan</a></li>
 <li><a href='#is_network_connected'><p>Check network connectedness</p></a></li>
 <li><a href='#loo.stan_nma'><p>Model comparison using the <code>loo</code> package</p></a></li>
 <li><a href='#make_knots'><p>Knot locations for M-spline baseline hazard models</p></a></li>
+<li><a href='#marginal_effects'><p>Marginal treatment effects</p></a></li>
 <li><a href='#mcmc_array-class'><p>Working with 3D MCMC arrays</p></a></li>
 <li><a href='#multi'><p>Multinomial outcome data</p></a></li>
 <li><a href='#ndmm_ipd'><p>Newly diagnosed multiple myeloma</p></a></li>
@@ -109,7 +110,7 @@ dysfunction</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.6.1</td>
+<td>0.7.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -152,7 +153,7 @@ ggdist (&ge; 2.1.1), truncdist, bayesplot</td>
 <td>LinkingTo:</td>
 <td>BH (&ge; 1.66.0), Rcpp (&ge; 0.12.0), RcppEigen (&ge; 0.3.3.3.0),
 RcppParallel (&ge; 5.0.1), rstan (&ge; 2.26.0), StanHeaders (&ge;
-2.26.0)</td>
+2.32.9)</td>
 </tr>
 <tr>
 <td>SystemRequirements:</td>
@@ -160,13 +161,13 @@ RcppParallel (&ge; 5.0.1), rstan (&ge; 2.26.0), StanHeaders (&ge;
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>testthat (&ge; 2.1.0), withr, knitr, rmarkdown, parallel,
-R.rsp, rprojroot, loo (&ge; 2.0.0), logitnorm, crayon, tidygraph,
-pkgdown, splines2 (&ge; 0.5.0), flexsurv, rstpm2</td>
+<td>testthat (&ge; 2.1.0), vdiffr, withr, knitr, rmarkdown,
+parallel, R.rsp, rprojroot, loo (&ge; 2.0.0), logitnorm, crayon,
+tidygraph, pkgdown, splines2 (&ge; 0.5.0), flexsurv, rstpm2</td>
 </tr>
 <tr>
 <td>RdMacros:</td>
@@ -191,7 +192,7 @@ pkgdown, splines2 (&ge; 0.5.0), flexsurv, rstpm2</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-05 12:56:33 UTC; dp14189</td>
+<td>2024-06-10 17:59:50 UTC; dp14189</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -208,7 +209,7 @@ pkgdown, splines2 (&ge; 0.5.0), flexsurv, rstpm2</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-06 01:00:05 UTC</td>
+<td>2024-06-11 12:20:06 UTC</td>
 </tr>
 </table>
 <hr>
@@ -276,6 +277,12 @@ National Institute for Health and Care Excellence.
 </p>
 
 
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: David M. Phillippo <a href="mailto:david.phillippo@bristol.ac.uk">david.phillippo@bristol.ac.uk</a> (<a href="https://orcid.org/0000-0003-2672-7841">ORCID</a>)
+</p>
+
+
 <h3>References</h3>
 
 <p>Carpenter B, Gelman A, Hoffman MD, Lee D, Goodrich B, Betancourt M, Brubaker M, Guo J, Li P, Riddell A (2017).
@@ -298,6 +305,24 @@ National Institute for Health and Care Excellence.
 <em>Journal of the Royal Statistical Society: Series A (Statistics in Society)</em>, <b>183</b>(3), 1189&ndash;1210.
 <a href="https://doi.org/10.1111/rssa.12579">doi:10.1111/rssa.12579</a>.
 </p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://dmphillippo.github.io/multinma/">https://dmphillippo.github.io/multinma/</a>
+</p>
+</li>
+<li> <p><a href="https://github.com/dmphillippo/multinma">https://github.com/dmphillippo/multinma</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/dmphillippo/multinma/issues">https://github.com/dmphillippo/multinma/issues</a>
+</p>
+</li></ul>
+
 
 <hr>
 <h2 id='.default'>Set default values</h2><span id='topic+.default'></span><span id='topic+.is_default'></span>
@@ -2518,6 +2543,203 @@ plot_knots(ndmm_net, make_knots(ndmm_net, type = "quantile_lumped"))
 plot_knots(ndmm_net, make_knots(ndmm_net, type = "quantile_longest"))
 plot_knots(ndmm_net, make_knots(ndmm_net, type = "equal"))
 plot_knots(ndmm_net, make_knots(ndmm_net, type = "equal_common"))
+
+</code></pre>
+
+<hr>
+<h2 id='marginal_effects'>Marginal treatment effects</h2><span id='topic+marginal_effects'></span>
+
+<h3>Description</h3>
+
+<p>Generate population-average marginal treatment effects. These are formed from
+population-average absolute predictions, so this function is a wrapper around
+<code><a href="#topic+predict.stan_nma">predict.stan_nma()</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>marginal_effects(
+  object,
+  ...,
+  mtype = c("difference", "ratio", "link"),
+  all_contrasts = FALSE,
+  trt_ref = NULL,
+  probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
+  predictive_distribution = FALSE,
+  summary = TRUE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="marginal_effects_+3A_object">object</code></td>
+<td>
+<p>A <code>stan_nma</code> object created by <code><a href="#topic+nma">nma()</a></code>.</p>
+</td></tr>
+<tr><td><code id="marginal_effects_+3A_...">...</code></td>
+<td>
+<p>Arguments passed to <code><a href="#topic+predict.stan_nma">predict.stan_nma()</a></code>, for example to specify
+the covariate distribution and baseline risk for a target population, e.g.
+<code>newdata</code>, <code>baseline</code>, and related arguments. For survival outcomes, <code>type</code>
+can also be specified to determine the quantity from which to form a
+marginal effect. For example, <code>type = "hazard"</code> with <code>mtype = "ratio"</code>
+produces marginal hazard ratios, <code>type = "median"</code> with <code>mtype = "difference"</code> produces marginal median survival time differences, and so
+on.</p>
+</td></tr>
+<tr><td><code id="marginal_effects_+3A_mtype">mtype</code></td>
+<td>
+<p>The type of marginal effect to construct from the average
+absolute effects, either <code>"difference"</code> (the default) for a difference of
+absolute effects such as a risk difference, <code>"ratio"</code> for a ratio of
+absolute effects such as a risk ratio, or <code>"link"</code> for a difference on the
+scale of the link function used in fitting the model such as a marginal log
+odds ratio.</p>
+</td></tr>
+<tr><td><code id="marginal_effects_+3A_all_contrasts">all_contrasts</code></td>
+<td>
+<p>Logical, generate estimates for all contrasts (<code>TRUE</code>),
+or just the &quot;basic&quot; contrasts against the network reference treatment
+(<code>FALSE</code>)? Default <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="marginal_effects_+3A_trt_ref">trt_ref</code></td>
+<td>
+<p>Reference treatment to construct relative effects against, if
+<code>all_contrasts = FALSE</code>. By default, relative effects will be against the
+network reference treatment. Coerced to character string.</p>
+</td></tr>
+<tr><td><code id="marginal_effects_+3A_probs">probs</code></td>
+<td>
+<p>Numeric vector of quantiles of interest to present in computed
+summary, default <code>c(0.025, 0.25, 0.5, 0.75, 0.975)</code></p>
+</td></tr>
+<tr><td><code id="marginal_effects_+3A_predictive_distribution">predictive_distribution</code></td>
+<td>
+<p>Logical, when a random effects model has been
+fitted, should the predictive distribution for marginal effects in a new
+study be returned? Default <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="marginal_effects_+3A_summary">summary</code></td>
+<td>
+<p>Logical, calculate posterior summaries? Default <code>TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A <a href="#topic+nma_summary">nma_summary</a> object if <code>summary = TRUE</code>, otherwise a list
+containing a 3D MCMC array of samples and (for regression models) a data
+frame of study information.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Smoking cessation
+
+# Run smoking RE NMA example if not already available
+if (!exists("smk_fit_RE")) example("example_smk_re", run.donttest = TRUE)
+
+
+# Marginal risk difference in each study population in the network
+marginal_effects(smk_fit_RE, mtype = "difference")
+
+# Since there are no covariates in the model, the marginal and conditional
+# (log) odds ratios here coincide
+marginal_effects(smk_fit_RE, mtype = "link")
+relative_effects(smk_fit_RE)
+
+# Marginal risk differences in a population with 67 observed events out of
+# 566 individuals on No Intervention, corresponding to a Beta(67, 566 - 67)
+# distribution on the baseline probability of response
+(smk_rd_RE &lt;- marginal_effects(smk_fit_RE,
+                               baseline = distr(qbeta, 67, 566 - 67),
+                               baseline_type = "response",
+                               mtype = "difference"))
+plot(smk_rd_RE)
+
+
+## Plaque psoriasis ML-NMR
+
+# Run plaque psoriasis ML-NMR example if not already available
+if (!exists("pso_fit")) example("example_pso_mlnmr", run.donttest = TRUE)
+
+
+# Population-average marginal probit differences in each study in the network
+(pso_marg &lt;- marginal_effects(pso_fit, mtype = "link"))
+plot(pso_marg, ref_line = c(0, 1))
+
+# Population-average marginal probit differences in a new target population,
+# with means and SDs or proportions given by
+new_agd_int &lt;- data.frame(
+  bsa_mean = 0.6,
+  bsa_sd = 0.3,
+  prevsys = 0.1,
+  psa = 0.2,
+  weight_mean = 10,
+  weight_sd = 1,
+  durnpso_mean = 3,
+  durnpso_sd = 1
+)
+
+# We need to add integration points to this data frame of new data
+# We use the weighted mean correlation matrix computed from the IPD studies
+new_agd_int &lt;- add_integration(new_agd_int,
+                               durnpso = distr(qgamma, mean = durnpso_mean, sd = durnpso_sd),
+                               prevsys = distr(qbern, prob = prevsys),
+                               bsa = distr(qlogitnorm, mean = bsa_mean, sd = bsa_sd),
+                               weight = distr(qgamma, mean = weight_mean, sd = weight_sd),
+                               psa = distr(qbern, prob = psa),
+                               cor = pso_net$int_cor,
+                               n_int = 64)
+
+# Population-average marginal probit differences of achieving PASI 75 in this
+# target population, given a Normal(-1.75, 0.08^2) distribution on the
+# baseline probit-probability of response on Placebo (at the reference levels
+# of the covariates), are given by
+(pso_marg_new &lt;- marginal_effects(pso_fit,
+                                  mtype = "link",
+                                  newdata = new_agd_int,
+                                  baseline = distr(qnorm, -1.75, 0.08)))
+plot(pso_marg_new)
+
+
+## Progression free survival with newly-diagnosed multiple myeloma
+
+# Run newly-diagnosed multiple myeloma example if not already available
+if (!exists("ndmm_fit")) example("example_ndmm", run.donttest = TRUE)
+
+
+# We can produce a range of marginal effects from models with survival
+# outcomes, specified with the mtype and type arguments. For example:
+
+# Marginal survival probability difference at 5 years, all contrasts
+marginal_effects(ndmm_fit, type = "survival", mtype = "difference",
+                 times = 5, all_contrasts = TRUE)
+
+# Marginal difference in RMST up to 5 years
+marginal_effects(ndmm_fit, type = "rmst", mtype = "difference", times = 5)
+
+# Marginal median survival time ratios
+marginal_effects(ndmm_fit, type = "median", mtype = "ratio")
+
+# Marginal log hazard ratios
+# With no covariates in the model, these are constant over time and study
+# populations, and are equal to the log hazard ratios from relative_effects()
+plot(marginal_effects(ndmm_fit, type = "hazard", mtype = "link"),
+     # The hazard is infinite at t=0 in some studies, giving undefined logHRs at t=0
+     na.rm = TRUE)
+
+# The NDMM vignette demonstrates the production of time-varying marginal
+# hazard ratios from a ML-NMR model that includes covariates, see
+# `vignette("example_ndmm")`
+
+# Marginal survival difference over time
+plot(marginal_effects(ndmm_fit, type = "survival", mtype = "difference"))
+
 
 </code></pre>
 
@@ -5060,14 +5282,16 @@ predict(
   baseline = NULL,
   newdata = NULL,
   study = NULL,
-  trt_ref = NULL,
   type = c("link", "response"),
   level = c("aggregate", "individual"),
+  baseline_trt = NULL,
   baseline_type = c("link", "response"),
   baseline_level = c("individual", "aggregate"),
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   predictive_distribution = FALSE,
-  summary = TRUE
+  summary = TRUE,
+  progress = FALSE,
+  trt_ref = NULL
 )
 
 ## S3 method for class 'stan_nma_surv'
@@ -5075,18 +5299,20 @@ predict(
   object,
   times = NULL,
   ...,
+  baseline_trt = NULL,
   baseline = NULL,
   aux = NULL,
   newdata = NULL,
   study = NULL,
-  trt_ref = NULL,
   type = c("survival", "hazard", "cumhaz", "mean", "median", "quantile", "rmst", "link"),
   quantiles = c(0.25, 0.5, 0.75),
   level = c("aggregate", "individual"),
   times_seq = NULL,
   probs = c(0.025, 0.25, 0.5, 0.75, 0.975),
   predictive_distribution = FALSE,
-  summary = TRUE
+  summary = TRUE,
+  progress = interactive(),
+  trt_ref = NULL
 )
 </code></pre>
 
@@ -5128,8 +5354,8 @@ intercept parameters in the linear predictor (i.e. <code>baseline_type</code> is
 always <code>"link"</code>, and <code>baseline_level</code> is <code>"individual"</code> for IPD NMA or
 ML-NMR, and <code>"aggregate"</code> for AgD NMA).
 </p>
-<p>Use the <code>trt_ref</code> argument to specify which treatment this distribution
-applies to.</p>
+<p>Use the <code>baseline_trt</code> argument to specify which treatment this
+distribution applies to.</p>
 </td></tr>
 <tr><td><code id="predict.stan_nma_+3A_newdata">newdata</code></td>
 <td>
@@ -5154,13 +5380,6 @@ arm-based AgD in the network, depending on the value of <code>level</code>.</p>
 specified: if <code>newdata</code> contains integration points produced by
 <code><a href="#topic+add_integration">add_integration()</a></code>, studies will be labelled sequentially by row;
 otherwise data will be assumed to come from a single study.</p>
-</td></tr>
-<tr><td><code id="predict.stan_nma_+3A_trt_ref">trt_ref</code></td>
-<td>
-<p>Treatment to which the <code>baseline</code> response distribution
-refers, if <code>baseline</code> is specified. By default, the baseline response
-distribution will refer to the network reference treatment. Coerced to
-character string.</p>
 </td></tr>
 <tr><td><code id="predict.stan_nma_+3A_type">type</code></td>
 <td>
@@ -5187,6 +5406,13 @@ time amongst the studies in the network is used. When <code>level = "aggregate"<
 specified, predictions are produced for all IPD studies in the network if
 <code>level</code> is <code>"individual"</code> or <code>"aggregate"</code>, and for all arm-based AgD
 studies in the network if <code>level</code> is <code>"aggregate"</code>.</p>
+</td></tr>
+<tr><td><code id="predict.stan_nma_+3A_baseline_trt">baseline_trt</code></td>
+<td>
+<p>Treatment to which the <code>baseline</code> response distribution
+refers, if <code>baseline</code> is specified. By default, the baseline response
+distribution will refer to the network reference treatment. Coerced to
+character string.</p>
 </td></tr>
 <tr><td><code id="predict.stan_nma_+3A_baseline_type">baseline_type</code></td>
 <td>
@@ -5222,6 +5448,18 @@ study be returned? Default <code>FALSE</code>.</p>
 <tr><td><code id="predict.stan_nma_+3A_summary">summary</code></td>
 <td>
 <p>Logical, calculate posterior summaries? Default <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="predict.stan_nma_+3A_progress">progress</code></td>
+<td>
+<p>Logical, display progress for potentially long-running
+calculations? Population-average predictions from ML-NMR models are
+computationally intensive, especially for survival outcomes. Currently the
+default is to display progress only when running interactively and
+producing predictions for a survival ML-NMR model.</p>
+</td></tr>
+<tr><td><code id="predict.stan_nma_+3A_trt_ref">trt_ref</code></td>
+<td>
+<p>Deprecated, renamed to <code>baseline_trt</code>.</p>
 </td></tr>
 <tr><td><code id="predict.stan_nma_+3A_times">times</code></td>
 <td>

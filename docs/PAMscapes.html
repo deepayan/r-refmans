@@ -28,6 +28,7 @@ function processMathHTML() {
 <li><a href='#matchGFS'><p>Match GFS Environmental Data</p></a></li>
 <li><a href='#plotAcousticScene'><p>Plot Acoustic Scene</p></a></li>
 <li><a href='#plotHourlyLevel'><p>Plot Hourly Sound Level</p></a></li>
+<li><a href='#plotLTSA'><p>Plot Long-Term Spectral Average (LTSA)</p></a></li>
 <li><a href='#plotPSD'><p>Plot Power Spectral Density</p></a></li>
 <li><a href='#plotScaledTimeseries'><p>Plot Rescaled Timeseries</p></a></li>
 <li><a href='#plotTimeseries'><p>Plot Timeseries</p></a></li>
@@ -45,7 +46,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.5.3</td>
+<td>0.6.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -68,7 +69,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -77,7 +78,7 @@ function processMathHTML() {
 <tr>
 <td>Imports:</td>
 <td>dplyr, rlang, ggplot2, lubridate, scales, magrittr, tidyr,
-readr, httr, data.table, geosphere, sf, hoardr, PAMmisc, ncdf4,
+readr, httr, data.table, geosphere, sf, PAMmisc, ncdf4,
 tdigest, purrr</td>
 </tr>
 <tr>
@@ -90,7 +91,7 @@ tdigest, purrr</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-03 21:39:35 UTC; tnsak</td>
+<td>2024-07-09 17:03:49 UTC; tnsak</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -110,7 +111,7 @@ tdigest, purrr</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-04 16:20:05 UTC</td>
+<td>2024-07-09 22:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -334,20 +335,17 @@ columns and FREQUENCY is in Hertz. Long format data must have
 the following columns:
 </p>
 
-<ul>
-<li><p>&quot;UTC&quot; - time of the measurement, in UTC timezone
-</p>
-</li>
-<li><p>&quot;type&quot; - the type of soundscape measurement e.g.
-PSD or OL, must be the same for all
-</p>
-</li>
-<li><p>&quot;frequency&quot; - the frequency of the measurement, in Hertz
-</p>
-</li>
-<li><p>&quot;value&quot; - the soundscape measurement value, usually dB
-</p>
-</li></ul>
+<dl>
+<dt>&quot;UTC&quot;</dt><dd><p> - time of the measurement, in UTC timezone</p>
+</dd>
+<dt>&quot;type&quot;</dt><dd><p> - the type of soundscape measurement e.g.
+PSD or OL, must be the same for all</p>
+</dd>
+<dt>&quot;frequency&quot;</dt><dd><p> - the frequency of the measurement, in Hertz</p>
+</dd>
+<dt>&quot;value&quot;</dt><dd><p> - the soundscape measurement value, usually dB</p>
+</dd>
+</dl>
 
 
 
@@ -505,9 +503,7 @@ that were unable to download will be <code>NA</code>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># note this example downloads a ~500MB file
-
-gps &lt;- data.frame(Latitude=c(33.2, 33.5,33.6),
+<pre><code class='language-R'>gps &lt;- data.frame(Latitude=c(33.2, 33.5,33.6),
                   Longitude=c(-118.1, -118.4, -119),
                   UTC=as.POSIXct(
                     c('2022-04-28 05:00:00',
@@ -515,8 +511,9 @@ gps &lt;- data.frame(Latitude=c(33.2, 33.5,33.6),
                       '2022-04-28 20:00:00'),
                     tz='UTC'))
 tempDir &lt;- tempdir()
-marcadFiles &lt;- downloadMarCadAIS(gps, outDir=tempDir)
-
+# Commented out because running this will download
+# a ~500mb file
+# marcadFiles &lt;- downloadMarCadAIS(gps, outDir=tempDir)
 
 </code></pre>
 
@@ -533,7 +530,7 @@ required for use in other PAMscapes functions
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>loadMantaNc(x)
+<pre><code class='language-R'>loadMantaNc(x, keepQuals = c(1))
 </code></pre>
 
 
@@ -543,6 +540,14 @@ required for use in other PAMscapes functions
 <tr><td><code id="loadMantaNc_+3A_x">x</code></td>
 <td>
 <p>path to .nc file</p>
+</td></tr>
+<tr><td><code id="loadMantaNc_+3A_keepquals">keepQuals</code></td>
+<td>
+<p>quality flag values to keep. Accepts vector of
+integers from (1, 2, 3, 4) corresponding to flag labels &quot;Good&quot;,
+&quot;Not evaluated/Unknown&quot;, &quot;Compromised/Questionable&quot;, and &quot;Unusable/Bad&quot;.
+HMD levels for points with data quality flags outside of <code>keepQuals</code>
+will be marked as <code>NA</code>.</p>
 </td></tr>
 </table>
 
@@ -581,7 +586,7 @@ according to provided time and (optionally) frequency values
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>markNA(x, na)
+<pre><code class='language-R'>markNA(x, na, by = NULL)
 </code></pre>
 
 
@@ -598,6 +603,13 @@ according to provided time and (optionally) frequency values
 and <code>end</code> in UTC listing time ranges. Can also have columns <code>freqMin</code>
 and <code>freqMax</code> to also have accompanying frequency ranges, otherwise
 all frequency values within the time range will be set to NA</p>
+</td></tr>
+<tr><td><code id="markNA_+3A_by">by</code></td>
+<td>
+<p>optional column name in both <code>x</code> and <code>na</code> if only certain
+rows of <code>na</code> should apply to certain rows of <code>x</code> (e.g. if these
+contain multiple deployments overlapping in time, a &quot;DeploymentName&quot; column
+can be used to only mark appropriate times)</p>
 </td></tr>
 </table>
 
@@ -634,7 +646,9 @@ plotHourlyLevel(markNA(manta, na=naDf))
 <p>Downloads and matches wind and precipitation data
 from the Global Forecast System (GFS) weather model. Data is
 downloaded from the National Center for Atmospheric Research
-data server <a href="https://rda.ucar.edu/datasets/ds084.1/">https://rda.ucar.edu/datasets/ds084.1/</a>
+data server <a href="https://rda.ucar.edu/datasets/ds084.1/">https://rda.ucar.edu/datasets/ds084.1/</a>.
+The particular GFS dataset downloaded is the closest &quot;forecast&quot;
+dataset to the particular time (e.g. .f000 or .f003)
 </p>
 
 
@@ -657,7 +671,7 @@ data server <a href="https://rda.ucar.edu/datasets/ds084.1/">https://rda.ucar.ed
 
 <h3>Value</h3>
 
-<p>a dataframe with wind and precipitation rate columns added
+<p>a dataframe with wind (m/s) and precipitation rate (kg/m^2/s) columns added
 </p>
 
 
@@ -669,13 +683,16 @@ data server <a href="https://rda.ucar.edu/datasets/ds084.1/">https://rda.ucar.ed
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>gps &lt;- data.frame(Latitude=c(33.2, 33.5,33.6),
+<pre><code class='language-R'># API response may be slow for this example
+
+gps &lt;- data.frame(Latitude=c(33.2, 33.5,33.6),
                   Longitude=c(-118.1, -118.4, -119),
                   UTC=as.POSIXct(
                     c('2022-04-28 05:00:00',
                       '2022-04-28 10:00:00',
                       '2022-04-28 20:00:00'), tz='UTC'))
 gps &lt;- matchGFS(gps)
+
 
 </code></pre>
 
@@ -700,6 +717,7 @@ from user input and displayed as different colored bars
   bin = "1day",
   scale = c("log", "linear"),
   freqMin = NULL,
+  freqMax = NULL,
   alpha = 1
 )
 </code></pre>
@@ -742,6 +760,10 @@ the plot</p>
 <tr><td><code id="plotAcousticScene_+3A_freqmin">freqMin</code></td>
 <td>
 <p>optional minimum frequency for plot, useful for log scale</p>
+</td></tr>
+<tr><td><code id="plotAcousticScene_+3A_freqmax">freqMax</code></td>
+<td>
+<p>optional maximum frequency for plot</p>
 </td></tr>
 <tr><td><code id="plotAcousticScene_+3A_alpha">alpha</code></td>
 <td>
@@ -798,7 +820,7 @@ frequency bins measured across time
 <pre><code class='language-R'>plotHourlyLevel(
   x,
   title = NULL,
-  units = "dB re: 1uPa",
+  units = NULL,
   scale = c("log", "linear"),
   freqMin = NULL,
   toTz = "UTC",
@@ -866,6 +888,106 @@ Specification must be from <a href="base.html#topic+OlsonNames">OlsonNames</a></
 </code></pre>
 
 <hr>
+<h2 id='plotLTSA'>Plot Long-Term Spectral Average (LTSA)</h2><span id='topic+plotLTSA'></span>
+
+<h3>Description</h3>
+
+<p>Creates a long-term spectral average (LTSA) style plot
+of the data, a plot where the x-axis is time and the y-axis is frequency.
+Color represents the magnitude of sound. In order to compress the
+time axis, data are binned into time chunks and the median value
+within that time bin is displayed
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plotLTSA(
+  x,
+  bin = "1hour",
+  scale = c("log", "linear"),
+  title = NULL,
+  freqRange = NULL,
+  dbRange = NULL,
+  units = NULL,
+  cmap = viridis_pal()(25),
+  toTz = "UTC"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plotLTSA_+3A_x">x</code></td>
+<td>
+<p>a soundscape metric file that can be read in with
+<a href="#topic+checkSoundscapeInput">checkSoundscapeInput</a>, or a dataframe with <code>UTC</code>,
+<code>frequency</code>, and <code>value</code></p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_bin">bin</code></td>
+<td>
+<p>amount of time to bin for each LTSA slice, format can
+be &quot;#Unit&quot; e.g. <code>'2hour'</code> or <code>'1day'</code></p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_scale">scale</code></td>
+<td>
+<p>scaling for frequency axis, one of <code>log</code> or <code>linear</code></p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_title">title</code></td>
+<td>
+<p>optional title for plot</p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_freqrange">freqRange</code></td>
+<td>
+<p>if not <code>NULL</code>, a vector of two numbers specifying the
+range of frequencies (Hz) to plot. Providing <code>NA</code> for either value will
+use the max/min frequency present in the dataset</p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_dbrange">dbRange</code></td>
+<td>
+<p>if not <code>NULL</code>, a fixed limit to use for the color
+scaling of dB values in the plot</p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_units">units</code></td>
+<td>
+<p>units for plot labeling, will attempt to read them from the input</p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_cmap">cmap</code></td>
+<td>
+<p>color palette map to use for plot, default is <a href="scales.html#topic+viridis_pal">viridis_pal</a></p>
+</td></tr>
+<tr><td><code id="plotLTSA_+3A_totz">toTz</code></td>
+<td>
+<p>timezone to use for the time axis (input data must be UTC).
+Specification must be from <a href="base.html#topic+OlsonNames">OlsonNames</a></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>ggplot object of the LTSA plot
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Taiki Sakai <a href="mailto:taiki.sakai@noaa.gov">taiki.sakai@noaa.gov</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>hmd &lt;- checkSoundscapeInput(system.file('extdata/MANTAExampleSmall1.csv', package='PAMscapes'))
+# time range is too small for nice plots
+plotLTSA(hmd, bin='1min', title='Every Minute')
+plotLTSA(hmd, bin='2min', title='2 Minute Bins')
+
+
+</code></pre>
+
+<hr>
 <h2 id='plotPSD'>Plot Power Spectral Density</h2><span id='topic+plotPSD'></span><span id='topic+prepPSDData'></span>
 
 <h3>Description</h3>
@@ -891,6 +1013,7 @@ frequency levels.
   dbInt = 1,
   units = "dB re: 1uPa^2/Hz",
   cmap = viridis_pal()(25),
+  by = NULL,
   title = NULL,
   progress = TRUE
 )
@@ -950,6 +1073,11 @@ of file paths, or the output from <code>prepPSDData</code></p>
 <td>
 <p>color map to use for density plot</p>
 </td></tr>
+<tr><td><code id="plotPSD_+3A_by">by</code></td>
+<td>
+<p>optional column to plot different quantile lines by, only affects
+<code>style='quantile'</code></p>
+</td></tr>
 <tr><td><code id="plotPSD_+3A_title">title</code></td>
 <td>
 <p>optional title for plot</p>
@@ -972,30 +1100,26 @@ to spend time adjusting plot settings.
 <p>The output of <code>prepPSDData</code> is a list with 5 elements:
 </p>
 
-<ul>
-<li><p>frequency - the frequency values of the input data
-</p>
-</li>
-<li><p>freqRange - the value of the &quot;freqRange&quot; parameter if
-it was supplied
-</p>
-</li>
-<li><p>dbVals - the dB values of breakpoints used for &quot;density&quot;
-plotting
-</p>
-</li>
-<li><p>quantileData - the data used for quantile plots. These
+<dl>
+<dt>frequency</dt><dd><p> - the frequency values of the input data</p>
+</dd>
+<dt>freqRange</dt><dd><p> - the value of the &quot;freqRange&quot; parameter if
+it was supplied</p>
+</dd>
+<dt>dbVals</dt><dd><p> - the dB values of breakpoints used for &quot;density&quot;
+plotting</p>
+</dd>
+<dt>quantileData</dt><dd><p> - the data used for quantile plots. These
 are stored as &quot;tidgest&quot; objects serialized using
 <a href="tdigest.html#topic+as.list.tdigest">as.list.tdigest</a>, from which quantiles can
-be computed
-</p>
-</li>
-<li><p>densityData - the data used fro quantile plots. These
+be computed</p>
+</dd>
+<dt>densityData</dt><dd><p> - the data used fro quantile plots. These
 are stored as a matrix of bin counts - each column corresponds
 to the &quot;frequency&quot; output, each row corresponds to bins defined
-using &quot;dbVals&quot; as boundaries
-</p>
-</li></ul>
+using &quot;dbVals&quot; as boundaries</p>
+</dd>
+</dl>
 
 
 
@@ -1166,7 +1290,7 @@ plotScaledTimeseries(manta, columns=c('HMD_50', 'HMD_100', 'HMD_200'))
   bin = "1hour",
   column,
   title = NULL,
-  units = "dB re: 1uPa",
+  units = NULL,
   style = c("line", "heatmap"),
   q = 0,
   by = NULL,

@@ -31,11 +31,11 @@ function processMathHTML() {
 <table>
 <tr>
 <td>Version:</td>
-<td>1.1-10.1</td>
+<td>1.1-11</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-12-07</td>
+<td>2024-04-18</td>
 </tr>
 <tr>
 <td>Title:</td>
@@ -85,7 +85,7 @@ svn://svn.r-forge.r-project.org/svnroot/curves-etc/pkg/lokern</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-12-07 15:18:40 UTC; maechler</td>
+<td>2024-04-18 10:11:57 UTC; maechler</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -93,7 +93,7 @@ svn://svn.r-forge.r-project.org/svnroot/curves-etc/pkg/lokern</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-12-07 16:00:02 UTC</td>
+<td>2024-04-18 10:52:40 UTC</td>
 </tr>
 </table>
 <hr>
@@ -404,9 +404,9 @@ Smooth optimum kernel estimators of densities, regression curves and modes.
 <em>The Annals of Statistics</em> <b>12</b>, 766&ndash;774.
 </p>
 <p>- variance estimation:<br />
-T. Gasser, L. Sroka &amp; C. Jennen-Steinmetz (1986)
-Residual and residual pattern in nonlinear regression.
-<em>Biometrika</em> <b>73</b>, 625&ndash;633.
+Theo Gasser, Lothar Sroka &amp; Christine Jennen-Steinmetz (1986)
+Residual Variance and Residual Pattern in Nonlinear Regression.
+<em>Biometrika</em> <b>73</b>, 625&ndash;633. <a href="https://doi.org/10.2307/2336527">doi:10.2307/2336527</a>
 </p>
 <p>- adapting heteroscedasticity:<br />
 E. Herrmann (1997)
@@ -1012,11 +1012,15 @@ reweighting) and their variance.
 </td></tr>
 <tr><td><code>snr</code></td>
 <td>
-<p>explained variance of the true curve</p>
-</td></tr>
+<p>explained variance of the true curve, i.e., an <code class="reqn">R^2</code>,
+defined as <code class="reqn">1 - \hat{\sigma^2}/ \hat{\sigma_0^2}</code>, where
+<code class="reqn">\hat{\sigma^2} = </code><code>sigma2</code>, and
+<code class="reqn">\hat{\sigma_0^2} := var(Y) = E[Y^2] - (E[Y])^2</code>,
+see the example below.</p>
+</td></tr> 
 <tr><td><code>sigma2</code></td>
 <td>
-<p>estimation of residual variance, <code class="reqn">\hat\sigma^2</code>.</p>
+<p>estimation of residual variance, <code class="reqn">\hat{\sigma^2}</code>.</p>
 </td></tr>
 </table>
 
@@ -1024,10 +1028,10 @@ reweighting) and their variance.
 <h3>Note</h3>
 
 <p>This is an <span class="rlang"><b>R</b></span> interface to the <code>resest</code> Fortran subroutine, used
-in <code><a href="#topic+lokerns">lokerns</a></code> and <code><a href="#topic+glkerns">glkerns</a></code>, see their help
-pages for references and context.
+in <code><a href="#topic+lokerns">lokerns</a></code> and <code><a href="#topic+glkerns">glkerns</a></code>, see the latter's help
+page for references and context.
 </p>
-<p>Earlier version of the <span class="pkg">lokern</span> package accidentally, contained
+<p>Earlier version of the <span class="pkg">lokern</span> package accidentally contained
 <code>varest()</code> which has been an identical copy of <code>varNPreg()</code>.
 </p>
 
@@ -1044,9 +1048,29 @@ pages for references and context.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'> x &lt;- sort(runif(100))
- y &lt;- sin(pi*x) + rnorm(100)/10
- str(ve &lt;- varNPreg(x,y))
+<pre><code class='language-R'>n &lt;- 100
+x &lt;- sort(runif(n))
+y &lt;- sin(pi*x) + rnorm(n)/10
+str(ve &lt;- varNPreg(x,y))
+
+plot(x, y)
+## "fitted" = y - residuals:
+lines(x, y - ve$res, col=adjustcolor(2, 1/2), lwd=3)
+segments(x,y,x,y-ve$res, col=3:4, lty=2:3, lwd=1:2)
+
+## sigma2 :=  1/n  sum_i res_i^2  :
+          with(ve,         c(sigma2, sum(res^2)/n))
+stopifnot(with(ve, all.equal(sigma2, sum(res^2)/n)))
+
+## show how 'snr' is computed, given 'sigma2'  { in ../src/auxkerns.f }
+dx2 &lt;- diff(x, 2) # (x[i+1] - x[i-1]) i= 2..{n-1}
+dx.n &lt;- c(x[2]-x[1], dx2, x[n]-x[n-1])
+SY  &lt;- sum(dx.n * y)
+SY2 &lt;- sum(dx.n * y^2)
+rx &lt;- 2*(x[n]-x[1]) # 'dn'
+(sigm2.0 &lt;- SY2/rx - (SY/rx)^2)
+(R2 &lt;- 1 - ve$sigma2 / sigm2.0)
+stopifnot(all.equal(ve$snr, R2))
 </code></pre>
 
 <hr>

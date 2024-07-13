@@ -26,6 +26,7 @@ variable functions using the delta method.</a></li>
 <li><a href='#deltamethod'><p>Compute the Variance-Covariance Matrix of Functions using the first-order</p>
 Delta Method</a></li>
 <li><a href='#impliedS'><p>Compute a Symbolic Model-Implied Covariance/Correlation Matrix</p></a></li>
+<li><a href='#JacobianRAM'><p>Compute a Jacobian Matrix of the Implied Covariance/Correlation Matrix based on a RAM model.</p></a></li>
 </ul>
 </div>
 <hr>
@@ -42,11 +43,11 @@ Delta Method</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2</td>
+<td>0.4</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-05-31</td>
+<td>2024-05-15</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -99,7 +100,7 @@ Delta Method</a></li>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -107,7 +108,7 @@ Delta Method</a></li>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-05-31 09:17:00 UTC; mikewlcheung</td>
+<td>2024-05-15 09:46:40 UTC; mikewlcheung</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -120,7 +121,7 @@ Delta Method</a></li>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-05-31 09:30:02 UTC</td>
+<td>2024-05-16 09:50:03 UTC</td>
 </tr>
 </table>
 <hr>
@@ -137,6 +138,14 @@ package for structural equation models and other statistical analyses.
 Among its features is the ability to calculate the model-implied
 covariance (and correlation) matrix and the sampling covariance matrix of
 variable functions using the delta method.
+</p>
+
+
+<h3>Note</h3>
+
+<p>As 'caracas' uses 'SymPy&quot; in the backend. Reserved words in SymP,
+such as&quot;lambda&quot; and &quot;I&quot; are converted to some random strings first.
+These random strings are converted back to R.
 </p>
 
 <hr>
@@ -165,8 +174,10 @@ first-order delta method.
 </td></tr>
 <tr><td><code id="deltamethod_+3A_covvars">Covvars</code></td>
 <td>
-<p>Variance-covariance matrix of the variables. If it is not
-specified, they are automatically generated.</p>
+<p>Variance-covariance matrix of the variables. Users must
+ensure the order of variables is the same as that in <code>vars</code>; 
+Otherwise, the results are likely incorrect. If it is not specified,
+they are automatically generated.</p>
 </td></tr>
 <tr><td><code id="deltamethod_+3A_vars">vars</code></td>
 <td>
@@ -299,13 +310,13 @@ deltamethod(fn=fn, Covvars=Covvars, vars="p")
 <h3>Description</h3>
 
 <p>It computes a symbolic model-implied covariance (or correlation) matrix in
-SEM using the RAM inputs.
+SEM using the RAM specification inputs.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>impliedS(RAM, corr = FALSE, simplify = TRUE)
+<pre><code class='language-R'>impliedS(RAM, corr = FALSE, replace.constraints = FALSE, convert = TRUE)
 </code></pre>
 
 
@@ -322,16 +333,25 @@ from <code><a href="metaSEM.html#topic+lavaan2RAM">lavaan2RAM</a></code></p>
 <p>Whether the model implied matrix is covariance (default) or
 correlation structure.</p>
 </td></tr>
-<tr><td><code id="impliedS_+3A_simplify">simplify</code></td>
+<tr><td><code id="impliedS_+3A_replace.constraints">replace.constraints</code></td>
 <td>
-<p>Attempt to simplify the output.</p>
+<p>Whether to replace the parameters with the constraints
+in the <code>mxalgebras</code> slot. Suppose the formula is <code>para1==para2+para3</code>,
+<code>para1</code> will be replaced by <code>para2+para3</code> if this argument is <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="impliedS_+3A_convert">convert</code></td>
+<td>
+<p>Whether to convert random strings back to parameters. For internal
+use only. Users unlikely need to use this argument.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>The model implied covariance (or correlation) matrix and means vector.
+<p>A list of object with class <code>implieS</code>. It stores the A, S, and F
+matrices and the model implied covariance (or correlation) matrix and the
+vector of the means.
 </p>
 
 
@@ -362,7 +382,7 @@ impliedS(RAM1, corr=FALSE)
 impliedS(RAM1, corr=TRUE)
 
 #### A CFA model
-model2 &lt;- "f =~ x1 + x2 + x3 + x4#'
+model2 &lt;- "f =~ x1 + x2 + x3 + x4
            ## Mean
            f ~ fmean*1"
 
@@ -373,6 +393,92 @@ impliedS(RAM2, corr=FALSE)
 
 ## Model-implied correlation matrix
 impliedS(RAM2, corr=TRUE)
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='JacobianRAM'>Compute a Jacobian Matrix of the Implied Covariance/Correlation Matrix based on a RAM model.</h2><span id='topic+JacobianRAM'></span>
+
+<h3>Description</h3>
+
+<p>It computes a symbolic Jacobian matrix of the model-implied covariance (or correlation) matrix in
+SEM using the RAM specification.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>JacobianRAM(RAM, vars, corr = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="JacobianRAM_+3A_ram">RAM</code></td>
+<td>
+<p>A RAM object including a list of matrices of the model returned
+from <code><a href="metaSEM.html#topic+lavaan2RAM">lavaan2RAM</a></code></p>
+</td></tr>
+<tr><td><code id="JacobianRAM_+3A_vars">vars</code></td>
+<td>
+<p>A vector of characters of the random variables. If the random
+variables are not listed in 'vars', they are treated as constants. If 'vars'
+is missing, all names in 'RAM' are treated as random variables.</p>
+</td></tr>
+<tr><td><code id="JacobianRAM_+3A_corr">corr</code></td>
+<td>
+<p>Whether the model implied matrix is covariance (default) or
+correlation structure.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A Jacobian matrix.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Mike W.-L. Cheung &lt;mikewlcheung@nus.edu.sg&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+
+#### A mediation model
+model1 &lt;- "y ~ c*x + b*m
+           m ~ a*x
+           ## Means
+           y ~ b0*1
+           m ~ m0*1
+           x ~ x0*1"
+
+RAM1 &lt;- metaSEM::lavaan2RAM(model1)
+
+## Model-implied covariance matrix and mean structure
+JacobianRAM(RAM1, corr=FALSE)
+
+## Model-implied correlation matrix
+JacobianRAM(RAM1, corr=TRUE)
+
+#### A CFA model
+model2 &lt;- "f =~ x1 + x2 + x3 + x4#'
+           ## Mean
+           f ~ fmean*1"
+
+RAM2 &lt;- metaSEM::lavaan2RAM(model2)
+
+## Model-implied covariance matrix
+JacobianRAM(RAM2, corr=FALSE)
+
+## Model-implied correlation matrix
+JacobianRAM(RAM2, corr=TRUE)
 
 ## End(Not run)
 </code></pre>

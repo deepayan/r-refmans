@@ -21,7 +21,7 @@ function processMathHTML() {
 <li><a href='#duckplyr-package'><p>duckplyr: A 'DuckDB'-Backed Version of 'dplyr'</p></a></li>
 <li><a href='#as_duckplyr_df'><p>Convert to a duckplyr data frame</p></a></li>
 <li><a href='#config'><p>Configuration options</p></a></li>
-<li><a href='#df_from_csv'><p>df_from_csv</p></a></li>
+<li><a href='#df_from_file'><p>Read Parquet, CSV, and other files using DuckDB</p></a></li>
 <li><a href='#fallback'><p>Fallback to dplyr</p></a></li>
 <li><a href='#is_duckplyr_df'><p>Class predicate for duckplyr data frames</p></a></li>
 <li><a href='#methods_overwrite'><p>Forward all dplyr methods to duckplyr</p></a></li>
@@ -45,7 +45,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.2</td>
+<td>0.4.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -72,16 +72,15 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>cli, collections, DBI, dplyr (&ge; 1.1.4), duckdb (&ge; 0.9.1-1),
+<td>cli, collections, DBI, dplyr (&ge; 1.1.4), duckdb (&ge; 0.10.2),
 glue, jsonlite, lifecycle, rlang (&ge; 1.0.6), tibble,
 tidyselect, utils, vctrs (&ge; 0.6.3)</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>arrow, brio, constructive (&ge; 0.2.0), curl, dbplyr, hms,
+<td>arrow, brio, constructive (&ge; 1.0.0), curl, dbplyr, hms,
 lobstr, lubridate, palmerpenguins, pillar, prettycode, purrr,
-qs, reprex, rstudioapi, styler, testthat (&ge; 3.1.5), usethis,
-withr</td>
+qs, reprex, rstudioapi, testthat (&ge; 3.1.5), usethis, withr</td>
 </tr>
 <tr>
 <td>Config/Needs/check:</td>
@@ -106,7 +105,7 @@ filter, count-tally</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.3.1</td>
+<td>7.3.2.9000</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -114,7 +113,7 @@ filter, count-tally</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-17 19:36:22 UTC; kirill</td>
+<td>2024-07-12 10:34:25 UTC; kirill</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -134,7 +133,7 @@ filter, count-tally</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-17 20:10:07 UTC</td>
+<td>2024-07-12 10:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -186,19 +185,28 @@ filter, count-tally</td>
 
 
 <hr>
-<h2 id='as_duckplyr_df'>Convert to a duckplyr data frame</h2><span id='topic+as_duckplyr_df'></span>
+<h2 id='as_duckplyr_df'>Convert to a duckplyr data frame</h2><span id='topic+as_duckplyr_df'></span><span id='topic+as_duckplyr_tibble'></span>
 
 <h3>Description</h3>
 
-<p>For an object of class <code>duckplyr_df</code>,
+<p>These functions convert a data-frame-like input to an object of class <code>"duckpylr_df"</code>.
+For such objects,
 dplyr verbs such as <code><a href="#topic+mutate">mutate()</a></code>, <code><a href="#topic+select">select()</a></code> or <code><a href="#topic+filter">filter()</a></code>  will attempt to use DuckDB.
 If this is not possible, the original dplyr implementation is used.
+</p>
+<p><code>as_duckplyr_df()</code> requires the input to be a plain data frame or a tibble,
+and will fail for any other classes, including subclasses of <code>"data.frame"</code> or <code>"tbl_df"</code>.
+This behavior is likely to change, do not rely on it.
+</p>
+<p><code>as_duckplyr_tibble()</code> converts the input to a tibble and then to a duckplyr data frame.
 </p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>as_duckplyr_df(.data)
+
+as_duckplyr_tibble(.data)
 </code></pre>
 
 
@@ -221,8 +229,11 @@ for more control over the behavior, see <a href="#topic+config">config</a> for m
 
 <h3>Value</h3>
 
-<p>An object of class <code>"duckplyr_df"</code>, inheriting from the classes of the
-<code>.data</code> argument.
+<p>For <code>as_duckplyr_df()</code>, an object of class <code>"duckplyr_df"</code>,
+inheriting from the classes of the <code>.data</code> argument.
+</p>
+<p>For <code>as_duckplyr_df()</code>, an object of class
+<code>c("duckplyr_df", class(tibble()))</code> .
 </p>
 
 
@@ -329,10 +340,19 @@ withr::with_envvar(c(DUCKPLYR_FALLBACK_INFO = "TRUE"), {
 </code></pre>
 
 <hr>
-<h2 id='df_from_csv'>df_from_csv</h2><span id='topic+df_from_csv'></span><span id='topic+duckplyr_df_from_csv'></span><span id='topic+df_from_parquet'></span><span id='topic+duckplyr_df_from_parquet'></span><span id='topic+df_to_parquet'></span><span id='topic+df_from_file'></span><span id='topic+duckplyr_df_from_file'></span>
+<h2 id='df_from_file'>Read Parquet, CSV, and other files using DuckDB</h2><span id='topic+df_from_file'></span><span id='topic+duckplyr_df_from_file'></span><span id='topic+df_from_csv'></span><span id='topic+duckplyr_df_from_csv'></span><span id='topic+df_from_parquet'></span><span id='topic+duckplyr_df_from_parquet'></span><span id='topic+df_to_parquet'></span>
 
 <h3>Description</h3>
 
+<p><code>df_from_file()</code> uses arbitrary table functions to read data.
+See <a href="https://duckdb.org/docs/data/overview">https://duckdb.org/docs/data/overview</a> for a documentation
+of the available functions and their options.
+To read multiple files with the same schema,
+pass a wildcard or a character vector to the <code>path</code> argument,
+</p>
+<p><code>duckplyr_df_from_file()</code> is a thin wrapper around <code>df_from_file()</code>
+that calls <code>as_duckplyr_df()</code> on the output.
+</p>
 <p>These functions ingest data from a file using a table function.
 The results are transparently converted to a data frame, but the data is only read when
 the resulting data frame is actually accessed.
@@ -352,28 +372,11 @@ If the data frame is a <code>duckplyr_df</code>, the materialization occurs outs
 An existing file will be overwritten.
 This function requires duckdb &gt;= 0.10.0.
 </p>
-<p><code>df_from_file()</code> uses arbitrary table functions to read data.
-See <a href="https://duckdb.org/docs/data/overview">https://duckdb.org/docs/data/overview</a> for a documentation
-of the available functions and their options.
-</p>
-<p><code>duckplyr_df_from_file()</code> is a thin wrapper around <code>df_from_file()</code>
-that calls <code>as_duckplyr_df()</code> on the output.
-</p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>df_from_csv(path, ..., options = list(), class = NULL)
-
-duckplyr_df_from_csv(path, ..., options = list(), class = NULL)
-
-df_from_parquet(path, ..., options = list(), class = NULL)
-
-duckplyr_df_from_parquet(path, ..., options = list(), class = NULL)
-
-df_to_parquet(data, path)
-
-df_from_file(path, table_function, ..., options = list(), class = NULL)
+<pre><code class='language-R'>df_from_file(path, table_function, ..., options = list(), class = NULL)
 
 duckplyr_df_from_file(
   path,
@@ -382,40 +385,52 @@ duckplyr_df_from_file(
   options = list(),
   class = NULL
 )
+
+df_from_csv(path, ..., options = list(), class = NULL)
+
+duckplyr_df_from_csv(path, ..., options = list(), class = NULL)
+
+df_from_parquet(path, ..., options = list(), class = NULL)
+
+duckplyr_df_from_parquet(path, ..., options = list(), class = NULL)
+
+df_to_parquet(data, path)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="df_from_csv_+3A_path">path</code></td>
+<tr><td><code id="df_from_file_+3A_path">path</code></td>
 <td>
-<p>Path to file or directory.</p>
+<p>Path to files, glob patterns <code>*</code> and <code style="white-space: pre;">&#8288;?&#8288;</code> are supported.</p>
 </td></tr>
-<tr><td><code id="df_from_csv_+3A_...">...</code></td>
-<td>
-<p>These dots are for future extensions and must be empty.</p>
-</td></tr>
-<tr><td><code id="df_from_csv_+3A_options">options</code></td>
-<td>
-<p>Arguments to the DuckDB function
-indicated by <code>table_function</code>.</p>
-</td></tr>
-<tr><td><code id="df_from_csv_+3A_class">class</code></td>
-<td>
-<p>An optional class to add to the data frame.
-The returned object will always be a data frame.
-Pass <code>class(tibble())</code> to create a tibble.</p>
-</td></tr>
-<tr><td><code id="df_from_csv_+3A_data">data</code></td>
-<td>
-<p>A data frame to be written to disk.</p>
-</td></tr>
-<tr><td><code id="df_from_csv_+3A_table_function">table_function</code></td>
+<tr><td><code id="df_from_file_+3A_table_function">table_function</code></td>
 <td>
 <p>The name of a table-valued
 DuckDB function such as <code>"read_parquet"</code>,
 <code>"read_csv"</code>, <code>"read_csv_auto"</code> or <code>"read_json"</code>.</p>
+</td></tr>
+<tr><td><code id="df_from_file_+3A_...">...</code></td>
+<td>
+<p>These dots are for future extensions and must be empty.</p>
+</td></tr>
+<tr><td><code id="df_from_file_+3A_options">options</code></td>
+<td>
+<p>Arguments to the DuckDB function
+indicated by <code>table_function</code>.</p>
+</td></tr>
+<tr><td><code id="df_from_file_+3A_class">class</code></td>
+<td>
+<p>The class of the output.
+By default, a tibble is created.
+The returned object will always be a data frame.
+Use <code>class = "data.frame"</code> or <code>class = character()</code>
+to create a plain data frame.</p>
+</td></tr>
+<tr><td><code id="df_from_file_+3A_data">data</code></td>
+<td>
+<p>A data frame to be written to disk.</p>
 </td></tr>
 </table>
 
@@ -430,7 +445,7 @@ DuckDB function such as <code>"read_parquet"</code>,
 <h3>Examples</h3>
 
 <pre><code class='language-R'># Create simple CSV file
-path &lt;- tempfile(fileext = ".csv")
+path &lt;- tempfile("duckplyr_test_", fileext = ".csv")
 write.csv(data.frame(a = 1:3, b = letters[4:6]), path, row.names = FALSE)
 
 # Reading is immediate
@@ -440,15 +455,21 @@ df &lt;- df_from_csv(path)
 names(df)
 df$a
 
-# Return as tibble:
+# Return as tibble, specify column types:
 df_from_file(
   path,
   "read_csv",
-  options = list(delim = ",", auto_detect = TRUE),
+  options = list(delim = ",", types = list(c("DOUBLE", "VARCHAR"))),
   class = class(tibble())
 )
 
-unlink(path)
+# Read multiple file at once
+path2 &lt;- tempfile("duckplyr_test_", fileext = ".csv")
+write.csv(data.frame(a = 4:6, b = letters[7:9]), path2, row.names = FALSE)
+
+duckplyr_df_from_csv(file.path(tempdir(), "duckplyr_test_*.csv"))
+
+unlink(c(path, path2))
 
 # Write a Parquet file:
 path_parquet &lt;- tempfile(fileext = ".parquet")
@@ -744,7 +765,7 @@ rel_project(rel, exprs, ...)
 
 rel_aggregate(rel, groups, aggregates, ...)
 
-rel_order(rel, orders, ...)
+rel_order(rel, orders, ascending, ...)
 
 rel_join(
   left,
@@ -794,7 +815,8 @@ rel_names(rel, ...)
 </td></tr>
 <tr><td><code id="new_relational_+3A_exprs">exprs</code></td>
 <td>
-<p>A list of <a href="dplyr.html#topic+expr">expr</a> objects to filter by.</p>
+<p>A list of <code>"relational_relexpr"</code> objects to filter by,
+created by <code><a href="#topic+new_relexpr">new_relexpr()</a></code>.</p>
 </td></tr>
 <tr><td><code id="new_relational_+3A_groups">groups</code></td>
 <td>
@@ -807,6 +829,10 @@ rel_names(rel, ...)
 <tr><td><code id="new_relational_+3A_orders">orders</code></td>
 <td>
 <p>A list of expressions to order by.</p>
+</td></tr>
+<tr><td><code id="new_relational_+3A_ascending">ascending</code></td>
+<td>
+<p>A logical vector describing the sort order.</p>
 </td></tr>
 <tr><td><code id="new_relational_+3A_conds">conds</code></td>
 <td>
@@ -1079,7 +1105,7 @@ relexpr_set_alias(expr, alias = NULL)
 </code></pre>
 
 <hr>
-<h2 id='reexports'>Objects exported from other packages</h2><span id='topic+reexports'></span><span id='topic++25+3E+25'></span><span id='topic+tibble'></span><span id='topic+across'></span><span id='topic+add_count'></span><span id='topic+add_tally'></span><span id='topic+all_equal'></span><span id='topic+anti_join'></span><span id='topic+arrange'></span><span id='topic+auto_copy'></span><span id='topic+c_across'></span><span id='topic+case_when'></span><span id='topic+collapse'></span><span id='topic+collect'></span><span id='topic+compute'></span><span id='topic+count'></span><span id='topic+cross_join'></span><span id='topic+desc'></span><span id='topic+distinct'></span><span id='topic+do'></span><span id='topic+dplyr_col_modify'></span><span id='topic+dplyr_reconstruct'></span><span id='topic+dplyr_row_slice'></span><span id='topic+explain'></span><span id='topic+filter'></span><span id='topic+first'></span><span id='topic+full_join'></span><span id='topic+funs'></span><span id='topic+funs_'></span><span id='topic+group_by'></span><span id='topic+group_data'></span><span id='topic+group_keys'></span><span id='topic+group_map'></span><span id='topic+group_modify'></span><span id='topic+group_rows'></span><span id='topic+group_size'></span><span id='topic+group_vars'></span><span id='topic+group_walk'></span><span id='topic+if_all'></span><span id='topic+if_any'></span><span id='topic+inner_join'></span><span id='topic+intersect'></span><span id='topic+is_grouped_df'></span><span id='topic+join_by'></span><span id='topic+lag'></span><span id='topic+last'></span><span id='topic+lead'></span><span id='topic+left_join'></span><span id='topic+mutate'></span><span id='topic+mutate_all'></span><span id='topic+n'></span><span id='topic+n_distinct'></span><span id='topic+nest_by'></span><span id='topic+nest_join'></span><span id='topic+nth'></span><span id='topic+pull'></span><span id='topic+reframe'></span><span id='topic+relocate'></span><span id='topic+rename'></span><span id='topic+rename_all'></span><span id='topic+rename_at'></span><span id='topic+rename_if'></span><span id='topic+rename_with'></span><span id='topic+right_join'></span><span id='topic+row_number'></span><span id='topic+rows_append'></span><span id='topic+rows_delete'></span><span id='topic+rows_insert'></span><span id='topic+rows_patch'></span><span id='topic+rows_update'></span><span id='topic+rows_upsert'></span><span id='topic+rowwise'></span><span id='topic+same_src'></span><span id='topic+sample_frac'></span><span id='topic+sample_n'></span><span id='topic+select'></span><span id='topic+select_all'></span><span id='topic+select_at'></span><span id='topic+select_if'></span><span id='topic+semi_join'></span><span id='topic+setdiff'></span><span id='topic+setequal'></span><span id='topic+slice'></span><span id='topic+slice_head'></span><span id='topic+slice_max'></span><span id='topic+slice_min'></span><span id='topic+slice_sample'></span><span id='topic+slice_tail'></span><span id='topic+summarise'></span><span id='topic+summarise_all'></span><span id='topic+summarise_at'></span><span id='topic+summarize'></span><span id='topic+symdiff'></span><span id='topic+tally'></span><span id='topic+tbl_vars'></span><span id='topic+transmute'></span><span id='topic+ungroup'></span><span id='topic+union'></span><span id='topic+union_all'></span><span id='topic+vars'></span><span id='topic+with_groups'></span>
+<h2 id='reexports'>Objects exported from other packages</h2><span id='topic+reexports'></span><span id='topic++25+3E+25'></span><span id='topic+tibble'></span><span id='topic+across'></span><span id='topic+add_count'></span><span id='topic+add_tally'></span><span id='topic+all_equal'></span><span id='topic+anti_join'></span><span id='topic+arrange'></span><span id='topic+between'></span><span id='topic+bind_cols'></span><span id='topic+bind_rows'></span><span id='topic+c_across'></span><span id='topic+case_match'></span><span id='topic+case_when'></span><span id='topic+coalesce'></span><span id='topic+collapse'></span><span id='topic+collect'></span><span id='topic+compute'></span><span id='topic+consecutive_id'></span><span id='topic+count'></span><span id='topic+cross_join'></span><span id='topic+cumall'></span><span id='topic+cumany'></span><span id='topic+cume_dist'></span><span id='topic+cummean'></span><span id='topic+cur_column'></span><span id='topic+cur_group'></span><span id='topic+cur_group_id'></span><span id='topic+cur_group_rows'></span><span id='topic+dense_rank'></span><span id='topic+desc'></span><span id='topic+distinct'></span><span id='topic+explain'></span><span id='topic+filter'></span><span id='topic+first'></span><span id='topic+full_join'></span><span id='topic+if_all'></span><span id='topic+if_any'></span><span id='topic+if_else'></span><span id='topic+inner_join'></span><span id='topic+intersect'></span><span id='topic+join_by'></span><span id='topic+lag'></span><span id='topic+last'></span><span id='topic+lead'></span><span id='topic+left_join'></span><span id='topic+min_rank'></span><span id='topic+mutate'></span><span id='topic+n'></span><span id='topic+n_distinct'></span><span id='topic+na_if'></span><span id='topic+near'></span><span id='topic+nest_by'></span><span id='topic+nest_join'></span><span id='topic+nth'></span><span id='topic+ntile'></span><span id='topic+order_by'></span><span id='topic+percent_rank'></span><span id='topic+pick'></span><span id='topic+pull'></span><span id='topic+reframe'></span><span id='topic+relocate'></span><span id='topic+rename'></span><span id='topic+rename_with'></span><span id='topic+right_join'></span><span id='topic+row_number'></span><span id='topic+rows_append'></span><span id='topic+rows_delete'></span><span id='topic+rows_insert'></span><span id='topic+rows_patch'></span><span id='topic+rows_update'></span><span id='topic+rows_upsert'></span><span id='topic+sample_frac'></span><span id='topic+sample_n'></span><span id='topic+select'></span><span id='topic+semi_join'></span><span id='topic+setdiff'></span><span id='topic+setequal'></span><span id='topic+slice'></span><span id='topic+slice_head'></span><span id='topic+slice_max'></span><span id='topic+slice_min'></span><span id='topic+slice_sample'></span><span id='topic+slice_tail'></span><span id='topic+summarise'></span><span id='topic+summarize'></span><span id='topic+symdiff'></span><span id='topic+tally'></span><span id='topic+tbl_vars'></span><span id='topic+top_n'></span><span id='topic+transmute'></span><span id='topic+ungroup'></span><span id='topic+union'></span><span id='topic+union_all'></span><span id='topic+with_groups'></span><span id='topic+with_order'></span><span id='topic+.data'></span><span id='topic+add_row'></span><span id='topic+as_tibble'></span><span id='topic+tribble'></span><span id='topic+all_of'></span><span id='topic+any_of'></span><span id='topic+contains'></span><span id='topic+everything'></span><span id='topic+last_col'></span><span id='topic+matches'></span><span id='topic+num_range'></span><span id='topic+one_of'></span><span id='topic+starts_with'></span><span id='topic+where'></span>
 
 <h3>Description</h3>
 
@@ -1088,7 +1114,13 @@ below to see their documentation.
 </p>
 
 <dl>
-<dt>dplyr</dt><dd><p><code><a href="dplyr.html#topic+reexports">%&gt;%</a></code>, <code><a href="dplyr.html#topic+across">across</a></code>, <code><a href="dplyr.html#topic+count">add_count</a></code>, <code><a href="dplyr.html#topic+count">add_tally</a></code>, <code><a href="dplyr.html#topic+all_equal">all_equal</a></code>, <code><a href="dplyr.html#topic+filter-joins">anti_join</a></code>, <code><a href="dplyr.html#topic+arrange">arrange</a></code>, <code><a href="dplyr.html#topic+auto_copy">auto_copy</a></code>, <code><a href="dplyr.html#topic+c_across">c_across</a></code>, <code><a href="dplyr.html#topic+case_when">case_when</a></code>, <code><a href="dplyr.html#topic+compute">collapse</a></code>, <code><a href="dplyr.html#topic+compute">collect</a></code>, <code><a href="dplyr.html#topic+compute">compute</a></code>, <code><a href="dplyr.html#topic+count">count</a></code>, <code><a href="dplyr.html#topic+cross_join">cross_join</a></code>, <code><a href="dplyr.html#topic+desc">desc</a></code>, <code><a href="dplyr.html#topic+distinct">distinct</a></code>, <code><a href="dplyr.html#topic+do">do</a></code>, <code><a href="dplyr.html#topic+dplyr_extending">dplyr_col_modify</a></code>, <code><a href="dplyr.html#topic+dplyr_extending">dplyr_reconstruct</a></code>, <code><a href="dplyr.html#topic+dplyr_extending">dplyr_row_slice</a></code>, <code><a href="dplyr.html#topic+explain">explain</a></code>, <code><a href="dplyr.html#topic+filter">filter</a></code>, <code><a href="dplyr.html#topic+nth">first</a></code>, <code><a href="dplyr.html#topic+mutate-joins">full_join</a></code>, <code><a href="dplyr.html#topic+funs">funs</a></code>, <code><a href="dplyr.html#topic+se-deprecated">funs_</a></code>, <code><a href="dplyr.html#topic+group_by">group_by</a></code>, <code><a href="dplyr.html#topic+group_data">group_data</a></code>, <code><a href="dplyr.html#topic+group_data">group_keys</a></code>, <code><a href="dplyr.html#topic+group_map">group_map</a></code>, <code><a href="dplyr.html#topic+group_map">group_modify</a></code>, <code><a href="dplyr.html#topic+group_data">group_rows</a></code>, <code><a href="dplyr.html#topic+group_data">group_size</a></code>, <code><a href="dplyr.html#topic+group_data">group_vars</a></code>, <code><a href="dplyr.html#topic+group_map">group_walk</a></code>, <code><a href="dplyr.html#topic+across">if_all</a></code>, <code><a href="dplyr.html#topic+across">if_any</a></code>, <code><a href="dplyr.html#topic+mutate-joins">inner_join</a></code>, <code><a href="dplyr.html#topic+setops">intersect</a></code>, <code><a href="dplyr.html#topic+grouped_df">is_grouped_df</a></code>, <code><a href="dplyr.html#topic+join_by">join_by</a></code>, <code><a href="dplyr.html#topic+lead-lag">lag</a></code>, <code><a href="dplyr.html#topic+nth">last</a></code>, <code><a href="dplyr.html#topic+lead-lag">lead</a></code>, <code><a href="dplyr.html#topic+mutate-joins">left_join</a></code>, <code><a href="dplyr.html#topic+mutate">mutate</a></code>, <code><a href="dplyr.html#topic+mutate_all">mutate_all</a></code>, <code><a href="dplyr.html#topic+context">n</a></code>, <code><a href="dplyr.html#topic+n_distinct">n_distinct</a></code>, <code><a href="dplyr.html#topic+nest_by">nest_by</a></code>, <code><a href="dplyr.html#topic+nest_join">nest_join</a></code>, <code><a href="dplyr.html#topic+nth">nth</a></code>, <code><a href="dplyr.html#topic+pull">pull</a></code>, <code><a href="dplyr.html#topic+reframe">reframe</a></code>, <code><a href="dplyr.html#topic+relocate">relocate</a></code>, <code><a href="dplyr.html#topic+rename">rename</a></code>, <code><a href="dplyr.html#topic+select_all">rename_all</a></code>, <code><a href="dplyr.html#topic+select_all">rename_at</a></code>, <code><a href="dplyr.html#topic+select_all">rename_if</a></code>, <code><a href="dplyr.html#topic+rename">rename_with</a></code>, <code><a href="dplyr.html#topic+mutate-joins">right_join</a></code>, <code><a href="dplyr.html#topic+row_number">row_number</a></code>, <code><a href="dplyr.html#topic+rows">rows_append</a></code>, <code><a href="dplyr.html#topic+rows">rows_delete</a></code>, <code><a href="dplyr.html#topic+rows">rows_insert</a></code>, <code><a href="dplyr.html#topic+rows">rows_patch</a></code>, <code><a href="dplyr.html#topic+rows">rows_update</a></code>, <code><a href="dplyr.html#topic+rows">rows_upsert</a></code>, <code><a href="dplyr.html#topic+rowwise">rowwise</a></code>, <code><a href="dplyr.html#topic+same_src">same_src</a></code>, <code><a href="dplyr.html#topic+sample_n">sample_frac</a></code>, <code><a href="dplyr.html#topic+sample_n">sample_n</a></code>, <code><a href="dplyr.html#topic+select">select</a></code>, <code><a href="dplyr.html#topic+select_all">select_all</a></code>, <code><a href="dplyr.html#topic+select_all">select_at</a></code>, <code><a href="dplyr.html#topic+select_all">select_if</a></code>, <code><a href="dplyr.html#topic+filter-joins">semi_join</a></code>, <code><a href="dplyr.html#topic+setops">setdiff</a></code>, <code><a href="dplyr.html#topic+setops">setequal</a></code>, <code><a href="dplyr.html#topic+slice">slice</a></code>, <code><a href="dplyr.html#topic+slice">slice_head</a></code>, <code><a href="dplyr.html#topic+slice">slice_max</a></code>, <code><a href="dplyr.html#topic+slice">slice_min</a></code>, <code><a href="dplyr.html#topic+slice">slice_sample</a></code>, <code><a href="dplyr.html#topic+slice">slice_tail</a></code>, <code><a href="dplyr.html#topic+summarise">summarise</a></code>, <code><a href="dplyr.html#topic+summarise_all">summarise_all</a></code>, <code><a href="dplyr.html#topic+summarise_all">summarise_at</a></code>, <code><a href="dplyr.html#topic+summarise">summarize</a></code>, <code><a href="dplyr.html#topic+setops">symdiff</a></code>, <code><a href="dplyr.html#topic+count">tally</a></code>, <code><a href="dplyr.html#topic+tbl_vars">tbl_vars</a></code>, <code><a href="dplyr.html#topic+reexports">tibble</a></code>, <code><a href="dplyr.html#topic+transmute">transmute</a></code>, <code><a href="dplyr.html#topic+group_by">ungroup</a></code>, <code><a href="dplyr.html#topic+setops">union</a></code>, <code><a href="dplyr.html#topic+setops">union_all</a></code>, <code><a href="dplyr.html#topic+vars">vars</a></code>, <code><a href="dplyr.html#topic+with_groups">with_groups</a></code></p>
+<dt>dplyr</dt><dd><p><code><a href="dplyr.html#topic+reexports">%&gt;%</a></code>, <code><a href="dplyr.html#topic+across">across</a></code>, <code><a href="dplyr.html#topic+count">add_count</a></code>, <code><a href="dplyr.html#topic+count">add_tally</a></code>, <code><a href="dplyr.html#topic+all_equal">all_equal</a></code>, <code><a href="dplyr.html#topic+filter-joins">anti_join</a></code>, <code><a href="dplyr.html#topic+arrange">arrange</a></code>, <code><a href="dplyr.html#topic+between">between</a></code>, <code><a href="dplyr.html#topic+bind_cols">bind_cols</a></code>, <code><a href="dplyr.html#topic+bind_rows">bind_rows</a></code>, <code><a href="dplyr.html#topic+c_across">c_across</a></code>, <code><a href="dplyr.html#topic+case_match">case_match</a></code>, <code><a href="dplyr.html#topic+case_when">case_when</a></code>, <code><a href="dplyr.html#topic+coalesce">coalesce</a></code>, <code><a href="dplyr.html#topic+compute">collapse</a></code>, <code><a href="dplyr.html#topic+compute">collect</a></code>, <code><a href="dplyr.html#topic+compute">compute</a></code>, <code><a href="dplyr.html#topic+consecutive_id">consecutive_id</a></code>, <code><a href="dplyr.html#topic+count">count</a></code>, <code><a href="dplyr.html#topic+cross_join">cross_join</a></code>, <code><a href="dplyr.html#topic+cumall">cumall</a></code>, <code><a href="dplyr.html#topic+cumall">cumany</a></code>, <code><a href="dplyr.html#topic+percent_rank">cume_dist</a></code>, <code><a href="dplyr.html#topic+cumall">cummean</a></code>, <code><a href="dplyr.html#topic+context">cur_column</a></code>, <code><a href="dplyr.html#topic+context">cur_group</a></code>, <code><a href="dplyr.html#topic+context">cur_group_id</a></code>, <code><a href="dplyr.html#topic+context">cur_group_rows</a></code>, <code><a href="dplyr.html#topic+row_number">dense_rank</a></code>, <code><a href="dplyr.html#topic+desc">desc</a></code>, <code><a href="dplyr.html#topic+distinct">distinct</a></code>, <code><a href="dplyr.html#topic+explain">explain</a></code>, <code><a href="dplyr.html#topic+filter">filter</a></code>, <code><a href="dplyr.html#topic+nth">first</a></code>, <code><a href="dplyr.html#topic+mutate-joins">full_join</a></code>, <code><a href="dplyr.html#topic+across">if_all</a></code>, <code><a href="dplyr.html#topic+across">if_any</a></code>, <code><a href="dplyr.html#topic+if_else">if_else</a></code>, <code><a href="dplyr.html#topic+mutate-joins">inner_join</a></code>, <code><a href="dplyr.html#topic+setops">intersect</a></code>, <code><a href="dplyr.html#topic+join_by">join_by</a></code>, <code><a href="dplyr.html#topic+lead-lag">lag</a></code>, <code><a href="dplyr.html#topic+nth">last</a></code>, <code><a href="dplyr.html#topic+lead-lag">lead</a></code>, <code><a href="dplyr.html#topic+mutate-joins">left_join</a></code>, <code><a href="dplyr.html#topic+row_number">min_rank</a></code>, <code><a href="dplyr.html#topic+mutate">mutate</a></code>, <code><a href="dplyr.html#topic+context">n</a></code>, <code><a href="dplyr.html#topic+n_distinct">n_distinct</a></code>, <code><a href="dplyr.html#topic+na_if">na_if</a></code>, <code><a href="dplyr.html#topic+near">near</a></code>, <code><a href="dplyr.html#topic+nest_by">nest_by</a></code>, <code><a href="dplyr.html#topic+nest_join">nest_join</a></code>, <code><a href="dplyr.html#topic+nth">nth</a></code>, <code><a href="dplyr.html#topic+ntile">ntile</a></code>, <code><a href="dplyr.html#topic+order_by">order_by</a></code>, <code><a href="dplyr.html#topic+percent_rank">percent_rank</a></code>, <code><a href="dplyr.html#topic+pick">pick</a></code>, <code><a href="dplyr.html#topic+pull">pull</a></code>, <code><a href="dplyr.html#topic+reframe">reframe</a></code>, <code><a href="dplyr.html#topic+relocate">relocate</a></code>, <code><a href="dplyr.html#topic+rename">rename</a></code>, <code><a href="dplyr.html#topic+rename">rename_with</a></code>, <code><a href="dplyr.html#topic+mutate-joins">right_join</a></code>, <code><a href="dplyr.html#topic+row_number">row_number</a></code>, <code><a href="dplyr.html#topic+rows">rows_append</a></code>, <code><a href="dplyr.html#topic+rows">rows_delete</a></code>, <code><a href="dplyr.html#topic+rows">rows_insert</a></code>, <code><a href="dplyr.html#topic+rows">rows_patch</a></code>, <code><a href="dplyr.html#topic+rows">rows_update</a></code>, <code><a href="dplyr.html#topic+rows">rows_upsert</a></code>, <code><a href="dplyr.html#topic+sample_n">sample_frac</a></code>, <code><a href="dplyr.html#topic+sample_n">sample_n</a></code>, <code><a href="dplyr.html#topic+select">select</a></code>, <code><a href="dplyr.html#topic+filter-joins">semi_join</a></code>, <code><a href="dplyr.html#topic+setops">setdiff</a></code>, <code><a href="dplyr.html#topic+setops">setequal</a></code>, <code><a href="dplyr.html#topic+slice">slice</a></code>, <code><a href="dplyr.html#topic+slice">slice_head</a></code>, <code><a href="dplyr.html#topic+slice">slice_max</a></code>, <code><a href="dplyr.html#topic+slice">slice_min</a></code>, <code><a href="dplyr.html#topic+slice">slice_sample</a></code>, <code><a href="dplyr.html#topic+slice">slice_tail</a></code>, <code><a href="dplyr.html#topic+summarise">summarise</a></code>, <code><a href="dplyr.html#topic+summarise">summarize</a></code>, <code><a href="dplyr.html#topic+setops">symdiff</a></code>, <code><a href="dplyr.html#topic+count">tally</a></code>, <code><a href="dplyr.html#topic+tbl_vars">tbl_vars</a></code>, <code><a href="dplyr.html#topic+reexports">tibble</a></code>, <code><a href="dplyr.html#topic+top_n">top_n</a></code>, <code><a href="dplyr.html#topic+transmute">transmute</a></code>, <code><a href="dplyr.html#topic+group_by">ungroup</a></code>, <code><a href="dplyr.html#topic+setops">union</a></code>, <code><a href="dplyr.html#topic+setops">union_all</a></code>, <code><a href="dplyr.html#topic+with_groups">with_groups</a></code>, <code><a href="dplyr.html#topic+with_order">with_order</a></code></p>
+</dd>
+<dt>rlang</dt><dd><p><code><a href="rlang.html#topic+dot-data">.data</a></code></p>
+</dd>
+<dt>tibble</dt><dd><p><code><a href="tibble.html#topic+add_row">add_row</a></code>, <code><a href="tibble.html#topic+as_tibble">as_tibble</a></code>, <code><a href="tibble.html#topic+tribble">tribble</a></code></p>
+</dd>
+<dt>tidyselect</dt><dd><p><code><a href="tidyselect.html#topic+all_of">all_of</a></code>, <code><a href="tidyselect.html#topic+all_of">any_of</a></code>, <code><a href="tidyselect.html#topic+starts_with">contains</a></code>, <code><a href="tidyselect.html#topic+everything">everything</a></code>, <code><a href="tidyselect.html#topic+everything">last_col</a></code>, <code><a href="tidyselect.html#topic+starts_with">matches</a></code>, <code><a href="tidyselect.html#topic+starts_with">num_range</a></code>, <code><a href="tidyselect.html#topic+one_of">one_of</a></code>, <code><a href="tidyselect.html#topic+starts_with">starts_with</a></code>, <code><a href="tidyselect.html#topic+where">where</a></code></p>
 </dd>
 </dl>
 

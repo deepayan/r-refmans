@@ -73,6 +73,8 @@ set.</a></li>
 <p>Compute complex table</p></a></li>
 <li><a href='#toKable'>
 <p>Convert <code>tabular</code> object to <code>knitr_kable</code> format.</p></a></li>
+<li><a href='#toTinytable'>
+<p>Convert <code>tabular</code> object to <code>tinytable</code> format.</p></a></li>
 <li><a href='#useGroupLabels'>
 <p>Format table with groups of lines</p></a></li>
 <li><a href='#write.csv.tabular'>
@@ -89,7 +91,7 @@ set.</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.9.17</td>
+<td>0.9.28</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -120,11 +122,11 @@ set.</a></li>
 <tr>
 <td>Suggests:</td>
 <td>magrittr, kableExtra (&ge; 0.9.0), Hmisc, bookdown, rmarkdown,
-pkgdown, formatters</td>
+pkgdown, formatters, tinytable (&ge; 0.0.5)</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
-<td>knitr</td>
+<td>rmarkdown</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -144,7 +146,7 @@ pkgdown, formatters</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-05-02 20:36:23 UTC; murdoch</td>
+<td>2024-06-26 17:29:14 UTC; murdoch</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -152,7 +154,7 @@ pkgdown, formatters</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-05-02 21:30:02 UTC</td>
+<td>2024-06-26 17:50:01 UTC</td>
 </tr>
 </table>
 <hr>
@@ -1443,6 +1445,13 @@ work when <span class="pkg">Hmisc</span> is not installed.
 </p>
 
 
+<h3>Note</h3>
+
+<p>For historical reasons, the <code>toLatex()</code> function with a non-empty <code>file</code> argument
+doesn't write to the file until the returned value is printed.
+</p>
+
+
 <h3>See Also</h3>
 
 <p><code><a href="#topic+print.tabular">print.tabular</a></code>, <code><a href="#topic+table_options">table_options</a></code>,
@@ -1763,8 +1772,14 @@ which must be fully specified when called.
   }
   
   # This gives the breaks by columns, counting the
-  # row label columns:
-  bycol &lt;- formatters::vert_pag_indices(mform, cpp = 30,  rep_cols = 2)
+  # row label columns.  
+  # The formatters::vert_pag_indices function had an incompatible
+  # change in v0.5.8
+  if ("fontspec" %in% names(formals(formatters::vert_pag_indices)))
+    bycol &lt;- formatters::vert_pag_indices(mform, cpp = 30,  rep_cols = 2,
+                                        fontspec = NULL)
+  else
+    bycol &lt;- formatters::vert_pag_indices(mform, cpp = 30,  rep_cols = 2)
   # Display the table with both kinds of breaks
   for (i in seq_along(byrow)) {
     rows &lt;- byrow[[i]]
@@ -1820,7 +1835,7 @@ named, they will get those names as headings, otherwise they will not be labelle
 <td>
 
 <p>Will be passed to the <code><a href="base.html#topic+format">format</a></code> function.  If <code>digits</code> is
-length one, all columns use a common format; otherwise they are
+length one, all expressions use a common format; otherwise they are
 formatted separately.
 </p>
 </td></tr>
@@ -1861,8 +1876,13 @@ as an expression evaluating to a character value.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>stderr &lt;- function(x) sd(x)/sqrt(length(x))
-toLatex( tabular( (Species+1) ~ Sepal.Length*
-          PlusMinus(mean, stderr, digits=1), data=iris ) )
+lcl &lt;- function(x) mean(x) - qt(0.975, df=length(x)-1)*stderr(x)
+ucl &lt;- function(x) mean(x) + qt(0.975, df=length(x)-1)*stderr(x)
+toLatex( tabular( (Species+1) ~ All(iris)*
+          Paste(lcl, ucl, digits = 2, 
+                head="95\% CI", 
+                prefix = "[", sep = ",", postfix = "]"), 
+          data=iris ) )
 </code></pre>
 
 <hr>
@@ -2777,6 +2797,73 @@ to functions in the <span class="pkg">kableExtra</span> package.
   cat("\n")
   toKable(tab, format = "html", options = list(HTMLcaption = "Fisher's iris data"))
 }
+</code></pre>
+
+<hr>
+<h2 id='toTinytable'>
+Convert <code>tabular</code> object to <code>tinytable</code> format.
+</h2><span id='topic+toTinytable'></span>
+
+<h3>Description</h3>
+
+<p>Converts the output of the <code><a href="#topic+tabular">tabular</a></code> and related
+functions to a format consistent with the output of the
+<code><a href="tinytable.html#topic+tt">tt</a></code> function, so that it can be 
+customized using the <span class="pkg">tinytable</span> package.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>toTinytable(table, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="toTinytable_+3A_table">table</code></td>
+<td>
+
+<p>An object of class <code>tabular</code>.
+</p>
+</td></tr>
+<tr><td><code id="toTinytable_+3A_...">...</code></td>
+<td>
+
+<p>Additional arguments to pass to <code><a href="tinytable.html#topic+tt">tt</a></code>.
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An object of class <code>tinytable</code>, suitable for passing
+to functions in the <span class="pkg">tinytable</span> package. These tables
+can be exported to several formats, including LaTeX, HTML,
+Markdown, Word, Typst, PDF, and PNG.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="tinytable.html#topic+tinytable-package">tinytable-package</a></code> 
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>if (requireNamespace("tinytable")) {
+
+  tab &lt;-  tabular( (Species + 1) ~ (n=1) + Format(digits=2)*
+          (Sepal.Length + Sepal.Width)*(mean + sd), data=iris )
+  tab &lt;- toTinytable(tab, theme = "striped")
+  tab &lt;- tinytable::style_tt(tab, i = 1:2, background = "teal", color = "white")
+  tab
+
+}
+
 </code></pre>
 
 <hr>

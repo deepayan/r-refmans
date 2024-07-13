@@ -19,7 +19,7 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#attach_eval'><p>Evaluate R expressions in an attached environment.</p></a></li>
-<li><a href='#attach_source'><p>Source R files in an attached environment</p></a></li>
+<li><a href='#attach_source'><p>Source R files into an attached environment</p></a></li>
 <li><a href='#import_from'><p>import objects</p></a></li>
 <li><a href='#include'><p>Source <span class="rlang"><b>R</b></span> files</p></a></li>
 <li><a href='#set_library_default_pos'><p>Modify default attach position for <code>base::library()</code></p></a></li>
@@ -36,7 +36,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.2</td>
+<td>0.3.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -60,7 +60,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.1</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -68,7 +68,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2022-09-22 13:07:23 UTC; tomasz</td>
+<td>2024-04-19 12:54:51 UTC; tomasz</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -84,7 +84,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2022-09-22 13:20:02 UTC</td>
+<td>2024-04-19 13:22:42 UTC</td>
 </tr>
 </table>
 <hr>
@@ -170,11 +170,11 @@ detach(local:utils) # cleanup
 </code></pre>
 
 <hr>
-<h2 id='attach_source'>Source R files in an attached environment</h2><span id='topic+attach_source'></span>
+<h2 id='attach_source'>Source R files into an attached environment</h2><span id='topic+attach_source'></span>
 
 <h3>Description</h3>
 
-<p>Source R files in an attached environment
+<p>Source R files into an attached environment
 </p>
 
 
@@ -187,7 +187,8 @@ detach(local:utils) # cleanup
   pos = 2L,
   chdir = FALSE,
   warn.conflicts = TRUE,
-  mask.ok = NULL
+  mask.ok = NULL,
+  parent = .GlobalEnv
 )
 </code></pre>
 
@@ -224,12 +225,26 @@ changed to the directory containing the file(s) being sourced.</p>
 <td>
 <p>logical. If TRUE (the default), print warnings about
 objects in the attached environment that that are masking or masked by
-other objects of the same name.</p>
+other objects of the same name. If the environment specified by <code>name</code> is
+was attached previously, then only newly defined objects are warned about.
+N.B., Even though the name is <code>warn.conflicts</code>, the messages about
+conflicts are not <code>warning()</code>s but <code>packageStartupMessage()</code>s, and can be
+suppressed with <code>suppressPackageStartupMessages()</code></p>
 </td></tr>
 <tr><td><code id="attach_source_+3A_mask.ok">mask.ok</code></td>
 <td>
 <p>character vector of names of objects that can mask objects on
-the search path without signaling a warning if <code>warn.conflicts</code> is <code>TRUE</code></p>
+the search path without signaling a warning if <code>warn.conflicts</code> is <code>TRUE</code>.
+The sourced R script can also define <code>.mask.OK</code> in the R environment, which
+has the same effect as passing it as an argument.</p>
+</td></tr>
+<tr><td><code id="attach_source_+3A_parent">parent</code></td>
+<td>
+<p>R environment. If an environment specified by <code>name</code> is not
+already attached, then the supplied R scripts are first sourced into a new
+environment with the supplied parent. The default of <code>globalenv()</code> enables
+calling <code>library()</code> in the scripts and having the subsequent
+code in the scripts &quot;see&quot; the attached packages.</p>
 </td></tr>
 </table>
 
@@ -238,48 +253,6 @@ the search path without signaling a warning if <code>warn.conflicts</code> is <c
 
 <p>The attached environment, invisibly.
 </p>
-
-
-<h3>Note</h3>
-
-<p>One subtlety that is sometimes important: packages attached after this
-environment is created will be not on the symbol search path for the environment
-where the R source is evaluated. The search path of the environment the R
-files are sourced in is <code>tail(search(), -pos)</code>.
-</p>
-<p>This means that, for example, if you source a script that calls
-<code>library()</code>, the code in that script will not &quot;see&quot; the functions from the
-newly attached packages. This is by design. However, if you want to source
-scripts that call <code>library</code> and define new functions, and you want those
-new functions to &quot;see&quot; the <code>library</code> attached packages, here are 3 ways to
-do that:
-</p>
-
-<ol>
-<li><p> Attach all the packages you want before attaching the script:
-</p>
-<div class="sourceCode r"><pre>library(foo); library(bar)
-attach_source("my_script.R")
-</pre></div>
-</li>
-<li><p> Modify the default <code>pos</code> argument to <code>library</code>, so all new packages
-attach after your script:
-</p>
-<div class="sourceCode r"><pre>envir:::set_default_library_pos(after = "source:my_script.R")
-attach_source("my_script.R")
-</pre></div>
-</li>
-<li><p> This is the likely the most preferred solution. Instead of sourcing
-files directly in the attached environment, source the files into a new
-environment that inherits from <code>.Globalenv</code>, and then copy over everything
-to the attached environment.
-</p>
-<div class="sourceCode r"><pre>attach_eval({
-  import_from("my_script.R")
-})
-</pre></div>
-</li></ol>
-
 
 
 <h3>See Also</h3>

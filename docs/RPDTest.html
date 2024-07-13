@@ -34,7 +34,7 @@ Goodness-of-Fit Test</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.0.1</td>
+<td>0.0.2</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -62,7 +62,7 @@ Goodness-of-Fit Test</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-25 23:08:04 UTC; 83668</td>
+<td>2024-05-20 12:35:42 UTC; 83668</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -78,7 +78,7 @@ Goodness-of-Fit Test</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-27 09:10:05 UTC</td>
+<td>2024-05-20 12:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -89,12 +89,13 @@ Goodness-of-Fit Test</td>
 <p>This is one of the auxiliary functions used to execute the rpdTest function.
 This function can be used to calculate p-values based on Monte Carlo simulation.
 Users generally do not need to call this function except for testing purposes.
+For more detailed description one can find in<a href="#topic+rpdTest">rpdTest</a>.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>pVals(x, p, lambda = 1, ll, simNum, edfLen, n.cores, nDim, r)
+<pre><code class='language-R'>pVals(x, p, lambda = 1, B = 200, z = 40, rs = 1250, n.cores, nDim, r)
 </code></pre>
 
 
@@ -116,20 +117,19 @@ ensure beforehand that the vectors are valid.</p>
 <p>a control parameter of the statistic calculation,
 adjusting it will significantly change the final obtained statistic.</p>
 </td></tr>
-<tr><td><code id="pVals_+3A_ll">ll</code></td>
+<tr><td><code id="pVals_+3A_b">B</code></td>
 <td>
-<p>an integer specifying the number of outer loops of the
-Monte Carlo simulation.</p>
+<p>an integer specifying the number of simulation data on the expected
+null distribution (p) of the Monte Carlo simulation.</p>
 </td></tr>
-<tr><td><code id="pVals_+3A_simnum">simNum</code></td>
+<tr><td><code id="pVals_+3A_z">z</code></td>
 <td>
-<p>an integer specifying the number of inner loops of the
-Monte Carlo simulation.</p>
+<p>an integer specifying the number by which to divide
+the observation data group in a Monte Carlo simulation.</p>
 </td></tr>
-<tr><td><code id="pVals_+3A_edflen">edfLen</code></td>
+<tr><td><code id="pVals_+3A_rs">rs</code></td>
 <td>
-<p>an integer that adjusts the number of points used to generate
-the empirical distribution function used to perform the simulation.</p>
+<p>an integer that adjusts the number of statistics calculated in simulation.</p>
 </td></tr>
 <tr><td><code id="pVals_+3A_n.cores">n.cores</code></td>
 <td>
@@ -163,7 +163,7 @@ It is equal to the number of possible outcomes of the multinomial distribution.<
 #The next line is equivalent to rpdTest(d,sim.pValue = TRUE,n.cores = 2)$p.value
 #It usually takes 1-2 minutes to perform this calculation process
 
-pVals(d, c(1/2,1/2), ll = 5, simNum =  30, edfLen = 2500, n.cores = 2, nDim = sum(d), r = length(d))
+pVals(d, c(1/2,1/2), B = 200, z = 40, rs = 1250, n.cores = 2, nDim = sum(d), r = length(d))
 
 </code></pre>
 
@@ -181,7 +181,7 @@ except for testing purposes.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>rpdStat(data, probability, lambda = 1, nDim, r)
+<pre><code class='language-R'>rpdStat(data, probability, lambda = 1, nDim, r, random.state = NULL)
 </code></pre>
 
 
@@ -210,6 +210,11 @@ It is equal to the number of experiments for the multinomial distribution.</p>
 <td>
 <p>an integer indicating the dimension of the data parameter.
 It is equal to the number of possible outcomes of the multinomial distribution.</p>
+</td></tr>
+<tr><td><code id="rpdStat_+3A_random.state">random.state</code></td>
+<td>
+<p>a numeric that controls the randomness of the samples used
+when generating uniformly distributed random vector on the n-sphere.</p>
 </td></tr>
 </table>
 
@@ -242,10 +247,19 @@ Accept a vector, matrix or a <a href="base.html#topic+data.frame">data.frame</a>
 Then obtain a specific Randomized phi-divergence statistic,
 which is computed based on a uniformly distributed random vector
 on the n-sphere. This random vector is uniquely generated at runtime.
-No definite p-value is provided at current stage.
 However, a p-values in Monte Carlo simulation is available as an option. It
-executes in parallel within a nested for loop to reduce randomness.
-In the current version (0.0.1), this feature is still being debugged and improved,
+executes in parallel way, comparing the empirical distribution function. In specific,
+it simulates data under the null hypothesis and compares it to the observed data.
+It generates B datasets based on the expected null distribution (p) and
+the observed control data (v0). For each simulated dataset and the observed
+data and v0, rs statistics are computed using different random seeds.
+The Kolmogorov-Smirnov statistic is used to compare the distributions of the simulated and
+observed data and the simulated and control data. We get B K-S statistics in both
+observed data group and control data group.
+The function then calculates a p-value based on how often the within-group mean of
+the Kolmogorov-Smirnov statistic after dividing the observed data group into z groups
+is more extreme than the mean of the statistic observed for the control vector group.
+In the current version (0.0.2), this feature is still being debugged and improved,
 so this option is not enabled by default.
 </p>
 
@@ -257,10 +271,11 @@ so this option is not enabled by default.
   p = rep(1/length(data), length(data)),
   lambda = 1,
   sim.pValue = FALSE,
-  ll = 5,
-  simNum = 30,
-  edfLen = 2500,
-  n.cores = NULL
+  B = 200,
+  z = 40,
+  rs = 1250,
+  n.cores = NULL,
+  random.state = NULL
 )
 </code></pre>
 
@@ -288,26 +303,30 @@ adjusting it will significantly change the final obtained statistic.</p>
 <p>a logical variable. It decides whether to compute p-values
 in Monte Carlo simulation.</p>
 </td></tr>
-<tr><td><code id="rpdTest_+3A_ll">ll</code></td>
+<tr><td><code id="rpdTest_+3A_b">B</code></td>
 <td>
-<p>an integer specifying the number of outer loops of the
-Monte Carlo simulation.</p>
+<p>an integer specifying the number of simulation data on the expected
+null distribution (p) of the Monte Carlo simulation.</p>
 </td></tr>
-<tr><td><code id="rpdTest_+3A_simnum">simNum</code></td>
+<tr><td><code id="rpdTest_+3A_z">z</code></td>
 <td>
-<p>an integer specifying the number of inner loops of the
-Monte Carlo simulation.</p>
+<p>an integer specifying the number by which to divide
+the observation data group in a Monte Carlo simulation.</p>
 </td></tr>
-<tr><td><code id="rpdTest_+3A_edflen">edfLen</code></td>
+<tr><td><code id="rpdTest_+3A_rs">rs</code></td>
 <td>
-<p>an integer that adjusts the number of points used to generate
-the empirical distribution function used to perform the simulation.</p>
+<p>an integer that adjusts the number of statistics calculated in simulation.</p>
 </td></tr>
 <tr><td><code id="rpdTest_+3A_n.cores">n.cores</code></td>
 <td>
 <p>an integer used to specify the number of cores used
 to perform parallel operations. The default is to use the maximum number
 of cores available to the computer minus one.</p>
+</td></tr>
+<tr><td><code id="rpdTest_+3A_random.state">random.state</code></td>
+<td>
+<p>a numeric that controls the randomness of the samples used
+when generating uniformly distributed random vector on the n-sphere.</p>
 </td></tr>
 </table>
 

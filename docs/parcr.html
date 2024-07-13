@@ -30,11 +30,13 @@ function processMathHTML() {
 <li><a href='#failed'><p>Testing for parser failure</p></a></li>
 <li><a href='#fastafile'><p>Example nucleotide fasta file</p></a></li>
 <li><a href='#finished'><p>Test whether the parser has completely consumed the input</p></a></li>
+<li><a href='#Ignore'><p>Ignore all until the end</p></a></li>
 <li><a href='#literal'><p>Matching parser input with a literal string</p></a></li>
 <li><a href='#match_s'><p>Identifying and processing a string and producing custom output</p></a></li>
 <li><a href='#print.marker'><p>Print method for an object of class <code>marker</code></p></a></li>
 <li><a href='#reporter'><p>Turn a parser into an error reporting parser</p></a></li>
 <li><a href='#satisfy'><p>Matching input using a logical function</p></a></li>
+<li><a href='#store'><p>Store and retrieve objects</p></a></li>
 <li><a href='#succeed'><p>The most basic parsers</p></a></li>
 <li><a href='#zero_or_more'><p>Repeated application of a parser</p></a></li>
 </ul>
@@ -49,7 +51,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.5.1</td>
+<td>0.5.2</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -105,7 +107,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-01-31 12:53:06 UTC; douwe</td>
+<td>2024-06-07 06:43:08 UTC; douwe</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -122,7 +124,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-01-31 13:10:02 UTC</td>
+<td>2024-06-07 07:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -787,6 +789,52 @@ finished((literal("A") %then% eof())(c("A","C"))) # FALSE
 </code></pre>
 
 <hr>
+<h2 id='Ignore'>Ignore all until the end</h2><span id='topic+Ignore'></span>
+
+<h3>Description</h3>
+
+<p>Sometimes, a parser has found the end of the text that needs to be parsed and
+all following lines can be ignored. <code>Ignore</code> will read and discard all
+following lines until the end of the file, empty or not. So, this parser will
+consume all elements until the end of the input vector.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>Ignore()
+</code></pre>
+
+
+<h3>Details</h3>
+
+<p>This parser is identical to
+</p>
+<pre>
+zero_or_more(satisfy(function(x) TRUE)) 
+</pre>
+
+
+<h3>Value</h3>
+
+<p>A parser.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+starts_with_a &lt;- function(x) grepl("^a",x)
+p &lt;- function() {
+  one_or_more(satisfy(starts_with_a)) %then%
+  (literal("~End") %ret% NULL) %then%
+  Ignore() %then%
+  eof()
+}
+p()(c("ab","abc","~End","boring stuff","more stuff"))
+</code></pre>
+
+<hr>
 <h2 id='literal'>Matching parser input with a literal string</h2><span id='topic+literal'></span>
 
 <h3>Description</h3>
@@ -1106,6 +1154,62 @@ satisfy(starts_with_a)(c("bca","def")) # failure
 # Using an anonymous function
 satisfy(function(x) {as.numeric(x)&gt;10})("15") # success
 
+</code></pre>
+
+<hr>
+<h2 id='store'>Store and retrieve objects</h2><span id='topic+store'></span><span id='topic+retrieve'></span>
+
+<h3>Description</h3>
+
+<p>Sometimes you want to use a parsed object to modify a later parser operation,
+as in the example below. The <code>store()</code> and <code>retrieve()</code> functions provide the
+tools to create such a parser.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>store(name, value)
+
+retrieve(name)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="store_+3A_name">name</code></td>
+<td>
+<p>a string used as the name of the stored object.</p>
+</td></tr>
+<tr><td><code id="store_+3A_value">value</code></td>
+<td>
+<p>object to be stored.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Nothing for <code>store()</code> and the stored object for <code>retrieve()</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>parse_nr &lt;- function(line) {
+  m &lt;- stringr::str_extract(line, "number=(\\d+)", group=1)
+  if (is.na(m)) list()
+  else store("nr", as.numeric(m))
+}
+
+p &lt;- function() {
+  match_s(parse_nr) %then%
+    exactly(retrieve("nr"), literal("A"))
+}
+
+p()(c("number=3", "A", "A", "A")) # success
+p()(c("number=2", "A", "A", "A")) # failure
 </code></pre>
 
 <hr>

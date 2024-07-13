@@ -39,7 +39,12 @@ function processMathHTML() {
 <li><a href='#current_timely_and_effective_care_data'><p>Get Current Timely &amp; Effective Care Data.</p></a></li>
 <li><a href='#current_unplanned_hospital_visits_data'><p>Get Current Unplanned Hospital Visits Data.</p></a></li>
 <li><a href='#current_va_data'><p>Get Current Veterans Affairs Data.</p></a></li>
+<li><a href='#fetch_cms_data'><p>Fetch Data as Tibble</p></a></li>
+<li><a href='#fetch_provider_data'><p>Fetch Provider Data as Tibble or Download CSV</p></a></li>
+<li><a href='#get_cms_meta_data'><p>Retrieve CMS Metadata Links from CMS</p></a></li>
+<li><a href='#get_provider_meta_data'><p>Retrieve Provider Metadata from CMS</p></a></li>
 <li><a href='#healthyR_data'><p>Main data file for healthyR</p></a></li>
+<li><a href='#is_valid_url'><p>Check if a URL is valid</p></a></li>
 </ul>
 </div>
 <hr>
@@ -52,7 +57,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.3</td>
+<td>1.1.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -75,24 +80,24 @@ function processMathHTML() {
 <td>xz</td>
 </tr>
 <tr>
-<td>RoxygenNote:</td>
-<td>7.2.3</td>
-</tr>
-<tr>
-<td>URL:</td>
-<td><a href="https://github.com/spsanderson/healthyR.data">https://github.com/spsanderson/healthyR.data</a></td>
-</tr>
-<tr>
 <td>BugReports:</td>
 <td><a href="https://github.com/spsanderson/healthyR.data/issues">https://github.com/spsanderson/healthyR.data/issues</a></td>
 </tr>
 <tr>
 <td>Depends:</td>
-<td>R (&ge; 3.4.0)</td>
+<td>R (&ge; 4.1.0)</td>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>rlang, utils, janitor, dplyr, stats</td>
+<td>rlang, utils, janitor, dplyr, stats, httr2, stringr, tidyr</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.3.2</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="https://github.com/spsanderson/healthyR.data">https://github.com/spsanderson/healthyR.data</a></td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -100,7 +105,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-05-05 02:19:19 UTC; steve</td>
+<td>2024-07-04 11:02:49 UTC; steve</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -117,7 +122,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-05-05 08:30:02 UTC</td>
+<td>2024-07-04 11:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -659,8 +664,18 @@ current_hosp_data() |&gt;
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>current_hosp_data()
+<pre><code class='language-R'>current_hosp_data(path = utils::choose.dir())
 </code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="current_hosp_data_+3A_path">path</code></td>
+<td>
+<p>The location to download and unzip the files</p>
+</td></tr>
+</table>
 
 
 <h3>Details</h3>
@@ -2243,6 +2258,451 @@ current_hosp_data() |&gt;
 </code></pre>
 
 <hr>
+<h2 id='fetch_cms_data'>Fetch Data as Tibble</h2><span id='topic+fetch_cms_data'></span>
+
+<h3>Description</h3>
+
+<p>This function retrieves data from the provided link and returns it as a tibble
+with cleaned names. This function is intended to be used with the CMS data API
+function <code><a href="#topic+get_cms_meta_data">get_cms_meta_data</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fetch_cms_data(.data_link)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fetch_cms_data_+3A_.data_link">.data_link</code></td>
+<td>
+<p>A character string containing the URL to fetch data from.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function sends a request to the provided URL using <code>httr2::request</code> and
+<code>httr2::req_perform</code>. If the response status is not 200, it stops with an
+error message indicating the failure. The response body is parsed as JSON and
+converted into a tibble using <code>dplyr::as_tibble</code>. The column names are cleaned
+using <code>janitor::clean_names</code>, and any character columns are stripped of leading
+and trailing whitespace using <code>stringr::str_squish</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble containing the fetched data with cleaned names. If an error
+occurs, returns <code>NULL</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+get_cms_meta_data">get_cms_meta_data</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(dplyr)
+
+# Example usage:
+base_url &lt;- "https://data.cms.gov/data-api/v1/dataset/"
+data_identifier &lt;- "9767cb68-8ea9-4f0b-8179-9431abc89f11"
+data_url &lt;- paste0(base_url, data_identifier, "/data")
+
+df_tbl &lt;- fetch_cms_data(data_url)
+
+df_tbl |&gt;
+ head(1) |&gt;
+ glimpse()
+
+</code></pre>
+
+<hr>
+<h2 id='fetch_provider_data'>Fetch Provider Data as Tibble or Download CSV</h2><span id='topic+fetch_provider_data'></span>
+
+<h3>Description</h3>
+
+<p>This function retrieves provider data from the provided link and returns it as a tibble
+with cleaned names or downloads the data as a CSV file if the link ends in .csv.
+This function is intended to be used with the CMS provider data API.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fetch_provider_data(.data_link, .limit = 500)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fetch_provider_data_+3A_.data_link">.data_link</code></td>
+<td>
+<p>A character string containing the URL to fetch data from.</p>
+</td></tr>
+<tr><td><code id="fetch_provider_data_+3A_.limit">.limit</code></td>
+<td>
+<p>An integer specifying the maximum number of rows to fetch.
+Default is 500. If set to 0, all records will be returned.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function sends a request to the provided URL using <code>httr2::request</code> and
+<code>httr2::req_perform</code>. If the response status is not 200, it stops with an
+error message indicating the failure. If the URL ends in .csv, it uses <code>utils::download.file</code>
+to download the CSV file to a directory chosen by the user. Otherwise, the
+response body is parsed as JSON and converted into a tibble using
+<code>dplyr::as_tibble</code>. The column names are cleaned using <code>janitor::clean_names</code>,
+and any character columns are stripped of leading and trailing whitespace
+using <code>stringr::str_squish</code>. The default limit for a return on records is 500.
+If the limit is set to 0, all records will be returned.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A tibble containing the fetched data with cleaned names, or downloads
+a CSV file to the user-selected directory. If an error occurs, returns <code>NULL</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+get_provider_meta_data">get_provider_meta_data</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(dplyr)
+
+# Example usage:
+data_url &lt;- "069d-826b"
+
+df_tbl &lt;- fetch_provider_data(data_url, .limit = 1)
+
+df_tbl |&gt;
+ glimpse()
+
+</code></pre>
+
+<hr>
+<h2 id='get_cms_meta_data'>Retrieve CMS Metadata Links from CMS</h2><span id='topic+get_cms_meta_data'></span>
+
+<h3>Description</h3>
+
+<p>This function sends a request to the specified CMS data URL, retrieves the JSON data,
+and processes it to create a tibble with relevant information about the datasets.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_cms_meta_data(
+  .title = NULL,
+  .modified_date = NULL,
+  .keyword = NULL,
+  .identifier = NULL,
+  .data_version = "current",
+  .media_type = "all"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="get_cms_meta_data_+3A_.title">.title</code></td>
+<td>
+<p>This can be a title that is used to search the data.</p>
+</td></tr>
+<tr><td><code id="get_cms_meta_data_+3A_.modified_date">.modified_date</code></td>
+<td>
+<p>This can be a date in the format of &quot;YYYY-MM-DD&quot;</p>
+</td></tr>
+<tr><td><code id="get_cms_meta_data_+3A_.keyword">.keyword</code></td>
+<td>
+<p>This can be a keyword that is used to search the data.</p>
+</td></tr>
+<tr><td><code id="get_cms_meta_data_+3A_.identifier">.identifier</code></td>
+<td>
+<p>This can be an identifier that is used to search the data.</p>
+</td></tr>
+<tr><td><code id="get_cms_meta_data_+3A_.data_version">.data_version</code></td>
+<td>
+<p>This can be one of three different choices: &quot;current&quot;,
+&quot;archive&quot;, or &quot;all&quot;. The default is &quot;current&quot; and if you make a choice that
+does not exist then it will default to &quot;current&quot;.</p>
+</td></tr>
+<tr><td><code id="get_cms_meta_data_+3A_.media_type">.media_type</code></td>
+<td>
+<p>This can be one of three different choices: &quot;all&quot;, &quot;csv&quot;,
+&quot;API&quot;, or &quot;other&quot;. The default is &quot;all&quot; and if you make a choice that does not
+exist then it will default to &quot;all&quot;.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function fetches JSON data from the CMS data URL and extracts relevant fields to
+create a tidy tibble. It selects specific columns, handles nested lists by unnesting them,
+cleans column names, and processes dates and media types to make the data more useful for analysis.
+The columns in the returned tibble are:
+</p>
+
+<ul>
+<li> <p><code>title</code>
+</p>
+</li>
+<li> <p><code>description</code>
+</p>
+</li>
+<li> <p><code>landing_page</code>
+</p>
+</li>
+<li> <p><code>modified</code>
+</p>
+</li>
+<li> <p><code>keyword</code>
+</p>
+</li>
+<li> <p><code>described_by</code>
+</p>
+</li>
+<li> <p><code>fn</code>
+</p>
+</li>
+<li> <p><code>has_email</code>
+</p>
+</li>
+<li> <p><code>identifier</code>
+</p>
+</li>
+<li> <p><code>start</code>
+</p>
+</li>
+<li> <p><code>end</code>
+</p>
+</li>
+<li> <p><code>references</code>
+</p>
+</li>
+<li> <p><code>distribution_description</code>
+</p>
+</li>
+<li> <p><code>distribution_title</code>
+</p>
+</li>
+<li> <p><code>distribution_modified</code>
+</p>
+</li>
+<li> <p><code>distribution_start</code>
+</p>
+</li>
+<li> <p><code>distribution_end</code>
+</p>
+</li>
+<li> <p><code>media_type</code>
+</p>
+</li>
+<li> <p><code>data_link</code>
+</p>
+</li></ul>
+
+
+
+<h3>Value</h3>
+
+<p>A tibble with data links and relevant metadata about the datasets.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Steven P. Sanderson II, MPH
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="https://data.cms.gov/data.json">https://data.cms.gov/data.json</a>
+</p>
+<p>Other Meta Data: 
+<code><a href="#topic+get_provider_meta_data">get_provider_meta_data</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(dplyr)
+
+# Fetch and process metadata from the CMS data URL
+get_cms_meta_data(
+  .keyword = "nation",
+  .title = "Market Saturation &amp; Utilization State-County"
+) |&gt;
+  glimpse()
+
+</code></pre>
+
+<hr>
+<h2 id='get_provider_meta_data'>Retrieve Provider Metadata from CMS</h2><span id='topic+get_provider_meta_data'></span>
+
+<h3>Description</h3>
+
+<p>This function sends a request to the specified CMS metadata URL, retrieves the JSON data,
+and processes it to create a tibble with relevant information about the datasets.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_provider_meta_data(
+  .identifier = NULL,
+  .title = NULL,
+  .description = NULL,
+  .keyword = NULL,
+  .issued = NULL,
+  .modified = NULL,
+  .released = NULL,
+  .theme = NULL,
+  .media_type = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="get_provider_meta_data_+3A_.identifier">.identifier</code></td>
+<td>
+<p>A dataset identifier to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.title">.title</code></td>
+<td>
+<p>A title to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.description">.description</code></td>
+<td>
+<p>A description to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.keyword">.keyword</code></td>
+<td>
+<p>A keyword to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.issued">.issued</code></td>
+<td>
+<p>A date when the dataset was issued to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.modified">.modified</code></td>
+<td>
+<p>A date when the dataset was modified to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.released">.released</code></td>
+<td>
+<p>A date when the dataset was released to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.theme">.theme</code></td>
+<td>
+<p>A theme to filter the data.</p>
+</td></tr>
+<tr><td><code id="get_provider_meta_data_+3A_.media_type">.media_type</code></td>
+<td>
+<p>A media type to filter the data.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function fetches JSON data from the CMS metadata URL and extracts relevant fields to
+create a tidy tibble. It selects specific columns, handles nested lists by unnesting them,
+cleans column names, and processes dates and media types to make the data more useful for analysis.
+The columns in the returned tibble are:
+</p>
+
+<ul>
+<li> <p><code>identifier</code>
+</p>
+</li>
+<li> <p><code>title</code>
+</p>
+</li>
+<li> <p><code>description</code>
+</p>
+</li>
+<li> <p><code>keyword</code>
+</p>
+</li>
+<li> <p><code>issued</code>
+</p>
+</li>
+<li> <p><code>modified</code>
+</p>
+</li>
+<li> <p><code>released</code>
+</p>
+</li>
+<li> <p><code>theme</code>
+</p>
+</li>
+<li> <p><code>media_type</code>
+</p>
+</li>
+<li> <p><code>download_url</code>
+</p>
+</li>
+<li> <p><code>contact_fn</code>
+</p>
+</li>
+<li> <p><code>contact_email</code>
+</p>
+</li>
+<li> <p><code>publisher_name</code>
+</p>
+</li></ul>
+
+
+
+<h3>Value</h3>
+
+<p>A tibble with metadata about the datasets.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><a href="https://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items">https://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items</a>
+</p>
+<p>Other Meta Data: 
+<code><a href="#topic+get_cms_meta_data">get_cms_meta_data</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(dplyr)
+
+# Fetch and process metadata from the CMS data URL
+get_provider_meta_data(.identifier = "3614-1eef") |&gt;
+  glimpse()
+
+</code></pre>
+
+<hr>
 <h2 id='healthyR_data'>Main data file for healthyR</h2><span id='topic+healthyR_data'></span>
 
 <h3>Description</h3>
@@ -2321,6 +2781,59 @@ considered to be an outlier
 </p>
 </li></ul>
 
+
+<hr>
+<h2 id='is_valid_url'>Check if a URL is valid</h2><span id='topic+is_valid_url'></span>
+
+<h3>Description</h3>
+
+<p>This function validates a URL by checking the presence of a scheme and a
+hostname in the parsed URL.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>is_valid_url(url)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="is_valid_url_+3A_url">url</code></td>
+<td>
+<p>A character string representing the URL to be checked.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function uses the <code>httr2::url_parse</code> function to parse the URL
+and checks if the parsed URL contains a scheme and a hostname. If either
+is missing, the URL is considered invalid.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A logical value: <code>TRUE</code> if the URL is valid, <code>FALSE</code> otherwise.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Steven P. Sanderson II, MPH
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>is_valid_url("https://www.example.com") # TRUE
+is_valid_url("not_a_url") # FALSE
+
+</code></pre>
 
 </main>
 

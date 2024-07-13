@@ -24,8 +24,9 @@ function processMathHTML() {
 <li><a href='#.file.move'><p>Move a file to a new location &ndash; Defunct &ndash; use <code>hardLinkOrCopy</code></p></a></li>
 <li><a href='#.formalsNotInCurrentDots'><p>Identify which formals to a function are not in the current <code>...</code></p></a></li>
 <li><a href='#.grepSysCalls'><p>Grep system calls</p></a></li>
+<li><a href='#.isMemoised'><p>Evaluate whether a cacheId is memoised</p></a></li>
 <li><a href='#.listFilesInArchive'><p>List files in either a <code>.zip</code> or or <code>.tar</code> file</p></a></li>
-<li><a href='#.pkgEnv'><p>The <code>reproducible</code> package environment</p></a></li>
+<li><a href='#.message'><p>The <code>reproducible</code> package environments</p></a></li>
 <li><a href='#.prefix'><p>Add a prefix or suffix to the basename part of a file path</p></a></li>
 <li><a href='#.prepareFileBackedRaster'><p>Copy the file-backing of a file-backed Raster* object</p></a></li>
 <li><a href='#.purge'><p>Purge individual line items from checksums file</p></a></li>
@@ -51,7 +52,7 @@ function processMathHTML() {
 <li><a href='#convertPaths'><p>Change the absolute path of a file</p></a></li>
 <li><a href='#Copy'><p>Recursive copying of nested environments, and other &quot;hard to copy&quot; objects</p></a></li>
 <li><a href='#copySingleFile'><p>Copy a file using <code>robocopy</code> on Windows and <code>rsync</code> on Linux/macOS</p></a></li>
-<li><a href='#createCache'><p>Functions to create and work with a cache</p></a></li>
+<li><a href='#createCache'><p>Low-level functions to create and work with a cache</p></a></li>
 <li><a href='#deprecated'><p>Crop a <code style="white-space: pre;">&#8288;Spatial*&#8288;</code> or <code style="white-space: pre;">&#8288;Raster*&#8288;</code> object</p></a></li>
 <li><a href='#determineFilename'><p>Determine filename, either automatically or manually</p></a></li>
 <li><a href='#dlGeneric'><p>Download file from generic source url</p></a></li>
@@ -62,13 +63,17 @@ function processMathHTML() {
 <li><a href='#fastMask'><p>Faster operations on rasters (DEPRECATED because <code>terra::mask</code> is fast)</p></a></li>
 <li><a href='#Filenames'><p>Return the filename(s) from a <code style="white-space: pre;">&#8288;Raster*&#8288;</code> object</p></a></li>
 <li><a href='#fixErrorsIn'><p>Fix common errors in GIS layers, using <code>terra</code></p></a></li>
+<li><a href='#gdalProject'><p>3-Step postProcess sequence for SpatRasters using <code>gdalwarp</code></p></a></li>
 <li><a href='#getRelative'><p>Relative paths</p></a></li>
 <li><a href='#guessAtTarget'><p>Try to pick a file to load</p></a></li>
 <li><a href='#internetExists'><p>Checks for existed of a url or the internet using <a href="https://CRAN.R-project.org">https://CRAN.R-project.org</a></p></a></li>
 <li><a href='#isInteractive'><p>Alternative to <code>interactive()</code> for unit testing</p></a></li>
 <li><a href='#isUpdated'><p>Has a cached object has been updated?</p></a></li>
 <li><a href='#isWindows'><p>Test whether system is Windows</p></a></li>
+<li><a href='#keepOrigGeom'><p>Keep original geometries of <code>sf</code> objects</p></a></li>
 <li><a href='#linkOrCopy'><p>Hardlink, symlink, or copy a file</p></a></li>
+<li><a href='#listNamed'><p>Create a list with names from object names</p></a></li>
+<li><a href='#loadFile'><p>Load a file from the cache</p></a></li>
 <li><a href='#mergeCache'><p>Merge two cache repositories together</p></a></li>
 <li><a href='#messageDF'><p>Use <code>message</code> with a consistent use of <code>verbose</code></p></a></li>
 <li><a href='#minFn'><p>Get min or maximum value of a (Spat)Raster</p></a></li>
@@ -82,6 +87,7 @@ function processMathHTML() {
 <li><a href='#prepInputs'><p>Download and optionally post-process files</p></a></li>
 <li><a href='#preProcessParams'><p>Download, Checksum, Extract files</p></a></li>
 <li><a href='#rasterRead'><p>A helper to <code>getOption("reproducible.rasterRead")</code></p></a></li>
+<li><a href='#remapFilenames'><p>Remap file names</p></a></li>
 <li><a href='#reproducibleOptions'><p><code>reproducible</code> options</p></a></li>
 <li><a href='#retry'><p>A wrapper around <code>try</code> that retries on failure</p></a></li>
 <li><a href='#saveToCache'><p>Save an object to Cache</p></a></li>
@@ -139,11 +145,11 @@ with '.rar' files.</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-03-29</td>
+<td>2024-05-27</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.0.11</td>
+<td>2.1.0</td>
 </tr>
 <tr>
 <td>Depends:</td>
@@ -156,10 +162,14 @@ lobstr, methods, stats, utils</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>covr, crayon, DBI, future, geodata, glue, googledrive, httr,
-knitr, parallel, qs, raster (&ge; 3.5-15), RCurl (&ge; 1.95-4.8),
-rlang, rmarkdown, RSQLite, sf, sp (&ge; 1.4-2), terra (&ge;
-1.7-20), testthat, withr</td>
+<td>archive, covr, crayon, DBI, future, geodata, glue,
+googledrive, httr, knitr, parallel, qs, raster (&ge; 3.5-15),
+RCurl (&ge; 1.95-4.8), rlang, rmarkdown, RSQLite, R.utils, sf, sp
+(&ge; 1.4-2), terra (&ge; 1.7-20), testthat, withr</td>
+</tr>
+<tr>
+<td>Additional_repositories:</td>
+<td><a href="https://predictiveecology.r-universe.dev/">https://predictiveecology.r-universe.dev/</a></td>
 </tr>
 <tr>
 <td>Encoding:</td>
@@ -193,12 +203,13 @@ rlang, rmarkdown, RSQLite, sf, sp (&ge; 1.4-2), terra (&ge;
 <td>Collate:</td>
 <td>'DBI.R' 'cache-helpers.R' 'cache-internals.R' 'robustDigest.R'
 'cache.R' 'cacheGeo.R' 'checksums.R' 'cloud.R' 'convertPaths.R'
-'copy.R' 'download.R' 'exportedMethods.R' 'gis.R' 'helpers.R'
-'messages.R' 'objectSize.R' 'options.R' 'packages.R' 'paths.R'
-'pipe.R' 'postProcess.R' 'postProcessTo.R' 'preProcess.R'
-'prepInputs.R' 'reproducible-deprecated.R'
-'reproducible-package.R' 'search.R' 'showCacheEtc.R'
-'spatialObjects-class.R' 'terra-migration.R' 'zzz.R'</td>
+'copy.R' 'download.R' 'messages.R' 'exportedMethods.R' 'gis.R'
+'helpers.R' 'listNamed.R' 'objectSize.R' 'options.R'
+'packages.R' 'paths.R' 'pipe.R' 'postProcess.R'
+'postProcessTo.R' 'preProcess.R' 'prepInputs.R'
+'reproducible-deprecated.R' 'reproducible-package.R' 'search.R'
+'showCacheEtc.R' 'spatialObjects-class.R' 'terra-migration.R'
+'zzz.R'</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -206,7 +217,7 @@ rlang, rmarkdown, RSQLite, sf, sp (&ge; 1.4-2), terra (&ge;
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-29 22:24:02 UTC; emcintir</td>
+<td>2024-05-29 18:22:29 UTC; achubaty</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -232,7 +243,7 @@ rlang, rmarkdown, RSQLite, sf, sp (&ge; 1.4-2), terra (&ge;
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-30 07:20:03 UTC</td>
+<td>2024-05-30 00:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -406,6 +417,11 @@ debugging the Cache.
 <td>
 <p>Character vector of file paths.</p>
 </td></tr>
+<tr><td><code id=".digest_+3A_quickcheck">quickCheck</code></td>
+<td>
+<p>Logical indicating whether to use a fast file size check as a heuristic
+for determining changes to a file.</p>
+</td></tr>
 <tr><td><code id=".digest_+3A_...">...</code></td>
 <td>
 <p>Additional arguments to <code>digest::digest</code>.</p>
@@ -540,6 +556,47 @@ but faster if <code>sys.calls()</code> is very big.
 </p>
 
 <hr>
+<h2 id='.isMemoised'>Evaluate whether a cacheId is memoised</h2><span id='topic+.isMemoised'></span>
+
+<h3>Description</h3>
+
+<p>Intended for internal use. Exported so other packages can use this function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>.isMemoised(cacheId, cachePath = getOption("reproducible.cachePath"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id=".isMemoised_+3A_cacheid">cacheId</code></td>
+<td>
+<p>Character string. If passed, this will override the calculated hash
+of the inputs, and return the result from this cacheId in the <code>cachePath</code>.
+Setting this is equivalent to manually saving the output of this function, i.e.,
+the object will be on disk, and will be recovered in subsequent
+This may help in some particularly finicky situations
+where Cache is not correctly detecting unchanged inputs. This will guarantee
+the object will be identical each time; this may be useful in operational code.</p>
+</td></tr>
+<tr><td><code id=".isMemoised_+3A_cachepath">cachePath</code></td>
+<td>
+<p>A repository used for storing cached objects.
+This is optional if <code>Cache</code> is used inside a SpaDES module.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A logical, length 1 indicating whether the <code>cacheId</code> is memoised.
+</p>
+
+<hr>
 <h2 id='.listFilesInArchive'>List files in either a <code>.zip</code> or or <code>.tar</code> file</h2><span id='topic+.listFilesInArchive'></span>
 
 <h3>Description</h3>
@@ -570,7 +627,7 @@ but faster if <code>sys.calls()</code> is very big.
 </p>
 
 <hr>
-<h2 id='.pkgEnv'>The <code>reproducible</code> package environment</h2><span id='topic+.pkgEnv'></span>
+<h2 id='.message'>The <code>reproducible</code> package environments</h2><span id='topic+.message'></span><span id='topic+.pkgEnv'></span>
 
 <h3>Description</h3>
 
@@ -580,14 +637,34 @@ but faster if <code>sys.calls()</code> is very big.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>.pkgEnv
+<pre><code class='language-R'>.message
+
+.pkgEnv
 </code></pre>
 
 
 <h3>Format</h3>
 
-<p>An object of class <code>environment</code> of length 1.
+<p>An object of class <code>environment</code> of length 18.
 </p>
+<p>An object of class <code>environment</code> of length 2.
+</p>
+
+
+<h3>Details</h3>
+
+
+<ul>
+<li> <p><code>.message</code> is specifically for messages and message-generating functions;
+</p>
+</li>
+<li> <p><code>.pkgEnv</code> is for general use within the package;
+</p>
+</li>
+<li> <p><code>.reproEnv</code> is used for <code>Cache</code>-related objects;
+</p>
+</li></ul>
+
 
 <hr>
 <h2 id='.prefix'>Add a prefix or suffix to the basename part of a file path</h2><span id='topic+.prefix'></span><span id='topic+suffix'></span><span id='topic+.suffix'></span>
@@ -976,7 +1053,8 @@ Default is <code>getOption("reproducible.length")</code>, which is set to <code>
 <p>The algorithms to be used; currently available choices are
 <code>md5</code>, which is also the default, <code>sha1</code>, <code>crc32</code>,
 <code>sha256</code>, <code>sha512</code>, <code>xxhash32</code>, <code>xxhash64</code>,
-<code>murmur32</code>, <code>spookyhash</code>, <code>blake3</code>, and <code>crc32c</code>.</p>
+<code>murmur32</code>, <code>spookyhash</code>, <code>blake3</code>, <code>crc32c</code>,
+<code>xxh3_64</code>, and <code>xxh3_128</code>.</p>
 </td></tr>
 <tr><td><code id=".robustDigest_+3A_quick">quick</code></td>
 <td>
@@ -1134,7 +1212,7 @@ of a list attribute and returns that same object with the updated attribute.
 </p>
 
 <hr>
-<h2 id='.sortDotsUnderscoreFirst'>Exported generics and methods</h2><span id='topic+.sortDotsUnderscoreFirst'></span><span id='topic+.orderDotsUnderscoreFirst'></span><span id='topic+ExportedMethods'></span><span id='topic+.tagsByClass'></span><span id='topic+.tagsByClass+2CANY-method'></span><span id='topic+.cacheMessage'></span><span id='topic+.cacheMessage+2CANY-method'></span><span id='topic+.addTagsToOutput'></span><span id='topic+.addTagsToOutput+2CANY-method'></span><span id='topic+.preDigestByClass'></span><span id='topic+.preDigestByClass+2CANY-method'></span><span id='topic+.checkCacheRepo'></span><span id='topic+.checkCacheRepo+2CANY-method'></span><span id='topic+.prepareOutput'></span><span id='topic+.prepareOutput+2CANY-method'></span><span id='topic+.addChangedAttr'></span><span id='topic+.addChangedAttr+2CANY-method'></span><span id='topic+updateFilenameSlots'></span><span id='topic+updateFilenameSlots.default'></span><span id='topic+updateFilenameSlots.list'></span><span id='topic+updateFilenameSlots.environment'></span><span id='topic+makeMemoisable'></span><span id='topic+makeMemoisable.default'></span><span id='topic+makeMemoisable.data.table'></span><span id='topic+unmakeMemoisable'></span><span id='topic+unmakeMemoisable.default'></span>
+<h2 id='.sortDotsUnderscoreFirst'>Exported generics and methods</h2><span id='topic+.sortDotsUnderscoreFirst'></span><span id='topic+.orderDotsUnderscoreFirst'></span><span id='topic+ExportedMethods'></span><span id='topic+.tagsByClass'></span><span id='topic+.tagsByClass+2CANY-method'></span><span id='topic+.cacheMessage'></span><span id='topic+.cacheMessage+2CANY-method'></span><span id='topic+.cacheMessageObjectToRetrieve'></span><span id='topic+.addTagsToOutput'></span><span id='topic+.addTagsToOutput+2CANY-method'></span><span id='topic+.preDigestByClass'></span><span id='topic+.preDigestByClass+2CANY-method'></span><span id='topic+.checkCacheRepo'></span><span id='topic+.checkCacheRepo+2CANY-method'></span><span id='topic+.prepareOutput'></span><span id='topic+.prepareOutput+2CANY-method'></span><span id='topic+.addChangedAttr'></span><span id='topic+.addChangedAttr+2CANY-method'></span><span id='topic+updateFilenameSlots'></span><span id='topic+updateFilenameSlots.default'></span><span id='topic+updateFilenameSlots.list'></span><span id='topic+updateFilenameSlots.environment'></span><span id='topic+makeMemoisable'></span><span id='topic+makeMemoisable.default'></span><span id='topic+makeMemoisable.data.table'></span><span id='topic+unmakeMemoisable'></span><span id='topic+unmakeMemoisable.default'></span>
 
 <h3>Description</h3>
 
@@ -1168,6 +1246,14 @@ they are made available for package developers to build specific methods.
   functionName,
   fromMemoise = getOption("reproducible.useMemoise", TRUE),
   verbose = getOption("reproducible.verbose", 1)
+)
+
+.cacheMessageObjectToRetrieve(
+  functionName,
+  fullCacheTableForObj,
+  cachePath,
+  cacheId,
+  verbose
 )
 
 .addTagsToOutput(object, outputObjects, FUN, preDigestByClass)
@@ -1258,6 +1344,26 @@ Default is 1. Above 3 will output much more information about the internals of
 Caching, which may help diagnose Caching challenges. Can set globally with an
 option, e.g., <code style="white-space: pre;">&#8288;options('reproducible.verbose' = 0) to reduce to minimal&#8288;</code></p>
 </td></tr>
+<tr><td><code id=".sortDotsUnderscoreFirst_+3A_fullcachetableforobj">fullCacheTableForObj</code></td>
+<td>
+<p>The data.table entry from the Cache database for only
+this <code>cacheId</code>, e.g., via <code>showCache()</code>.</p>
+</td></tr>
+<tr><td><code id=".sortDotsUnderscoreFirst_+3A_cachepath">cachePath</code></td>
+<td>
+<p>A repository used for storing cached objects.
+This is optional if <code>Cache</code> is used inside a SpaDES module.</p>
+</td></tr>
+<tr><td><code id=".sortDotsUnderscoreFirst_+3A_cacheid">cacheId</code></td>
+<td>
+<p>Character string. If passed, this will override the calculated hash
+of the inputs, and return the result from this cacheId in the <code>cachePath</code>.
+Setting this is equivalent to manually saving the output of this function, i.e.,
+the object will be on disk, and will be recovered in subsequent
+This may help in some particularly finicky situations
+where Cache is not correctly detecting unchanged inputs. This will guarantee
+the object will be identical each time; this may be useful in operational code.</p>
+</td></tr>
 <tr><td><code id=".sortDotsUnderscoreFirst_+3A_outputobjects">outputObjects</code></td>
 <td>
 <p>Optional character vector indicating which objects to
@@ -1274,11 +1380,6 @@ return. This is only relevant for list, environment (or similar) objects</p>
 <tr><td><code id=".sortDotsUnderscoreFirst_+3A_create">create</code></td>
 <td>
 <p>Logical. If TRUE, then it will create the path for cache.</p>
-</td></tr>
-<tr><td><code id=".sortDotsUnderscoreFirst_+3A_cachepath">cachePath</code></td>
-<td>
-<p>A repository used for storing cached objects.
-This is optional if <code>Cache</code> is used inside a SpaDES module.</p>
 </td></tr>
 <tr><td><code id=".sortDotsUnderscoreFirst_+3A_...">...</code></td>
 <td>
@@ -1329,6 +1430,8 @@ two parts: the tag type and tag value, for the specific class.
 </p>
 <p><code>.cacheMessage</code> should make a call to <code>message</code> that gives information about
 the loaded cached object being returned.
+</p>
+<p><code>.objecxtToRetrieveMessage</code> is the messaging for recovering an object from Cache.
 </p>
 <p><code>.addTagsToOutput</code> should add one or more attributes to an object, named either
 <code>"tags"</code>, <code>"call"</code> or <code>"function"</code>. It may be wise to do a &quot;deep&quot; copy within this
@@ -1433,7 +1536,7 @@ if (requireNamespace("terra", quietly = TRUE)) {
   r &lt;- terra::rast(terra::ext(0, 10, 0, 10), vals = 1:100)
 
   # write to disk manually -- will be in tempdir()
-  r &lt;- terra::writeRaster(r, file = tempfile(fileext = ".tif"))
+  r &lt;- terra::writeRaster(r, filename = tempfile(fileext = ".tif"))
 
   # copy it to the cache repository
   r &lt;- .prepareOutput(r, tempdir())
@@ -1462,6 +1565,7 @@ cannot be saved without first wrapping them. Also, file-backed objects are simil
   drv = getDrv(getOption("reproducible.drv", NULL)),
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
+  outputObjects = NULL,
   ...
 )
 
@@ -1473,6 +1577,7 @@ cannot be saved without first wrapping them. Also, file-backed objects are simil
   drv = getDrv(getOption("reproducible.drv", NULL)),
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
+  outputObjects = NULL,
   ...
 )
 
@@ -1484,6 +1589,7 @@ cannot be saved without first wrapping them. Also, file-backed objects are simil
   drv = getDrv(getOption("reproducible.drv", NULL)),
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
+  outputObjects = NULL,
   ...
 )
 
@@ -1571,6 +1677,11 @@ inherits from DBIDriver e.g., from package RSQLite, e.g., SQLite</p>
 Default is 1. Above 3 will output much more information about the internals of
 Caching, which may help diagnose Caching challenges. Can set globally with an
 option, e.g., <code style="white-space: pre;">&#8288;options('reproducible.verbose' = 0) to reduce to minimal&#8288;</code></p>
+</td></tr>
+<tr><td><code id=".wrap_+3A_outputobjects">outputObjects</code></td>
+<td>
+<p>Optional character vector indicating which objects to
+return. This is only relevant for list, environment (or similar) objects</p>
 </td></tr>
 <tr><td><code id=".wrap_+3A_...">...</code></td>
 <td>
@@ -1673,7 +1784,7 @@ data type for writing from the raster packages, respectively, or
 
 <pre><code class='language-R'>if (requireNamespace("terra", quietly = TRUE)) {
   ## LOG1S
-  rasOrig &lt;- terra::rast(ncol = 10, nrow = 10)
+  rasOrig &lt;- terra::rast(ncols = 10, nrows = 10)
   ras &lt;- rasOrig
   ras[] &lt;- rep(c(0,1),50)
   assessDataType(ras)
@@ -1899,7 +2010,10 @@ objects, this will only be applied outermost first.</p>
 <tr><td><code id="Cache_+3A_.cacheextra">.cacheExtra</code></td>
 <td>
 <p>A an arbitrary R object that will be included in the <code>CacheDigest</code>,
-but otherwise not passed into the <code>FUN</code>.</p>
+but otherwise not passed into the <code>FUN</code>. If the user supplies a named list, then
+<code>Cache</code> will report which individual elements of <code>.cacheExtra</code> have changed
+when <code>options("reproducible.showSimilar" = TRUE)</code>. This can allow a user
+more control and understanding for debugging.</p>
 </td></tr>
 <tr><td><code id="Cache_+3A_.functionname">.functionName</code></td>
 <td>
@@ -1917,7 +2031,8 @@ return. This is only relevant for list, environment (or similar) objects</p>
 <p>The algorithms to be used; currently available choices are
 <code>md5</code>, which is also the default, <code>sha1</code>, <code>crc32</code>,
 <code>sha256</code>, <code>sha512</code>, <code>xxhash32</code>, <code>xxhash64</code>,
-<code>murmur32</code>, <code>spookyhash</code>, <code>blake3</code>, and <code>crc32c</code>.</p>
+<code>murmur32</code>, <code>spookyhash</code>, <code>blake3</code>, <code>crc32c</code>,
+<code>xxh3_64</code>, and <code>xxh3_128</code>.</p>
 </td></tr>
 <tr><td><code id="Cache_+3A_cacherepo">cacheRepo</code></td>
 <td>
@@ -2028,8 +2143,8 @@ treat this as a folder name to create or use on GoogleDrive.</p>
 <p>A logical or numeric. Useful for debugging.
 If <code>TRUE</code> or <code>1</code>, then if the Cache
 does not find an identical archive in the <code>cachePath</code>, it will report (via message)
-the next most similar archive, and indicate which argument(s) is/are different.
-If a number larger than <code>1</code>, then it will report the N most similar archived
+the next most recent similar archive, and indicate which argument(s) is/are different.
+If a number larger than <code>1</code>, then it will report the N most recent similar archived
 objects.</p>
 </td></tr>
 <tr><td><code id="Cache_+3A_drv">drv</code></td>
@@ -2202,10 +2317,8 @@ desired, e.g., <code>Cache(rnorm(1))</code> is unlikely to be useful in many cas
 As a result <code>Cache(glm, x ~ y, rnorm(1))</code> will not work as a means of forcing
 a new evaluation each time, as the <code>rnorm(1)</code> is not evaluated before the call
 is assessed against the cache database. To force a new call each time, evaluate
-the randomness prior to the Cache call, e.g., <code style="white-space: pre;">&#8288;ran = rnorm(1); Cache(glm, x ~ y, ran)&#8288;</code>.
-Note this does not work for <code>glm</code> because <code>glm</code> accepts <code>...</code>.
-Rather, this randomness should be passed to <code>.cacheExtra</code>, e.g.,
-<code>Cache(glm, x ~ y, .cacheExtra = ran)</code>
+the randomness prior to the Cache call, e.g., <code>ran = rnorm(1)</code> then pass this
+to <code>.cacheExtra</code>, e.g., <code>Cache(glm, x ~ y, .cacheExtra = ran)</code>
 </p>
 
 
@@ -2496,7 +2609,8 @@ if (interactive())
 <p>The algorithms to be used; currently available choices are
 <code>md5</code>, which is also the default, <code>sha1</code>, <code>crc32</code>,
 <code>sha256</code>, <code>sha512</code>, <code>xxhash32</code>, <code>xxhash64</code>,
-<code>murmur32</code>, <code>spookyhash</code>, <code>blake3</code>, and <code>crc32c</code>.</p>
+<code>murmur32</code>, <code>spookyhash</code>, <code>blake3</code>, <code>crc32c</code>,
+<code>xxh3_64</code>, and <code>xxh3_128</code>.</p>
 </td></tr>
 <tr><td><code id="CacheDigest_+3A_calledfrom">calledFrom</code></td>
 <td>
@@ -2624,9 +2738,11 @@ folder on your google drive.</p>
 Defaults to <code>getOption("reproducible.useCache", 2L)</code> in <code>prepInputs</code>, and
 <code>getOption("reproducible.useCache", FALSE)</code> if calling any of the inner
 functions manually. For <code>prepInputs</code>, this mean it will use <code>Cache</code>
-only up to 2 nested levels, which will generally including <code>postProcess</code> and
-the first level of <code style="white-space: pre;">&#8288;*Input&#8288;</code> functions, e.g., <code>cropInputs</code>, <code>projectInputs</code>,
-<code>maskInputs</code>, but not <code>fixErrors</code>.</p>
+only up to 2 nested levels, which includes <code>preProcess</code>. <code>postProcess</code> and
+its nested <code style="white-space: pre;">&#8288;*Input&#8288;</code> functions (e.g., <code>cropInputs</code>, <code>projectInputs</code>,
+<code>maskInputs</code>) are no longer internally cached, as <code>terra</code> processing speeds
+mean internal caching is more time consuming. We recommend caching the full
+<code>prepInputs</code> call instead (e.g. <code>prepInputs(...) |&gt; Cache()</code>).</p>
 </td></tr>
 <tr><td><code id="CacheGeo_+3A_overwrite">overwrite</code></td>
 <td>
@@ -2961,7 +3077,7 @@ wrapper around <code>digest::digest</code>.
 <pre><code class='language-R'>Checksums(
   path,
   write,
-  quickCheck = FALSE,
+  quickCheck = getOption("reproducible.quickCheck", FALSE),
   checksumFile = identifyCHECKSUMStxtFile(path),
   files = NULL,
   verbose = getOption("reproducible.verbose", 1),
@@ -2972,7 +3088,7 @@ wrapper around <code>digest::digest</code>.
 Checksums(
   path,
   write,
-  quickCheck = FALSE,
+  quickCheck = getOption("reproducible.quickCheck", FALSE),
   checksumFile = identifyCHECKSUMStxtFile(path),
   files = NULL,
   verbose = getOption("reproducible.verbose", 1),
@@ -2983,7 +3099,7 @@ Checksums(
 Checksums(
   path,
   write,
-  quickCheck = FALSE,
+  quickCheck = getOption("reproducible.quickCheck", FALSE),
   checksumFile = identifyCHECKSUMStxtFile(path),
   files = NULL,
   verbose = getOption("reproducible.verbose", 1),
@@ -3594,11 +3710,11 @@ identical(read.csv(f2), read.csv(t2)) ## TRUE
 </code></pre>
 
 <hr>
-<h2 id='createCache'>Functions to create and work with a cache</h2><span id='topic+createCache'></span><span id='topic+loadFromCache'></span><span id='topic+rmFromCache'></span><span id='topic+CacheDBFile'></span><span id='topic+CacheStorageDir'></span><span id='topic+CacheStoredFile'></span><span id='topic+CacheDBTableName'></span><span id='topic+CacheIsACache'></span>
+<h2 id='createCache'>Low-level functions to create and work with a cache</h2><span id='topic+createCache'></span><span id='topic+loadFromCache'></span><span id='topic+extractFromCache'></span><span id='topic+rmFromCache'></span><span id='topic+CacheDBFile'></span><span id='topic+CacheStorageDir'></span><span id='topic+CacheStoredFile'></span><span id='topic+CacheDBTableName'></span><span id='topic+CacheIsACache'></span>
 
 <h3>Description</h3>
 
-<p>These are not intended for normal use.
+<p><strong>These are intended for advanced use only.</strong>
 </p>
 
 
@@ -3624,6 +3740,8 @@ loadFromCache(
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose")
 )
+
+extractFromCache(sc, elem, ifNot = NULL)
 
 rmFromCache(
   cachePath = getOption("reproducible.cachePath"),
@@ -3718,6 +3836,18 @@ to <code>getOption("reproducible.cacheSaveFormat", "rds")</code></p>
 <td>
 <p>Optional. Used internally.</p>
 </td></tr>
+<tr><td><code id="createCache_+3A_sc">sc</code></td>
+<td>
+<p>a cache tags <code>data.table</code> object</p>
+</td></tr>
+<tr><td><code id="createCache_+3A_elem">elem</code></td>
+<td>
+<p>character string specifying a <code>tagKey</code> value to match</p>
+</td></tr>
+<tr><td><code id="createCache_+3A_ifnot">ifNot</code></td>
+<td>
+<p>character (or NULL) specifying the return value to use if <code>elem</code> not matched</p>
+</td></tr>
 <tr><td><code id="createCache_+3A_obj">obj</code></td>
 <td>
 <p>The optional object that is of interest; it may have an attribute &quot;saveRawFile&quot;
@@ -3725,56 +3855,111 @@ that would be important.</p>
 </td></tr>
 <tr><td><code id="createCache_+3A_create">create</code></td>
 <td>
-<p>Logical. Currently only affects non RQSLite default drivers. If this
-is <code>TRUE</code> and there is no Cache database, the function will create one.</p>
+<p>Logical. Currently only affects non <span class="pkg">RSQLite</span> default drivers.
+If <code>TRUE</code> and there is no Cache database, the function will create one.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p><code>createCache</code> function will create a Cache folder structure and necessary files, based on
-the particular <code>drv</code> or <code>conn</code> provided.
+
+<ul>
+<li> <p><code>createCache()</code> will create a Cache folder structure and necessary files, based on
+the particular <code>drv</code> or <code>conn</code> provided;
 </p>
-<p><code>loadFromCache</code> is a function to get a single object from the cache, given its <code>cacheId</code>.
+</li></ul>
+
+
+<ul>
+<li> <p><code>loadFromCache()</code> retrieves a single object from the cache, given its <code>cacheId</code>;
 </p>
-<p><code>rmFromCache</code> removes one or more items from the cache, and updates the cache
+</li></ul>
+
+
+<ul>
+<li> <p><code>extractFromCache()</code> retrieves a single <code>tagValue</code> from the cache based on
+the <code>tagKey</code> of <code>elem</code>;
+</p>
+</li></ul>
+
+
+<ul>
+<li> <p><code>rmFromCache()</code> removes one or more items from the cache, and updates the cache
 database files.
 </p>
-<p><code>CacheStoredFile</code> returns the file path to the file with the specified hash value.
-</p>
-<p><code>CacheStoredFile</code> returns the file path to the file with the specified hash value.
-</p>
-<p><code>CacheIsACache</code> returns a logical of whether the specified <code>cachePath</code>
-is actually a functioning cache.
-</p>
+</li></ul>
+
 
 
 <h3>Value</h3>
 
-<p><code>createCache</code> does not return a value; it is called for side effects.
+
+<ul>
+<li> <p><code>createCache()</code> returns <code>NULL</code> (invisibly) and intended to be called for side effects;
 </p>
-<p><code>loadFromCache</code> returns the object from the cache that has the particular <code>cacheId</code>.
+</li></ul>
+
+
+<ul>
+<li> <p><code>loadFromCache()</code> returns the object from the cache that has the particular <code>cacheId</code>;
 </p>
-<p><code>rmFromCache</code> has no return value; it is called for its side effects.
+</li></ul>
+
+
+<ul>
+<li> <p><code>extractFromCache()</code> returns the <code>tagValue</code> from the cache corresponding to <code>elem</code> if found,
+otherwise the value of <code>ifNot</code>;
 </p>
-<p><code>CacheDBFile</code> returns the name of the database file for a given Cache,
-when <code>useDBI() == FALSE</code>, or <code>NULL</code> if <code>TRUE</code>.
-<code>CacheDBFiles</code> (i.e,. plural) returns the name of all the database files for
-a given Cache when <code>useDBI() == TRUE</code>, or <code>NULL</code> if <code>FALSE</code>
+</li></ul>
+
+
+<ul>
+<li> <p><code>rmFromCache()</code> returns <code>NULL</code> (invisibly) and is intended to be called for side effects;
 </p>
-<p><code>CacheStorageDir</code> returns the name of the directory where cached objects are
-stored.
+</li></ul>
+
+
+<ul>
+<li> <p><code>CacheDBFile()</code> returns the name of the database file for a given Cache,
+when <code>useDBI() == FALSE</code>, or <code>NULL</code> if <code>TRUE</code>;
 </p>
-<p><code>CacheStoredFile</code> returns the name of the file in which the cacheId object is stored.
-This can be loaded to memory with e.g., <code>loadFile</code>.
+</li>
+<li> <p><code>CacheDBFiles()</code> (i.e,. plural) returns the name of all the database files for
+a given Cache when <code>useDBI() == TRUE</code>, or <code>NULL</code> if <code>FALSE</code>;
 </p>
-<p><code>CacheDBTableName</code> returns the name of the table inside the SQL database, if that
-is being used.
+</li>
+<li> <p><code>CacheStoredFile()</code> returns the file path to the file with the specified hash value,
+This can be loaded to memory with e.g., <code><a href="#topic+loadFile">loadFile()</a></code>.;
 </p>
-<p><code>CacheIsACache</code> returns a logical indicating whether the <code>cachePath</code> is currently
-a <code>reproducible</code> cache database.
+</li></ul>
+
+
+<ul>
+<li> <p><code>CacheStorageDir()</code> returns the name of the directory where cached objects are stored;
 </p>
+</li></ul>
+
+
+<ul>
+<li> <p><code>CacheStoredFile</code> returns the file path to the file with the specified hash value;
+</p>
+</li></ul>
+
+
+<ul>
+<li> <p><code>CacheDBTableName()</code> returns the name of the table inside the SQL database, if that
+is being used;
+</p>
+</li></ul>
+
+
+<ul>
+<li> <p><code>CacheIsACache()</code> returns a logical indicating whether the <code>cachePath</code> is currently
+a <code>reproducible</code> cache database;
+</p>
+</li></ul>
+
 
 
 <h3>Examples</h3>
@@ -4673,7 +4858,7 @@ Will be cleared on.exit from this function.</p>
   useGDAL = FALSE,
   verbose = getOption("reproducible.verbose", 1),
   ...,
-  skipDeprecastedMsg = FALSE
+  messageSkipDeprecated = FALSE
 )
 </code></pre>
 
@@ -4714,7 +4899,7 @@ option, e.g., <code style="white-space: pre;">&#8288;options('reproducible.verbo
 <td>
 <p>Currently unused.</p>
 </td></tr>
-<tr><td><code id="fastMask_+3A_skipdeprecastedmsg">skipDeprecastedMsg</code></td>
+<tr><td><code id="fastMask_+3A_messageskipdeprecated">messageSkipDeprecated</code></td>
 <td>
 <p>Logical. If <code>TRUE</code>, then the message about this function
 being deprecated will be suppressed.</p>
@@ -4861,6 +5046,151 @@ option, e.g., <code style="white-space: pre;">&#8288;options('reproducible.verbo
 
 <p>An object of the same class as <code>x</code>, but with some errors fixed via <code>terra::makeValid()</code>
 </p>
+
+<hr>
+<h2 id='gdalProject'>3-Step postProcess sequence for SpatRasters using <code>gdalwarp</code></h2><span id='topic+gdalProject'></span><span id='topic+gdalResample'></span><span id='topic+gdalMask'></span>
+
+<h3>Description</h3>
+
+<p><code>gdalProject</code> is a thin wrapper around <code>sf::gdal_utils('gdalwarp', ...)</code> with specific options
+set, notably, <code>-r</code> to <code>method</code> (in the ...), <code>-t_srs</code> to the crs of the <code>toRas</code>,
+<code>-te</code> to the extent of the <code>toRas</code>, <code>-te_srs</code> to the <code>crs</code> of the <code>toRas</code>,
+<code>-dstnodata = NA</code>, and <code>-overwrite</code>.
+</p>
+<p><code>gdalResample</code> is a thin wrapper around <code>sf::gdal_utils('gdalwarp', ...)</code> with specific options
+set, notably, <code style="white-space: pre;">&#8288;"-r", "near"&#8288;</code>, <code>-te</code>, <code>-te_srs</code>, <code>tr</code>, <code>-dstnodata = NA</code>, <code>-overwrite</code>.
+</p>
+<p><code>gdalMask</code> is a thin wrapper around <code>sf::gdal_utils('gdalwarp', ...)</code> with specific options
+set, notably, <code>-cutline</code>, <code>-dstnodata = NA</code>, and <code>-overwrite</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>gdalProject(
+  fromRas,
+  toRas,
+  filenameDest,
+  verbose = getOption("reproducible.verbose"),
+  ...
+)
+
+gdalResample(
+  fromRas,
+  toRas,
+  filenameDest,
+  verbose = getOption("reproducible.verbose"),
+  ...
+)
+
+gdalMask(
+  fromRas,
+  maskToVect,
+  writeTo = NULL,
+  verbose = getOption("reproducible.verbose"),
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gdalProject_+3A_fromras">fromRas</code></td>
+<td>
+<p>see <code>from</code> argument from <code><a href="#topic+postProcessTo">postProcessTo()</a></code>, but can only be a  <code>SpatRaster</code>.</p>
+</td></tr>
+<tr><td><code id="gdalProject_+3A_toras">toRas</code></td>
+<td>
+<p>see <code>to</code> argument from <code><a href="#topic+postProcessTo">postProcessTo()</a></code>, but can only be a  <code>SpatRaster</code>.</p>
+</td></tr>
+<tr><td><code id="gdalProject_+3A_filenamedest">filenameDest</code></td>
+<td>
+<p>A filename with an appropriate extension (e.g., <code>.tif</code>) for
+<code>gdal</code> to write the output to. Since this function is conceived to be part of a
+chain, and not the final step, this function does not use <code>writeTo</code>, which is
+reserved for the final step in the chain.</p>
+</td></tr>
+<tr><td><code id="gdalProject_+3A_verbose">verbose</code></td>
+<td>
+<p>Numeric, -1 silent (where possible), 0 being very quiet,
+1 showing more messaging, 2 being more messaging, etc.
+Default is 1. Above 3 will output much more information about the internals of
+Caching, which may help diagnose Caching challenges. Can set globally with an
+option, e.g., <code style="white-space: pre;">&#8288;options('reproducible.verbose' = 0) to reduce to minimal&#8288;</code></p>
+</td></tr>
+<tr><td><code id="gdalProject_+3A_...">...</code></td>
+<td>
+<p>For <code>gdalProject</code>, this can be <code>method</code>. For <code>gdalMask</code> can be <code>destinationPath</code> and <code>touches</code>.
+For all <code style="white-space: pre;">&#8288;gdal*&#8288;</code>, this can also be and <code>datatype</code>.</p>
+</td></tr>
+<tr><td><code id="gdalProject_+3A_masktovect">maskToVect</code></td>
+<td>
+<p>see <code>maskTo</code> argument from <code><a href="#topic+maskTo">maskTo()</a></code>, but can only be a <code>SpatVector</code></p>
+</td></tr>
+<tr><td><code id="gdalProject_+3A_writeto">writeTo</code></td>
+<td>
+<p>Optional character string of a filename to use <code>writeRaster</code> to save the final
+object. Default is <code>NULL</code>, which means there is no <code>writeRaster</code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>These three functions are used within <code>postProcessTo</code>, in the sequence:
+<code>gdalProject</code>, <code>gdalResample</code> and <code>gdalMask</code>, when <code>from</code> and <code>projectTo</code> are <code>SpatRaster</code> and
+<code>maskTo</code> is a <code>SpatVector</code>, but only if <code>options(reproducible.gdalwarp = TRUE)</code> is set.
+</p>
+<p>This sequence is a slightly different order than the sequence when <code>gdalwarp = FALSE</code> or
+the arguments do not match the above. This sequence was determined to be faster and
+more accurate than any other sequence, including running all three steps in one
+<code>gdalwarp</code> call (which <code>gdalwarp</code> can do). Using one-step <code>gdalwarp</code> resulted in
+very coarse pixelation when converting from a coarse resolution to fine resolution, which
+visually was inappropriate in test cases.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+gdalResample">gdalResample()</a></code>, and <code><a href="#topic+gdalMask">gdalMask()</a></code> and the overarching <code><a href="#topic+postProcessTo">postProcessTo()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># prepare dummy data -- 3 SpatRasters, 2 SpatVectors
+# need 2 SpatRaster
+rf &lt;- system.file("ex/elev.tif", package = "terra")
+elev1 &lt;- terra::rast(rf)
+#'
+ras2 &lt;- terra::deepcopy(elev1)
+ras2[ras2 &gt; 200 &amp; ras2 &lt; 300] &lt;- NA_integer_
+terra::values(elev1) &lt;- rep(1L, terra::ncell(ras2))
+#'
+# a polygon vector
+f &lt;- system.file("ex/lux.shp", package = "terra")
+vOrig &lt;- terra::vect(f)
+v &lt;- vOrig[1:2, ]
+#'
+utm &lt;- terra::crs("epsg:23028") # $wkt
+vInUTM &lt;- terra::project(vOrig, utm)
+vAsRasInLongLat &lt;- terra::rast(vOrig, resolution = 0.008333333)
+res100 &lt;- 100
+rInUTM &lt;- terra::rast(vInUTM, resolution = res100)
+# crop, reproject, mask, crop a raster with a vector in a different projection
+#  --&gt; gives message about not enough information
+t1 &lt;- postProcessTo(elev1, to = vInUTM)
+# crop, reproject, mask a raster to a different projection, then mask
+t2a &lt;- postProcessTo(elev1, to = vAsRasInLongLat, maskTo = vInUTM)
+
+
+# using gdal directly --&gt; slightly different mask
+opts &lt;- options(reproducible.gdalwarp = TRUE)
+t2b &lt;- postProcessTo(elev1, to = vAsRasInLongLat, maskTo = vInUTM)
+t3b &lt;- postProcessTo(elev1, to = rInUTM, maskTo = vInUTM)
+options(opts)
+</code></pre>
 
 <hr>
 <h2 id='getRelative'>Relative paths</h2><span id='topic+getRelative'></span><span id='topic+makeRelative'></span>
@@ -5085,6 +5415,46 @@ just for the test. In all other times, this returns the same things as
 </code></pre>
 
 <hr>
+<h2 id='keepOrigGeom'>Keep original geometries of <code>sf</code> objects</h2><span id='topic+keepOrigGeom'></span>
+
+<h3>Description</h3>
+
+<p>When intersections occur, what was originally 2 polygons features can become
+<code>LINESTRING</code> and/or <code>POINT</code> and any <code>COLLECTIONS</code> or <code style="white-space: pre;">&#8288;MULTI-&#8288;</code> versions of these.
+This function evaluates what the original geometry was and drops any newly created
+<em>different</em> geometries. For example, if a <code>POLYGON</code> becomes a <code>COLLECTION</code> of
+<code>MULTIPOLYGON</code>, <code>POLYGON</code> and <code>POINT</code> geometries, the <code>POINT</code> geometries will
+be dropped. This function is used internally in <code><a href="#topic+postProcessTo">postProcessTo()</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>keepOrigGeom(newObj, origObj)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="keepOrigGeom_+3A_newobj">newObj</code></td>
+<td>
+<p>The new, derived <code>sf</code> object</p>
+</td></tr>
+<tr><td><code id="keepOrigGeom_+3A_origobj">origObj</code></td>
+<td>
+<p>The previous, object whose geometries should be used.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The original <code>newObj</code>, but with only the type of geometry that entered
+into the function.
+</p>
+
+<hr>
 <h2 id='linkOrCopy'>Hardlink, symlink, or copy a file</h2><span id='topic+linkOrCopy'></span>
 
 <h3>Description</h3>
@@ -5209,6 +5579,84 @@ if (requireNamespace("terra", quietly = TRUE)) {
 </code></pre>
 
 <hr>
+<h2 id='listNamed'>Create a list with names from object names</h2><span id='topic+listNamed'></span>
+
+<h3>Description</h3>
+
+<p>This is a convenience wrapper around <code style="white-space: pre;">&#8288;newList &lt;- list(a = 1); names(newList) &lt;- "a"&#8288;</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>listNamed(...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="listNamed_+3A_...">...</code></td>
+<td>
+<p>Any elements to add to a list, as in <code>base::list</code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This will return a named list, where names are the object names, captured
+internally in the function and assigned to the list. If a user manually supplies
+names, these will be kept (i.e., not overwritten by the object name).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>a &lt;- 1
+b &lt;- 2
+d &lt;- 3
+(newList &lt;- listNamed(a, b, dManual = d)) # "dManual" name kept
+
+
+</code></pre>
+
+<hr>
+<h2 id='loadFile'>Load a file from the cache</h2><span id='topic+loadFile'></span>
+
+<h3>Description</h3>
+
+<p>Load a file from the cache
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>loadFile(file, format = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="loadFile_+3A_file">file</code></td>
+<td>
+<p>character specifying the path to the file</p>
+</td></tr>
+<tr><td><code id="loadFile_+3A_format">format</code></td>
+<td>
+<p>(optional) character string specifying file extension (&quot;qs&quot; or &quot;rds&quot;) of <code>file</code>;
+if not specified (i.e., NULL), will be deduced from the file extension of <code>file</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>the object loaded from <code>file</code>
+</p>
+
+<hr>
 <h2 id='mergeCache'>Merge two cache repositories together</h2><span id='topic+mergeCache'></span><span id='topic+mergeCache+2CANY-method'></span>
 
 <h3>Description</h3>
@@ -5302,16 +5750,13 @@ objects themselves.
 </p>
 
 <hr>
-<h2 id='messageDF'>Use <code>message</code> with a consistent use of <code>verbose</code></h2><span id='topic+messageDF'></span><span id='topic+messageQuestion'></span><span id='topic+messageColoured'></span>
+<h2 id='messageDF'>Use <code>message</code> with a consistent use of <code>verbose</code></h2><span id='topic+messageDF'></span><span id='topic+messagePrepInputs'></span><span id='topic+messagePreProcess'></span><span id='topic+messageCache'></span><span id='topic+messageQuestion'></span><span id='topic+.messageFunctionFn'></span><span id='topic+messageColoured'></span>
 
 <h3>Description</h3>
 
 <p>This family has a consistent use of <code>verbose</code> allowing messages to be
 turned on or off or verbosity increased or decreased throughout the family of
-messaging in <code>reproducible</code>. <code>messageDF</code> uses <code>message</code> to print a clean
-square data structure. <code>messageColoured</code>
-allows specific colours to be used. <code>messageQuestion</code> sets a high level for
-<code>verbose</code> so that the message always gets asked.
+messaging in <code>reproducible</code>.
 </p>
 
 
@@ -5322,6 +5767,29 @@ allows specific colours to be used. <code>messageQuestion</code> sets a high lev
   round,
   colour = NULL,
   colnames = NULL,
+  indent = NULL,
+  verbose = getOption("reproducible.verbose"),
+  verboseLevel = 1,
+  appendLF = TRUE
+)
+
+messagePrepInputs(
+  ...,
+  appendLF = TRUE,
+  verbose = getOption("reproducible.verbose"),
+  verboseLevel = 1
+)
+
+messagePreProcess(
+  ...,
+  appendLF = TRUE,
+  verbose = getOption("reproducible.verbose"),
+  verboseLevel = 1
+)
+
+messageCache(
+  ...,
+  colour = getOption("reproducible.messageColourCache"),
   verbose = getOption("reproducible.verbose"),
   verboseLevel = 1,
   appendLF = TRUE
@@ -5329,9 +5797,18 @@ allows specific colours to be used. <code>messageQuestion</code> sets a high lev
 
 messageQuestion(..., verboseLevel = 0, appendLF = TRUE)
 
+.messageFunctionFn(
+  ...,
+  appendLF = TRUE,
+  verbose = getOption("reproducible.verbose"),
+  verboseLevel = 1
+)
+
 messageColoured(
   ...,
   colour = NULL,
+  indent = NULL,
+  hangingIndent = TRUE,
   verbose = getOption("reproducible.verbose", 1),
   verboseLevel = 1,
   appendLF = TRUE
@@ -5361,6 +5838,10 @@ column names even if there aren't any in the <code>df</code> (i.e., they will)
 be <code>V1</code> etc., <code>NULL</code> will print them if they exist, and <code>FALSE</code>
 which will omit them.</p>
 </td></tr>
+<tr><td><code id="messageDF_+3A_indent">indent</code></td>
+<td>
+<p>An integer, indicating whether to indent each line</p>
+</td></tr>
 <tr><td><code id="messageDF_+3A_verbose">verbose</code></td>
 <td>
 <p>Numeric, -1 silent (where possible), 0 being very quiet,
@@ -5382,11 +5863,30 @@ have a newline appended?</p>
 </td></tr>
 <tr><td><code id="messageDF_+3A_...">...</code></td>
 <td>
-<p>zero or more objects which can be coerced to character
-(and which are pasted together with no separator) or (for
-<code>message</code> only) a single condition object.</p>
+<p>Any character vector, passed to <code>paste0(...)</code></p>
+</td></tr>
+<tr><td><code id="messageDF_+3A_hangingindent">hangingIndent</code></td>
+<td>
+<p>Logical. If there are <code style="white-space: pre;">&#8288;\n&#8288;</code>, should there be a handing indent of 2 spaces.
+Default is <code>TRUE</code></p>
 </td></tr>
 </table>
+
+
+<h3>Details</h3>
+
+
+<ul>
+<li> <p><code>messageDF</code> uses <code>message</code> to print a clean square data structure.
+</p>
+</li>
+<li> <p><code>messageColoured</code> allows specific colours to be used.
+</p>
+</li>
+<li> <p><code>messageQuestion</code> sets a high level for <code>verbose</code> so that the message always gets asked.
+</p>
+</li></ul>
+
 
 
 <h3>Value</h3>
@@ -6310,11 +6810,12 @@ option, e.g., <code style="white-space: pre;">&#8288;options('reproducible.verbo
 or <code>terra::writeRaster</code> (for <code>writeTo</code>) and not used for <code>cropTo</code>, as well <code>postProcess</code>'s
 <code>rasterToMatch</code> and <code>studyArea</code> arguments (see below). Commonly used arguments might be
 <code>method</code>, <code>touches</code>, and <code>datatype</code>. If <code>filename</code> is passed, it will be ignored; use
-<code style="white-space: pre;">&#8288;writeTo = &#8288;</code>.</p>
+<code style="white-space: pre;">&#8288;writeTo = &#8288;</code>. If <code>reproducible.gdalwarp = TRUE</code>, then these will be passed to the
+<code style="white-space: pre;">&#8288;gdal*&#8288;</code> functions. See them for details.</p>
 </td></tr>
 <tr><td><code id="postProcessTo_+3A_needbuffer">needBuffer</code></td>
 <td>
-<p>Logical. Defaults to <code>TRUE</code>, meaning nothing is done out
+<p>Logical. Defaults to <code>FALSE</code>, meaning nothing is done out
 of the ordinary. If <code>TRUE</code>, then a buffer around the cropTo, so that if a reprojection
 has to happen on the <code>cropTo</code> prior to using it as a crop layer, then a buffer
 of 1.5 * res(cropTo) will occur prior, so that no edges are cut off.</p>
@@ -6335,6 +6836,9 @@ back to these classes prior to writing, if provided.</p>
 Users can call each of these individually.
 </p>
 <p><code>postProcessTerra</code> is the early name of this function that is now <code>postProcessTo</code>.
+</p>
+<p>This function is meant to replace <code><a href="#topic+postProcess">postProcess()</a></code> with the more efficient
+and faster <code>terra</code> functions.
 </p>
 
 
@@ -6449,9 +6953,46 @@ crop removes all NA cells so they are tight to the mask.
 
 <h3>See Also</h3>
 
-<p>This function is meant to replace <code><a href="#topic+postProcess">postProcess()</a></code> with the more efficient
-and faster <code>terra</code> functions.
+<p><code><a href="#topic+maskTo">maskTo()</a></code>, <code><a href="#topic+cropTo">cropTo()</a></code>, <code><a href="#topic+projectTo">projectTo()</a></code>, <code><a href="#topic+writeTo">writeTo()</a></code>, and <code><a href="#topic+fixErrorsIn">fixErrorsIn()</a></code>.
+Also the functions that
+call <code>sf::gdal_utils(...)</code> directly: <code><a href="#topic+gdalProject">gdalProject()</a></code>, <code><a href="#topic+gdalResample">gdalResample()</a></code>, <code><a href="#topic+gdalMask">gdalMask()</a></code>
 </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># prepare dummy data -- 3 SpatRasters, 2 SpatVectors
+# need 2 SpatRaster
+rf &lt;- system.file("ex/elev.tif", package = "terra")
+elev1 &lt;- terra::rast(rf)
+#'
+ras2 &lt;- terra::deepcopy(elev1)
+ras2[ras2 &gt; 200 &amp; ras2 &lt; 300] &lt;- NA_integer_
+terra::values(elev1) &lt;- rep(1L, terra::ncell(ras2))
+#'
+# a polygon vector
+f &lt;- system.file("ex/lux.shp", package = "terra")
+vOrig &lt;- terra::vect(f)
+v &lt;- vOrig[1:2, ]
+#'
+utm &lt;- terra::crs("epsg:23028") # $wkt
+vInUTM &lt;- terra::project(vOrig, utm)
+vAsRasInLongLat &lt;- terra::rast(vOrig, resolution = 0.008333333)
+res100 &lt;- 100
+rInUTM &lt;- terra::rast(vInUTM, resolution = res100)
+# crop, reproject, mask, crop a raster with a vector in a different projection
+#  --&gt; gives message about not enough information
+t1 &lt;- postProcessTo(elev1, to = vInUTM)
+# crop, reproject, mask a raster to a different projection, then mask
+t2a &lt;- postProcessTo(elev1, to = vAsRasInLongLat, maskTo = vInUTM)
+
+
+# using gdal directly --&gt; slightly different mask
+opts &lt;- options(reproducible.gdalwarp = TRUE)
+t2b &lt;- postProcessTo(elev1, to = vAsRasInLongLat, maskTo = vInUTM)
+t3b &lt;- postProcessTo(elev1, to = rInUTM, maskTo = vInUTM)
+options(opts)
+</code></pre>
 
 <hr>
 <h2 id='prepInputs'>Download and optionally post-process files</h2><span id='topic+prepInputs'></span>
@@ -6544,8 +7085,8 @@ file was downloaded during <code>preProcess</code> via <code>dlFun</code>. This 
 function (e.g., sf::st_read), character string (e.g., &quot;base::load&quot;),
 NA (for no loading, useful if <code>dlFun</code> already loaded the file) or
 if extra arguments are required
-in the function call, it must be a quoted call naming
-<code>targetFile</code> (e.g., <code>quote(sf::st_read(targetFile, quiet = TRUE))</code>)
+in the function call, it must be a call naming
+<code>targetFile</code> (e.g., <code>sf::st_read(targetFile, quiet = TRUE)</code>)
 as the file path to the file to load. See details and examples below.</p>
 </td></tr>
 <tr><td><code id="prepInputs_+3A_quick">quick</code></td>
@@ -6573,9 +7114,11 @@ even if they pass the checksums or the files are all there.</p>
 Defaults to <code>getOption("reproducible.useCache", 2L)</code> in <code>prepInputs</code>, and
 <code>getOption("reproducible.useCache", FALSE)</code> if calling any of the inner
 functions manually. For <code>prepInputs</code>, this mean it will use <code>Cache</code>
-only up to 2 nested levels, which will generally including <code>postProcess</code> and
-the first level of <code style="white-space: pre;">&#8288;*Input&#8288;</code> functions, e.g., <code>cropInputs</code>, <code>projectInputs</code>,
-<code>maskInputs</code>, but not <code>fixErrors</code>.</p>
+only up to 2 nested levels, which includes <code>preProcess</code>. <code>postProcess</code> and
+its nested <code style="white-space: pre;">&#8288;*Input&#8288;</code> functions (e.g., <code>cropInputs</code>, <code>projectInputs</code>,
+<code>maskInputs</code>) are no longer internally cached, as <code>terra</code> processing speeds
+mean internal caching is more time consuming. We recommend caching the full
+<code>prepInputs</code> call instead (e.g. <code>prepInputs(...) |&gt; Cache()</code>).</p>
 </td></tr>
 <tr><td><code id="prepInputs_+3A_.temppath">.tempPath</code></td>
 <td>
@@ -6711,14 +7254,14 @@ dealt with: when the <code>preProcess</code> downloads a file (including via <co
 (e.g., raster::getData returns an object), <code>fun</code> must deal with an object.
 </p>
 <p><code>fun</code> can be supplied in three ways: a function, a character string
-(i.e., a function name as a string), or a quoted expression.
+(i.e., a function name as a string), or an expression.
 If a character string or function, is should have the package name e.g.,
 <code>"terra::rast"</code> or as an actual function, e.g., <code>base::readRDS</code>.
 In these cases, it will evaluate this function call while passing <code>targetFile</code>
 as the first argument. These will only work in the simplest of cases.
 </p>
-<p>When more precision is required, the full call can be written, surrounded by
-<code>quote</code>, and where the filename can be referred to as <code>targetFile</code> if the function
+<p>When more precision is required, the full call can be written and where the
+filename can be referred to as <code>targetFile</code> if the function
 is loading a file. If <code>preProcess</code> returns an object, <code>fun</code> should be set to
 <code>fun = NA</code>.
 </p>
@@ -6887,16 +7430,16 @@ if (requireNamespace("terra", quietly = TRUE) &amp;&amp;
 
 
 ## Using quoted dlFun and fun -- this is not intended to be run but used as a template
-## prepInputs(..., fun = quote(customFun(x = targetFile)), customFun = customFun)
+## prepInputs(..., fun = customFun(x = targetFile), customFun = customFun)
 ##   # or more complex
 ##  test5 &lt;- prepInputs(
 ##   targetFile = targetFileLuxRDS,
-##   dlFun = quote({
+##   dlFun =
 ##     getDataFn(name = "GADM", country = "LUX", level = 0) # preProcess keeps file from this!
-##   }),
-##   fun = quote({
+##   ,
+##   fun = {
 ##     out &lt;- readRDS(targetFile)
-##     sf::st_as_sf(out)})
+##     sf::st_as_sf(out)}
 ##  )
 </code></pre>
 
@@ -7002,8 +7545,8 @@ file was downloaded during <code>preProcess</code> via <code>dlFun</code>. This 
 function (e.g., sf::st_read), character string (e.g., &quot;base::load&quot;),
 NA (for no loading, useful if <code>dlFun</code> already loaded the file) or
 if extra arguments are required
-in the function call, it must be a quoted call naming
-<code>targetFile</code> (e.g., <code>quote(sf::st_read(targetFile, quiet = TRUE))</code>)
+in the function call, it must be a call naming
+<code>targetFile</code> (e.g., <code>sf::st_read(targetFile, quiet = TRUE)</code>)
 as the file path to the file to load. See details and examples below.</p>
 </td></tr>
 <tr><td><code id="preProcessParams_+3A_dlfun">dlFun</code></td>
@@ -7114,6 +7657,43 @@ string, e.g., <code>eval(parse(text = "terra::rast"))</code>
 </p>
 
 <hr>
+<h2 id='remapFilenames'>Remap file names</h2><span id='topic+remapFilenames'></span>
+
+<h3>Description</h3>
+
+<p>Update file path metadata for file-backed objects (e.g., <code>SpatRasters</code>).
+Useful when moving saved objects between projects or machines.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>remapFilenames(obj, tags, cachePath, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="remapFilenames_+3A_obj">obj</code></td>
+<td>
+<p>(optional) object whose file path metadata will be remapped</p>
+</td></tr>
+<tr><td><code id="remapFilenames_+3A_tags">tags</code></td>
+<td>
+<p>cache tags <code>data.table</code> object</p>
+</td></tr>
+<tr><td><code id="remapFilenames_+3A_cachepath">cachePath</code></td>
+<td>
+<p>character string specifying the path to the cache directory or <code>NULL</code></p>
+</td></tr>
+<tr><td><code id="remapFilenames_+3A_...">...</code></td>
+<td>
+<p>Additional path arguments, passed to <code>absoluteBase()</code> and <code>modifyListPaths()</code></p>
+</td></tr>
+</table>
+
+<hr>
 <h2 id='reproducibleOptions'><code>reproducible</code> options</h2><span id='topic+reproducibleOptions'></span>
 
 <h3>Description</h3>
@@ -7196,6 +7776,11 @@ this is much faster than the <code>terra</code> sequence. The resulting <code>Sp
 not identical, but it is very similar.
 </p>
 </dd>
+<dt><code>gdalwarpThreads</code></dt><dd>
+<p>Default: <code>2</code>. This will set <code style="white-space: pre;">&#8288;-wo NUM_THREADS=&#8288;</code> to this number. Default is now <code>2</code>, meaning
+<code>gdalwarp</code> will use 2 threads with <code>gdalProject</code>. To turn off threading, set to <code>0</code>, <code>1</code> or <code>NA</code>.
+</p>
+</dd>
 <dt><code>inputPaths</code></dt><dd>
 <p>Default: <code>NULL</code>. Used in <code><a href="#topic+prepInputs">prepInputs()</a></code> and <code><a href="#topic+preProcess">preProcess()</a></code>.
 If set to a path, this will cause these functions to save their downloaded and preprocessed
@@ -7259,6 +7844,13 @@ it will use <code>raster::shapefile</code>
 <p>Default <code>FALSE</code>. Passed to <code>Cache</code>.
 </p>
 </dd>
+<dt><code>timeout</code></dt><dd>
+<p>Default <code>1200</code>. Used in <code>preProcess</code> when downloading occurs. If a user has <code>R.utils</code>
+package installed, <code>R.utils::withTimeout(  , timeout = getOption("reproducible.timeout"))</code>
+will be wrapped around the download so that it will timeout (and error) after this many
+seconds.
+</p>
+</dd>
 <dt><code>useCache</code></dt><dd>
 <p>Default: <code>TRUE</code>. Used in <code><a href="#topic+Cache">Cache()</a></code>. If <code>FALSE</code>, then the entire
 <code>Cache</code> machinery is skipped and the functions are run as if there was no Cache occurring.
@@ -7290,8 +7882,16 @@ Default value can be overridden by setting environment variable <code>R_REPRODUC
 As of version 0.3, the backend is now <span class="pkg">DBI</span> instead of <span class="pkg">archivist</span>.
 </p>
 </dd>
-<dt><code>useGDAL</code></dt><dd>
-<p>Default <code>TRUE</code>. Passed to <code>useGDAL</code>. Deprecated.
+<dt><code>useGdown</code></dt><dd>
+<p>Default: <code>FALSE</code>. If a user provides a Google Drive url to <code>preProcess</code>/<code>prepInputs</code>,
+<code>reproducible</code> will use the <code>googledrive</code> package. This works reliably in most cases.
+However, for large files on unstable internet connections, it will stall and
+stop the download with no error. If a user is finding this behaviour, they can
+install the <code>gdown</code> package, making sure it is available on the PATH. This call
+to <code>gdown</code> will only work for files that do not need authentication. If authentication
+is needed, <code>dlGoogle</code> will fall back to <code>googledrive::drive_download</code>, even
+if this option is <code>TRUE</code>, with a message.
+.
 </p>
 </dd>
 <dt><code>useMemoise</code></dt><dd>
@@ -7397,7 +7997,7 @@ reasons that do not persist.
 <table>
 <tr><td><code id="retry_+3A_expr">expr</code></td>
 <td>
-<p>Quoted expression to run, i.e., <code>quote(...)</code></p>
+<p>An expression to run, i.e., <code>rnorm(1)</code>, similar to what is passed to <code>try</code></p>
 </td></tr>
 <tr><td><code id="retry_+3A_envir">envir</code></td>
 <td>
@@ -7450,9 +8050,9 @@ the <code>expr</code> again. For backwards compatibility, this still works).</p>
 
 <h3>Description</h3>
 
-<p>This is not expected to be used by a user as it requires that the <code>cacheId</code>
-be calculated in exactly the same as it calculated inside <code>Cache</code> (which requires
-<code>match.call</code> to match arguments with their names, among other things).
+<p>This is not expected to be used by a user as it requires that the <code>cacheId</code> be
+calculated in exactly the same as it calculated inside <code>Cache</code>
+(which requires <code>match.call</code> to match arguments with their names, among other things).
 </p>
 
 
@@ -7660,6 +8260,8 @@ They allow the user a bit of control over what is being cached.
   userTags = character(),
   after = NULL,
   before = NULL,
+  fun = NULL,
+  cacheId = NULL,
   ask = getOption("reproducible.ask"),
   useCloud = FALSE,
   cloudFolderID = getOption("reproducible.cloudFolderID", NULL),
@@ -7675,6 +8277,8 @@ clearCache(
   userTags = character(),
   after = NULL,
   before = NULL,
+  fun = NULL,
+  cacheId = NULL,
   ask = getOption("reproducible.ask"),
   useCloud = FALSE,
   cloudFolderID = getOption("reproducible.cloudFolderID", NULL),
@@ -7691,6 +8295,8 @@ showCache(
   userTags = character(),
   after = NULL,
   before = NULL,
+  fun = NULL,
+  cacheId = NULL,
   drv = getDrv(getOption("reproducible.drv", NULL)),
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
@@ -7703,6 +8309,8 @@ showCache(
   userTags = character(),
   after = NULL,
   before = NULL,
+  fun = NULL,
+  cacheId = NULL,
   drv = getDrv(getOption("reproducible.drv", NULL)),
   conn = getOption("reproducible.conn", NULL),
   verbose = getOption("reproducible.verbose"),
@@ -7770,6 +8378,18 @@ Objects cached after this time will be shown or deleted.</p>
 <p>A time (POSIX, character understandable by data.table).
 Objects cached before this time will be shown or deleted.</p>
 </td></tr>
+<tr><td><code id="showCache_+3A_fun">fun</code></td>
+<td>
+<p>An optional character vector describing the function name to extract.
+Only functions with this/these functions will be returned.</p>
+</td></tr>
+<tr><td><code id="showCache_+3A_cacheid">cacheId</code></td>
+<td>
+<p>An optional character vector describing the <code>cacheId</code>s to extract.
+Only entries with this/these <code>cacheId</code>s will be returned. If <code>useDBI(FALSE)</code>,
+this will also be dramatically faster than using <code>userTags</code>, for a large
+cache.</p>
+</td></tr>
 <tr><td><code id="showCache_+3A_ask">ask</code></td>
 <td>
 <p>Logical. If <code>FALSE</code>, then it will not ask to confirm deletions using
@@ -7809,8 +8429,12 @@ option, e.g., <code style="white-space: pre;">&#8288;options('reproducible.verbo
 </td></tr>
 <tr><td><code id="showCache_+3A_...">...</code></td>
 <td>
-<p>Other arguments. Currently, <code>regexp</code>, a logical, can be provided.
-This must be <code>TRUE</code> if the use is passing a regular expression.
+<p>Other arguments. Can be in the form of <code>tagKey = tagValue</code>, such as,
+<code>class = "numeric"</code> to find all entries that are numerics in the cache.
+Note: the special cases of <code>cacheId</code> and <code>fun</code> have their own
+named arguments in these functions.
+Also can be <code>regexp = xx</code>, where <code>xx</code> is <code>TRUE</code> if the user
+is passing a regular expression.
 Otherwise, <code>userTags</code> will need to be exact matches. Default is
 missing, which is the same as <code>TRUE</code>. If there are errors due
 to regular expression problem, try <code>FALSE</code>. For <code>cc</code>, it is

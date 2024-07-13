@@ -29,6 +29,7 @@ function processMathHTML() {
 <li><a href='#edinfoToURL'><p>Create a URL for Downloading Data from a edinfo Object</p></a></li>
 <li><a href='#erddapList'><p>A list of edinfo objects from ERDDAP data sources</p></a></li>
 <li><a href='#erddapToEdinfo'><p>Create an edinfo Object from an ERDDAP Dataset Id</p></a></li>
+<li><a href='#findEchoTimes'><p>Find Estimated Echo Times</p></a></li>
 <li><a href='#formatURL'><p>Format URL for Environmental Data Download</p></a></li>
 <li><a href='#getEdinfo'><p>Browse a List of Curated Environmental Datasets</p></a></li>
 <li><a href='#getFigshareInfo'><p>getFigshareInfo</p></a></li>
@@ -62,7 +63,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.11.6</td>
+<td>1.12.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -84,13 +85,14 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Imports:</td>
 <td>ggplot2, tuneR, seewave, dplyr, magrittr, RcppRoll,
 PamBinaries, RSQLite, lubridate, rerddap, ncdf4, httr, purrr,
-xml2, hoardr, methods, geosphere, tcltk, scales, suncalc, rjson</td>
+xml2, methods, geosphere, tcltk, scales, suncalc, rjson, fftw,
+signal</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -98,7 +100,7 @@ xml2, hoardr, methods, geosphere, tcltk, scales, suncalc, rjson</td>
 </tr>
 <tr>
 <td>Depends:</td>
-<td>R (&ge; 2.10)</td>
+<td>R (&ge; 3.50)</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -106,7 +108,7 @@ xml2, hoardr, methods, geosphere, tcltk, scales, suncalc, rjson</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-08-16 20:35:31 UTC; tnsak</td>
+<td>2024-06-10 20:27:12 UTC; tnsak</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -125,7 +127,7 @@ xml2, hoardr, methods, geosphere, tcltk, scales, suncalc, rjson</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-08-16 21:34:34 UTC</td>
+<td>2024-06-10 21:20:01 UTC</td>
 </tr>
 </table>
 <hr>
@@ -864,7 +866,9 @@ downloading environmental data using <a href="#topic+edinfoToURL">edinfoToURL</a
 
 <pre><code class='language-R'>erddapToEdinfo(
   dataset,
-  baseurl = "https://upwell.pfeg.noaa.gov/erddap/",
+  baseurl = c("https://upwell.pfeg.noaa.gov/erddap/",
+    "https://coastwatch.pfeg.noaa.gov/erddap/", "https://www.ncei.noaa.gov/erddap/",
+    "https://erddap.sensors.ioos.us/erddap"),
   chooseVars = TRUE
 )
 
@@ -922,6 +926,108 @@ hycomEdi &lt;- erddapToEdinfo('GLBy0.08/expt_93.0')
 ## End(Not run)
 
 </code></pre>
+
+<hr>
+<h2 id='findEchoTimes'>Find Estimated Echo Times</h2><span id='topic+findEchoTimes'></span>
+
+<h3>Description</h3>
+
+<p>Finds the estimated times of echoes in a waveform clip. This 
+function was developed to estimate the time of a surface reflected echo
+of echolocation clicks of deep diving marine mammals. The times of echoes
+are estimated by finding peaks in the autocorrelation of a signal.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>findEchoTimes(
+  wav,
+  sr = NULL,
+  filter = NULL,
+  clipLen = 0.03,
+  peakMin = 0.01,
+  minTime = 0.001,
+  maxTime = NULL,
+  channel = NULL,
+  n = 3,
+  plot = TRUE,
+  plotText = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="findEchoTimes_+3A_wav">wav</code></td>
+<td>
+<p>waveform to find echoes in. Can be a numeric vector, 
+<a href="tuneR.html#topic+Wave">Wave</a>, or <a href="tuneR.html#topic+WaveMC">WaveMC</a> class object</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_sr">sr</code></td>
+<td>
+<p>sample rate of the waveform, if <code>wav</code> is a <code>Wave</code>
+or <code>WaveMC</code> object it will use the <code>samp.rate</code> slot</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_filter">filter</code></td>
+<td>
+<p>filter to apply to <code>wav</code>, a vector of two numbers
+specifying the lower and upper bounds of the filter in Hz. A first
+value of <code>0</code> means no highpass filter is applied, a second value
+greater than <code>sr/2</code> means no lowpass filter is applied.</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_cliplen">clipLen</code></td>
+<td>
+<p>length of clip (seconds) to analyse for echoes, 
+measured from start of <code>wav</code></p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_peakmin">peakMin</code></td>
+<td>
+<p>minimum magnitude of autocorrelation value to be 
+considered a possible peak</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_mintime">minTime</code></td>
+<td>
+<p>minimum allowed echo time (seconds), this should be large
+enough to avoid correlating the original pulse with itself</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_maxtime">maxTime</code></td>
+<td>
+<p>maximum allowed echo time (seconds)</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_channel">channel</code></td>
+<td>
+<p>if <code>wav</code> has multiple channels, channel to use</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_n">n</code></td>
+<td>
+<p>the number of potential echoes to return, times with the 
+<code>n</code> highest autocorrelation magnitude will be returned</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_plot">plot</code></td>
+<td>
+<p>logical flag to create plot, will create a two-panel plot
+of the waveform (top) and the autocorrelation (bottom). Points of 
+the selected candidate echo times are also drawn</p>
+</td></tr>
+<tr><td><code id="findEchoTimes_+3A_plottext">plotText</code></td>
+<td>
+<p>optional text to plot on the upper waveform plot</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a list with elements <code>mag</code>, <code>time</code> and <code>wav</code>
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Taiki Sakai <a href="mailto:taiki.sakai@noaa.gov">taiki.sakai@noaa.gov</a>
+</p>
 
 <hr>
 <h2 id='formatURL'>Format URL for Environmental Data Download</h2><span id='topic+formatURL'></span>

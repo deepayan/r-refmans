@@ -43,7 +43,9 @@ function processMathHTML() {
 <li><a href='#stax.sel'><p>Extract subsets of an occurrence data.frame.</p></a></li>
 <li><a href='#synonymize'><p>Combine selected entries in a taxon-range table to remove duplicates</p></a></li>
 <li><a href='#tree_archosauria'><p>tree_archosauria</p></a></li>
-<li><a href='#tree.ages'><p>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data</p></a></li>
+<li><a href='#tree.age.combine'><p>Combine two calibration matrixes and fill in NA values in one with values from another</p></a></li>
+<li><a href='#tree.ages'><p>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data.</p></a></li>
+<li><a href='#tree.ages.spp'><p>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data.</p></a></li>
 <li><a href='#ts.periods'><p>Add a horizontal, period-level phanerozoic timescale to any plot, especially calibrated phylogenies plotted with ape.</p></a></li>
 <li><a href='#ts.stages'><p>Add a horizontal, stage-level phanerozoic timescale to any plot, especially calibrated phylogenies plotted with ape.</p></a></li>
 <li><a href='#tsconv'><p>Convert geological ages for accurate plotting alongside a calibrated phylogeny</p></a></li>
@@ -60,7 +62,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.2</td>
+<td>0.3.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -104,7 +106,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-07 19:49:11 UTC; suirad</td>
+<td>2024-05-02 10:16:57 UTC; suirad</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -120,7 +122,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-07 23:00:02 UTC</td>
+<td>2024-05-02 11:32:42 UTC</td>
 </tr>
 </table>
 <hr>
@@ -195,6 +197,7 @@ ggplot(data=thyreophora, aes(x=tax, y=ma, col=tax))+ylim(252,0)+geom_violin(scal
   x,
   table = NULL,
   ab.val = table$abund_value,
+  ab.val.na = 1,
   smooth = 0,
   max = table$eag,
   min = table$lag,
@@ -216,7 +219,11 @@ ggplot(data=thyreophora, aes(x=tax, y=ma, col=tax))+ylim(252,0)+geom_violin(scal
 </td></tr>
 <tr><td><code id="abdistr__+3A_ab.val">ab.val</code></td>
 <td>
-<p>Abundance value to be used. Default is table$abund_value. If NULL (e.g. because this column does not exist) or NA, each occurrence is treated as representing one specimen</p>
+<p>Abundance value to be used. Default is table$abund_value. If set to 1, each occurrence is treated as representing one specimen. If NULL (e.g. because this column does not exist) or NA, each occurrence is treated as the number of specimens specified under ab.val.na</p>
+</td></tr>
+<tr><td><code id="abdistr__+3A_ab.val.na">ab.val.na</code></td>
+<td>
+<p>Value to substitute for missing entries in abundance values. Defaults to 1. Either a single numeric or a function to be applied to all non-missing entries of ab.val (e.g. mean()  or median()).</p>
 </td></tr>
 <tr><td><code id="abdistr__+3A_smooth">smooth</code></td>
 <td>
@@ -336,7 +343,7 @@ abdistr_(x=c(170:120), table=archosauria$Stegosauria)
 
 <h3>Format</h3>
 
-<p>A list() object containing 2 occurrence datasets, 1 collections dataset and 15 species tables (data.frames) with the following data in each:
+<p>A list() object containing 2 occurrence data.frames, 1 collections data.frame and 15 species-range tables (all as data.frames) with the following data in each:
 </p>
 
 <dl>
@@ -564,7 +571,7 @@ ggplot(data=flyers, aes(col=tax, x=ma))+xlim(252,0)+geom_density(adjust=0.5)
 
 <h3>Details</h3>
 
-<p>divdistr_() produces a &quot;maximum&quot; estimate of taxonomic diversity at any given point in time in the fossil record. This function is based on the principle of counting the number of taxon ranges (from the privided range table) that overlap each age provided in x. As a result of uncertainty of age estimates, this may lead to an overestimation of the actual fossil diversity at each point in time, especially at the points of overlap between taxon-specific ranges. Moreover this represents a &quot;raw&quot;, uncorrected diversity estimate that does not account for differences in sampling intensity throughout the time interval that is investigated. A rudimentary functionality for using such a correction exists in the form of the w argument, which allows the user to provide a vector of weights (of the same length as x) to be multiplied with the raw diversity estimates. Such weights can, for instance, be based on (the inverse of) the number of collections overlapping any given age in x, which can be calculated using the same basic approach as the raw diversity, by downloading collections instead of occurrence data.
+<p>divdistr_() produces a &quot;maximum&quot; estimate of taxonomic diversity at any given point in time in the fossil record. This function is based on the principle of counting the number of taxon ranges (from the provided range table) that overlap each age provided in x. As a result of uncertainty of age estimates, this may lead to an overestimation of the actual fossil diversity at each point in time, especially at the points of overlap between taxon-specific ranges. Moreover this represents a &quot;raw&quot;, uncorrected diversity estimate that does not account for differences in sampling intensity throughout the time interval that is investigated. A rudimentary functionality for using such a correction exists in the form of the w argument, which allows the user to provide a vector of weights (of the same length as x) to be multiplied with the raw diversity estimates. Such weights can, for instance, be based on (the inverse of) the number of collections overlapping any given age in x, which can be calculated using the same basic approach as the raw diversity, by downloading collections instead of occurrence data.
 </p>
 
 
@@ -1020,6 +1027,7 @@ pdb.union(rbind(archosauria$Ankylosauria, archosauria$Stegosauria))-&gt;Eurypoda
   occ,
   stat = divdistr_,
   prefix = "sptab_",
+  pos = NULL,
   ages = NULL,
   xlimits = NULL,
   res = 1,
@@ -1035,9 +1043,11 @@ pdb.union(rbind(archosauria$Ankylosauria, archosauria$Stegosauria))-&gt;Eurypoda
   labels = TRUE,
   txt.y = 0.5,
   txt.x = NULL,
+  adj.x = 0,
   add = FALSE,
   tbmar = 0.2,
-  smooth = 0
+  smooth = 0,
+  italicize = character()
 )
 </code></pre>
 
@@ -1060,6 +1070,10 @@ pdb.union(rbind(archosauria$Ankylosauria, archosauria$Stegosauria))-&gt;Eurypoda
 <tr><td><code id="phylo.spindles_+3A_prefix">prefix</code></td>
 <td>
 <p>Prefix for taxon-range tables in occ. Defaults to &quot;sptab_&quot;</p>
+</td></tr>
+<tr><td><code id="phylo.spindles_+3A_pos">pos</code></td>
+<td>
+<p>Position at which to draw spindles. If NULL (default), then spindles are drawn at c(1:n) where n is the number of taxa in phylo0.</p>
 </td></tr>
 <tr><td><code id="phylo.spindles_+3A_ages">ages</code></td>
 <td>
@@ -1121,6 +1135,10 @@ pdb.union(rbind(archosauria$Ankylosauria, archosauria$Stegosauria))-&gt;Eurypoda
 <td>
 <p>x coordinates for plotting tip labels. Can be a single value applicable to all labels, or a vector of the same length as phylo0$tip.label</p>
 </td></tr>
+<tr><td><code id="phylo.spindles_+3A_adj.x">adj.x</code></td>
+<td>
+<p>Numeric value giving alignment on x axis, defaults to 0 (left-aligned) but can also be 0.5 (centered) or 1 (right-aligned).</p>
+</td></tr>
 <tr><td><code id="phylo.spindles_+3A_add">add</code></td>
 <td>
 <p>Logical indicating whether to add to an existing plot, in which case only the spindles are plotted on top of an existing phylogeny, or not, in which case the phylogeny is plotted along with the spindles.</p>
@@ -1132,6 +1150,10 @@ pdb.union(rbind(archosauria$Ankylosauria, archosauria$Stegosauria))-&gt;Eurypoda
 <tr><td><code id="phylo.spindles_+3A_smooth">smooth</code></td>
 <td>
 <p>Smoothing parameter to be passed on to divdistr_()</p>
+</td></tr>
+<tr><td><code id="phylo.spindles_+3A_italicize">italicize</code></td>
+<td>
+<p>Character or numeric vector specifying which labels to italicize, if any.</p>
 </td></tr>
 </table>
 
@@ -1465,17 +1487,67 @@ synonymize(c("Hesperosaurus mjosi","Stegosaurus mjosi"),sp)-&gt;sp
 </p>
 
 <hr>
-<h2 id='tree.ages'>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data</h2><span id='topic+tree.ages'></span>
+<h2 id='tree.age.combine'>Combine two calibration matrixes and fill in NA values in one with values from another</h2><span id='topic+tree.age.combine'></span>
 
 <h3>Description</h3>
 
-<p>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data
+<p>Combine two calibration matrixes and fill in NA values in one with values from another
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>tree.ages(phylo0 = NULL, data = NULL, taxa = phylo0$tip.label)
+<pre><code class='language-R'>tree.age.combine(ages0, ages1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="tree.age.combine_+3A_ages0">ages0</code></td>
+<td>
+<p>First matrix, NA values in which to replace with values from second matrix</p>
+</td></tr>
+<tr><td><code id="tree.age.combine_+3A_ages1">ages1</code></td>
+<td>
+<p>matrix from which to take replacement values</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>tree.age.combine builds the union of two calibration matrices if some of the values in one of them are NAs. If exact matches for some entries cannot be found, a relaxed search matching only the first word (i.e. usually the genus name) in each taxon name is run, in order to fill in as much of the age matrix as possible with non-NA values. It is highly recommended to manually inspect the resulting table for accuracy.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A two-column matrix containing earliest and latest occurrences for each taxon in taxa, with taxon names as row names
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(archosauria)
+data(tree_archosauria)
+tree.ages.spp(tree_archosauria,data=archosauria$sptab_Ornithopoda)-&gt;ages_A
+tree.ages.spp(tree_archosauria,data=archosauria$sptab_Allosauroidea)-&gt;ages_B
+tree.age.combine(ages_A,ages_B)-&gt;ages
+</code></pre>
+
+<hr>
+<h2 id='tree.ages'>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data.</h2><span id='topic+tree.ages'></span>
+
+<h3>Description</h3>
+
+<p>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>tree.ages(phylo0 = NULL, data = NULL, taxa = NULL)
 </code></pre>
 
 
@@ -1484,7 +1556,7 @@ synonymize(c("Hesperosaurus mjosi","Stegosaurus mjosi"),sp)-&gt;sp
 <table>
 <tr><td><code id="tree.ages_+3A_phylo0">phylo0</code></td>
 <td>
-<p>(Optional) Object of class==&quot;phylo&quot; from which to draw taxa to include in calibration matrix</p>
+<p>Either an object of class phylo, or a character vector containing taxon names for building the matrix</p>
 </td></tr>
 <tr><td><code id="tree.ages_+3A_data">data</code></td>
 <td>
@@ -1492,9 +1564,15 @@ synonymize(c("Hesperosaurus mjosi","Stegosaurus mjosi"),sp)-&gt;sp
 </td></tr>
 <tr><td><code id="tree.ages_+3A_taxa">taxa</code></td>
 <td>
-<p>Taxa to include in calibration matrix, defaults to phylo0$tip.label</p>
+<p>Deprecated argument; vector containing taxa to include in calibration matrix (can now be provided directly as phylo0)</p>
 </td></tr>
 </table>
+
+
+<h3>Details</h3>
+
+<p>tree.ages works best for getting occurrence dates for higher-level taxa (genus-level and up) that can be used as a base_name in a call to the paleobiology database and will return NAs for species names (or any other taxon that cannot be found in the paleobiology database or the provided list object). For a function optimized to recover taxon ranges for genera and species, see tree.ages.spp().  It is highly recommended to manually inspect the resulting table for accuracy.
+</p>
 
 
 <h3>Value</h3>
@@ -1508,6 +1586,54 @@ synonymize(c("Hesperosaurus mjosi","Stegosaurus mjosi"),sp)-&gt;sp
 <pre><code class='language-R'>data(archosauria)
 data(tree_archosauria)
 tree.ages(tree_archosauria,data=archosauria)-&gt;ages
+</code></pre>
+
+<hr>
+<h2 id='tree.ages.spp'>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data.</h2><span id='topic+tree.ages.spp'></span>
+
+<h3>Description</h3>
+
+<p>Automatically build matrix for time-calibration of phylogenetic trees using occurrence data.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>tree.ages.spp(phylo0, data)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="tree.ages.spp_+3A_phylo0">phylo0</code></td>
+<td>
+<p>Either an object of class phylo, or a character vector containing taxon names for building the matrix</p>
+</td></tr>
+<tr><td><code id="tree.ages.spp_+3A_data">data</code></td>
+<td>
+<p>A higher-level taxon name to get data for in the paleobiology database, or a data.frame containing a species table containing entries for the taxa in question.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>tree.ages looks for the taxon names in the tna collumn of a taxon-range table (as produced by mk.sptab()), so it will only recover ages for taxa that can be found there. For a function optimized for higher-level taxa that might not be represented in such a table, see tree.ages().  It is highly recommended to manually inspect the resulting table for accuracy.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A two-column matrix containing earliest and latest occurrences for each taxon in taxa, with taxon names as row names
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(archosauria)
+data(tree_archosauria)
+tree.ages.spp(tree_archosauria,data=archosauria$sptab_Ornithopoda)-&gt;ages
 </code></pre>
 
 <hr>
@@ -1528,7 +1654,7 @@ tree.ages(tree_archosauria,data=archosauria)-&gt;ages
   exclude = c("Quarternary"),
   col.txt = NULL,
   border = NA,
-  ylim = 0.5,
+  ylim = NULL,
   adj.txt = c(0.5, 0.5),
   txt.y = mean,
   bw = FALSE,
@@ -1566,7 +1692,7 @@ tree.ages(tree_archosauria,data=archosauria)-&gt;ages
 </td></tr>
 <tr><td><code id="ts.periods_+3A_ylim">ylim</code></td>
 <td>
-<p>Setting for height of the timescale. Can either be one single value, in which case the function attempts to use the lower limit of the currently plotted phylogeny, or a vector of length 2 containing the lower and upper limits of the timescale.</p>
+<p>Setting for height of the timescale. Can either be one single value giving the height of the timescale, in which case the function attempts to use the lower limit of the current plot as the lower margin, or a vector of length 2 containing the lower and upper limits of the timescale.</p>
 </td></tr>
 <tr><td><code id="ts.periods_+3A_adj.txt">adj.txt</code></td>
 <td>
@@ -1617,7 +1743,7 @@ ts.periods(tree_archosauria, alpha=0.5)
   names = FALSE,
   col.txt = NULL,
   border = NA,
-  ylim = 0.5,
+  ylim = NULL,
   adj.txt = c(0.5, 0.5),
   txt.y = mean,
   bw = FALSE,
@@ -1651,7 +1777,7 @@ ts.periods(tree_archosauria, alpha=0.5)
 </td></tr>
 <tr><td><code id="ts.stages_+3A_ylim">ylim</code></td>
 <td>
-<p>Setting for height of the timescale. Can either be one single value, in which case the function attempts to use the lower limit of the currently plotted phylogeny, or a vector of length 2 containing the lower and upper limits of the timescale.</p>
+<p>Setting for height of the timescale. Can either be one single value giving the height of the timescale, in which case the function attempts to use the lower limit of the current plot as the lower margin, or a vector of length 2 containing the lower and upper limits of the timescale.</p>
 </td></tr>
 <tr><td><code id="ts.stages_+3A_adj.txt">adj.txt</code></td>
 <td>
@@ -1743,7 +1869,7 @@ ts.periods(tree_archosauria, alpha=0)
 
 <pre><code class='language-R'>viol(
   x,
-  pos,
+  pos = 0,
   x2 = NULL,
   stat = density,
   dscale = 1,
@@ -1771,7 +1897,7 @@ ts.periods(tree_archosauria, alpha=0)
 </td></tr>
 <tr><td><code id="viol_+3A_pos">pos</code></td>
 <td>
-<p>Position at which to place violin in the axis perpendicular to x</p>
+<p>Position at which to place violin in the axis perpendicular to x. Defaults to 0</p>
 </td></tr>
 <tr><td><code id="viol_+3A_x2">x2</code></td>
 <td>

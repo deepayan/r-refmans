@@ -24,6 +24,7 @@ function processMathHTML() {
 <li><a href='#deleteAnomaly'><p>deleteAnomaly</p></a></li>
 <li><a href='#get.upperRank'><p>get.upperRank</p></a></li>
 <li><a href='#getAllCentroids'><p>getAllCentroids</p></a></li>
+<li><a href='#getAllMRCAs'><p>getAllMRCAs</p></a></li>
 <li><a href='#testRankList'><p>testRankList</p></a></li>
 <li><a href='#testTree'><p>testTree</p></a></li>
 </ul>
@@ -43,11 +44,11 @@ Tree</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.1</td>
+<td>3.0.0</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-01-12</td>
+<td>2024-07-10</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -99,11 +100,12 @@ Tree</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-01-12 04:26:19 UTC; aoki</td>
+<td>2024-07-10 05:21:44 UTC; aoki</td>
 </tr>
 <tr>
 <td>Author:</td>
-<td>Satoshi Aoki [aut, cph, cre]</td>
+<td>Satoshi Aoki [aut, cph, cre],
+  Keita Fukasawa [ctb]</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -115,11 +117,11 @@ Tree</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-01-14 15:20:14 UTC</td>
+<td>2024-07-10 05:40:01 UTC</td>
 </tr>
 </table>
 <hr>
-<h2 id='Apoderoides-internal'>Internal Apoderoides Functions</h2><span id='topic+getAllRankNames'></span><span id='topic+findUpperNode'></span><span id='topic+is.monophyleticByRank'></span><span id='topic+getAllCentroids_C'></span><span id='topic+calcIntScore_C'></span><span id='topic+calcOutScore_C'></span><span id='topic+extractOTUbyRankName_C'></span><span id='topic+findSubTips_C'></span><span id='topic+getTipNo_C'></span><span id='topic+getRankCentroid_C'></span>
+<h2 id='Apoderoides-internal'>Internal Apoderoides Functions</h2><span id='topic+deleteSubFunc'></span><span id='topic+getRankMRCA'></span><span id='topic+getAllRankNames'></span><span id='topic+findUpperNode'></span><span id='topic+is.monophyleticByRank'></span><span id='topic+getAllCentroids_C'></span><span id='topic+calcIntScore_C'></span><span id='topic+calcOutScore_C'></span><span id='topic+extractOTUbyRankName_C'></span><span id='topic+findSubTips_C'></span><span id='topic+getTipNo_C'></span><span id='topic+getRankCentroid_C'></span>
 
 <h3>Description</h3>
 
@@ -143,13 +145,17 @@ Tree</td>
 
 <h3>Description</h3>
 
-<p>Iterate calc.Score() and DeleteAnomaly() until all the tree tips have 0 score or the number of the tips becomes three or lower.
+<p>Iterate calc.Score() and deleteAnomaly() until all the tree tips have 0 score or the number of the tips becomes three or lower.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>autoDeletion(tree,OTUrankData=NULL,show_progress=TRUE,num_threads=1)
+<pre><code class='language-R'>autoDeletion(
+tree,OTUrankData=NULL,
+show_progress=TRUE,num_threads=1,
+prior="MRCA",criteria="composite"
+)
 </code></pre>
 
 
@@ -172,12 +178,20 @@ Tree</td>
 <td>
 <p>A positive integer to specify the number of threads to calculate.</p>
 </td></tr>
+<tr><td><code id="autoDeletion_+3A_prior">prior</code></td>
+<td>
+<p>Used only when &quot;criteria&quot; is &quot;both&quot;. &quot;MRCA&quot; or &quot;centroid&quot;. This argument defines the prioritized score when scores based on MRCA and centroid are equal.</p>
+</td></tr>
+<tr><td><code id="autoDeletion_+3A_criteria">criteria</code></td>
+<td>
+<p>Criteria nodes to calculate the scores.&quot;composite&quot;, &quot;both&quot;, &quot;MRCA&quot; or &quot;centroid&quot;. &quot;MRCA&quot; and &quot;centroid&quot; use their corresponding node to calculate both intruder and outlier scores. &quot;composite&quot; calculates intruder scores using MRCA and outlier ones using centroid, which is empirically known to be most effective. &quot;both&quot; calculates both of MRCA-based and centroid-based scores and uses the highest one to select taxa to be deleted.</p>
+</td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>A list of the length three. The first element is a list of phylogenetic tree from which erroneous taxa are deleted. The second is a character vector of deleted taxa. The third is a list of lists showing the transition of the score. See <a href="#topic+calc.Score">calc.Score</a> about the contents of the third element.
+<p>A list of the length three or four. The first element is a list of phylogenetic tree from which erroneous taxa are deleted. The second is a character vector of deleted taxa. The third and fourth are a list of lists showing the transition of the scores. When criteria is &quot;both&quot;, third and fourth elements correspond to scores based on MRCA and centroid, respectively. See <a href="#topic+calc.Score">calc.Score</a> about the contents of the third and fourth elements.
 </p>
 
 
@@ -208,8 +222,8 @@ result[[3]]
 <h3>Usage</h3>
 
 <pre><code class='language-R'>calc.Score(tree,OTUrankData=NULL,
-allRankNames=NULL,allCentroids=NULL,dropIndex=NULL,
-sort=TRUE,show_progress=TRUE,num_threads=1)
+allRankNames=NULL,allCentroids=NULL,allMRCAs=NULL,dropIndex=NULL,
+sort=TRUE,show_progress=TRUE,num_threads=1,criteria="composite")
 </code></pre>
 
 
@@ -234,6 +248,11 @@ This is a unique character vector of the upper ranks of the tree tips. If given,
 <p>This can be omitted.
 This is a list of numeric vectors of the centroids of ranks. If given, the calculation will be a little faster.</p>
 </td></tr>
+<tr><td><code id="calc.Score_+3A_allmrcas">allMRCAs</code></td>
+<td>
+<p>This can be omitted.
+This is a list of numeric vectors of the MRCAs of ranks. If given, the calculation will be a little faster.</p>
+</td></tr>
 <tr><td><code id="calc.Score_+3A_dropindex">dropIndex</code></td>
 <td>
 <p>This can be omitted.
@@ -251,12 +270,16 @@ A numeric vector of indices of tree tips. The tree tips indicated by this dropIn
 <td>
 <p>A positive integer to specify the number of threads to calculate the scores.</p>
 </td></tr>
+<tr><td><code id="calc.Score_+3A_criteria">criteria</code></td>
+<td>
+<p>Criteria nodes to calculate the scores.&quot;composite&quot;, &quot;both&quot;, &quot;MRCA&quot; or &quot;centroid&quot;. &quot;MRCA&quot; and &quot;centroid&quot; use their corresponding node to calculate both intruder and outlier scores. &quot;composite&quot; calculates intruder scores using MRCA and outlier ones using centroid, which is empirically known to be most effective. &quot;both&quot; calculates both of MRCA-based and centroid-based score.</p>
+</td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>A matrix of characters. The following explains the columns in the matrix.
+<p>A list containing one or two matrices of characters showing the scores. Only when criteria is &quot;both&quot;, there are two matrices, and the first one is the score based on the centroids, and the second is that based on the MRCAs. The following explains the columns in the matrix.
 </p>
 <table>
 <tr><td><code>OTU</code></td>
@@ -307,7 +330,7 @@ calc.Score(testTree,testRankList)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>deleteAnomaly(tree,score,OTUrankData=NULL,drop=FALSE)
+<pre><code class='language-R'>deleteAnomaly(tree,scores,OTUrankData=NULL,drop=FALSE,prior="MRCA")
 </code></pre>
 
 
@@ -318,9 +341,9 @@ calc.Score(testTree,testRankList)
 <td>
 <p>A phylogenetic tree to be checked. This is loaded by ape::read.tree() from a file.</p>
 </td></tr>
-<tr><td><code id="deleteAnomaly_+3A_score">score</code></td>
+<tr><td><code id="deleteAnomaly_+3A_scores">scores</code></td>
 <td>
-<p>Score calculated by calc.Score function.</p>
+<p>A list of scores calculated by calc.Score function.</p>
 </td></tr>
 <tr><td><code id="deleteAnomaly_+3A_oturankdata">OTUrankData</code></td>
 <td>
@@ -329,6 +352,10 @@ calc.Score(testTree,testRankList)
 <tr><td><code id="deleteAnomaly_+3A_drop">drop</code></td>
 <td>
 <p>Whether the dropped OTU(s) is included in the returned tree.</p>
+</td></tr>
+<tr><td><code id="deleteAnomaly_+3A_prior">prior</code></td>
+<td>
+<p>Used only when the length of &quot;scores&quot; is two. &quot;MRCA&quot; or &quot;centroid&quot;. This argument defines the prioritized score when scores based on MRCA and centroid are equal.</p>
 </td></tr>
 </table>
 
@@ -399,7 +426,7 @@ get.upperRank(testTree$tip[1:3],testRankList)
 
 <h3>Description</h3>
 
-<p>Calculate all the centroids of ranks in the tree.</p>
+<p>Calculate all the centroids of ranks in the tree. The centroid of a rank is equivalent to S-centroid by Slater (1978).</p>
 
 
 <h3>Usage</h3>
@@ -436,6 +463,12 @@ get.upperRank(testTree$tip[1:3],testRankList)
 </p>
 
 
+<h3>References</h3>
+
+<p>Slater P. J. 1978. Centers to centroids in graphs. Journal of Graph Theory 2: 209–222.
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>data(testTree)
@@ -444,6 +477,50 @@ getAllCentroids(testTree)
 data(testRankList)
 #calculate centroids for the rank in the list
 getAllCentroids(testTree,testRankList)
+</code></pre>
+
+<hr>
+<h2 id='getAllMRCAs'>getAllMRCAs</h2><span id='topic+getAllMRCAs'></span>
+
+<h3>Description</h3>
+
+<p>Calculate all the most recent common ancestors (MRCAs) of ranks in the tree. Unlike getMRCA() in ape package, this function returns a tip node number when the rank is monotypic.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getAllMRCAs(tree,OTUrankData=NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getAllMRCAs_+3A_tree">tree</code></td>
+<td>
+<p>A phylogenetic tree to be checked. This is loaded by ape::read.tree() from a file.</p>
+</td></tr>
+<tr><td><code id="getAllMRCAs_+3A_oturankdata">OTUrankData</code></td>
+<td>
+<p>A list composed of two character vectors. The first vector is tips of tree. The second vector is the upper rank of the tips. When this is NULL, the function assumes that all the tree tips are expressed as Genus_species like Homo_sapience, and calculate the MRCAs for genera. When this is not NULL, the function returns MRCAs based on the upper rank in this list.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing vectors of an MRCA node number.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(testTree)
+#calculate MRCAs for genus
+getAllMRCAs(testTree)
+data(testRankList)
+#calculate MRCAs for the rank in the list
+getAllMRCAs(testTree,testRankList)
 </code></pre>
 
 <hr>

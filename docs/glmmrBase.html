@@ -35,9 +35,12 @@ accessed directly from the Model as 'Model$family'</a></li>
 <li><a href='#fixed.effects'><p>Extracts the fixed effect estimates</p></a></li>
 <li><a href='#formula.mcml'><p>Extracts the formula from a 'mcml' object.</p></a></li>
 <li><a href='#formula.Model'><p>Extracts the formula from a 'Model' object</p></a></li>
+<li><a href='#lme4_to_glmmr'><p>Map lme4 formula to glmmrBase formula</p></a></li>
 <li><a href='#logLik.mcml'><p>Extracts the log-likelihood from an mcml object</p></a></li>
 <li><a href='#logLik.Model'><p>Extracts the log-likelihood from an mcml object</p></a></li>
 <li><a href='#match_rows'><p>Generate matrix mapping between data frames</p></a></li>
+<li><a href='#mcml_glmer'><p>lme4 style generlized linear mixed model</p></a></li>
+<li><a href='#mcml_lmer'><p>lme4 style linear mixed model</p></a></li>
 <li><a href='#mcnr_family'><p>Returns the file name and type for MCNR function</p></a></li>
 <li><a href='#MeanFunction'><p>R6 Class representing a mean function/linear predictor</p></a></li>
 <li><a href='#Model'><p>A GLMM Model</p></a></li>
@@ -75,11 +78,11 @@ accessed directly from the Model as 'Model$family'</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.8.1</td>
+<td>0.9.2</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-03-31</td>
+<td>2024-06-19</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -150,7 +153,7 @@ RcppParallel (&ge; 5.0.1), rstan (&ge; 2.32.1), StanHeaders (&ge;
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-04-08 17:11:32 UTC; WatsonSI</td>
+<td>2024-06-19 09:14:43 UTC; WatsonSI</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -162,7 +165,7 @@ RcppParallel (&ge; 5.0.1), rstan (&ge; 2.32.1), StanHeaders (&ge;
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-04-08 19:20:06 UTC</td>
+<td>2024-06-19 12:30:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -1311,6 +1314,57 @@ formula(x, ...)
 </p>
 
 <hr>
+<h2 id='lme4_to_glmmr'>Map lme4 formula to glmmrBase formula</h2><span id='topic+lme4_to_glmmr'></span>
+
+<h3>Description</h3>
+
+<p>Returns a formula that can be used for glmmrBase Models from an lme4 input.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>lme4_to_glmmr(formula, cnames)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="lme4_to_glmmr_+3A_formula">formula</code></td>
+<td>
+<p>A lme4 style formula</p>
+</td></tr>
+<tr><td><code id="lme4_to_glmmr_+3A_cnames">cnames</code></td>
+<td>
+<p>The column names of the data to be used. These are used to check if the specified clustering variables are in 
+the data.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The package lme4 uses a syntax to specify random effects as '(1|x)' where 'x' is the grouping variable.
+This function will modify such a formula, including those with nesting and crossing operators '/' and ':' into
+the glmmrBase syntax using the 'gr()' function. Not typically required by the user as it is used internally 
+in the 'mcml_lmer' and 'mcml_glmer' functions.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A formula.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>df &lt;- data.frame(cl = 1:3, t = 4:6)
+f1 &lt;- lme4_to_glmmr(y ~ x + (1|cl/t),colnames(df))
+</code></pre>
+
+<hr>
 <h2 id='logLik.mcml'>Extracts the log-likelihood from an mcml object</h2><span id='topic+logLik.mcml'></span>
 
 <h3>Description</h3>
@@ -1443,6 +1497,215 @@ in the columns specified by the argument 'by'
 <pre><code class='language-R'>df &lt;- nelder(~(cl(10)*t(5)) &gt; ind(10))
 df_unique &lt;- df[!duplicated(df[,c('cl','t')]),]
 match_rows(df,df_unique,c('cl','t'))
+</code></pre>
+
+<hr>
+<h2 id='mcml_glmer'>lme4 style generlized linear mixed model</h2><span id='topic+mcml_glmer'></span>
+
+<h3>Description</h3>
+
+<p>A wrapper for Model stochastic maximum likelihood model fitting replicating lme4's syntax
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mcml_glmer(
+  formula,
+  data,
+  family,
+  start = NULL,
+  offset = NULL,
+  verbose = 1L,
+  iter.warmup = 100,
+  iter.sampling = 50,
+  weights = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mcml_glmer_+3A_formula">formula</code></td>
+<td>
+<p>A two-sided linear formula object including both the fixed and random effects specifications, see Details.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_data">data</code></td>
+<td>
+<p>A data frame containing the variables named in 'formula'.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_family">family</code></td>
+<td>
+<p>A family object expressing the distribution and link function of the model, see <a href="stats.html#topic+family">family</a>.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_start">start</code></td>
+<td>
+<p>Optional. A vector of starting values for the fixed effects.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_offset">offset</code></td>
+<td>
+<p>Optional. A vector of offset values.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_verbose">verbose</code></td>
+<td>
+<p>Integer, controls the level of detail printed to the console, either 0 (no output), 
+1 (main output), or 2 (detailed output)</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_iter.warmup">iter.warmup</code></td>
+<td>
+<p>The number of warmup iterations for the MCMC sampling step of each iteration.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_iter.sampling">iter.sampling</code></td>
+<td>
+<p>The number of sampling iterations for the MCMC sampling step of each iteration.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_weights">weights</code></td>
+<td>
+<p>Optional. A vector of observation level weights to apply to the model fit.</p>
+</td></tr>
+<tr><td><code id="mcml_glmer_+3A_...">...</code></td>
+<td>
+<p>additional arguments passed to 'Model$MCML()'</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function aims to replicate the syntax of lme4's 'lmer' command. The specified formula can be 
+the standard lme4 syntax, or alternatively a glmmrBase style formula can also be used to allow for the 
+wider range of covariance function specifications. For example both 'y~x+(1|cl/t)' and 'y~x+(1|gr(cl))+(1|gr(cl)*ar1(t))'
+would be valid formulae.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A 'mcml' model fit object.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#create a data frame describing a cross-sectional parallel cluster
+#randomised trial
+df &lt;- nelder(~(cl(10)*t(5)) &gt; ind(10))
+df$int &lt;- 0
+df[df$cl &gt; 5, 'int'] &lt;- 1
+# simulate data using the Model class
+df$y &lt;- Model$new(
+  formula = ~ factor(t) + int - 1 + (1|gr(cl)) + (1|gr(cl,t)),
+  data = df,
+  family = stats::binomial()
+)$sim_data()
+## Not run: 
+fit &lt;- mcml_glmer(y ~ factor(t) + int - 1 + (1|cl/t), data = df, family = binomial())
+
+## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='mcml_lmer'>lme4 style linear mixed model</h2><span id='topic+mcml_lmer'></span>
+
+<h3>Description</h3>
+
+<p>A wrapper for Model stochastic maximum likelihood model fitting replicating lme4's syntax
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mcml_lmer(
+  formula,
+  data,
+  start = NULL,
+  offset = NULL,
+  verbose = 1L,
+  iter.warmup = 100,
+  iter.sampling = 50,
+  weights = NULL,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mcml_lmer_+3A_formula">formula</code></td>
+<td>
+<p>A two-sided linear formula object including both the fixed and random effects specifications, see Details.</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_data">data</code></td>
+<td>
+<p>A data frame containing the variables named in 'formula'.</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_start">start</code></td>
+<td>
+<p>Optional. A vector of starting values for the fixed effects.</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_offset">offset</code></td>
+<td>
+<p>Optional. A vector of offset values.</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_verbose">verbose</code></td>
+<td>
+<p>Integer, controls the level of detail printed to the console, either 0 (no output), 
+1 (main output), or 2 (detailed output)</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_iter.warmup">iter.warmup</code></td>
+<td>
+<p>The number of warmup iterations for the MCMC sampling step of each iteration.</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_iter.sampling">iter.sampling</code></td>
+<td>
+<p>The number of sampling iterations for the MCMC sampling step of each iteration.</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_weights">weights</code></td>
+<td>
+<p>Optional. A vector of observation level weights to apply to the model fit.</p>
+</td></tr>
+<tr><td><code id="mcml_lmer_+3A_...">...</code></td>
+<td>
+<p>additional arguments passed to 'Model$MCML()'</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function aims to replicate the syntax of lme4's 'lmer' command. The specified formula can be 
+the standard lme4 syntax, or alternatively a glmmrBase style formula can also be used to allow for the 
+wider range of covariance function specifications. For example both 'y~x+(1|cl/t)' and 'y~x+(1|gr(cl))+(1|gr(cl)*ar1(t))'
+would be valid formulae.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A 'mcml' model fit object.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>#create a data frame describing a cross-sectional parallel cluster
+#randomised trial
+df &lt;- nelder(~(cl(10)*t(5)) &gt; ind(10))
+df$int &lt;- 0
+df[df$cl &gt; 5, 'int'] &lt;- 1
+# simulate data using the Model class
+df$y &lt;- Model$new(
+  formula = ~ factor(t) + int - 1 + (1|gr(cl)) + (1|gr(cl,t)),
+  data = df,
+  family = stats::gaussian()
+)$sim_data()
+## Not run: 
+fit &lt;- mcml_lmer(y ~ factor(t) + int - 1 + (1|cl/t), data = df)
+
+## End(Not run)
 </code></pre>
 
 <hr>
@@ -2487,8 +2750,11 @@ generated from a previous model fit.
 <div class="arguments">
 
 <dl>
-<dt><code>formula</code></dt><dd><p>An optional model formula containing fixed and random effect terms. If not specified, then
-separate formulae need to be provided to the covariance and mean arguments below.</p>
+<dt><code>formula</code></dt><dd><p>A model formula containing fixed and random effect terms. The formula can be one way (e.g. <code>~ x + (1|gr(cl))</code>) or
+two-way (e.g. <code>y ~ x + (1|gr(cl))</code>). One way formulae will generate a valid model enabling data simulation, matrix calculation,
+and power, etc. Outcome data can be passed directly to model fitting functions, or updated later using member function <code>update_y()</code>.
+For binomial models, either the syntax <code>cbind(y, n-y)</code> can be used for outcomes, or just <code>y</code> and the number of trials passed to the argument
+<code>trials</code> described below.</p>
 </dd>
 <dt><code>covariance</code></dt><dd><p>(Optional) Either a <a href="#topic+Covariance">Covariance</a> object, an equivalent list of arguments
 that can be passed to <code>Covariance</code> to create a new object, or a vector of parameter values. At a minimum the list must specify a formula.
@@ -2535,7 +2801,7 @@ default to 1 (a bernoulli model).</p>
 
 <div class="r example copy">
 <pre>\dontshow{
-setParallel(FALSE) # for the CRAN check
+setParallel(FALSE) 
 }
 #create a data frame describing a cross-sectional parallel cluster
 #randomised trial
@@ -2552,24 +2818,22 @@ mod &lt;- Model$new(
 df &lt;- nelder(~ind(20) * t(6))
 df$int &lt;- 0
 df[df$t &gt; 3, 'int'] &lt;- 1
-# the preferred way of specifying with parameter values
+
+des &lt;- Model$new(
+  formula = ~ int + (1|gr(ind)),
+  data = df,
+  family = stats::poisson()
+)
+  
+  # or with parameter values specified
+  
 des &lt;- Model$new(
   formula = ~ int + (1|gr(ind)),
   covariance = c(0.05),
   mean = c(1,0.5),
   data = df,
   family = stats::poisson()
-  )
-# also works:
-des &lt;- Model$new(
-  covariance = list(
-    formula = ~ (1|gr(ind)),
-    parameters = c(0.05)),
-  mean = list(
-    formula = ~ int,
-    parameters = c(1,0.5)),
-  data = df,
-  family = stats::poisson())
+)
 
 #an example of a spatial grid with two time points
 df &lt;- nelder(~ (x(10)*y(10))*t(2))
@@ -2730,12 +2994,9 @@ df[df$cl &gt; 5, 'int'] &lt;- 1
 setParallel(FALSE) # for the CRAN check
 }
 des &lt;- Model$new(
-  covariance = list(
-    formula = ~ (1|gr(cl)*ar0(t)),
-    parameters = c(0.05,0.8)),
-  mean = list(
-    formula = ~ factor(t) + int - 1,
-    parameters = c(rep(0,5),0.6)),
+  formula = ~ factor(t) + int - 1 + (1|gr(cl)*ar0(t)),
+  covariance = c(0.05,0.8),
+  mean = c(rep(0,5),0.6),
   data = df,
   family = stats::binomial()
 )
@@ -2817,7 +3078,7 @@ a correction to the Hessian matrix is required, which is automatically calculate
   include.re = FALSE,
   theta = FALSE,
   hessian.corr = "add",
-  adj.nonpsd = TRUE
+  adj.nonspd = TRUE
 )</pre></div>
 
 
@@ -3126,7 +3387,7 @@ des$power() #power of 0.90 for the int parameter
 <h5>Usage</h5>
 
 <div class="r"><pre>Model$MCML(
-  y,
+  y = NULL,
   method = "saem",
   tol = 0.01,
   max.iter = 50,
@@ -3151,7 +3412,8 @@ des$power() #power of 0.90 for the int parameter
 <div class="arguments">
 
 <dl>
-<dt><code>y</code></dt><dd><p>A numeric vector of outcome data</p>
+<dt><code>y</code></dt><dd><p>Optional. A numeric vector of outcome data. If this is not provided then either the outcome must have been specified when
+initialising the Model object, or the outcome data has been updated using member function <code>update_y()</code></p>
 </dd>
 <dt><code>method</code></dt><dd><p>The MCML algorithm to use, either <code>mcem</code> or <code>mcnr</code>, or <code>saem</code> see Details. Default is <code>saem</code>. <code>mcem.adapt</code> and <code>mcnr.adapt</code> will use adaptive
 MCMC sample sizes starting small and increasing to the the maximum value specified in <code>mcmc_options$sampling</code>, which results in faster convergence. <code>saem</code> uses a
@@ -3254,7 +3516,7 @@ fit2 &lt;- des$MCML(y = ysim, method="mcem",tol=1e-2,conv.criterion = 1)
 <h5>Usage</h5>
 
 <div class="r"><pre>Model$LA(
-  y,
+  y = NULL,
   start,
   method = "nr",
   se = "gls",
@@ -3275,7 +3537,8 @@ fit2 &lt;- des$MCML(y = ysim, method="mcem",tol=1e-2,conv.criterion = 1)
 <div class="arguments">
 
 <dl>
-<dt><code>y</code></dt><dd><p>A numeric vector of outcome data</p>
+<dt><code>y</code></dt><dd><p>Optional. A numeric vector of outcome data. If this is not provided then either the outcome must have been specified when
+initialising the Model object, or the outcome data has been updated using member function <code>update_y()</code></p>
 </dd>
 <dt><code>start</code></dt><dd><p>Optional. A numeric vector indicating starting values for the model parameters.</p>
 </dd>
@@ -3841,24 +4104,22 @@ mod &lt;- Model$new(
 df &lt;- nelder(~ind(20) * t(6))
 df$int &lt;- 0
 df[df$t &gt; 3, 'int'] &lt;- 1
-# the preferred way of specifying with parameter values
+
+des &lt;- Model$new(
+  formula = ~ int + (1|gr(ind)),
+  data = df,
+  family = stats::poisson()
+)
+  
+  # or with parameter values specified
+  
 des &lt;- Model$new(
   formula = ~ int + (1|gr(ind)),
   covariance = c(0.05),
   mean = c(1,0.5),
   data = df,
   family = stats::poisson()
-  )
-# also works:
-des &lt;- Model$new(
-  covariance = list(
-    formula = ~ (1|gr(ind)),
-    parameters = c(0.05)),
-  mean = list(
-    formula = ~ int,
-    parameters = c(1,0.5)),
-  data = df,
-  family = stats::poisson())
+)
 
 #an example of a spatial grid with two time points
 df &lt;- nelder(~ (x(10)*y(10))*t(2))
@@ -3875,12 +4136,9 @@ df$int &lt;- 0
 df[df$cl &gt; 5, 'int'] &lt;- 1
 
 des &lt;- Model$new(
-  covariance = list(
-    formula = ~ (1|gr(cl)*ar0(t)),
-    parameters = c(0.05,0.8)),
-  mean = list(
-    formula = ~ factor(t) + int - 1,
-    parameters = c(rep(0,5),0.6)),
+  formula = ~ factor(t) + int - 1 + (1|gr(cl)*ar0(t)),
+  covariance = c(0.05,0.8),
+  mean = c(rep(0,5),0.6),
   data = df,
   family = stats::binomial()
 )

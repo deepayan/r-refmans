@@ -67,7 +67,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.8</td>
+<td>1.0.10</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -114,7 +114,7 @@ estimatr (&ge; 0.20.0)</td>
 <td>testthat, knitr, rmarkdown, AER, diffobj, dplyr, data.table,
 tibble, ggplot2, future, future.apply, broom, MASS, Matching,
 betareg, biglm, gam, sf, reshape2, DesignLibrary, coin,
-margins, psych</td>
+marginaleffects, psych</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -122,7 +122,7 @@ margins, psych</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-07 05:36:26 UTC; blair</td>
+<td>2024-04-20 01:17:51 UTC; blair</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -146,7 +146,7 @@ margins, psych</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-07 06:10:02 UTC</td>
+<td>2024-04-21 20:52:45 UTC</td>
 </tr>
 </table>
 <hr>
@@ -536,7 +536,7 @@ design1 &lt;- declare_model(N = 100, u = rnorm(N), potential_outcomes(Y ~ Z + u)
   declare_measurement(Y = reveal_outcomes(Y ~ Z)) +
   declare_estimator(Y ~ Z, inquiry = "ATE")
 
-design2 &lt;- declare_model(N = 200, U = rnorm(N),
+  design2 &lt;- declare_model(N = 200, U = rnorm(N),
                          potential_outcomes(Y ~ 0.5*Z + U)) +
   declare_inquiry(ATE = mean(Y_Z_1 - Y_Z_0)) +
   declare_sampling(S = complete_rs(N, n = 100)) +
@@ -544,12 +544,16 @@ design2 &lt;- declare_model(N = 200, U = rnorm(N),
   declare_measurement(Y = reveal_outcomes(Y ~ Z)) +
   declare_estimator(Y ~ Z, .method = lm_robust, inquiry = "ATE")
  
- compare_designs(design1, design2)
- compare_design_code(design1, design2)
- compare_design_summaries(design1, design2)
- compare_design_data(design1, design2)
- compare_design_estimates(design1, design2)
- compare_design_inquiries(design1, design2)
+ if (require("diffobj")) {
+ 
+   compare_designs(design1, design2)
+   compare_design_code(design1, design2)
+   compare_design_summaries(design1, design2)
+   compare_design_data(design1, design2)
+   compare_design_estimates(design1, design2)
+   compare_design_inquiries(design1, design2)
+ 
+ }
 
 </code></pre>
 
@@ -958,57 +962,66 @@ design_4 &lt;-
 
 run_design(design_4)
 
-# Use glm from base R
-design_5 &lt;-
-  design +
-  declare_estimator(Y ~ Z + gender,
-                    family = "gaussian",
-                    inquiry = "ATE",
-                    .method = glm)
+if(require("broom")) {
 
-run_design(design_5)
+  # Use glm from base R
+  design_5 &lt;-
+    design +
+    declare_estimator(Y ~ Z + gender,
+                      family = "gaussian",
+                      inquiry = "ATE",
+                      .method = glm)
+  
+  run_design(design_5)
+  
+  # If we use logit, we'll need to estimate the average marginal effect with
+  # marginaleffects::avg_slopes. We wrap this up in a function we'll pass to 
+  # .summary.
+  
+  if(require("marginaleffects")) {
+  
+    library(marginaleffects) # for predictions
+    library(broom) # for tidy
+    
+    tidy_avg_slopes &lt;- function(x) {
+      tidy(avg_slopes(x))
+    }
+    
+    design_6 &lt;-
+      design +
+      declare_estimator(
+        Y ~ Z + gender,
+        .method = glm,
+        family = binomial("logit"),
+        .summary = tidy_avg_slopes,
+        term = "Z"
+      )
+    
+    run_design(design_6)
+    
+    # Multiple estimators for one inquiry
+    
+    design_7 &lt;-
+      design +
+      declare_estimator(Y ~ Z,
+                        .method = lm_robust,
+                        inquiry = "ATE",
+                        label = "OLS") +
+      declare_estimator(
+        Y ~ Z + gender,
+        .method = glm,
+        family = binomial("logit"),
+        .summary = tidy_avg_slopes,
+        inquiry = "ATE",
+        term = "Z",
+        label = "logit"
+      )
+    
+    run_design(design_7)
+    
+  }
 
-# If we use logit, we'll need to estimate the average marginal effect with
-# margins::margins. We wrap this up in function we'll pass to model_summary
-
-library(margins) # for margins
-library(broom) # for tidy
-
-tidy_margins &lt;- function(x) {
-  tidy(margins(x, data = x$data), conf.int = TRUE)
 }
-
-design_6 &lt;-
-  design +
-  declare_estimator(
-    Y ~ Z + gender,
-    .method = glm,
-    family = binomial("logit"),
-    .summary = tidy_margins,
-    term = "Z"
-  )
-
-run_design(design_6)
-
-# Multiple estimators for one inquiry
-
-design_7 &lt;-
-  design +
-  declare_estimator(Y ~ Z,
-                    .method = lm_robust,
-                    inquiry = "ATE",
-                    label = "OLS") +
-  declare_estimator(
-    Y ~ Z + gender,
-    .method = glm,
-    family = binomial("logit"),
-    .summary = tidy_margins,
-    inquiry = "ATE",
-    term = "Z",
-    label = "logit"
-  )
-
-run_design(design_7)
 </code></pre>
 
 <hr>
@@ -1272,25 +1285,29 @@ design &lt;-
   
 head(draw_data(design))
 
-# Index creation
-library(psych)
+if(require("psych")) {
 
-design &lt;-
-  declare_model(
-    N = 500,
-    X = rep(c(0, 1), each = N / 2),
-    Y_1 = 0.2 * X + rnorm(N, sd = 0.25),
-    Y_2 = 0.3 * X + 0.5 * rnorm(N, sd = 0.50),
-    Y_3 = 0.1 * X + 0.4 * rnorm(N, sd = 0.75)) +
-  declare_measurement(
-    index = fa(
-      r = cbind(Y_1, Y_2, Y_3),
-      nfactors = 1,
-      rotate = "varimax"
-    )$scores
-  )
-
-draw_data(design)
+  # Index creation
+  
+  library(psych)
+  
+  design &lt;-
+    declare_model(
+      N = 500,
+      X = rep(c(0, 1), each = N / 2),
+      Y_1 = 0.2 * X + rnorm(N, sd = 0.25),
+      Y_2 = 0.3 * X + 0.5 * rnorm(N, sd = 0.50),
+      Y_3 = 0.1 * X + 0.4 * rnorm(N, sd = 0.75)) +
+    declare_measurement(
+      index = fa(
+        r = cbind(Y_1, Y_2, Y_3),
+        nfactors = 1,
+        rotate = "varimax"
+      )$scores
+    )
+  
+  draw_data(design)
+}
 </code></pre>
 
 <hr>
@@ -1375,15 +1392,19 @@ M &lt;- declare_model(
 )
 M()
 
-# We can draw correlated variables using draw_multivariate
-M &lt;-
-declare_model(
-  draw_multivariate(c(X1, X2) ~ MASS::mvrnorm(
-    n = 1000,
-    mu = c(0, 0),
-    Sigma = matrix(c(1, 0.3, 0.3, 1), nrow = 2)
-  )))
-M()
+if(require("MASS")) {
+
+  # We can draw correlated variables using draw_multivariate
+  M &lt;-
+  declare_model(
+    draw_multivariate(c(X1, X2) ~ MASS::mvrnorm(
+      n = 1000,
+      mu = c(0, 0),
+      Sigma = matrix(c(1, 0.3, 0.3, 1), nrow = 2)
+    )))
+  M()
+  
+}
 
 # Declare potential outcomes model dependent on assignment Z
 ## Manually
@@ -2002,32 +2023,36 @@ diagnosis &lt;- diagnose_design(
 
 # Thanks to Jake Bowers for this example
 
-library(coin) 
+if(require("coin")) {
 
-our_ttest &lt;- function(data) {
-  res &lt;- coin::oneway_test(
-    outcome ~ factor(Xclus),
-    data = data,
-    distribution = "asymptotic"
-  )
-  data.frame(p.value = pvalue(res)[[1]])
-}
-
-ttest_design &lt;- 
-  declare_model(
-    N = 100, 
-    Xclus = rbinom(n = N, size = 1, prob = 0.2), 
-    outcome = 3 + rnorm(N)) +
-  declare_test(handler = label_test(our_ttest), label = "t-test")
+  library(coin) 
   
-## Not run: 
-diagnosis &lt;- diagnose_design(
-  design = ttest_design,
-  diagnosands = declare_diagnosands(
-    false_positive_rate = mean(p.value &lt;= 0.05))
-)
-
+  our_ttest &lt;- function(data) {
+    res &lt;- coin::oneway_test(
+      outcome ~ factor(Xclus),
+      data = data,
+      distribution = "asymptotic"
+    )
+    data.frame(p.value = pvalue(res)[[1]])
+  }
+  
+  ttest_design &lt;- 
+    declare_model(
+      N = 100, 
+      Xclus = rbinom(n = N, size = 1, prob = 0.2), 
+      outcome = 3 + rnorm(N)) +
+    declare_test(handler = label_test(our_ttest), label = "t-test")
+    
+  ## Not run: 
+  diagnosis &lt;- diagnose_design(
+    design = ttest_design,
+    diagnosands = declare_diagnosands(
+      false_positive_rate = mean(p.value &lt;= 0.05))
+  )
+  
 ## End(Not run)
+  
+}
 
 </code></pre>
 
@@ -2228,7 +2253,7 @@ diagnose_design(
   diagnosands = NULL,
   sims = 500,
   bootstrap_sims = 100,
-  future.seed = TRUE,
+  future.seed = requireNamespace("future", quietly = TRUE),
   make_groups = NULL,
   add_grouping_variables = NULL
 )
@@ -2238,7 +2263,7 @@ diagnose_designs(
   diagnosands = NULL,
   sims = 500,
   bootstrap_sims = 100,
-  future.seed = TRUE,
+  future.seed = requireNamespace("future", quietly = TRUE),
   make_groups = NULL,
   add_grouping_variables = NULL
 )
@@ -2268,7 +2293,7 @@ vars(...)
 </td></tr>
 <tr><td><code id="diagnose_design_+3A_future.seed">future.seed</code></td>
 <td>
-<p>Option for parallel diagnosis via the function future_lapply. A logical or an integer (of length one or seven), or a list of length(X) with pre-generated random seeds. For details, see ?future_lapply.</p>
+<p>Option for parallel diagnosis via the function future_lapply. A logical or an integer (of length one or seven), or a list of length(X) with pre-generated random seeds. By default, this is set to TRUE if the <code>future</code> and <code>future.apply</code> packages are installed, and FALSE if not. For details, see ?future_lapply.</p>
 </td></tr>
 <tr><td><code id="diagnose_design_+3A_make_groups">make_groups</code></td>
 <td>
@@ -2331,8 +2356,8 @@ diagnosis_df
 # to calculate diagnosands, and bootstrap_sims to change how
 # many bootstraps are uses to calculate standard errors.
 diagnosis &lt;- diagnose_design(design,
-                             sims = 500,
-                             bootstrap_sims = 150)
+                             sims = 100,
+                             bootstrap_sims = 100)
 tidy(diagnosis)
 
 # You may also run diagnose_design in parallel using 
@@ -2343,7 +2368,7 @@ library(future)
 options(parallelly.fork.enable = TRUE) # required for use in RStudio
 plan(multicore) # note other plans are possible, see future
 
-diagnose_design(design, sims = 500)
+diagnose_design(design)
 
 # Select specific diagnosands
 reshape_diagnosis(diagnosis, select = "Power")
@@ -2361,7 +2386,7 @@ get_diagnosands(diagnosis)
 get_simulations(diagnosis)
 
 # Diagnose using an existing data frame of simulations
-simulations &lt;- simulate_design(design, sims = 500)
+simulations &lt;- simulate_design(design, sims = 100)
 diagnosis   &lt;- diagnose_design(simulations_df = simulations)
 diagnosis
 
@@ -3642,9 +3667,17 @@ diagnose_design(
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>simulate_design(..., sims = 500, future.seed = TRUE)
+<pre><code class='language-R'>simulate_design(
+  ...,
+  sims = 500,
+  future.seed = requireNamespace("future", quietly = TRUE)
+)
 
-simulate_designs(..., sims = 500, future.seed = TRUE)
+simulate_designs(
+  ...,
+  sims = 500,
+  future.seed = requireNamespace("future", quietly = TRUE)
+)
 </code></pre>
 
 
@@ -3661,7 +3694,7 @@ simulate_designs(..., sims = 500, future.seed = TRUE)
 </td></tr>
 <tr><td><code id="simulate_design_+3A_future.seed">future.seed</code></td>
 <td>
-<p>Option for parallel diagnosis via the function future_lapply. A logical or an integer (of length one or seven), or a list of length(X) with pre-generated random seeds. For details, see ?future_lapply.</p>
+<p>Option for parallel diagnosis via the function future_lapply. A logical or an integer (of length one or seven), or a list of length(X) with pre-generated random seeds. By default, this is set to TRUE if the <code>future</code> and <code>future.apply</code> packages are installed, and FALSE if not. For details, see ?future_lapply.</p>
 </td></tr>
 </table>
 

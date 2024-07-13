@@ -32,7 +32,8 @@ function processMathHTML() {
 <li><a href='#datPivot'><p>Data - Generates a pivot table.</p></a></li>
 <li><a href='#datPlotcnt'><p>Database - Get plot counts.</p></a></li>
 <li><a href='#datSumCond'><p>Data - Aggregates numeric condition data to plot level.</p></a></li>
-<li><a href='#datSumTree'><p>Data - Aggregates numeric tree data to the plot or condition-level.</p></a></li>
+<li><a href='#datSumTree'><p>Data - Aggregates tree and/or seedling data to the plot, condition,</p>
+or subplot level.</a></li>
 <li><a href='#datSumTreeDom'><p>Data - Aggregates numeric tree data by tree domain (i.e. species) to plot or</p>
 condition-level.</a></li>
 <li><a href='#DBgetCSV'><p>Database - Extracts data table(s) from FIA DataMart.</p></a></li>
@@ -145,11 +146,11 @@ two sf polygon objects.</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>3.6.2</td>
+<td>3.6.4</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-02-07</td>
+<td>2024-06-07</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -163,12 +164,12 @@ two sf polygon objects.</a></li>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>data.table, DBI, FIESTAutils (&ge; 1.2.2), gdalraster,
+<td>data.table, DBI, FIESTAutils (&ge; 1.2.3), gdalraster,
 grDevices, graphics, methods, RSQLite, sf, sqldf, utils</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>knitr, geodata, sp, terra, rmarkdown</td>
+<td>knitr, terra, rmarkdown, testthat (&ge; 3.0.0)</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -204,12 +205,16 @@ grDevices, graphics, methods, RSQLite, sf, sqldf, utils</td>
 <td>7.3.1</td>
 </tr>
 <tr>
+<td>Config/testthat/edition:</td>
+<td>3</td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>no</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-07 18:13:46 UTC; grayson</td>
+<td>2024-06-07 20:02:06 UTC; grayson</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -231,7 +236,7 @@ grDevices, graphics, methods, RSQLite, sf, sqldf, utils</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-08 08:10:16 UTC</td>
+<td>2024-06-07 20:30:05 UTC</td>
 </tr>
 </table>
 <hr>
@@ -2601,13 +2606,15 @@ FIESTA::WYcond[FIESTA::WYcond$PLT_CN == 40404737010690,]
 </code></pre>
 
 <hr>
-<h2 id='datSumTree'>Data - Aggregates numeric tree data to the plot or condition-level.</h2><span id='topic+datSumTree'></span>
+<h2 id='datSumTree'>Data - Aggregates tree and/or seedling data to the plot, condition,
+or subplot level.</h2><span id='topic+datSumTree'></span>
 
 <h3>Description</h3>
 
-<p>Aggregates numeric tree-level data (e.g., VOLCFNET) to plot or condition,
-including options for filtering tree data or extrapolating to plot aseedonlycre by
-multiplying by TPA.
+<p>Aggregates tree data (e.g., VOLCFNET) and/or seedling data (e.g., TPA_UNADJ) 
+to plot, condition, or subplot. Includes options for filtering tree data, 
+expanding to plot by multiplying by trees per acre (TPA_UNADJ), or adjusting 
+for nonresponse at the plot level (getadjplot).
 </p>
 
 
@@ -2867,11 +2874,6 @@ default = 'treesum'.</p>
 
 <h3>Details</h3>
 
-<p>If variable = NULL, then it will prompt user for input.
-</p>
-<p>Dependent external functions: datFilter Dependent internal functions:
-addcommas, fileexistsnm, getadjfactor
-</p>
 <p>For adjcond (bycond=FALSE): <br /> If you want to summarize trees-per-acre
 information aggregated to plot or condition level, you need to include a TPA
 variable in tree table. <br /> For tsumvars = GROWCFGS, GROWBFSL, GROWCFAL,
@@ -3543,6 +3545,7 @@ or more states. See details for more information.
   dbTabs = dbTables(),
   dbconn = NULL,
   dbconnopen = FALSE,
+  returnPOP = FALSE,
   gui = FALSE
 )
 </code></pre>
@@ -3579,13 +3582,13 @@ the sqlite database (*.sqlite).</p>
 </td></tr>
 <tr><td><code id="DBgetEvalid_+3A_evalcur">evalCur</code></td>
 <td>
-<p>Logical. If TRUE, the most current evalidation is extracted
+<p>Logical. If TRUE, the most current FIA Evaluation is extracted
 for state(s).</p>
 </td></tr>
 <tr><td><code id="DBgetEvalid_+3A_evalendyr">evalEndyr</code></td>
 <td>
-<p>Number. The end year of the evaluation period of interest.
-Selects only sampled plots and conditions for the evalidation period. If
+<p>Number. The end year of the FIA Evaluation period of interest.
+Selects only sampled plots and conditions for the evaluation period. If
 more than one state, create a named list object with evalEndyr labeled for
 each state (e.g., list(Utah=2014, Colorado=2013).</p>
 </td></tr>
@@ -3626,6 +3629,11 @@ See help(dbTables) for a list of options.</p>
 <tr><td><code id="DBgetEvalid_+3A_dbconnopen">dbconnopen</code></td>
 <td>
 <p>Logical. If TRUE, the dbconn connection is not closed.</p>
+</td></tr>
+<tr><td><code id="DBgetEvalid_+3A_returnpop">returnPOP</code></td>
+<td>
+<p>Logical. If TRUE, returns pop tables (SURVEY, 
+POP_PLOT_STRATUM_ASSGN) as R objects instead of table names, if in db.</p>
 </td></tr>
 <tr><td><code id="DBgetEvalid_+3A_gui">gui</code></td>
 <td>
@@ -3795,11 +3803,10 @@ RSevalid$evalidlist
   issubp = FALSE,
   istree = TRUE,
   isseed = FALSE,
-  biojenk = FALSE,
   greenwt = FALSE,
   addplotgeom = FALSE,
   othertables = NULL,
-  getxy = TRUE,
+  getxy = FALSE,
   xy_datsource = NULL,
   xy_dsn = NULL,
   xy = "PLOT",
@@ -3820,6 +3827,7 @@ RSevalid$evalidlist
   alltFilter = NULL,
   returndata = TRUE,
   savedata = FALSE,
+  exportsp = FALSE,
   saveqry = FALSE,
   savePOP = FALSE,
   savedata_opts = NULL,
@@ -3901,10 +3909,6 @@ database (SUBPLOT, SUBP_COND).</p>
 <tr><td><code id="DBgetPlots_+3A_isseed">isseed</code></td>
 <td>
 <p>Logical. If TRUE, include seedling data.</p>
-</td></tr>
-<tr><td><code id="DBgetPlots_+3A_biojenk">biojenk</code></td>
-<td>
-<p>Logical. If TRUE, Jenkins biomass is calculated.</p>
 </td></tr>
 <tr><td><code id="DBgetPlots_+3A_greenwt">greenwt</code></td>
 <td>
@@ -4031,6 +4035,10 @@ only plots with trees included in filter.</p>
 <p>Logical. If TRUE, saves data to outfolder as comma-delimited
 file (*.csv).  No objects are returned. If FALSE, the data are saved as R
 objects and returned to user.  See details for caveats.</p>
+</td></tr>
+<tr><td><code id="DBgetPlots_+3A_exportsp">exportsp</code></td>
+<td>
+<p>Logical. If TRUE, and issp=TRUE, exports spatial plots.</p>
 </td></tr>
 <tr><td><code id="DBgetPlots_+3A_saveqry">saveqry</code></td>
 <td>
@@ -6289,6 +6297,7 @@ population.
   table_opts = NULL,
   title_opts = NULL,
   savedata_opts = NULL,
+  cdomdat = NULL,
   gui = FALSE,
   ...
 )
@@ -6354,6 +6363,10 @@ options.</p>
 <td>
 <p>List. See help(savedata_options()) for a list
 of options. Only used when savedata = TRUE.</p>
+</td></tr>
+<tr><td><code id="modGBchng_+3A_cdomdat">cdomdat</code></td>
+<td>
+<p>Data.frame of condition-domain data. Output from modGBchng().</p>
 </td></tr>
 <tr><td><code id="modGBchng_+3A_gui">gui</code></td>
 <td>
@@ -7780,6 +7793,7 @@ population.
   pltdat = NULL,
   stratdat = NULL,
   auxdat = NULL,
+  keepadjvars = FALSE,
   gui = FALSE,
   ...
 )
@@ -7940,6 +7954,11 @@ FIESTA::spGetStrata().</p>
 <td>
 <p>R List object. Output data list components from
 FIESTA::spGetAuxiliary().</p>
+</td></tr>
+<tr><td><code id="modGBpop_+3A_keepadjvars">keepadjvars</code></td>
+<td>
+<p>Logical. If TRUE, keep adjustment factors from 
+pop_stratum table in FIA database.</p>
 </td></tr>
 <tr><td><code id="modGBpop_+3A_gui">gui</code></td>
 <td>
@@ -13413,6 +13432,7 @@ modSAarea(SApopdatlst = SApopdat,
   dunitzonal = NULL,
   prednames = NULL,
   predfac = NULL,
+  addxy = FALSE,
   returndata = TRUE,
   savedata = FALSE,
   saveobj = FALSE,
@@ -13422,6 +13442,7 @@ modSAarea(SApopdatlst = SApopdat,
   SAdoms = NULL,
   smallbnd = NULL,
   smallbnd.domain = NULL,
+  largebnd.unique = NULL,
   SAdata = NULL,
   pltdat = NULL,
   auxdat = NULL,
@@ -13517,6 +13538,10 @@ model.</p>
 <p>String vector. Name(s) of factor predictor variables to use
 in model. Names will change in output depending on number of categories.</p>
 </td></tr>
+<tr><td><code id="modSApop_+3A_addxy">addxy</code></td>
+<td>
+<p>Logical. If TRUE, adds X/Y attributes to pltassgn.</p>
+</td></tr>
 <tr><td><code id="modSApop_+3A_returndata">returndata</code></td>
 <td>
 <p>Logical. If TRUE, returns data objects.</p>
@@ -13553,6 +13578,12 @@ of options.</p>
 <tr><td><code id="modSApop_+3A_smallbnd.domain">smallbnd.domain</code></td>
 <td>
 <p>String. Name of attribute defining domain attribute.</p>
+</td></tr>
+<tr><td><code id="modSApop_+3A_largebnd.unique">largebnd.unique</code></td>
+<td>
+<p>String. Name of the large boundary unique identifer
+to define plots within a model extent. If NULL, all plots are used for model
+extent.</p>
 </td></tr>
 <tr><td><code id="modSApop_+3A_sadata">SAdata</code></td>
 <td>
@@ -13935,7 +13966,7 @@ woodland species.</p>
 </td></tr>
 <tr><td><code id="modSAtree_+3A_largebnd.unique">largebnd.unique</code></td>
 <td>
-<p>String. Name of the large boundary unique identifer
+<p>String. Name of the large boundary unique identifier
 to define plots within a model extent. If NULL, all plots are used for model
 extent.</p>
 </td></tr>
@@ -15932,7 +15963,13 @@ data filters.
 
 <pre><code class='language-R'>popFilters(
   evalid = NULL,
+  states = NULL,
+  evalCur = FALSE,
+  evalEndyr = NULL,
+  measCur = FALSE,
+  measEndyr = NULL,
   invyrs = NULL,
+  measyrs = NULL,
   intensity = NULL,
   ACI = FALSE,
   AOIonly = FALSE,
@@ -15949,9 +15986,42 @@ data filters.
 <p>Numeric. FIA Evaluation identifier for subsetting plots for
 population.</p>
 </td></tr>
+<tr><td><code id="popFilters_+3A_states">states</code></td>
+<td>
+<p>String or numeric vector. Name (e.g., 'Arizona','New Mexico')
+or code (e.g., 4, 35) of state(s) for evalid. If all states in one or more
+FIA Research Station is desired, set states=NULL and use RS argument to
+define RS.</p>
+</td></tr>
+<tr><td><code id="popFilters_+3A_evalcur">evalCur</code></td>
+<td>
+<p>Logical. If TRUE, the most current FIA Evaluation is extracted
+for state(s).</p>
+</td></tr>
+<tr><td><code id="popFilters_+3A_evalendyr">evalEndyr</code></td>
+<td>
+<p>Number. The end year of the FIA Evaluation of interest.
+Selects only sampled plots and conditions for the evaluation period. If
+more than one state, create a named list object with evalEndyr labeled for
+each state (e.g., list(Utah=2014, Colorado=2013).</p>
+</td></tr>
+<tr><td><code id="popFilters_+3A_meascur">measCur</code></td>
+<td>
+<p>Logical. If TRUE, the most current sampled plots available
+for state(s).</p>
+</td></tr>
+<tr><td><code id="popFilters_+3A_measendyr">measEndyr</code></td>
+<td>
+<p>Number. The most current sampled plots measured before or
+during end given..</p>
+</td></tr>
 <tr><td><code id="popFilters_+3A_invyrs">invyrs</code></td>
 <td>
 <p>Integer vector. Inventory year(s) (e.g., c(2000, 2001, 2002)).</p>
+</td></tr>
+<tr><td><code id="popFilters_+3A_measyrs">measyrs</code></td>
+<td>
+<p>Integer vector. Measurement year(s) (e.g., c(2000, 2001, 2002)).</p>
 </td></tr>
 <tr><td><code id="popFilters_+3A_intensity">intensity</code></td>
 <td>
@@ -16906,6 +16976,8 @@ a polygon vector layer.
   clippolyv,
   clippolyv_dsn = NULL,
   clippolyv.filter = NULL,
+  buffdist = NULL,
+  validate = FALSE,
   showext = FALSE,
   keepNA = FALSE,
   returnsp = TRUE,
@@ -16953,6 +17025,17 @@ OGR vector formats (https://www.gdal.org/ogr_formats.html).</p>
 <tr><td><code id="spClipPoint_+3A_clippolyv.filter">clippolyv.filter</code></td>
 <td>
 <p>String. Filter to subset clippolyv spatial layer.</p>
+</td></tr>
+<tr><td><code id="spClipPoint_+3A_buffdist">buffdist</code></td>
+<td>
+<p>Number. The distance to buffer the polygon before clipping.
+Uses sf::st_buffer. The distance is based on units of polygon, st_crs(x)$units.</p>
+</td></tr>
+<tr><td><code id="spClipPoint_+3A_validate">validate</code></td>
+<td>
+<p>Logical. If TRUE, validates polyv and clippolyv before 
+clipping. Uses sf::st_make_valid with default parameters 
+(geos_method='valid_structure', geos_keep_collapsed=FALSE).</p>
 </td></tr>
 <tr><td><code id="spClipPoint_+3A_showext">showext</code></td>
 <td>
@@ -17109,6 +17192,8 @@ with another polygon vector layer.
   clippolyv,
   clippolyv_dsn = NULL,
   clippolyv.filter = NULL,
+  buffdist = NULL,
+  validate = FALSE,
   showext = FALSE,
   areacalc = FALSE,
   areaunits = "ACRES",
@@ -17150,6 +17235,17 @@ clippolyv_layer is an R object.</p>
 <tr><td><code id="spClipPoly_+3A_clippolyv.filter">clippolyv.filter</code></td>
 <td>
 <p>String. Filter to subset clippolyv spatial layer.</p>
+</td></tr>
+<tr><td><code id="spClipPoly_+3A_buffdist">buffdist</code></td>
+<td>
+<p>Number. The distance to buffer the polygon before clipping.
+Uses sf::st_buffer. The distance is based on units of polygon, st_crs(x)$units.</p>
+</td></tr>
+<tr><td><code id="spClipPoly_+3A_validate">validate</code></td>
+<td>
+<p>Logical. If TRUE, validates polyv and clippolyv before 
+clipping. Uses sf::st_make_valid with default parameters 
+(geos_method='valid_structure', geos_keep_collapsed=FALSE).</p>
 </td></tr>
 <tr><td><code id="spClipPoly_+3A_showext">showext</code></td>
 <td>
@@ -17234,15 +17330,12 @@ has more than 1 record, it will be returned but not exported.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-# Load in USAco data from geodata package
-USAco &lt;- geodata::gadm(country="United States", level=2, path=tempdir())
-
 # Set up data from FIESTA
 WYbhfn &lt;- system.file("extdata", "sp_data/WYbighorn_adminbnd.shp",
                                     package = "FIESTA"))
 
 # Clip polygon with WY Bighorn object from FIESTA
-WYbhco &lt;- spClipPoly(polyv = USAco,
+WYbhco &lt;- spClipPoly(polyv = stunitco,
                      clippolyv = WYbhfn)     
 
 ## End(Not run)
@@ -17271,6 +17364,7 @@ outfolder with specified format (fmt).
   bands = NULL,
   NODATA = NULL,
   buffdist = NULL,
+  validate = FALSE,
   maskByPolygons = TRUE,
   showext = FALSE,
   fmt = "GTiff",
@@ -17334,7 +17428,13 @@ DEFAULT_NODATA for default data values).</p>
 <tr><td><code id="spClipRast_+3A_buffdist">buffdist</code></td>
 <td>
 <p>Number. The distance to buffer the polygon before clipping
-raster, in units of raster.</p>
+raster. Uses sf::st_buffer. The distance is based on units of the raster.</p>
+</td></tr>
+<tr><td><code id="spClipRast_+3A_validate">validate</code></td>
+<td>
+<p>Logical. If TRUE, validates polyv and clippolyv before 
+clipping. Uses sf::st_make_valid with default parameters 
+(geos_method='valid_structure', geos_keep_collapsed=FALSE).</p>
 </td></tr>
 <tr><td><code id="spClipRast_+3A_maskbypolygons">maskByPolygons</code></td>
 <td>
@@ -18031,6 +18131,7 @@ Area by domain (i.e., estimation unit)<br /> - Zonal statistics by domain
   unit_layer = NULL,
   unit_dsn = NULL,
   unitvar = NULL,
+  unitvar2 = NULL,
   rastlst.cont = NULL,
   rastlst.cont.name = NULL,
   rastlst.cont.stat = "mean",
@@ -18104,6 +18205,11 @@ name) of unit_layer. The dsn varies by driver. See gdal OGR vector formats
 <p>String. Name of domain variable in domlayer. If NULL,
 assuming one domain. An attribute names ONEUNIT is added to layer with
 value=1.</p>
+</td></tr>
+<tr><td><code id="spGetAuxiliary_+3A_unitvar2">unitvar2</code></td>
+<td>
+<p>String. If unittype=&quot;POLY&quot;, name of attribute in unit_layer
+defining a second, hierarchical larger, estimation unit (e.g., Statecd).</p>
 </td></tr>
 <tr><td><code id="spGetAuxiliary_+3A_rastlst.cont">rastlst.cont</code></td>
 <td>
@@ -19029,6 +19135,7 @@ area polygons, resulting in a set of model domains that can be used for SAE.
   maxbnd.threshold = 10,
   largebnd.threshold = 5,
   multiSAdoms = FALSE,
+  bayes = FALSE,
   showsteps = TRUE,
   savedata = FALSE,
   savesteps = FALSE,
@@ -19178,6 +19285,12 @@ largebnds for selecting helperbnds.</p>
 <p>Logical. If TRUE, and the percent intersect of smallbnd
 with maxbnd is greater than maxbnd.threshold, more than 1 SAdoms will be
 output in list.</p>
+</td></tr>
+<tr><td><code id="spGetSAdoms_+3A_bayes">bayes</code></td>
+<td>
+<p>Logical. If TRUE, does not union smallbnd with largebnd.
+If multiSAdoms = TRUE, returns intersecting maxbnd where larger than 
+maxbnd threshold.</p>
 </td></tr>
 <tr><td><code id="spGetSAdoms_+3A_showsteps">showsteps</code></td>
 <td>
@@ -19329,6 +19442,7 @@ when reprojecting. See spTransform help documentation for more details.
   RS = NULL,
   states = NULL,
   overlap = 1,
+  clipbnd = FALSE,
   showsteps = FALSE,
   savebnd = FALSE,
   savedata_opts = NULL
@@ -19373,13 +19487,17 @@ included.</p>
 <td>
 <p>Number. Percent overlap to include.</p>
 </td></tr>
+<tr><td><code id="spGetStates_+3A_clipbnd">clipbnd</code></td>
+<td>
+<p>Logical. If TRUE, clips boundary to state/RS restrictions.</p>
+</td></tr>
 <tr><td><code id="spGetStates_+3A_showsteps">showsteps</code></td>
 <td>
-<p>Logical. If yes, display intersecting boundaries.</p>
+<p>Logical. If TRUE, display intersecting boundaries.</p>
 </td></tr>
 <tr><td><code id="spGetStates_+3A_savebnd">savebnd</code></td>
 <td>
-<p>Logical. If yes, save boundary to outfolder.</p>
+<p>Logical. If TRUE, save boundary to outfolder.</p>
 </td></tr>
 <tr><td><code id="spGetStates_+3A_savedata_opts">savedata_opts</code></td>
 <td>
@@ -20265,12 +20383,13 @@ spMakeSpatialPoints(xyplt = WYplt,
   polyv.att,
   polyv.lut = NULL,
   rastfn.template = NULL,
+  validate = FALSE,
   NODATA = NULL,
   outfolder = NULL,
   outfn = "polyrast",
   outext = "img",
   outfn.pre = NULL,
-  outfn.date = TRUE,
+  outfn.date = FALSE,
   overwrite = FALSE
 )
 </code></pre>
@@ -20298,13 +20417,20 @@ object.</p>
 </td></tr>
 <tr><td><code id="spPoly2Rast_+3A_polyv.lut">polyv.lut</code></td>
 <td>
-<p>Data frame. Look up table of codes, if polyv.att is
-character or want to group codes.</p>
+<p>Data frame. Lookup table of codes, if polyv.att is
+character or want to group codes. The lookup table must be data.frame  
+including polyv.att and another column with classes.</p>
 </td></tr>
 <tr><td><code id="spPoly2Rast_+3A_rastfn.template">rastfn.template</code></td>
 <td>
 <p>String. Full path name of raster to use as template
 for new raster.</p>
+</td></tr>
+<tr><td><code id="spPoly2Rast_+3A_validate">validate</code></td>
+<td>
+<p>Logical. If TRUE, validates polyv and clippolyv before 
+clipping. Uses sf::st_make_valid with default parameters 
+(geos_method='valid_structure', geos_keep_collapsed=FALSE).</p>
 </td></tr>
 <tr><td><code id="spPoly2Rast_+3A_nodata">NODATA</code></td>
 <td>
@@ -20761,6 +20887,7 @@ polygon objects.
   polyv1_dsn = NULL,
   polyv2,
   polyv2_dsn = NULL,
+  validate = FALSE,
   showext = FALSE,
   areacalc = FALSE,
   areavar = "ACRES_GIS",
@@ -20799,6 +20926,12 @@ database.</p>
 pathname) of layer to union. The dsn varies by driver. See gdal OGR vector
 formats (https://www.gdal.org/ogr_formats.html). Optional if polyv2 is sf
 object.</p>
+</td></tr>
+<tr><td><code id="spUnionPoly_+3A_validate">validate</code></td>
+<td>
+<p>Logical. If TRUE, validates polyv and clippolyv before 
+clipping. Uses sf::st_make_valid with default parameters 
+(geos_method='valid_structure', geos_keep_collapsed=FALSE).</p>
 </td></tr>
 <tr><td><code id="spUnionPoly_+3A_showext">showext</code></td>
 <td>
@@ -20890,11 +21023,8 @@ WYbhfn &lt;- system.file("extdata",
                       package = "FIESTA")
 WYbh &lt;- spImportSpatial(WYbhfn)
 
-# Load in USAco data from geodata package
-USAco &lt;- geodata::gadm(country="United States", level=2, path=tempdir())    
-
 # Generate unioned `sf` object
-polyUnion &lt;- spUnionPoly(polyv1 = USAco[USAco$NAME_1 == "Wyoming",], 
+polyUnion &lt;- spUnionPoly(polyv1 = stunitco[stunitco$STATENM == "Wyoming",], 
                          polyv2 = WYbh, 
                          areacalc = TRUE)
                          
@@ -20925,11 +21055,11 @@ multi-band).
   bands = NULL,
   zonalstat,
   pixelfun = NULL,
+  validate = FALSE,
   outname = NULL,
   showext = FALSE,
   rastlut = NULL,
   rast.NODATA = NULL,
-  na.rm = TRUE,
   savedata = FALSE,
   savedata_opts = NULL
 )
@@ -20959,8 +21089,8 @@ summarizing raster statistics.</p>
 </td></tr>
 <tr><td><code id="spZonalRast_+3A_rastfn">rastfn</code></td>
 <td>
-<p>String or Raster. File name(s) with extensions, or raster
-object(s).  Note: raster objects must be written to file.</p>
+<p>String or Raster. File name with extension, or raster
+object.  Note: raster objects must be written to file.</p>
 </td></tr>
 <tr><td><code id="spZonalRast_+3A_rastfolder">rastfolder</code></td>
 <td>
@@ -20985,6 +21115,12 @@ with continuous data (&quot;mean&quot;, &quot;sum&quot;, &quot;majority&quot;, &
 before calculating sum and mean. The function should accept a single numeric
 argument (pixel value) and return a single numeric argument.</p>
 </td></tr>
+<tr><td><code id="spZonalRast_+3A_validate">validate</code></td>
+<td>
+<p>Logical. If TRUE, validates polyv and clippolyv before 
+clipping. Uses sf::st_make_valid with default parameters 
+(geos_method='valid_structure', geos_keep_collapsed=FALSE).</p>
+</td></tr>
 <tr><td><code id="spZonalRast_+3A_outname">outname</code></td>
 <td>
 <p>String. Variable name for output. The output names will use
@@ -21002,13 +21138,10 @@ outname as a prefix to summary statistics (i.e., 'outname'.mean,
 </td></tr>
 <tr><td><code id="spZonalRast_+3A_rast.nodata">rast.NODATA</code></td>
 <td>
-<p>Numeric. NODATA value or other values to ignore. These
-values will be removed from output zonal table. See notes below.</p>
-</td></tr>
-<tr><td><code id="spZonalRast_+3A_na.rm">na.rm</code></td>
-<td>
-<p>Logical. If TRUE, Null values are removed before zonal
-statistic calculations.</p>
+<p>Numeric. NODATA value (if not already defined) or other 
+values to ignore. These values will be removed from output zonal table. 
+NODATA values defined in raster are removed before zonal statistic 
+calculations.</p>
 </td></tr>
 <tr><td><code id="spZonalRast_+3A_savedata">savedata</code></td>
 <td>

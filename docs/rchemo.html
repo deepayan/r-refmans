@@ -62,9 +62,12 @@ function processMathHTML() {
 <li><a href='#lwplsrda_agg'><p>Aggregation of KNN-LWPLSDA models with different numbers of LVs</p></a></li>
 <li><a href='#matW'><p>Between and within covariance matrices</p></a></li>
 <li><a href='#mavg'><p>Smoothing by moving average</p></a></li>
+<li><a href='#mbplsr'><p>multi-block PLSR algorithms</p></a></li>
+<li><a href='#mbplsrda'><p>multi-block PLSDA models</p></a></li>
 <li><a href='#mse'><p>Residuals and prediction error rates</p></a></li>
 <li><a href='#octane'><p>octane</p></a></li>
 <li><a href='#odis'><p>Orthogonal distances from a PCA or PLS score space</p></a></li>
+<li><a href='#orthog'><p>Orthogonalization of a matrix to another matrix</p></a></li>
 <li><a href='#ozone'><p>ozone</p></a></li>
 <li><a href='#pcasvd'><p>PCA algorithms</p></a></li>
 <li><a href='#pinv'><p>Moore-Penrose pseudo-inverse of a matrix</p></a></li>
@@ -88,10 +91,13 @@ function processMathHTML() {
 <li><a href='#segmkf'><p>Segments for cross-validation</p></a></li>
 <li><a href='#selwold'><p>Heuristic selection of the dimension of a latent variable model with the Wold's criterion</p></a></li>
 <li><a href='#snv'><p>Standard normal variate transformation (SNV)</p></a></li>
+<li><a href='#sopls'><p>Block dimension reduction by SO-PLS</p></a></li>
+<li><a href='#soplsrda'><p>Block dimension reduction by SO-PLS-DA</p></a></li>
 <li><a href='#sourcedir'><p>Source R functions in a directory</p></a></li>
 <li><a href='#summ'><p>Description of the quantitative variables of a data set</p></a></li>
 <li><a href='#svmr'><p>SVM Regression and Discrimination</p></a></li>
 <li><a href='#transform'><p>Generic transform function</p></a></li>
+<li><a href='#vip'><p>Variable Importance in Projection (VIP)</p></a></li>
 <li><a href='#wdist'><p>Distance-based weights</p></a></li>
 <li><a href='#xfit'><p>Matrix fitting from a PCA or PLS model</p></a></li>
 </ul>
@@ -111,7 +117,7 @@ Chemometrics</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1-1</td>
+<td>0.1-2</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -150,7 +156,7 @@ Chemometrics</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-05-11 10:15:36 UTC; mbrandolini</td>
+<td>2024-06-05 18:15:03 UTC; mbrandolini</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -169,7 +175,7 @@ Chemometrics</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-05-12 14:00:02 UTC</td>
+<td>2024-06-05 18:30:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -286,7 +292,7 @@ aicplsr(
 </td></tr>
 <tr><td><code id="aicplsr_+3A_correct">correct</code></td>
 <td>
-<p>Logical. If codeTRUE (default), the AICc corection is applied to the criteria.</p>
+<p>Logical. If <code>TRUE</code> (default), the AICc corection is applied to the criteria.</p>
 </td></tr>
 <tr><td><code id="aicplsr_+3A_b">B</code></td>
 <td>
@@ -556,14 +562,12 @@ Xtest
 
 blocks &lt;- list(1:2, 4, 6:8)
 X1 &lt;- mblocks(Xtrain, blocks = blocks)
-X2 &lt;- mblocks(Xtest, blocks = blocks)
-res &lt;- blockscal(X1, X2)
+X1 &lt;- lapply(1:length(X1), function(x) scale(X1[[x]]))
+res &lt;- blockscal(X1)
 zXtrain &lt;- hconcat(res$Xtrain)
-zXtest &lt;- hconcat(res$X)
 
 nlv &lt;- 3
 fm &lt;- plskern(zXtrain, ytrain, nlv = nlv)
-predict(fm, zXtest)
 
 </code></pre>
 
@@ -2342,7 +2346,7 @@ gridcvlb(X, Y, segm, score, fun, lb, pars = NULL, verb = TRUE)
 <table>
 <tr><td><code id="gridcv_+3A_x">X</code></td>
 <td>
-<p>Training X-data (<code class="reqn">n, p</code>).</p>
+<p>Training X-data (<code class="reqn">n, p</code>), or list of training X-data.</p>
 </td></tr>
 <tr><td><code id="gridcv_+3A_y">Y</code></td>
 <td>
@@ -2960,7 +2964,7 @@ predict(object, X, ...)
 
 <h3>Value</h3>
 
-<p>For <code>knnda</code>list with input arguments
+<p>For <code>knnda</code>:list with input arguments.
 </p>
 <p>For <code>predict.Knnda</code>:
 </p>
@@ -3082,7 +3086,7 @@ predict(object, X, ...)
 
 <h3>Value</h3>
 
-<p>For <code>knnr</code>list with input arguments
+<p>For <code>knnr</code>:list with input arguments.
 </p>
 <p>For <code>predict.Knnr</code>:
 </p>
@@ -5445,6 +5449,468 @@ par(oldpar)
 </code></pre>
 
 <hr>
+<h2 id='mbplsr'>multi-block PLSR algorithms</h2><span id='topic+mbplsr'></span><span id='topic+transform.Mbplsr'></span><span id='topic+summary.Mbplsr'></span><span id='topic+coef.Mbplsr'></span><span id='topic+predict.Mbplsr'></span>
+
+<h3>Description</h3>
+
+<p>Algorithm fitting a multi-block PLS1 or PLS2 model between dependent variables <code class="reqn">Xlist</code> and responses <code class="reqn">Y</code>, based on the &quot;Improved kernel algorithm #1&quot; proposed by Dayal and MacGregor (1997). 
+</p>
+<p>For weighted versions, see for instance Schaal et al. 2002, Siccard &amp; Sabatier 2006, Kim et al. 2011 and Lesnoff et al. 2020.
+</p>
+<p><b>Auxiliary functions</b>
+</p>
+<p><code>transform</code> Calculates the LVs for any new matrix <code class="reqn">X</code> from the model.
+</p>
+<p><code>summary</code> returns summary information for the model.
+</p>
+<p><code>coef</code> Calculates b-coefficients from the model, adjuted for raw data.
+</p>
+<p><code>predict</code> Calculates the predictions for any new matrix <code class="reqn">X</code> from the model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+mbplsr(Xlist, Y, blockscaling = TRUE, weights = NULL, nlv, 
+Xscaling = c("none", "pareto", "sd")[1], Yscaling = c("none", "pareto", "sd")[1])
+
+## S3 method for class 'Mbplsr'
+transform(object, X, ..., nlv = NULL)  
+
+## S3 method for class 'Mbplsr'
+summary(object, X, ...)  
+
+## S3 method for class 'Mbplsr'
+coef(object, ..., nlv = NULL) 
+
+## S3 method for class 'Mbplsr'
+predict(object, X, ..., nlv = NULL)  
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mbplsr_+3A_xlist">Xlist</code></td>
+<td>
+<p>For the main function: list of training X-data (<code class="reqn">n</code>rows).</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_x">X</code></td>
+<td>
+<p>For the auxiliary functions: list of new X-data, with the same variables than the training X-data.</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_y">Y</code></td>
+<td>
+<p>Training Y-data (<code class="reqn">n, q</code>).</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_blockscaling">blockscaling</code></td>
+<td>
+<p>logical. If TRUE, the scaling factor (computed on the training) is the &quot;norm&quot; of the block, i.e. the square root of the sum of the variances of each column of the block.</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_weights">weights</code></td>
+<td>
+<p>Weights (<code class="reqn">n, 1</code>) to apply to the training observations. Internally, weights are &quot;normalized&quot; to sum to 1. Default to <code>NULL</code> (weights are set to <code class="reqn">1 / n</code>).</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_nlv">nlv</code></td>
+<td>
+<p>For the main functions: The number(s) of LVs to calculate. &mdash; For the auxiliary functions: The number(s) of LVs to consider.</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_xscaling">Xscaling</code></td>
+<td>
+<p>vector (of length Xlist) of variable scaling for each datablock, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_yscaling">Yscaling</code></td>
+<td>
+<p>character. variable scaling for the Y-block, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_object">object</code></td>
+<td>
+<p>For the auxiliary functions: A fitted model, output of a call to the main functions.</p>
+</td></tr>
+<tr><td><code id="mbplsr_+3A_...">...</code></td>
+<td>
+<p>For the auxiliary functions: Optional arguments. Not used.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list of outputs, such as
+</p>
+<table>
+<tr><td><code>T</code></td>
+<td>
+<p>The X-score matrix (<code class="reqn">n, nlv</code>).</p>
+</td></tr>
+<tr><td><code>P</code></td>
+<td>
+<p>The X-loadings matrix (<code class="reqn">p, nlv</code>).</p>
+</td></tr>
+<tr><td><code>W</code></td>
+<td>
+<p>The X-loading weights matrix (<code class="reqn">p, nlv</code>).</p>
+</td></tr>
+<tr><td><code>C</code></td>
+<td>
+<p>The Y-loading weights matrix (C = t(Beta), where Beta is the scores regression coefficients matrix).</p>
+</td></tr>
+<tr><td><code>R</code></td>
+<td>
+<p>The PLS projection matrix (<code class="reqn">p, nlv</code>).</p>
+</td></tr>
+<tr><td><code>xmeans</code></td>
+<td>
+<p>The list of centering vectors of <code class="reqn">Xlist</code>.</p>
+</td></tr>
+<tr><td><code>ymeans</code></td>
+<td>
+<p>The centering vector of <code class="reqn">Y</code> (<code class="reqn">q, 1</code>).</p>
+</td></tr>
+<tr><td><code>xscales</code></td>
+<td>
+<p>The list of <code class="reqn">Xlist</code> variable standard deviations.</p>
+</td></tr>
+<tr><td><code>yscales</code></td>
+<td>
+<p>The vector of <code class="reqn">Y</code> variable standard deviations (<code class="reqn">q, 1</code>).</p>
+</td></tr>
+<tr><td><code>weights</code></td>
+<td>
+<p>Weights applied to the training observations.</p>
+</td></tr>
+<tr><td><code>TT</code></td>
+<td>
+<p>the X-score normalization factor.</p>
+</td></tr>
+<tr><td><code>blockscaling</code></td>
+<td>
+<p>block scaling.</p>
+</td></tr>
+<tr><td><code>Xnorms</code></td>
+<td>
+<p>&quot;norm&quot; of each block, i.e. the square root of the sum of the variances of each column of each block, computed on the training, and used as scaling factor</p>
+</td></tr></table>
+<p>.
+</p>
+<table>
+<tr><td><code>U</code></td>
+<td>
+<p>intermediate output.</p>
+</td></tr>
+</table>
+<p>For <code>transform.Mbplsr</code>: X-scores matrix for new Xlist-data.
+</p>
+<p>For <code>summary.Mbplsr</code>:
+</p>
+<table>
+<tr><td><code>explvarx</code></td>
+<td>
+<p>matrix of explained variances.</p>
+</td></tr>
+</table>
+<p>For <code>coef.Mbplsr</code>: 
+</p>
+<table>
+<tr><td><code>int</code></td>
+<td>
+<p>matrix (1,nlv) with the intercepts</p>
+</td></tr>
+<tr><td><code>B</code></td>
+<td>
+<p>matrix (n,nlv) with the coefficients</p>
+</td></tr>
+</table>
+<p>For <code>predict.Mbplsr</code>: 
+</p>
+<table>
+<tr><td><code>pred</code></td>
+<td>
+<p>A list of matrices (<code class="reqn">m, q</code>) with the Y predicted values for the new Xlist-data</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Andersson, M., 2009. A comparison of nine PLS1 algorithms. Journal of Chemometrics 23, 518-529.
+</p>
+<p>Dayal, B.S., MacGregor, J.F., 1997. Improved PLS algorithms. Journal of Chemometrics 11, 73-85.
+</p>
+<p>Hoskuldsson, A., 1988. PLS regression methods. Journal of Chemometrics 2, 211-228. https://doi.org/10.1002/cem.1180020306
+</p>
+<p>Kim, S., Kano, M., Nakagawa, H., Hasebe, S., 2011. Estimation of active pharmaceutical ingredients content using locally weighted partial least squares and statistical wavelength selection. Int. J. Pharm., 421, 269-274.
+</p>
+<p>Lesnoff, M., Metz, M., Roger, J.M., 2020. Comparison of locally weighted PLS strategies for regression and discrimination on agronomic NIR Data. Journal of Chemometrics. e3209. https://onlinelibrary.wiley.com/doi/abs/10.1002/cem.3209
+</p>
+<p>Rannar, S., Lindgren, F., Geladi, P., Wold, S., 1994. A PLS kernel algorithm for data sets with many variables and fewer objects. Part 1: Theory and algorithm. Journal of Chemometrics 8, 111-125. https://doi.org/10.1002/cem.1180080204
+</p>
+<p>Schaal, S., Atkeson, C., Vijayamakumar, S. 2002. Scalable techniques from nonparametric statistics for the real time robot learning. Applied Intell., 17, 49-60.
+</p>
+<p>Sicard, E. Sabatier, R., 2006. Theoretical framework for local PLS1 regression and application to a rainfall data set. Comput. Stat. Data Anal., 51, 1393-1410.
+</p>
+<p>Tenenhaus, M., 1998. La régression PLS: théorie et pratique. Editions Technip, Paris, France.
+</p>
+<p>Wold, S., Sjostrom, M., Eriksson, l., 2001. PLS-regression: a basic tool for chemometrics. Chem. Int. Lab. Syst., 58, 109-130.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+n &lt;- 10 ; p &lt;- 10
+Xtrain &lt;- matrix(rnorm(n * p), ncol = p)
+ytrain &lt;- rnorm(n)
+
+m &lt;- 2
+Xtest &lt;- matrix(rnorm(m * p), ncol = p)
+
+colnames(Xtrain) &lt;- colnames(Xtest) &lt;- paste("v", 1:p, sep = "")
+
+Xtrain
+Xtest
+
+blocks &lt;- list(1:2, 4, 6:8)
+X1 &lt;- mblocks(Xtrain, blocks = blocks)
+X2 &lt;- mblocks(Xtest, blocks = blocks)
+
+nlv &lt;- 3
+fm &lt;- mbplsr(Xlist = X1, Y = ytrain, Xscaling = c("sd","none","none"), 
+blockscaling = TRUE, weights = NULL, nlv = nlv)
+
+summary(fm, X1)
+coef(fm)
+transform(fm, X2)
+predict(fm, X2)
+
+</code></pre>
+
+<hr>
+<h2 id='mbplsrda'>multi-block PLSDA models</h2><span id='topic+mbplsrda'></span><span id='topic+mbplslda'></span><span id='topic+mbplsqda'></span><span id='topic+predict.Mbplsrda'></span><span id='topic+predict.Mbplsprobda'></span>
+
+<h3>Description</h3>
+
+<p>Multi-block discrimination (DA) based on PLS.
+</p>
+<p>The training variable <code class="reqn">y</code> (univariate class membership) is firstly transformed to a dummy table containing <code class="reqn">nclas</code> columns, where <code class="reqn">nclas</code> is the number of classes present in <code class="reqn">y</code>. Each column is a dummy variable (0/1). Then, a PLS2 is implemented on the <code class="reqn">X-</code>data and the dummy table, returning latent variables (LVs) that are used as dependent variables in a DA model.
+</p>
+<p>- <code>mbplsrda</code>: Usual &quot;PLSDA&quot;. A linear regression model predicts the Y-dummy table from the PLS2 LVs. This corresponds to the PLSR2 of the X-data and the Y-dummy table. For a given observation, the final prediction is the class corresponding to the dummy variable for which the prediction is the highest.
+</p>
+<p>- <code>mbplslda</code> and <code>mbplsqda</code>: Probabilistic LDA and QDA are run over the PLS2 LVs, respectively.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+mbplsrda(Xlist, y, blockscaling = TRUE, weights = NULL, nlv, 
+Xscaling = c("none", "pareto", "sd")[1], Yscaling = c("none", "pareto", "sd")[1])
+
+mbplslda(Xlist, y, blockscaling = TRUE, weights = NULL, nlv, prior = c("unif", "prop"),
+Xscaling = c("none", "pareto", "sd")[1], Yscaling = c("none", "pareto", "sd")[1])
+
+mbplsqda(Xlist, y, blockscaling = TRUE, weights = NULL, nlv, prior = c("unif", "prop"),
+Xscaling = c("none", "pareto", "sd")[1], Yscaling = c("none", "pareto", "sd")[1])
+
+## S3 method for class 'Mbplsrda'
+predict(object, X, ..., nlv = NULL) 
+
+## S3 method for class 'Mbplsprobda'
+predict(object, X, ..., nlv = NULL) 
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mbplsrda_+3A_xlist">Xlist</code></td>
+<td>
+<p>For the main functions: list of training X-data (<code class="reqn">n</code>rows).</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_x">X</code></td>
+<td>
+<p>For the auxiliary functions: list of new X-data (<code class="reqn">n</code> rows), with the same variables than the training X-data.</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_y">y</code></td>
+<td>
+<p>Training class membership (<code class="reqn">n</code>). <b>Note:</b> If <code>y</code> is a factor, it is replaced by a character vector.</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_blockscaling">blockscaling</code></td>
+<td>
+<p>logical. If TRUE, the scaling factor (computed on the training) is the &quot;norm&quot; of the block, i.e. the square root of the sum of the variances of each column of the block.</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_weights">weights</code></td>
+<td>
+<p>Weights (<code class="reqn">n</code>) to apply to the training observations for the PLS2. Internally, weights are &quot;normalized&quot; to sum to 1. Default to <code>NULL</code> (weights are set to <code class="reqn">1 / n</code>).</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_nlv">nlv</code></td>
+<td>
+<p>The number(s) of LVs to calculate.</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_prior">prior</code></td>
+<td>
+<p>The prior probabilities of the classes. Possible values are &quot;unif&quot; (default; probabilities are set equal for all the classes) or &quot;prop&quot; (probabilities are set equal to the observed proportions of the classes in <code>y</code>).</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_xscaling">Xscaling</code></td>
+<td>
+<p>vector (of length Xlist) of variable scaling for each datablock, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_yscaling">Yscaling</code></td>
+<td>
+<p>character. variable scaling for the Y-block after binary transformation, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_object">object</code></td>
+<td>
+<p>For the auxiliary functions: A fitted model, output of a call to the main functions.</p>
+</td></tr>
+<tr><td><code id="mbplsrda_+3A_...">...</code></td>
+<td>
+<p>For the auxiliary functions: Optional arguments. Not used.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>For <code>mbplsrda</code>:
+</p>
+<table>
+<tr><td><code>fm</code></td>
+<td>
+<p>list with the MB-PLS model: (<code>T</code>): X-scores matrix; (<code>P</code>): X-loading matrix;(<code>R</code>): The PLS projection matrix (p,nlv); (<code>W</code>): X-loading weights matrix ;(<code>C</code>): The Y-loading weights matrix; (<code>TT</code>): the X-score normalization factor; (<code>xmeans</code>): the centering vector of X (p,1);  (<code>ymeans</code>): the centering vector of Y (q,1); (<code>weights</code>): vector of observation weights; (<code>blockscaling</code>): block scaling; (<code>Xnorms</code>): &quot;norm&quot; of each block; (<code>U</code>): intermediate output.</p>
+</td></tr>
+<tr><td><code>lev</code></td>
+<td>
+<p>classes</p>
+</td></tr>
+<tr><td><code>ni</code></td>
+<td>
+<p>number of observations in each class</p>
+</td></tr>
+</table>
+<p>For <code>mbplslda</code>, <code>mbplsqda</code>:
+</p>
+<table>
+<tr><td><code>fm</code></td>
+<td>
+<p>list with 
+[[1]] the MB-PLS model: (<code>T</code>): X-scores matrix; (<code>P</code>): X-loading matrix;(<code>R</code>): The PLS projection matrix (p,nlv); (<code>W</code>): X-loading weights matrix ;(<code>C</code>): The Y-loading weights matrix; (<code>TT</code>): the X-score normalization factor; (<code>xmeans</code>): the centering vectors of X;  (<code>ymeans</code>): the centering vector of Y (q,1); (<code>xscales</code>): the scaling vector of X (p,1);  (<code>yscales</code>): the scaling vector of Y (q,1); (<code>weights</code>): vector of observation weights; (<code>blockscaling</code>): block scaling; (<code>Xnorms</code>): &quot;norm&quot; of each block; (<code>U</code>): intermediate output.
+[[2]] lda or qda models.</p>
+</td></tr>
+<tr><td><code>lev</code></td>
+<td>
+<p>classes</p>
+</td></tr>
+<tr><td><code>ni</code></td>
+<td>
+<p>number of observations in each class</p>
+</td></tr>
+</table>
+<p>For <code>predict.Mbplsrda</code>, <code>predict.Mbplsprobda</code>: 
+</p>
+<table>
+<tr><td><code>pred</code></td>
+<td>
+<p>predicted class for each observation</p>
+</td></tr>
+<tr><td><code>posterior</code></td>
+<td>
+<p>calculated probability of belonging to a class for each observation</p>
+</td></tr>
+</table>
+
+
+<h3>Note</h3>
+
+<p>The first example concerns MB-PLSDA, and the second one concerns MB-PLS LDA.
+<code>fm</code> are PLS1 models, and <code>zfm</code> are PLS2 models.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## EXAMPLE OF MB-PLSDA
+
+n &lt;- 50 ; p &lt;- 8
+Xtrain &lt;- matrix(rnorm(n * p), ncol = p)
+Xtrainlist &lt;- list(Xtrain[,1:3], Xtrain[,4:8])
+
+ytrain &lt;- sample(c(1, 4, 10), size = n, replace = TRUE)
+
+Xtest &lt;- Xtrain[1:5, ] ; ytest &lt;- ytrain[1:5]
+Xtestlist &lt;- list(Xtest[,1:3], Xtest[,4:8])
+
+nlv &lt;- 5
+fm &lt;- mbplsrda(Xtrainlist, ytrain, Xscaling = "sd", nlv = nlv)
+names(fm)
+
+predict(fm, Xtestlist)
+predict(fm, Xtestlist, nlv = 0:2)$pred
+
+pred &lt;- predict(fm, Xtestlist)$pred
+err(pred, ytest)
+
+zfm &lt;- fm$fm
+transform(zfm, Xtestlist)
+transform(zfm, Xtestlist, nlv = 1)
+summary(zfm, Xtrainlist)
+coef(zfm)
+coef(zfm, nlv = 0)
+coef(zfm, nlv = 2)
+
+## EXAMPLE OF MB-PLS LDA
+
+n &lt;- 50 ; p &lt;- 8
+Xtrain &lt;- matrix(rnorm(n * p), ncol = p)
+Xtrainlist &lt;- list(Xtrain[,1:3], Xtrain[,4:8])
+
+ytrain &lt;- sample(c(1, 4, 10), size = n, replace = TRUE)
+
+Xtest &lt;- Xtrain[1:5, ] ; ytest &lt;- ytrain[1:5]
+Xtestlist &lt;- list(Xtest[,1:3], Xtest[,4:8])
+
+nlv &lt;- 5
+fm &lt;- mbplslda(Xtrainlist, ytrain, Xscaling = "none", nlv = nlv)
+predict(fm, Xtestlist)
+predict(fm, Xtestlist, nlv = 1:2)$pred
+
+zfm &lt;- fm[[1]][[1]]
+class(zfm)
+names(zfm)
+summary(zfm, Xtrainlist)
+transform(zfm, Xtestlist)
+coef(zfm)
+
+## EXAMPLE OF MB-PLS QDA
+
+n &lt;- 50 ; p &lt;- 8
+Xtrain &lt;- matrix(rnorm(n * p), ncol = p)
+Xtrainlist &lt;- list(Xtrain[,1:3], Xtrain[,4:8])
+
+ytrain &lt;- sample(c(1, 4, 10), size = n, replace = TRUE)
+
+Xtest &lt;- Xtrain[1:5, ] ; ytest &lt;- ytrain[1:5]
+Xtestlist &lt;- list(Xtest[,1:3], Xtest[,4:8])
+
+nlv &lt;- 5
+fm &lt;- mbplsqda(Xtrainlist, ytrain, Xscaling = "none", nlv = nlv)
+predict(fm, Xtestlist)
+predict(fm, Xtestlist, nlv = 1:2)$pred
+
+zfm &lt;- fm[[1]][[1]]
+class(zfm)
+names(zfm)
+summary(zfm, Xtrainlist)
+transform(zfm, Xtestlist)
+coef(zfm)
+
+</code></pre>
+
+<hr>
 <h2 id='mse'>Residuals and prediction error rates</h2><span id='topic+mse'></span><span id='topic+msep'></span><span id='topic+rmsep'></span><span id='topic+sep'></span><span id='topic+bias'></span><span id='topic+cor2'></span><span id='topic+r2'></span><span id='topic+rpd'></span><span id='topic+rpdr'></span><span id='topic+err'></span><span id='topic+residreg'></span><span id='topic+residcla'></span>
 
 <h3>Description</h3>
@@ -5716,6 +6182,93 @@ fm &lt;- pcasvd(Xtrain, nlv = nlv)
 odis(fm, Xtrain)
 odis(fm, Xtrain, nlv = 2)
 odis(fm, Xtrain, X = Xtest, nlv = 2)
+
+</code></pre>
+
+<hr>
+<h2 id='orthog'>Orthogonalization of a matrix to another matrix</h2><span id='topic+orthog'></span>
+
+<h3>Description</h3>
+
+<p>Function <code>orthog</code> orthogonalizes a matrix <code class="reqn">Y</code> to a matrix <code class="reqn">X</code>. The row observations can be weighted. 
+</p>
+<p>The function uses function <code><a href="stats.html#topic+lm">lm</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+orthog(X, Y, weights = NULL)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="orthog_+3A_x">X</code></td>
+<td>
+<p>A <code class="reqn">n x p</code> matrix or data frame.</p>
+</td></tr>
+<tr><td><code id="orthog_+3A_y">Y</code></td>
+<td>
+<p>A <code class="reqn">n x q</code> matrix or data frame to orthogonalize to <code class="reqn">X</code>.</p>
+</td></tr>
+<tr><td><code id="orthog_+3A_weights">weights</code></td>
+<td>
+<p>A vector of length <code class="reqn">n</code> defining a priori weights to apply to the observations. Internally, weights are &quot;normalized&quot; to sum to 1. Default to <code>NULL</code> (weights are set to <code class="reqn">1 / n</code>).</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<table>
+<tr><td><code>Y</code></td>
+<td>
+<p>The <code class="reqn">Y</code> matrix orthogonalized to <code class="reqn">X</code>.</p>
+</td></tr>
+<tr><td><code>b</code></td>
+<td>
+<p>The regression coefficients used for orthogonalization.</p>
+</td></tr>
+</table>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+n &lt;- 8 ; p &lt;- 3
+set.seed(1)
+X &lt;- matrix(rnorm(n * p, mean = 10), ncol = p, byrow = TRUE)
+Y &lt;- matrix(rnorm(n * 2, mean = 10), ncol = 2, byrow = TRUE)
+colnames(Y) &lt;- c("y1", "y2")
+set.seed(NULL)
+X
+Y
+
+res &lt;- orthog(X, Y)
+res$Y
+crossprod(res$Y, X)
+res$b
+
+# Same as:
+fm &lt;- lm(Y ~ X)
+Y - fm$fitted.values
+fm$coef
+
+#### WITH WEIGHTS
+
+w &lt;- 1:n
+fm &lt;- lm(Y ~ X, weights = w)
+Y - fm$fitted.values
+fm$coef
+
+res &lt;- orthog(X, Y, weights = w)
+res$Y
+t(res$Y) 
+res$b
 
 </code></pre>
 
@@ -6556,7 +7109,7 @@ plotxy(T[, i:(i+1)], group = group,
 
 <h3>Description</h3>
 
-<p>Algorithms fitting a (centered) PLS1 or PLS2 model between dependent variables <code class="reqn">X</code> and responses <code class="reqn">Y</code>.
+<p>Algorithms fitting a PLS1 or PLS2 model between dependent variables <code class="reqn">X</code> and responses <code class="reqn">Y</code>.
 </p>
 <p>- <code>plskern</code>: &quot;Improved kernel algorithm #1&quot; proposed by Dayal and MacGregor (1997). This algorithm is stable and fast (Andersson 2009), and returns the same results as the NIPALS. 
 </p>
@@ -6581,11 +7134,14 @@ plotxy(T[, i:(i+1)], group = group,
 <h3>Usage</h3>
 
 <pre><code class='language-R'>
-plskern(X, Y, weights = NULL, nlv)
+plskern(X, Y, weights = NULL, nlv, 
+Xscaling = c("none", "pareto", "sd")[1], Yscaling = c("none", "pareto", "sd")[1])
 
-plsnipals(X, Y, weights = NULL, nlv)
+plsnipals(X, Y, weights = NULL, nlv, 
+Xscaling = c("none", "pareto", "sd")[1], Yscaling = c("none", "pareto", "sd")[1])
 
-plsrannar(X, Y, weights = NULL, nlv)
+plsrannar(X, Y, weights = NULL, nlv, 
+Xscaling = c("none", "pareto", "sd")[1], Yscaling = c("none", "pareto", "sd")[1])
 
 ## S3 method for class 'Plsr'
 transform(object, X, ..., nlv = NULL)  
@@ -6620,6 +7176,14 @@ predict(object, X, ..., nlv = NULL)
 <tr><td><code id="plskern_+3A_nlv">nlv</code></td>
 <td>
 <p>For the main functions: The number(s) of LVs to calculate. &mdash; For the auxiliary functions: The number(s) of LVs to consider.</p>
+</td></tr>
+<tr><td><code id="plskern_+3A_xscaling">Xscaling</code></td>
+<td>
+<p>X variable scaling among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="plskern_+3A_yscaling">Yscaling</code></td>
+<td>
+<p>Y variable scaling among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
 </td></tr>
 <tr><td><code id="plskern_+3A_object">object</code></td>
 <td>
@@ -6664,6 +7228,14 @@ predict(object, X, ..., nlv = NULL)
 <tr><td><code>ymeans</code></td>
 <td>
 <p>The centering vector of <code class="reqn">Y</code> (<code class="reqn">q, 1</code>).</p>
+</td></tr>
+<tr><td><code>xscales</code></td>
+<td>
+<p>The vector of <code class="reqn">X</code> variable standard deviations (<code class="reqn">p, 1</code>).</p>
+</td></tr>
+<tr><td><code>yscales</code></td>
+<td>
+<p>The vector of <code class="reqn">Y</code> variable standard deviations (<code class="reqn">q, 1</code>).</p>
 </td></tr>
 <tr><td><code>weights</code></td>
 <td>
@@ -6746,8 +7318,11 @@ Xtest &lt;- Xtrain[1:m, , drop = FALSE]
 Ytest &lt;- Ytrain[1:m, , drop = FALSE] ; ytest &lt;- Ytest[1:m, 1]
 
 nlv &lt;- 3
-plskern(Xtrain, Ytrain, nlv = nlv)
-plskern(Xtrain, Ytrain, nlv = nlv)
+plskern(Xtrain, Ytrain, Xscaling = "sd", nlv = nlv)
+plsnipals(Xtrain, Ytrain, Xscaling = "sd", nlv = nlv)
+plsrannar(Xtrain, Ytrain, Xscaling = "sd", nlv = nlv)
+
+plskern(Xtrain, Ytrain, Xscaling = "none", nlv = nlv)
 plskern(Xtrain, Ytrain, nlv = nlv)$T
 plskern(Xtrain, Ytrain, nlv = nlv, weights = 1:n)$T
 
@@ -6928,11 +7503,14 @@ res
 <h3>Usage</h3>
 
 <pre><code class='language-R'>
-plsrda(X, y, weights = NULL, nlv)
+plsrda(X, y, weights = NULL, nlv, 
+Xscaling = c("none","pareto","sd")[1], Yscaling = c("none","pareto","sd")[1])
 
-plslda(X, y, weights = NULL, nlv, prior = c("unif", "prop"))
+plslda(X, y, weights = NULL, nlv, prior = c("unif", "prop"), 
+Xscaling = c("none","pareto","sd")[1], Yscaling = c("none","pareto","sd")[1])
 
-plsqda(X, y, weights = NULL, nlv, prior = c("unif", "prop"))
+plsqda(X, y, weights = NULL, nlv, prior = c("unif", "prop"), 
+Xscaling = c("none","pareto","sd")[1], Yscaling = c("none","pareto","sd")[1])
 
 ## S3 method for class 'Plsrda'
 predict(object, X, ..., nlv = NULL) 
@@ -6966,6 +7544,14 @@ predict(object, X, ..., nlv = NULL)
 <td>
 <p>The prior probabilities of the classes. Possible values are &quot;unif&quot; (default; probabilities are set equal for all the classes) or &quot;prop&quot; (probabilities are set equal to the observed proportions of the classes in <code>y</code>).</p>
 </td></tr>
+<tr><td><code id="plsrda_+3A_xscaling">Xscaling</code></td>
+<td>
+<p>X variable scaling among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="plsrda_+3A_yscaling">Yscaling</code></td>
+<td>
+<p>Y variable scaling, once converted to binary variables, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
 <tr><td><code id="plsrda_+3A_object">object</code></td>
 <td>
 <p>For the auxiliary functions: A fitted model, output of a call to the main functions.</p>
@@ -6984,7 +7570,7 @@ predict(object, X, ..., nlv = NULL)
 <table>
 <tr><td><code>fm</code></td>
 <td>
-<p>list with the model: (<code>T</code>): X-scores matrix; (<code>P</code>): X-loading matrix;(<code>R</code>): The PLS projection matrix (p,nlv); (<code>W</code>): X-loading weights matrix ;(<code>C</code>): The Y-loading weights matrix; (<code>TT</code>): the X-score normalization factor; (<code>xmeans</code>): the centering vector of X (p,1);  (<code>ymeans</code>): the centering vector of Y (q,1); (<code>weights</code>): vector of observation weights; (<code>U</code>): intermediate output.</p>
+<p>list with the model: (<code>T</code>): X-scores matrix; (<code>P</code>): X-loading matrix;(<code>R</code>): The PLS projection matrix (p,nlv); (<code>W</code>): X-loading weights matrix ;(<code>C</code>): The Y-loading weights matrix; (<code>TT</code>): the X-score normalization factor; (<code>xmeans</code>): the centering vector of X (p,1);  (<code>ymeans</code>): the centering vector of Y (q,1); (<code>xscales</code>): the scaling vector of X (p,1);  (<code>yscales</code>): the scaling vector of Y (q,1); (<code>weights</code>): vector of observation weights; (<code>U</code>): intermediate output.</p>
 </td></tr>
 <tr><td><code>lev</code></td>
 <td>
@@ -7012,7 +7598,7 @@ predict(object, X, ..., nlv = NULL)
 <h3>Note</h3>
 
 <p>The first example concerns PLSDA, and the second one concerns PLS LDA.
-<code>fm</code> are PLS1 models, and <code>zfm</code> are PLS2 models.
+<code>fm</code> are PLS1 models, and <code>zfm</code> are PLS2 models to predict the disjunctive matrix.
 </p>
 
 
@@ -7028,7 +7614,7 @@ ytrain &lt;- sample(c(1, 4, 10), size = n, replace = TRUE)
 Xtest &lt;- Xtrain[1:5, ] ; ytest &lt;- ytrain[1:5]
 
 nlv &lt;- 5
-fm &lt;- plsrda(Xtrain, ytrain, nlv = nlv)
+fm &lt;- plsrda(Xtrain, ytrain, Xscaling = "sd", nlv = nlv)
 names(fm)
 
 predict(fm, Xtest)
@@ -7053,11 +7639,11 @@ ytrain &lt;- sample(c(1, 4, 10), size = n, replace = TRUE)
 Xtest &lt;- Xtrain[1:5, ] ; ytest &lt;- ytrain[1:5]
 
 nlv &lt;- 5
-fm &lt;- plslda(Xtrain, ytrain, nlv = nlv)
+fm &lt;- plslda(Xtrain, ytrain, Xscaling = "sd", nlv = nlv)
 predict(fm, Xtest)
 predict(fm, Xtest, nlv = 1:2)$pred
 
-zfm &lt;- fm[[1]][[1]]
+zfm &lt;- fm$fm[[1]]
 class(zfm)
 names(zfm)
 summary(zfm, Xtrain)
@@ -7140,7 +7726,7 @@ predict(object, X, ...)
 <tr><td><code>fm</code></td>
 <td>
 <p>list contaning: 
-the model((<code>fm</code>)=(<code>T</code>): X-scores matrix; (<code>P</code>): X-loading matrix;(<code>R</code>): The PLS projection matrix (p,nlv); (<code>W</code>): X-loading weights matrix ;(<code>C</code>): The Y-loading weights matrix; (<code>TT</code>): the X-score normalization factor; (<code>xmeans</code>): the centering vector of X (p,1);  (<code>ymeans</code>): the centering vector of Y (q,1); (<code>weights</code>): vector of observation weights; (<code>U</code>): intermediate output),  <code>lev</code>classes, <code>ni</code>number of observations in each class</p>
+the model((<code>fm</code>)=(<code>T</code>): X-scores matrix; (<code>P</code>): X-loading matrix;(<code>R</code>): The PLS projection matrix (p,nlv); (<code>W</code>): X-loading weights matrix ;(<code>C</code>): The Y-loading weights matrix; (<code>TT</code>): the X-score normalization factor; (<code>xmeans</code>): the centering vector of X (p,1);  (<code>ymeans</code>): the centering vector of Y (q,1); (<code>weights</code>): vector of observation weights; (<code>U</code>): intermediate output),  (<code>lev</code>):classes, (<code>ni</code>):number of observations in each class</p>
 </td></tr>
 <tr><td><code>nlv</code></td>
 <td>
@@ -8278,6 +8864,555 @@ par(oldpar)
 </code></pre>
 
 <hr>
+<h2 id='sopls'>Block dimension reduction by SO-PLS</h2><span id='topic+soplsr'></span><span id='topic+transform.Soplsr'></span><span id='topic+predict.Soplsr'></span><span id='topic+soplsrcv'></span>
+
+<h3>Description</h3>
+
+<p>Function <code>soplsr</code> implements dimension reductions of pre-selected blocks of variables (= set of columns) of a reference (= training) matrix, by sequential orthogonalization-PLS (said &quot;SO-PLS&quot;). 
+</p>
+<p>Function <code>soplsrcv</code> perfoms repeteated cross-validation of an SO-PLS model in order to choose the optimal lv combination from the different blocks.
+</p>
+<p>SO-PLS is described for instance in Menichelli et al. (2014), Biancolillo et al. (2015) and Biancolillo (2016). 
+</p>
+<p>The block reduction consists in calculating latent variables (= scores) for each block, each block being sequentially orthogonalized to the information computed from the previous blocks.
+</p>
+<p>The function allows giving a priori weights to the rows of the reference matrix in the calculations.
+</p>
+<p><b>Auxiliary functions</b>
+</p>
+<p><code>transform</code> Calculates the LVs for any new matrices list <code class="reqn">Xlist</code> from the model.
+</p>
+<p><code>predict</code> Calculates the predictions for any new matrices list <code class="reqn">Xlist</code> from the model.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+soplsr(Xlist, Y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlv)
+
+soplsrcv(Xlist, Y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlvlist = list(), 
+nbrep = 30, cvmethod = "kfolds", seed = 123, samplingk = NULL, nfolds = 7, 
+optimisation = c("global","sequential")[1], 
+selection = c("localmin","globalmin","1std")[1], majorityvote = FALSE)
+
+
+## S3 method for class 'Soplsr'
+transform(object, X, ...)  
+
+## S3 method for class 'Soplsr'
+predict(object, X, ...)  
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="sopls_+3A_xlist">Xlist</code></td>
+<td>
+<p>A list of matrices or data frames of reference (= training) observations.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_x">X</code></td>
+<td>
+<p>For the auxiliary functions: list of new X-data, with the same variables than the training X-data.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_y">Y</code></td>
+<td>
+<p>A <code class="reqn">n x q</code> matrix or data frame, or a vector of length <code class="reqn">n</code>, of reference (= training) responses.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_xscaling">Xscaling</code></td>
+<td>
+<p>vector (of length Xlist) of variable scaling for each datablock, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_yscaling">Yscaling</code></td>
+<td>
+<p>variable scaling for the Y-block, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_weights">weights</code></td>
+<td>
+<p>a priori weights to the rows of the reference matrix in the calculations.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_nlv">nlv</code></td>
+<td>
+<p>A vector of same length as the number of blocks defining the number of scores to calculate for each block, or a single number. In this last case, the same number of scores is used for all the blocks.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_nlvlist">nlvlist</code></td>
+<td>
+<p>A list of same length as the number of X-blocks. Each component of the list gives the number of PLS components of the corresponding X-block to test.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_nbrep">nbrep</code></td>
+<td>
+<p>An integer, setting the number of CV repetitions. Default value is 30.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_cvmethod">cvmethod</code></td>
+<td>
+<p>&quot;kfolds&quot; for k-folds cross-validation, or &quot;loo&quot; for leave-one-out.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_seed">seed</code></td>
+<td>
+<p>a numeric. Seed used for the repeated resampling, and if cvmethod is &quot;kfolds&quot; and samplingk is not NULL.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_samplingk">samplingk</code></td>
+<td>
+<p>A vector of length n. The elements are the values of a qualitative variable used for stratified partition creation. If NULL, the first observation is set in the first fold, the second observation in the second fold, etc...</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_nfolds">nfolds</code></td>
+<td>
+<p>An integer, setting the number of partitions to create. Default value is 7.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_optimisation">optimisation</code></td>
+<td>
+<p>&quot;global&quot; or &quot;sequential&quot; optimisation of the number of components. If &quot;sequential&quot;, the optimal lv number is found for the first X-block, then for the 2nd one, etc...</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_selection">selection</code></td>
+<td>
+<p>a character indicating the selection method to use to choose the optimal combination of components, among &quot;localmin&quot;,&quot;globalmin&quot;,&quot;1std&quot;. If &quot;localmin&quot;: the optimal combination corresponds to the first local minimum of the mean CV rmse. If &quot;globalmin&quot; : the optimal combination corresponds to the minimum mean CV rmse. If &quot;1std&quot; (one standard errror rule): it corresponds to the first combination after which the mean cross-validated rmse does not decrease significantly.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_majorityvote">majorityvote</code></td>
+<td>
+<p>only if optimisation is &quot;global&quot; or one X-block. If majorityvote is TRUE, the optimal combination is chosen for each Y variable, with the chosen selection, before a majority vote. If majorityvote is &quot;FALSE, the optimal combination is simply chosen with the chosen selection.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_object">object</code></td>
+<td>
+<p>For the auxiliary functions: A fitted model, output of a call to the main functions.</p>
+</td></tr>
+<tr><td><code id="sopls_+3A_...">...</code></td>
+<td>
+<p>For the auxiliary functions: Optional arguments. Not used.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>For <code>soplsr</code>:
+</p>
+<table>
+<tr><td><code>fm</code></td>
+<td>
+<p>A list of the plsr models.</p>
+</td></tr>
+<tr><td><code>T</code></td>
+<td>
+<p>A matrix with the concatenated scores calculated from the X-blocks.</p>
+</td></tr>
+<tr><td><code>pred</code></td>
+<td>
+<p>A matrice <code class="reqn">n x q</code> with the calculated fitted values.</p>
+</td></tr>
+<tr><td><code>xmeans</code></td>
+<td>
+<p>list of vectors of X-mean values.</p>
+</td></tr>
+<tr><td><code>ymeans</code></td>
+<td>
+<p>vector of Y-mean values.</p>
+</td></tr>
+<tr><td><code>xscales</code></td>
+<td>
+<p>list of vectors of X-scaling values.</p>
+</td></tr>
+<tr><td><code>yscales</code></td>
+<td>
+<p>vector of Y-scaling values.</p>
+</td></tr>
+<tr><td><code>b</code></td>
+<td>
+<p>A list of X-loading weights, used in the orthogonalization step.</p>
+</td></tr>
+<tr><td><code>weights</code></td>
+<td>
+<p>Weights applied to the training observations.</p>
+</td></tr>
+<tr><td><code>nlv</code></td>
+<td>
+<p>vector of numbers of latent variables from each X-block.</p>
+</td></tr>
+</table>
+<p>For <code>transform.Soplsr</code>:  the LVs calculated for the new matrices list <code class="reqn">Xlist</code> from the model.
+</p>
+<p>For <code>predict.Soplsr</code>: predicted values for each observation
+</p>
+<p>For <code>soplsrcv</code>:
+</p>
+<table>
+<tr><td><code>lvcombi</code></td>
+<td>
+<p>matrix or list of matrices, of tested component combinations.</p>
+</td></tr>
+<tr><td><code>optimcombi</code></td>
+<td>
+<p>the number of PLS components of each X-block allowing the optimisation of the mean rmseCV.</p>
+</td></tr>
+<tr><td><code>rmseCV_byY</code></td>
+<td>
+<p>matrix or list of matrices of mean and sd of cross-validated RMSE in the model for each combination and each response variable.</p>
+</td></tr>
+<tr><td><code>ExplVarCV_byY</code></td>
+<td>
+<p>matrix or list of matrices of mean and sd of cross-validated explained variances in the model for each combination and each response variable.</p>
+</td></tr>
+<tr><td><code>rmseCV</code></td>
+<td>
+<p>matrix or list of matrices of mean and sd of cross-validated RMSE in the model for each combination and response variables.</p>
+</td></tr>
+<tr><td><code>ExplVarCV</code></td>
+<td>
+<p>matrix or list of matrices of mean and sd of cross-validated explained variances in the model for each combination and response variables.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>- Biancolillo et al. , 2015. Combining SO-PLS and linear discriminant analysis for
+multi-block classification. Chemometrics and Intelligent Laboratory Systems, 141, 58-67.
+</p>
+<p>- Biancolillo, A. 2016. Method development in the area of multi-block analysis focused on food analysis. PhD. University of copenhagen.
+</p>
+<p>- Menichelli et al., 2014. SO-PLS as an exploratory tool for path modelling. Food Quality and Preference, 36, 122-134.
+</p>
+<p>- Tenenhaus, M., 1998. La régression PLS: théorie et pratique. Editions Technip, Paris, France.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+N &lt;- 10 ; p &lt;- 12
+set.seed(1)
+X &lt;- matrix(rnorm(N * p, mean = 10), ncol = p, byrow = TRUE)
+Y &lt;- matrix(rnorm(N * 2, mean = 10), ncol = 2, byrow = TRUE)
+colnames(X) &lt;- paste("varx", 1:ncol(X), sep = "")
+colnames(Y) &lt;- paste("vary", 1:ncol(Y), sep = "")
+rownames(X) &lt;- rownames(Y) &lt;- paste("obs", 1:nrow(X), sep = "")
+set.seed(NULL)
+X
+Y
+
+n &lt;- nrow(X)
+
+X_list &lt;- list(X[,1:4], X[,5:7], X[,9:ncol(X)])
+X_list_2 &lt;- list(X[1:2,1:4], X[1:2,5:7], X[1:2,9:ncol(X)])
+
+soplsrcv(X_list, Y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, 
+nlvlist=list(0:1, 1:2, 0:1), nbrep=1, cvmethod="loo", seed = 123, samplingk=NULL,
+optimisation="global", selection="localmin", majorityvote=FALSE)
+
+
+ncomp &lt;- 2
+fm &lt;- soplsr(X_list, Y, nlv = ncomp)
+transform(fm, X_list_2)
+predict(fm, X_list_2)
+
+mse(predict(fm, X_list), Y)
+
+# VIP calculation based on the proportion of Y-variance explained by the components
+vip(fm$fm[[1]], X_list[[1]], Y = NULL, nlv = ncomp)
+vip(fm$fm[[2]], X_list[[2]], Y = NULL, nlv = ncomp)
+vip(fm$fm[[3]], X_list[[3]], Y = NULL, nlv = ncomp)
+
+ncomp &lt;- c(2, 0, 3)
+fm &lt;- soplsr(X_list, Y, nlv = ncomp)
+transform(fm, X_list_2)
+predict(fm, X_list_2)
+mse(predict(fm, X_list), Y)
+
+ncomp &lt;- 0
+fm &lt;- soplsr(X_list, Y, nlv = ncomp)
+transform(fm, X_list_2)
+predict(fm, X_list_2)
+
+ncomp &lt;- 2
+weights &lt;- rep(1 / n, n)
+#w &lt;- 1:n
+fm &lt;- soplsr(X_list, Y, Xscaling = c("sd","pareto","none"), nlv = ncomp, weights = weights)
+transform(fm, X_list_2)
+predict(fm, X_list_2)
+
+</code></pre>
+
+<hr>
+<h2 id='soplsrda'>Block dimension reduction by SO-PLS-DA</h2><span id='topic+soplsrda'></span><span id='topic+soplslda'></span><span id='topic+soplsqda'></span><span id='topic+transform.Soplsrda'></span><span id='topic+transform.Soplsprobda'></span><span id='topic+predict.Soplsrda'></span><span id='topic+predict.Soplsprobda'></span><span id='topic+soplsrdacv'></span><span id='topic+soplsldacv'></span><span id='topic+soplsqdacv'></span>
+
+<h3>Description</h3>
+
+<p>Function <code>soplsrda</code> implements dimension reductions of pre-selected blocks of variables (= set of columns) of a reference (= training) matrix, by sequential orthogonalization-PLS (said &quot;SO-PLS&quot;) in a context of discrimination. 
+</p>
+<p>Function <code>soplsrdacv</code> perfoms repeteated cross-validation of an SO-PLS-RDA model in order to choose the optimal lv combination from the different blocks.
+</p>
+<p>The block reduction consists in calculating latent variables (= scores) for each block, each block being sequentially orthogonalized to the information computed from the previous blocks.
+</p>
+<p>The function allows giving a priori weights to the rows of the reference matrix in the calculations.
+</p>
+<p>In<code>soplslda</code> and <code>soplsqda</code>, probabilistic LDA and QDA are run over the PLS2 LVs, respectively.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+soplsrda(Xlist, y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlv)
+
+soplslda(Xlist, y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlv, 
+prior = c("unif", "prop"))
+
+soplsqda(Xlist, y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlv, 
+prior = c("unif", "prop"))
+
+soplsrdacv(Xlist, y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlvlist=list(), 
+nbrep=30, cvmethod="kfolds", seed = 123, samplingk = NULL, nfolds = 7, 
+optimisation = c("global","sequential")[1], 
+criterion = c("err","rmse")[1], selection = c("localmin","globalmin","1std")[1])
+
+soplsldacv(Xlist, y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlvlist=list(), 
+prior = c("unif", "prop"), nbrep = 30, cvmethod = "kfolds", seed = 123, samplingk = NULL, 
+nfolds = 7, optimisation = c("global","sequential")[1], 
+criterion = c("err","rmse")[1], selection = c("localmin","globalmin","1std")[1])
+
+soplsqdacv(Xlist, y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL, nlvlist = list(), 
+prior = c("unif", "prop"), nbrep = 30, cvmethod = "kfolds", seed = 123, samplingk = NULL, 
+nfolds = 7, optimisation = c("global","sequential")[1], 
+criterion = c("err","rmse")[1], selection = c("localmin","globalmin","1std")[1])
+
+## S3 method for class 'Soplsrda'
+transform(object, X, ...) 
+
+## S3 method for class 'Soplsprobda'
+transform(object, X, ...) 
+
+## S3 method for class 'Soplsrda'
+predict(object, X, ...) 
+
+## S3 method for class 'Soplsprobda'
+predict(object, X, ...) 
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="soplsrda_+3A_xlist">Xlist</code></td>
+<td>
+<p>For the main functions: A list of matrices or data frames of reference (= training) observations.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_x">X</code></td>
+<td>
+<p>For the auxiliary functions: list of new X-data, with the same variables than the training X-data.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_y">y</code></td>
+<td>
+<p>Training class membership (<code class="reqn">n</code>). <b>Note:</b> If <code>y</code> is a factor, it is replaced by a character vector.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_xscaling">Xscaling</code></td>
+<td>
+<p>vector (of length Xlist) of variable scaling for each datablock, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_yscaling">Yscaling</code></td>
+<td>
+<p>variable scaling for the Y-block, among &quot;none&quot; (mean-centering only), &quot;pareto&quot; (mean-centering and pareto scaling), &quot;sd&quot; (mean-centering and unit variance scaling). If &quot;pareto&quot; or &quot;sd&quot;, uncorrected standard deviation is used.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_weights">weights</code></td>
+<td>
+<p>a priori weights to the rows of the reference matrix in the calculations.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_nlv">nlv</code></td>
+<td>
+<p>A vector of same length as the number of blocks defining the number of scores to calculate for each block, or a single number. In this last case, the same number of scores is used for all the blocks.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_nlvlist">nlvlist</code></td>
+<td>
+<p>A list of same length as the number of X-blocks. Each component of the list gives the number of PLS components of the corresponding X-block to test.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_nbrep">nbrep</code></td>
+<td>
+<p>An integer, setting the number of CV repetitions. Default value is 30.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_cvmethod">cvmethod</code></td>
+<td>
+<p>&quot;kfolds&quot; for k-folds cross-validation, or &quot;loo&quot; for leave-one-out.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_seed">seed</code></td>
+<td>
+<p>a numeric. Seed used for the repeated resampling, and if cvmethod is &quot;kfolds&quot; and samplingk is not NULL.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_samplingk">samplingk</code></td>
+<td>
+<p>A vector of length n. The elements are the values of a qualitative variable used for stratified partition creation. If NULL, the first observation is set in the first fold, the second observation in the second fold, etc...</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_nfolds">nfolds</code></td>
+<td>
+<p>An integer, setting the number of partitions to create. Default value is 7.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_optimisation">optimisation</code></td>
+<td>
+<p>&quot;global&quot; or &quot;sequential&quot; optimisation of the number of components. If &quot;sequential&quot;, the optimal lv number is found for the first X-block, then for the 2nd one, etc...</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_criterion">criterion</code></td>
+<td>
+<p>optimisation criterion among &quot;rmse&quot; and &quot;err&quot; (for classification error rate)</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_selection">selection</code></td>
+<td>
+<p>a character indicating the selection method to use to choose the optimal combination of components, among &quot;localmin&quot;,&quot;globalmin&quot;,&quot;1std&quot;. If &quot;localmin&quot;: the optimal combination corresponds to the first local minimum of the mean CV rmse or error rate. If &quot;globalmin&quot; : the optimal combination corresponds to the minimum mean CV rmse or error rate. If &quot;1std&quot; (one standard error rule) : it corresponds to the first combination after which the mean cross-validated rmse or error rate does not decrease significantly.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_prior">prior</code></td>
+<td>
+<p>The prior probabilities of the classes. Possible values are &quot;unif&quot; (default; probabilities are set equal for all the classes) or &quot;prop&quot; (probabilities are set equal to the observed proportions of the classes in <code>y</code>).</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_object">object</code></td>
+<td>
+<p>For the auxiliary functions: A fitted model, output of a call to the main functions.</p>
+</td></tr>
+<tr><td><code id="soplsrda_+3A_...">...</code></td>
+<td>
+<p>For the auxiliary functions: Optional arguments. Not used.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>For <code>soplsrda</code>, <code>soplslda</code>, <code>soplsqda</code>:
+</p>
+<table>
+<tr><td><code>fm</code></td>
+<td>
+<p>list with the PLS models: (<code>T</code>): X-scores matrix; (<code>P</code>): X-loading matrix;(<code>R</code>): The PLS projection matrix (p,nlv); (<code>W</code>): X-loading weights matrix ;(<code>C</code>): The Y-loading weights matrix; (<code>TT</code>): the X-score normalization factor; (<code>xmeans</code>): the centering vector of X (p,1);  (<code>ymeans</code>): the centering vector of Y (q,1); (<code>weights</code>): vector of observation weights; (<code>Xscales</code>): X scaling values; (<code>Yscales</code>): Y scaling values; (<code>U</code>): intermediate output.</p>
+</td></tr>
+<tr><td><code>lev</code></td>
+<td>
+<p>classes</p>
+</td></tr>
+<tr><td><code>ni</code></td>
+<td>
+<p>number of observations in each class</p>
+</td></tr>
+</table>
+<p>For <code>transform.Soplsrda</code>, <code>transform.Soplsprobda</code>:  the LVs Calculated for the new matrices list <code class="reqn">Xlist</code> from the model.
+</p>
+<p>For <code>predict.Soplsrda</code>, <code>predict.Soplsprobda</code>: 
+</p>
+<table>
+<tr><td><code>pred</code></td>
+<td>
+<p>predicted class for each observation</p>
+</td></tr>
+<tr><td><code>posterior</code></td>
+<td>
+<p>calculated probability of belonging to a class for each observation</p>
+</td></tr>
+</table>
+<p>For <code>soplsrdacv</code>, <code>soplsldacv</code>, <code>soplsqdacv</code>:
+</p>
+<table>
+<tr><td><code>lvcombi</code></td>
+<td>
+<p>matrix or list of matrices, of tested component combinations.</p>
+</td></tr>
+<tr><td><code>optimCombiLine</code></td>
+<td>
+<p>number of the combination line corresponding to the optimal one. In the case of a sequential optimisation, it is the number of the combination line in the model with all the X-blocks.</p>
+</td></tr>
+<tr><td><code>optimcombi</code></td>
+<td>
+<p>the number of PLS components of each X-block allowing the optimisation of the mean rmseCV.</p>
+</td></tr>
+<tr><td><code>optimExplVarCV</code></td>
+<td>
+<p>cross-validated explained variance for the optimal soplsda model.</p>
+</td></tr>
+<tr><td><code>rmseCV</code></td>
+<td>
+<p>matrix or list of matrices of mean and sd of cross-validated rmse in the model for each combination and response variables.</p>
+</td></tr>
+<tr><td><code>ExplVarCV</code></td>
+<td>
+<p>matrix or list of matrices of mean and sd of cross-validated explained variances in the model for each combination and response variables.</p>
+</td></tr>
+<tr><td><code>errCV</code></td>
+<td>
+<p>matrix or list of matrices of mean and sd of cross-validated classification error rates in the model for each combination and response variables.</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>- Biancolillo et al. , 2015. Combining SO-PLS and linear discriminant analysis for
+multi-block classification. Chemometrics and Intelligent Laboratory Systems, 141, 58-67.
+</p>
+<p>- Biancolillo, A. 2016. Method development in the area of multi-block analysis focused on food analysis. PhD. University of copenhagen.
+</p>
+<p>- Menichelli et al., 2014. SO-PLS as an exploratory tool for path modelling. Food Quality and Preference, 36, 122-134.
+</p>
+<p>- Tenenhaus, M., 1998. La régression PLS: théorie et pratique. Editions Technip, Paris, France.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+N &lt;- 10 ; p &lt;- 12
+set.seed(1)
+X &lt;- matrix(rnorm(N * p, mean = 10), ncol = p, byrow = TRUE)
+y &lt;- matrix(sample(c("1", "4", "10"), size = N, replace = TRUE), ncol=1)
+colnames(X) &lt;- paste("x", 1:ncol(X), sep = "")
+set.seed(NULL)
+
+n &lt;- nrow(X)
+
+X_list &lt;- list(X[,1:4], X[,5:7], X[,9:ncol(X)])
+X_list_2 &lt;- list(X[1:2,1:4], X[1:2,5:7], X[1:2,9:ncol(X)])
+
+# EXEMPLE WITH SO-PLS-RDA
+soplsrdacv(X_list, y, Xscaling = c("none", "pareto", "sd")[1], 
+Yscaling = c("none", "pareto", "sd")[1], weights = NULL,
+nlvlist=list(0:1, 1:2, 0:1), nbrep=1, cvmethod="loo", seed = 123, 
+samplingk = NULL, nfolds = 3, optimisation = "global", 
+criterion = c("err","rmse")[1], selection = "localmin")
+
+ncomp &lt;- 2
+fm &lt;- soplsrda(X_list, y, nlv = ncomp)
+predict(fm,X_list_2)
+transform(fm,X_list_2)
+
+ncomp &lt;- c(2, 0, 3)
+fm &lt;- soplsrda(X_list, y, nlv = ncomp)
+predict(fm,X_list_2)
+transform(fm,X_list_2)
+
+ncomp &lt;- 0
+fm &lt;- soplsrda(X_list, y, nlv = ncomp)
+predict(fm,X_list_2)
+transform(fm,X_list_2)
+
+# EXEMPLE WITH SO-PLS-LDA
+ncomp &lt;- 2
+weights &lt;- rep(1 / n, n)
+#w &lt;- 1:n
+soplslda(X_list, y, Xscaling = "none", nlv = ncomp, weights = weights)
+soplslda(X_list, y, Xscaling = "pareto", nlv = ncomp, weights = weights)
+soplslda(X_list, y, Xscaling = "sd", nlv = ncomp, weights = weights)
+
+fm &lt;- soplslda(X_list, y, Xscaling = c("none","pareto","sd"), nlv = ncomp, weights = weights)
+predict(fm,X_list_2)
+transform(fm,X_list_2)
+
+</code></pre>
+
+<hr>
 <h2 id='sourcedir'>Source R functions in a directory</h2><span id='topic+sourcedir'></span>
 
 <h3>Description</h3>
@@ -8628,6 +9763,99 @@ transform(fm, X[1:2, ], nlv = 2)
 </code></pre>
 
 <hr>
+<h2 id='vip'>Variable Importance in Projection (VIP)</h2><span id='topic+vip'></span>
+
+<h3>Description</h3>
+
+<p><code>vip</code> calculates the Variable Importance in Projection (VIP) for a PLS model. 
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>
+vip(object, X, Y = NULL, nlv = NULL)
+
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vip_+3A_object">object</code></td>
+<td>
+<p>A fitted model, output of a call to a fitting function among <code>plskern</code>, <code>plsnipals</code>, <code>plsrannar</code>, <code>plsrda</code>, <code>plslda</code>), <code>plsqda</code>).</p>
+</td></tr>
+<tr><td><code id="vip_+3A_x">X</code></td>
+<td>
+<p>X-data involved in the fitted model</p>
+</td></tr>
+<tr><td><code id="vip_+3A_y">Y</code></td>
+<td>
+<p>Y-data involved in the fitted model.
+If <code>Y</code> is NULL (default value), the VIP calculation is based on the proportion of Y-variance explained by the components, as proposed by Mehmood et al (2012, 2020).
+If <code>Y</code> is not NULL, the VIP calculation is based on the redundancy, as proposed by Tenenhaus (1998).</p>
+</td></tr>
+<tr><td><code id="vip_+3A_nlv">nlv</code></td>
+<td>
+<p>Number of components (LVs) to consider.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>matrix (<code class="reqn">(q,nlv)</code>) with VIP values, for models with 1 to nlv latent variables.
+</p>
+
+
+<h3>References</h3>
+
+<p>Mehmood, T.,Liland, K.H.,Snipen, L.,Sæbø, S., 2012. A review of variable selection methods in Partial Least Squares Regression. Chemometrics and Intelligent Laboratory Systems, 118, 62-69. 
+</p>
+<p>Mehmood, T., Sæbø, S.,Liland, K.H., 2020. Comparison of variable selection methods in partial least squares regression. Journal of Chemometrics, 34, e3226.
+</p>
+<p>Tenenhaus, M., 1998. La régression PLS: théorie et pratique. Editions Technip, Paris, France.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## EXAMPLE OF PLS
+
+n &lt;- 50 ; p &lt;- 4
+Xtrain &lt;- matrix(rnorm(n * p), ncol = p)
+ytrain &lt;- rnorm(n)
+Ytrain &lt;- cbind(y1 = ytrain, y2 = 100 * ytrain)
+m &lt;- 3
+Xtest &lt;- Xtrain[1:m, , drop = FALSE] 
+Ytest &lt;- Ytrain[1:m, , drop = FALSE] ; ytest &lt;- Ytest[1:m, 1]
+
+nlv &lt;- 3
+fm &lt;- plskern(Xtrain, Ytrain, nlv = nlv)
+vip(fm, Xtrain, Ytrain, nlv = nlv)
+vip(fm, Xtrain, nlv = nlv)
+
+fm &lt;- plskern(Xtrain, ytrain, nlv = nlv)
+vip(fm, Xtrain, ytrain, nlv = nlv)
+vip(fm, Xtrain, nlv = nlv)
+
+## EXAMPLE OF PLSDA
+
+n &lt;- 50 ; p &lt;- 8
+Xtrain &lt;- matrix(rnorm(n * p), ncol = p)
+ytrain &lt;- sample(c("1", "4", "10"), size = n, replace = TRUE)
+
+Xtest &lt;- Xtrain[1:5, ] ; ytest &lt;- ytrain[1:5]
+
+nlv &lt;- 5
+fm &lt;- plsrda(Xtrain, ytrain, nlv = nlv)
+vip(fm, Xtrain, ytrain, nlv = nlv)
+
+</code></pre>
+
+<hr>
 <h2 id='wdist'>Distance-based weights</h2><span id='topic+wdist'></span>
 
 <h3>Description</h3>
@@ -8758,9 +9986,9 @@ xresid(object, X, ..., nlv = NULL)
 
 <h3>Value</h3>
 
-<p>For <code>xfit</code>matrix of fitted values
+<p>For <code>xfit</code>:matrix of fitted values.
 </p>
-<p>For <code>xresid</code>matrix of residuals
+<p>For <code>xresid</code>:matrix of residuals.
 </p>
 
 

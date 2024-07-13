@@ -19,6 +19,7 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#as.data.frame.ggeffects'><p>Adjusted predictions from regression models</p></a></li>
+<li><a href='#coffee_data'><p>Sample dataset from a course about analysis of factorial designs</p></a></li>
 <li><a href='#collapse_by_group'><p>Collapse raw data by random effect groups</p></a></li>
 <li><a href='#efc'><p>Sample dataset from the EUROFAMCARE project</p></a></li>
 <li><a href='#fish'><p>Sample data set</p></a></li>
@@ -59,7 +60,7 @@ Model Outputs</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.5.1</td>
+<td>1.7.0</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -89,13 +90,14 @@ Model Outputs</td>
 carData, clubSandwich, datawizard (&ge; 0.9.0), effects (&ge;
 4.2-2), emmeans (&ge; 1.8.9), fixest, gam, gamlss, gamm4, gee,
 geepack, ggplot2, ggrepel, GLMMadaptive, glmmTMB (&ge; 1.1.7),
-gridExtra, gt, haven, httr, jsonlite, knitr, lme4 (&ge; 1.1-35),
-logistf, magrittr, margins, marginaleffects (&ge; 0.16.0), MASS,
+gridExtra, gt, haven, htmltools, httr, jsonlite, knitr, lme4
+(&ge; 1.1-35), logistf, marginaleffects (&ge; 0.19.0), MASS,
 Matrix, mice, MCMCglmm, mgcv, nestedLogit (&ge; 0.3.0), nlme,
 nnet, ordinal, parameters, parsnip, patchwork, pscl, quantreg,
 rmarkdown, rms, robustbase, rstanarm, rstantools, sandwich,
 sdmTMB (&ge; 0.4.0), see, sjlabelled (&ge; 1.1.2), sjstats, survey,
-survival, testthat, tibble, tinytable (&ge; 0.1.0), withr, VGAM</td>
+survival, testthat, tibble, tinytable (&ge; 0.1.0), vdiffr,
+withr, VGAM</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -122,12 +124,16 @@ survival, testthat, tibble, tinytable (&ge; 0.1.0), withr, VGAM</td>
 <td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
 </tr>
 <tr>
+<td>LazyData:</td>
+<td>true</td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>no</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-25 21:14:06 UTC; Daniel</td>
+<td>2024-06-20 14:38:11 UTC; Daniel</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -147,7 +153,7 @@ survival, testthat, tibble, tinytable (&ge; 0.1.0), withr, VGAM</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-26 05:50:09 UTC</td>
+<td>2024-06-20 16:00:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -155,6 +161,11 @@ survival, testthat, tibble, tinytable (&ge; 0.1.0), withr, VGAM</td>
 
 <h3>Description</h3>
 
+<p>After fitting a model, it is useful generate model-based estimates (expected
+values, or <em>adjusted predictions</em>) of the response variable for different
+combinations of predictor values. Such estimates can be used to make
+inferences about relationships between variables.
+</p>
 <p>The <strong>ggeffects</strong> package computes marginal means and adjusted predicted
 values for the response, at the margin of specific values or levels from
 certain model terms. The package is built around three core functions:
@@ -216,6 +227,9 @@ ggemmeans(
   typical = "mean",
   condition = NULL,
   back_transform = TRUE,
+  vcov_fun = NULL,
+  vcov_type = NULL,
+  vcov_args = NULL,
   interval = "confidence",
   verbose = TRUE,
   ci.lvl = ci_level,
@@ -314,21 +328,20 @@ character vector. This is probably the least flexible way, as you cannot
 specify representative values for the focal terms.
 </p>
 </li>
-<li><p> A data frame representig a &quot;data grid&quot; or &quot;reference grid&quot;. Predictions
+<li><p> A data frame representing a &quot;data grid&quot; or &quot;reference grid&quot;. Predictions
 are then made for all combinations of the variables in the data frame.
 </p>
 </li></ul>
 
-<p>At least one term is required to calculate effects for certain terms,
-maximum length is four terms, where the second to fourth term indicate the
-groups, i.e. predictions of first term are grouped at meaningful values or
-levels of the remaining terms (see <code><a href="#topic+values_at">values_at()</a></code>). If <code>terms</code> is missing
-or <code>NULL</code>, adjusted predictions for each model term are calculated (i.e.
-each model term is used as single focal term). It is also possible to define
-specific values for focal terms, at which adjusted predictions should be
-calculated (see 'Details'). All remaining covariates that are not specified
-in <code>terms</code> are held constant (see 'Details'). See also arguments <code>condition</code>
-and <code>typical</code>.</p>
+<p><code>terms</code> at least requires one variable name. The maximum length is four terms,
+where the second to fourth term indicate the groups, i.e. predictions of the first
+term are grouped at meaningful values or levels of the remaining terms (see
+<code><a href="#topic+values_at">values_at()</a></code>). It is also possible to define specific values for focal
+terms, at which adjusted predictions should be calculated (see details below).
+All remaining covariates that are not specified in <code>terms</code> are &quot;marginalized&quot;,
+see the <code>margin</code> argument in <code>?predict_response</code>. See also argument <code>condition</code>
+to fix non-focal terms to specific values, and argument <code>typical</code> for
+<code>ggpredict()</code> or <code>ggemmeans()</code>.</p>
 </td></tr>
 <tr><td><code id="as.data.frame.ggeffects_+3A_ci_level">ci_level</code></td>
 <td>
@@ -346,15 +359,25 @@ for more details.</p>
 <p>Character, indicating whether predictions should be conditioned
 on specific model components or not. Consequently, most options only apply
 for survival models, mixed effects models and/or models with zero-inflation
-(and their Bayesian counter-parts); only exeption is <code>type = "simulate"</code>,
+(and their Bayesian counter-parts); only exception is <code>type = "simulate"</code>,
 which is available for some other model classes as well (which respond to
 <code>simulate()</code>).
 </p>
-<p><strong>Note:</strong> For <code>brmsfit</code>-models with zero-inflation component,
-there is no <code>type = "zero_inflated"</code> nor <code>type = "zi_random"</code>; predicted
-values for <code>MixMod</code>-models from <strong>GLMMadaptive</strong> with zero-inflation
-component <em>always</em> condition on the zero-inflation part of the model (see
-'Details').
+<p><strong>Note 1:</strong> For <code>brmsfit</code>-models with zero-inflation component, there is no
+<code>type = "zero_inflated"</code> nor <code>type = "zi_random"</code>; predicted values for these
+models <em>always</em> condition on the zero-inflation part of the model. The same
+is true for <code>MixMod</code>-models from <strong>GLMMadaptive</strong> with zero-inflation
+component (see 'Details').
+</p>
+<p><strong>Note 2:</strong> If <code>margin = "empirical"</code>, or when calling <code>ggaverage()</code> respectively,
+(i.e. counterfactual predictions), the <code>type</code> argument is handled differently.
+It is set to <code>"response"</code> by default, but usually accepts all possible options
+from the <code>type</code>-argument of the model's respective <code>predict()</code> method. E.g.,
+passing a <code>glm</code> object would allow the options <code>"response"</code>, <code>"link"</code>, and
+<code>"terms"</code>. For models with zero-inflation component, the below mentioned
+options <code>"fixed"</code>, <code>"zero_inflated"</code> and <code>"zi_prob"</code> can also be used and will
+be &quot;translated&quot; into the corresponding <code>type</code> option of the model's respective
+<code>predict()</code>-method.
 </p>
 
 <ul>
@@ -367,15 +390,8 @@ and <em>confidence intervals</em> are returned, i.e. <code>re.form = NA</code> w
 this would return the predicted mean from the count component (without
 zero-inflation). For models with zero-inflation component, this type calls
 <code>predict(..., type = "link")</code> (however, predicted values are
-back-transformed to the response scale).
-</p>
-</li>
-<li> <p><code>"fixed_ppd"</code>
-</p>
-<p>Only applies to <code>margin = "mean_reference"</code>, and only for Bayesian
-models of class <code>stanreg</code> or <code>brmsfit</code>. Computes the posterior predictive
-distribution. It is the same as setting <code>type = "fixed"</code> in combination with
-<code>ppd = TRUE</code>.
+back-transformed to the response scale, i.e. the conditional mean of the
+response).
 </p>
 </li>
 <li> <p><code>"random"</code> (or <code>"re"</code>)
@@ -399,20 +415,12 @@ name of the related random effect term to the <code>terms</code>-argument
 <a href="https://strengejacke.github.io/ggeffects/articles/introduction_effectsatvalues.html">this vignette</a>).
 </p>
 </li>
-<li> <p><code>"random_ppd"</code>
-</p>
-<p>Only applies to <code>margin = "mean_reference"</code>,, and only for Bayesian
-models of class <code>stanreg</code> or <code>brmsfit</code>. Computes the posterior predictive
-distribution. It is the same as setting <code>type = "random"</code> in combination with
-<code>ppd = TRUE</code>.
-</p>
-</li>
 <li> <p><code>"zero_inflated"</code> (or <code>"fe.zi"</code> or <code>"zi"</code>)
 </p>
 <p>Predicted values are conditioned on the fixed effects and the zero-inflation
-component. For instance, for models fitted with <code>zeroinfl</code>
-from <strong>pscl</strong>, this would return the predicted response (<code>mu*(1-p)</code>)
-and for <strong>glmmTMB</strong>, this would return the expected value <code>mu*(1-p)</code>
+component. For instance, for models fitted with <code>zeroinfl</code> from <strong>pscl</strong>,
+this would return the predicted (or expected) response (<code>mu*(1-p)</code>),
+and for <strong>glmmTMB</strong>, this would return the expected response <code>mu*(1-p)</code>
 <em>without</em> conditioning on random effects (i.e. random effect variances
 are not taken into account for the confidence intervals). For models with
 zero-inflation component, this type calls <code>predict(..., type = "response")</code>.
@@ -443,8 +451,8 @@ models from <strong>pscl</strong> call <code>predict(..., type = "zero")</code> 
 based on simulations, i.e. calls to <code>simulate()</code>. This type
 of prediction takes all model uncertainty into account, including
 random effects variances. Currently supported models are objects of
-class <code>lm</code>, <code>glm</code>, <code>glmmTMB</code>, <code>wbm</code>, <code>MixMod</code>
-and <code>merMod</code>. See <code>...</code> for details on number of simulations.
+class <code>lm</code>, <code>glm</code>, <code>glmmTMB</code>, <code>wbm</code>, <code>MixMod</code> and <code>merMod</code>.
+See <code>...</code> for details on number of simulations.
 </p>
 </li>
 <li> <p><code>"survival"</code> and <code>"cumulative_hazard"</code> (or <code>"surv"</code> and <code>"cumhaz"</code>)
@@ -453,6 +461,10 @@ and <code>merMod</code>. See <code>...</code> for details on number of simulatio
 calculates the survival probability or the cumulative hazard of an event.
 </p>
 </li></ul>
+
+<p>When <code>margin = "empirical"</code> (or when calling <code>ggaverage()</code>), the <code>type</code>
+argument accepts all values from the <code>type</code>-argument of the model's respective
+<code>predict()</code>-method.</p>
 </td></tr>
 <tr><td><code id="as.data.frame.ggeffects_+3A_typical">typical</code></td>
 <td>
@@ -519,7 +531,7 @@ which is used to compute (cluster) robust standard errors for predictions.
 
 <p>If <code>NULL</code>, standard errors (and confidence intervals) for predictions are
 based on the standard errors as returned by the <code>predict()</code>-function.
-<strong>Note</strong> that probably not all model objects that work with <code>ggpredict()</code>
+<strong>Note</strong> that probably not all model objects that work with <code>predict_response()</code>
 are also supported by the <strong>sandwich</strong> or <strong>clubSandwich</strong> packages.
 </p>
 <p>See details in <a href="https://strengejacke.github.io/ggeffects/articles/practical_robustestimation.html">this vignette</a>.</p>
@@ -529,7 +541,9 @@ are also supported by the <strong>sandwich</strong> or <strong>clubSandwich</str
 <p>Character vector, specifying the estimation type for the
 robust covariance matrix estimation (see <code>?sandwich::vcovHC</code>
 or <code>?clubSandwich::vcovCR</code> for details). Only used when <code>vcov_fun</code> is a
-character string indicating one of the functions from those packages.</p>
+character string indicating one of the functions from those packages.
+When <code>vcov_fun</code> is a function, a possible <code>type</code> argument <em>must</em> be provided
+via the <code>vcov_args</code> argument.</p>
 </td></tr>
 <tr><td><code id="as.data.frame.ggeffects_+3A_vcov_args">vcov_args</code></td>
 <td>
@@ -560,14 +574,22 @@ instead.</p>
 the uncertainty of predicted values. For mixed models, <code>interval = "prediction"</code>
 is the default for <code>type = "random"</code>. When <code>type = "fixed"</code>, the default is
 <code>interval = "confidence"</code>. Note that prediction intervals are not available
-for all models, but only for models that work with <code><a href="insight.html#topic+get_sigma">insight::get_sigma()</a></code>.</p>
+for all models, but only for models that work with <code><a href="insight.html#topic+get_sigma">insight::get_sigma()</a></code>.
+For Bayesian models, when <code>interval = "confidence"</code>, predictions are based on
+posterior draws of the linear predictor <code><a href="rstantools.html#topic+posterior_epred">rstantools::posterior_epred()</a></code>.
+If <code>interval = "prediction"</code>, <code><a href="rstantools.html#topic+posterior_predict">rstantools::posterior_predict()</a></code> is called.</p>
 </td></tr>
 <tr><td><code id="as.data.frame.ggeffects_+3A_ppd">ppd</code></td>
 <td>
 <p>Logical, if <code>TRUE</code>, predictions for Stan-models are based on the
 posterior predictive distribution <code><a href="rstantools.html#topic+posterior_predict">rstantools::posterior_predict()</a></code>. If
 <code>FALSE</code> (the default), predictions are based on posterior draws of the linear
-predictor <code><a href="rstantools.html#topic+posterior_linpred">rstantools::posterior_linpred()</a></code>.</p>
+predictor <code><a href="rstantools.html#topic+posterior_epred">rstantools::posterior_epred()</a></code>. This is roughly comparable to
+the distinction between <em>confidence</em> and <em>prediction</em> intervals. <code>ppd = TRUE</code>
+incorporates the residual variance and hence returned intervals are similar to
+prediction intervals. Consequently, if <code>interval = "prediction"</code>, <code>ppd</code> is
+automatically set to <code>TRUE</code>. The <code>ppd</code> argument will be deprecated in a
+future version. Please use <code>interval = "prediction"</code> instead.</p>
 </td></tr>
 </table>
 
@@ -627,6 +649,44 @@ names instead of the standardized names <code>"x"</code> etc.
 </p>
 </li></ul>
 
+
+<hr>
+<h2 id='coffee_data'>Sample dataset from a course about analysis of factorial designs</h2><span id='topic+coffee_data'></span>
+
+<h3>Description</h3>
+
+<p>A sample data set from a course about the analysis of factorial
+designs, by Mattan S. Ben-Shachar. See following link for more information:
+https://github.com/mattansb/Analysis-of-Factorial-Designs-foR-Psychologists
+</p>
+<p>The data consists of five variables from 120 observations:
+</p>
+
+<ul>
+<li> <p><code>ID</code>: A unique identifier for each participant
+</p>
+</li>
+<li> <p><code>sex</code>: The participant's sex
+</p>
+</li>
+<li> <p><code>time</code>: The time of day the participant was tested (morning, noon, or afternoon)
+</p>
+</li>
+<li> <p><code>coffee</code>: Group indicator, whether participant drank coffee or not
+(&quot;<code style="white-space: pre;">&#8288;coffee"&#8288;</code> or <code>"control"</code>).
+</p>
+</li>
+<li> <p><code>alertness</code>: The participant's alertness score.
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Attach coffee-data
+data(coffee_data)
+</code></pre>
 
 <hr>
 <h2 id='collapse_by_group'>Collapse raw data by random effect groups</h2><span id='topic+collapse_by_group'></span>
@@ -700,7 +760,10 @@ collapse_by_group(me, model, "e15relat")
 
 <h3>Description</h3>
 
-<p>A SPSS sample data set, imported with the <code>sjlabelled::read_spss()</code> function.
+<p>An SPSS sample data set, imported with the <code><a href="sjlabelled.html#topic+read_spss">sjlabelled::read_spss()</a></code>
+function. Consists of 28 variables from 908 observations. The data set is part
+of the EUROFAMCARE project, a cross-national survey on informal caregiving in
+Europe.
 </p>
 
 
@@ -721,11 +784,13 @@ head(efc)
 
 <h3>Description</h3>
 
-<p>A sample data set, used in tests and some examples.
+<p>A sample data set, used in tests and some examples. Useful for
+demonstrating count models (with or without zero-inflation component). It
+consists of nine variables from 250 observations.
 </p>
 
 <hr>
-<h2 id='format.ggeffects'>Print and format ggeffects-objects</h2><span id='topic+format.ggeffects'></span><span id='topic+print'></span><span id='topic+print.ggeffects'></span><span id='topic+print_md.ggeffects'></span><span id='topic+print_html.ggeffects'></span>
+<h2 id='format.ggeffects'>Print and format ggeffects-objects</h2><span id='topic+format.ggeffects'></span><span id='topic+format.ggcomparisons'></span><span id='topic+print'></span><span id='topic+print.ggeffects'></span><span id='topic+print_md.ggeffects'></span><span id='topic+print_html.ggeffects'></span><span id='topic+print.ggcomparisons'></span><span id='topic+print_html.ggcomparisons'></span><span id='topic+print_md.ggcomparisons'></span>
 
 <h3>Description</h3>
 
@@ -749,6 +814,9 @@ format(
   ...
 )
 
+## S3 method for class 'ggcomparisons'
+format(x, collapse_ci = FALSE, collapse_p = FALSE, combine_levels = FALSE, ...)
+
 ## S3 method for class 'ggeffects'
 print(x, group_name = TRUE, digits = 2, verbose = TRUE, ...)
 
@@ -764,6 +832,22 @@ print_html(
   engine = c("tt", "gt"),
   ...
 )
+
+## S3 method for class 'ggcomparisons'
+print(x, collapse_tables = FALSE, ...)
+
+## S3 method for class 'ggcomparisons'
+print_html(
+  x,
+  collapse_ci = FALSE,
+  collapse_p = FALSE,
+  theme = NULL,
+  engine = c("tt", "gt"),
+  ...
+)
+
+## S3 method for class 'ggcomparisons'
+print_md(x, collapse_ci = FALSE, collapse_p = FALSE, theme = NULL, ...)
 </code></pre>
 
 
@@ -821,6 +905,20 @@ of rows is printed, depending on the number of subgroups.</p>
 <p>Further arguments passed down to <code><a href="#topic+format.ggeffects">format.ggeffects()</a></code>, some of
 them are also passed down further to <code><a href="insight.html#topic+format_table">insight::format_table()</a></code> or
 <code><a href="insight.html#topic+format_value">insight::format_value()</a></code>.</p>
+</td></tr>
+<tr><td><code id="format.ggeffects_+3A_collapse_p">collapse_p</code></td>
+<td>
+<p>Logical, if <code>TRUE</code>, the columns with predicted values and
+p-values are collapsed into one column, where significant p-values are
+indicated as asterisks.</p>
+</td></tr>
+<tr><td><code id="format.ggeffects_+3A_combine_levels">combine_levels</code></td>
+<td>
+<p>Logical, if <code>TRUE</code>, the levels of the first comparison
+of each focal term against the second are combined into one column. This is
+useful when comparing multiple focal terms, e.g. <code>education = low-high</code> and
+<code>gender = male-female</code> are combined into <code>first = low-male</code> and
+<code>second = high-female</code>.</p>
 </td></tr>
 <tr><td><code id="format.ggeffects_+3A_verbose">verbose</code></td>
 <td>
@@ -1415,6 +1513,7 @@ plot(
   facets,
   grid,
   one_plot = TRUE,
+  n_rows = NULL,
   verbose = TRUE,
   ci = show_ci,
   ci.style = ci_style,
@@ -1467,7 +1566,11 @@ a ribbon, error bars, or dashed or dotted lines as confidence bands.</p>
 <tr><td><code id="plot_+3A_show_data">show_data</code></td>
 <td>
 <p>Logical, if <code>TRUE</code>, a layer with raw data from response
-by predictor on the x-axis, plotted as point-geoms, is added to the plot.</p>
+by predictor on the x-axis, plotted as point-geoms, is added to the plot.
+Note that if the model has a transformed response variable, and the
+predicted values are <em>not</em> back-transformed (i.e. if <code>back_transform = FALSE</code>),
+the raw data points are plotted on the transformed scale, i.e. same scale
+as the predictions.</p>
 </td></tr>
 <tr><td><code id="plot_+3A_show_residuals">show_residuals</code></td>
 <td>
@@ -1612,6 +1715,12 @@ of same groups will be connected with a line.</p>
 <td>
 <p>Logical, if <code>TRUE</code> and <code>x</code> has a <code>panel</code> column (i.e. when
 four <code>terms</code> were used), a single, integrated plot is produced.</p>
+</td></tr>
+<tr><td><code id="plot_+3A_n_rows">n_rows</code></td>
+<td>
+<p>Number of rows to align plots. By default, all plots are aligned
+in one row. For facets, or multiple panels, plots can also be aligned in
+multiiple rows, to avoid that plots are too small.</p>
 </td></tr>
 <tr><td><code id="plot_+3A_verbose">verbose</code></td>
 <td>
@@ -1843,6 +1952,11 @@ pool_predictions(predictions)
 
 <h3>Description</h3>
 
+<p>After fitting a model, it is useful generate model-based estimates (expected
+values, or <em>adjusted predictions</em>) of the response variable for different
+combinations of predictor values. Such estimates can be used to make
+inferences about relationships between variables.
+</p>
 <p>The <strong>ggeffects</strong> package computes marginal means and adjusted predicted
 values for the response, at the margin of specific values or levels from
 certain model terms. The package is built around three core functions:
@@ -1920,19 +2034,20 @@ character vector. This is probably the least flexible way, as you cannot
 specify representative values for the focal terms.
 </p>
 </li>
-<li><p> A data frame representig a &quot;data grid&quot; or &quot;reference grid&quot;. Predictions
+<li><p> A data frame representing a &quot;data grid&quot; or &quot;reference grid&quot;. Predictions
 are then made for all combinations of the variables in the data frame.
 </p>
 </li></ul>
 
-<p><code>term</code> at least requires one variable name. The maximum length is four terms,
-where the second to fourth term indicate the groups, i.e. predictions of first
+<p><code>terms</code> at least requires one variable name. The maximum length is four terms,
+where the second to fourth term indicate the groups, i.e. predictions of the first
 term are grouped at meaningful values or levels of the remaining terms (see
 <code><a href="#topic+values_at">values_at()</a></code>). It is also possible to define specific values for focal
 terms, at which adjusted predictions should be calculated (see details below).
 All remaining covariates that are not specified in <code>terms</code> are &quot;marginalized&quot;,
-see the <code>margin</code> argument. See also argument <code>condition</code> to fix non-focal
-terms to specific values.</p>
+see the <code>margin</code> argument in <code>?predict_response</code>. See also argument <code>condition</code>
+to fix non-focal terms to specific values, and argument <code>typical</code> for
+<code>ggpredict()</code> or <code>ggemmeans()</code>.</p>
 </td></tr>
 <tr><td><code id="predict_response_+3A_margin">margin</code></td>
 <td>
@@ -1961,23 +2076,25 @@ for more details.</p>
 <p>Character, indicating whether predictions should be conditioned
 on specific model components or not. Consequently, most options only apply
 for survival models, mixed effects models and/or models with zero-inflation
-(and their Bayesian counter-parts); only exeption is <code>type = "simulate"</code>,
+(and their Bayesian counter-parts); only exception is <code>type = "simulate"</code>,
 which is available for some other model classes as well (which respond to
 <code>simulate()</code>).
 </p>
-<p><strong>Note 1:</strong> For <code>brmsfit</code>-models with zero-inflation component,
-there is no <code>type = "zero_inflated"</code> nor <code>type = "zi_random"</code>; predicted
-values for <code>MixMod</code>-models from <strong>GLMMadaptive</strong> with zero-inflation
-component <em>always</em> condition on the zero-inflation part of the model (see
-'Details').
+<p><strong>Note 1:</strong> For <code>brmsfit</code>-models with zero-inflation component, there is no
+<code>type = "zero_inflated"</code> nor <code>type = "zi_random"</code>; predicted values for these
+models <em>always</em> condition on the zero-inflation part of the model. The same
+is true for <code>MixMod</code>-models from <strong>GLMMadaptive</strong> with zero-inflation
+component (see 'Details').
 </p>
-<p><strong>Note 2:</strong> If <code>margin = "empirical"</code> (i.e. counterfactual predictions), the
-<code>type</code> argument is handled differently. It is set to <code>"response"</code> by default,
-and usually accepts all values from the <code>type</code>-argument of the model's respective
-<code>predict()</code> method. E.g., passing a <code>glm</code> object would allow the options
-<code>"response"</code>, <code>"link"</code>, and <code>"terms"</code>. Thus, the following options apply to
-<code>predict_response()</code> when <code>margin</code> is <em>not</em> <code>"empirical"</code>, and are passed to
-<code>ggpredict()</code> or <code>ggemmeans()</code>, respectively (depending on the value of <code>margin</code>):
+<p><strong>Note 2:</strong> If <code>margin = "empirical"</code>, or when calling <code>ggaverage()</code> respectively,
+(i.e. counterfactual predictions), the <code>type</code> argument is handled differently.
+It is set to <code>"response"</code> by default, but usually accepts all possible options
+from the <code>type</code>-argument of the model's respective <code>predict()</code> method. E.g.,
+passing a <code>glm</code> object would allow the options <code>"response"</code>, <code>"link"</code>, and
+<code>"terms"</code>. For models with zero-inflation component, the below mentioned
+options <code>"fixed"</code>, <code>"zero_inflated"</code> and <code>"zi_prob"</code> can also be used and will
+be &quot;translated&quot; into the corresponding <code>type</code> option of the model's respective
+<code>predict()</code>-method.
 </p>
 
 <ul>
@@ -1990,15 +2107,8 @@ and <em>confidence intervals</em> are returned, i.e. <code>re.form = NA</code> w
 this would return the predicted mean from the count component (without
 zero-inflation). For models with zero-inflation component, this type calls
 <code>predict(..., type = "link")</code> (however, predicted values are
-back-transformed to the response scale).
-</p>
-</li>
-<li> <p><code>"fixed_ppd"</code>
-</p>
-<p>Only applies to <code>margin = "mean_reference"</code>, and only for Bayesian
-models of class <code>stanreg</code> or <code>brmsfit</code>. Computes the posterior predictive
-distribution. It is the same as setting <code>type = "fixed"</code> in combination with
-<code>ppd = TRUE</code>.
+back-transformed to the response scale, i.e. the conditional mean of the
+response).
 </p>
 </li>
 <li> <p><code>"random"</code> (or <code>"re"</code>)
@@ -2022,20 +2132,12 @@ name of the related random effect term to the <code>terms</code>-argument
 <a href="https://strengejacke.github.io/ggeffects/articles/introduction_effectsatvalues.html">this vignette</a>).
 </p>
 </li>
-<li> <p><code>"random_ppd"</code>
-</p>
-<p>Only applies to <code>margin = "mean_reference"</code>,, and only for Bayesian
-models of class <code>stanreg</code> or <code>brmsfit</code>. Computes the posterior predictive
-distribution. It is the same as setting <code>type = "random"</code> in combination with
-<code>ppd = TRUE</code>.
-</p>
-</li>
 <li> <p><code>"zero_inflated"</code> (or <code>"fe.zi"</code> or <code>"zi"</code>)
 </p>
 <p>Predicted values are conditioned on the fixed effects and the zero-inflation
-component. For instance, for models fitted with <code>zeroinfl</code>
-from <strong>pscl</strong>, this would return the predicted response (<code>mu*(1-p)</code>)
-and for <strong>glmmTMB</strong>, this would return the expected value <code>mu*(1-p)</code>
+component. For instance, for models fitted with <code>zeroinfl</code> from <strong>pscl</strong>,
+this would return the predicted (or expected) response (<code>mu*(1-p)</code>),
+and for <strong>glmmTMB</strong>, this would return the expected response <code>mu*(1-p)</code>
 <em>without</em> conditioning on random effects (i.e. random effect variances
 are not taken into account for the confidence intervals). For models with
 zero-inflation component, this type calls <code>predict(..., type = "response")</code>.
@@ -2066,8 +2168,8 @@ models from <strong>pscl</strong> call <code>predict(..., type = "zero")</code> 
 based on simulations, i.e. calls to <code>simulate()</code>. This type
 of prediction takes all model uncertainty into account, including
 random effects variances. Currently supported models are objects of
-class <code>lm</code>, <code>glm</code>, <code>glmmTMB</code>, <code>wbm</code>, <code>MixMod</code>
-and <code>merMod</code>. See <code>...</code> for details on number of simulations.
+class <code>lm</code>, <code>glm</code>, <code>glmmTMB</code>, <code>wbm</code>, <code>MixMod</code> and <code>merMod</code>.
+See <code>...</code> for details on number of simulations.
 </p>
 </li>
 <li> <p><code>"survival"</code> and <code>"cumulative_hazard"</code> (or <code>"surv"</code> and <code>"cumhaz"</code>)
@@ -2077,8 +2179,9 @@ calculates the survival probability or the cumulative hazard of an event.
 </p>
 </li></ul>
 
-<p>When <code>margin = "empirical"</code>, the <code>type</code> argument accepts all values from
-the <code>type</code>-argument of the model's respective <code>predict()</code>-method.</p>
+<p>When <code>margin = "empirical"</code> (or when calling <code>ggaverage()</code>), the <code>type</code>
+argument accepts all values from the <code>type</code>-argument of the model's respective
+<code>predict()</code>-method.</p>
 </td></tr>
 <tr><td><code id="predict_response_+3A_condition">condition</code></td>
 <td>
@@ -2100,7 +2203,12 @@ original response-scale.</p>
 <p>Logical, if <code>TRUE</code>, predictions for Stan-models are based on the
 posterior predictive distribution <code><a href="rstantools.html#topic+posterior_predict">rstantools::posterior_predict()</a></code>. If
 <code>FALSE</code> (the default), predictions are based on posterior draws of the linear
-predictor <code><a href="rstantools.html#topic+posterior_linpred">rstantools::posterior_linpred()</a></code>.</p>
+predictor <code><a href="rstantools.html#topic+posterior_epred">rstantools::posterior_epred()</a></code>. This is roughly comparable to
+the distinction between <em>confidence</em> and <em>prediction</em> intervals. <code>ppd = TRUE</code>
+incorporates the residual variance and hence returned intervals are similar to
+prediction intervals. Consequently, if <code>interval = "prediction"</code>, <code>ppd</code> is
+automatically set to <code>TRUE</code>. The <code>ppd</code> argument will be deprecated in a
+future version. Please use <code>interval = "prediction"</code> instead.</p>
 </td></tr>
 <tr><td><code id="predict_response_+3A_vcov_fun">vcov_fun</code></td>
 <td>
@@ -2135,7 +2243,7 @@ which is used to compute (cluster) robust standard errors for predictions.
 
 <p>If <code>NULL</code>, standard errors (and confidence intervals) for predictions are
 based on the standard errors as returned by the <code>predict()</code>-function.
-<strong>Note</strong> that probably not all model objects that work with <code>ggpredict()</code>
+<strong>Note</strong> that probably not all model objects that work with <code>predict_response()</code>
 are also supported by the <strong>sandwich</strong> or <strong>clubSandwich</strong> packages.
 </p>
 <p>See details in <a href="https://strengejacke.github.io/ggeffects/articles/practical_robustestimation.html">this vignette</a>.</p>
@@ -2145,7 +2253,9 @@ are also supported by the <strong>sandwich</strong> or <strong>clubSandwich</str
 <p>Character vector, specifying the estimation type for the
 robust covariance matrix estimation (see <code>?sandwich::vcovHC</code>
 or <code>?clubSandwich::vcovCR</code> for details). Only used when <code>vcov_fun</code> is a
-character string indicating one of the functions from those packages.</p>
+character string indicating one of the functions from those packages.
+When <code>vcov_fun</code> is a function, a possible <code>type</code> argument <em>must</em> be provided
+via the <code>vcov_args</code> argument.</p>
 </td></tr>
 <tr><td><code id="predict_response_+3A_vcov_args">vcov_args</code></td>
 <td>
@@ -2166,7 +2276,10 @@ data). Only applies to <code>margin = "empirical"</code>.</p>
 the uncertainty of predicted values. For mixed models, <code>interval = "prediction"</code>
 is the default for <code>type = "random"</code>. When <code>type = "fixed"</code>, the default is
 <code>interval = "confidence"</code>. Note that prediction intervals are not available
-for all models, but only for models that work with <code><a href="insight.html#topic+get_sigma">insight::get_sigma()</a></code>.</p>
+for all models, but only for models that work with <code><a href="insight.html#topic+get_sigma">insight::get_sigma()</a></code>.
+For Bayesian models, when <code>interval = "confidence"</code>, predictions are based on
+posterior draws of the linear predictor <code><a href="rstantools.html#topic+posterior_epred">rstantools::posterior_epred()</a></code>.
+If <code>interval = "prediction"</code>, <code><a href="rstantools.html#topic+posterior_predict">rstantools::posterior_predict()</a></code> is called.</p>
 </td></tr>
 <tr><td><code id="predict_response_+3A_verbose">verbose</code></td>
 <td>
@@ -2320,8 +2433,9 @@ values.
 <p>Meaningful values of focal terms can be specified via the <code>terms</code> argument.
 Specifying meaningful or representative values as string pattern is the
 preferred way in the <strong>ggeffects</strong> package. However, it is also possible to
-use a <code>list()</code> for the focal terms if prefer the &quot;classical&quot; R way, which is
-described in <a href="https://strengejacke.github.io/ggeffects/articles/introduction_effectsatvalues.html">this vignette</a>.
+use a <code>list()</code> for the focal terms if prefer the &quot;classical&quot; R way. <code>terms</code>
+can also be a data (or reference) grid provided as data frame. All options
+are described in <a href="https://strengejacke.github.io/ggeffects/articles/introduction_effectsatvalues.html">this vignette</a>.
 </p>
 <p>Indicating levels in square brackets allows for selecting only certain
 groups or values resp. value ranges. The term name and the start of the
@@ -2351,17 +2465,19 @@ then use <code>terms = "income [v]"</code>.
 <code>terms = "income [sample=8]"</code>, which will sample eight values from
 all possible values of the variable <code>income</code>. This option is especially
 useful for plotting predictions at certain levels of random effects
-group levels, where the group factor has many levels that can be completely
+group levels, where the group factor has too many levels to be completely
 plotted. For more details, see
 <a href="https://strengejacke.github.io/ggeffects/articles/introduction_effectsatvalues.html">this vignette</a>.
 </p>
 <p>Finally, numeric vectors for which no specific values are given, a &quot;pretty range&quot;
 is calculated (see <code><a href="#topic+pretty_range">pretty_range()</a></code>), to avoid memory allocation problems
 for vectors with many unique values. If a numeric vector is specified as
-second or third term (i.e. if this vector represents a grouping structure),
+second or third term (i.e. if this focal term is used for &quot;stratification&quot;),
 representative values (see <code><a href="#topic+values_at">values_at()</a></code>) are chosen (unless other values
-are specified). If all values for a numeric vector should be used to compute
-predictions, you may use e.g. <code>terms = "age [all]"</code>. See also package vignettes.
+are specified), which are typically the mean value, as well as one standard
+deviation below and above the mean. If all values for a numeric vector should
+be used to compute predictions, you may use e.g. <code>terms = "age [all]"</code>. See
+also package vignettes.
 </p>
 <p>To create a pretty range that should be smaller or larger than the default
 range (i.e. if no specific values would be given), use the <code>n</code> tag, e.g.
@@ -2374,11 +2490,13 @@ larger range of predicted values.
 
 <p><code>predict_response()</code> also works with <strong>Stan</strong>-models from the <strong>rstanarm</strong> or
 <strong>brms</strong>-packages. The predicted values are the median value of all drawn
+posterior samples. Standard errors are the median absolute deviation of the
 posterior samples. The confidence intervals for Stan-models are Bayesian
-predictive intervals. By default (i.e. <code>ppd = FALSE</code>), the predictions are
-based on <code><a href="rstantools.html#topic+posterior_linpred">rstantools::posterior_linpred()</a></code> and hence have some limitations:
-the uncertainty of the error term is not taken into account. The recommendation
-is to use the posterior predictive distribution (<code><a href="rstantools.html#topic+posterior_predict">rstantools::posterior_predict()</a></code>).
+predictive intervals. By default, the predictions are based on
+<code><a href="rstantools.html#topic+posterior_epred">rstantools::posterior_epred()</a></code> and hence have the limitations that the
+uncertainty of the error term (residual variance) is not taken into account.
+The recommendation is to use the posterior predictive distribution
+(<code><a href="rstantools.html#topic+posterior_predict">rstantools::posterior_predict()</a></code>), i.e. setting <code>interval = "prediction"</code>.
 </p>
 
 
@@ -2435,6 +2553,14 @@ associated.
 </p>
 
 
+<h3>Averaged model predictions (package <strong>MuMIn</strong>)</h3>
+
+<p>For averaged model predictions, i.e. when the input model is an object of
+class <code>"averaging"</code> (<code>MuMIn::model.avg()</code>), predictions are made with the
+full averaged coefficients.
+</p>
+
+
 <h3>Note</h3>
 
 <p><strong>Printing Results</strong>
@@ -2447,9 +2573,9 @@ for details.
 </p>
 <p><strong>Limitations</strong>
 </p>
-<p>The support for some models, for example from package <strong>MCMCglmm</strong>, is
-rather experimental and may fail for certain models. If you encounter
-any errors, please file an issue <a href="https://github.com/strengejacke/ggeffects/issues">at Github</a>.
+<p>The support for some models, for example from package <strong>MCMCglmm</strong>, is not
+fully tested and may fail for certain models. If you encounter any errors,
+please file an issue <a href="https://github.com/strengejacke/ggeffects/issues">at Github</a>.
 </p>
 
 
@@ -2462,8 +2588,8 @@ et al. glmmTMB Balances Speed and Flexibility Among Packages for Zero-inflated
 Generalized Linear Mixed Modeling. The R Journal. 2017;9: 378-400.
 </p>
 </li>
-<li><p> Johnson PC, O'Hara RB. 2014. Extension of Nakagawa &amp; Schielzeth's R2GLMM
-to random slopes models. Methods Ecol Evol, 5: 944-946.
+<li><p> Johnson PC. 2014. Extension of Nakagawa &amp; Schielzeth's R2GLMM to random
+slopes models. Methods Ecol Evol, 5: 944-946.
 </p>
 </li>
 <li><p> Dickerman BA, Hernan, MA. Counterfactual prediction is not only for causal
@@ -2571,7 +2697,7 @@ ggplot(dat, aes(x = x, y = predicted, colour = group)) +
   )
 
 # or with ggeffects' plot-method
-plot(dat, ci = FALSE)
+plot(dat, show_ci = FALSE)
 
 
 # predictions for polynomial terms
@@ -2779,13 +2905,13 @@ comparisons, or &quot;marginal effects&quot;. <code>hypothesis_test()</code> is 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>test_predictions(model, ...)
+<pre><code class='language-R'>test_predictions(object, ...)
 
-hypothesis_test(model, ...)
+hypothesis_test(object, ...)
 
 ## Default S3 method:
 test_predictions(
-  model,
+  object,
   terms = NULL,
   by = NULL,
   test = "pairwise",
@@ -2795,14 +2921,15 @@ test_predictions(
   df = NULL,
   ci_level = 0.95,
   collapse_levels = FALSE,
+  margin = "mean_reference",
+  engine = "marginaleffects",
   verbose = TRUE,
-  ci.lvl = ci_level,
   ...
 )
 
 ## S3 method for class 'ggeffects'
 test_predictions(
-  model,
+  object,
   by = NULL,
   test = "pairwise",
   equivalence = NULL,
@@ -2810,6 +2937,7 @@ test_predictions(
   p_adjust = NULL,
   df = NULL,
   collapse_levels = FALSE,
+  engine = "marginaleffects",
   verbose = TRUE,
   ...
 )
@@ -2819,9 +2947,11 @@ test_predictions(
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="test_predictions_+3A_model">model</code></td>
+<tr><td><code id="test_predictions_+3A_object">object</code></td>
 <td>
-<p>A fitted model object, or an object of class <code>ggeffects</code>.</p>
+<p>A fitted model object, or an object of class <code>ggeffects</code>. If
+<code>object</code> is of class <code>ggeffects</code>, arguments <code>terms</code>, <code>margin</code> and <code>ci_level</code>
+are taken from the <code>ggeffects</code> object and don't need to be specified.</p>
 </td></tr>
 <tr><td><code id="test_predictions_+3A_...">...</code></td>
 <td>
@@ -2832,21 +2962,25 @@ comparisons and contrasts to different scales. <code>vcov</code> can be used to
 calculate heteroscedasticity-consistent standard errors for contrasts.
 See examples at the bottom of
 <a href="https://strengejacke.github.io/ggeffects/articles/introduction_comparisons_1.html">this vignette</a>
-for further details. To define a heteroscedasticity-consistent
-variance-covariance matrix, you can either use the same arguments as for
-<code>predict_response()</code> etc., namely <code>vcov_fun</code>, <code>vcov_type</code> and <code>vcov_args</code>.
-These are then transformed into a matrix and passed down to the <code>vcov</code>
-argument in <em>marginaleffects</em>. Or you directly use the <code>vcov</code> argument. See
-<code>?marginaleffects::slopes</code> for further details.</p>
+for further details.
+</p>
+<p>To define a heteroscedasticity-consistent variance-covariance matrix, you can
+either use the same arguments as for <code>predict_response()</code> etc., namely
+<code>vcov_fun</code>, <code>vcov_type</code> and <code>vcov_args</code>. These are then transformed into a
+matrix and passed down to the <code>vcov</code> argument in <strong>marginaleffects</strong>. Or you
+directly use the <code>vcov</code> argument. See <code>?marginaleffects::slopes</code> for further
+details.</p>
 </td></tr>
 <tr><td><code id="test_predictions_+3A_terms">terms</code></td>
 <td>
-<p>Character vector with the names of the focal terms from <code>model</code>,
-for which contrasts or comparisons should be displayed. At least one term
-is required, maximum length is three terms. If the first focal term is numeric,
-contrasts or comparisons for the <em>slopes</em> of this numeric predictor are
-computed (possibly grouped by the levels of further categorical focal
-predictors).</p>
+<p>If <code>object</code> is an object of class <code>ggeffects</code>, the same <code>terms</code>
+argument is used as for the predictions, i.e. <code>terms</code> can be ignored. Else,
+if <code>object</code> is a model object, <code>terms</code> must be a character vector with the
+names of the focal terms from <code>object</code>, for which contrasts or comparisons
+should be displayed. At least one term is required, maximum length is three
+terms. If the first focal term is numeric, contrasts or comparisons for the
+<em>slopes</em> of this numeric predictor are computed (possibly grouped by the
+levels of further categorical focal predictors).</p>
 </td></tr>
 <tr><td><code id="test_predictions_+3A_by">by</code></td>
 <td>
@@ -2858,8 +2992,51 @@ categorical predictors.</p>
 </td></tr>
 <tr><td><code id="test_predictions_+3A_test">test</code></td>
 <td>
-<p>Hypothesis to test. By default, pairwise-comparisons are
-conducted. See section <em>Introduction into contrasts and pairwise comparisons</em>.</p>
+<p>Hypothesis to test, defined as character string. Can be one of:
+</p>
+
+<ul>
+<li> <p><code>"pairwise"</code> (default), to test pairwise comparisons.
+</p>
+</li>
+<li> <p><code>"contrast"</code> to test simple contrasts (i.e. each level is tested against
+the average over <em>all</em> levels).
+</p>
+</li>
+<li> <p><code>"exclude"</code> to test simple contrasts (i.e. each level is tested against
+the average over <em>all other</em> levels, excluding the contrast that is being
+tested).
+</p>
+</li>
+<li> <p><code>"interaction"</code> to test interaction contrasts (difference-in-difference
+contrasts).
+</p>
+</li>
+<li> <p><code>"consecutive"</code> to test contrasts between consecutive levels of a predictor.
+</p>
+</li>
+<li> <p><code>"polynomial"</code> to test orthogonal polynomial contrasts, assuming
+equally-spaced factor levels.
+</p>
+</li>
+<li><p> A character string with a custom hypothesis, e.g. <code>"b2 = b1"</code>. This would
+test if the second level of a predictor is different from the first level.
+Custom hypotheses are very flexible. It is also possible to test interaction
+contrasts (difference-in-difference contrasts) with custom hypotheses, e.g.
+<code>"(b2 - b1) = (b4 - b3)"</code>. See also section <em>Introduction into contrasts
+and pairwise comparisons</em>.
+</p>
+</li>
+<li><p> A data frame with custom contrasts. See 'Examples'.
+</p>
+</li>
+<li> <p><code>NULL</code>, in which case simple contrasts are computed.
+</p>
+</li></ul>
+
+<p>Technical details about the packages used as back-end to calculate contrasts
+and pairwise comparisons are provided in the section <em>Packages used as back-end
+to calculate contrasts and pairwise comparisons</em> below.</p>
 </td></tr>
 <tr><td><code id="test_predictions_+3A_equivalence">equivalence</code></td>
 <td>
@@ -2907,8 +3084,8 @@ transformations are applied to the <em>response scale</em>.
 </p>
 </li></ul>
 
-<p><strong>Note:</strong> If the <code>scale</code> argument is not supported by the provided <code>model</code>,
-it is automaticaly changed to a supported scale-type (a message is printed
+<p><strong>Note:</strong> If the <code>scale</code> argument is not supported by the provided <code>object</code>,
+it is automatically changed to a supported scale-type (a message is printed
 when <code>verbose = TRUE</code>).</p>
 </td></tr>
 <tr><td><code id="test_predictions_+3A_p_adjust">p_adjust</code></td>
@@ -2929,7 +3106,9 @@ the model using <code><a href="insight.html#topic+get_df">insight::get_df()</a><
 </td></tr>
 <tr><td><code id="test_predictions_+3A_ci_level">ci_level</code></td>
 <td>
-<p>Numeric, the level of the confidence intervals.</p>
+<p>Numeric, the level of the confidence intervals. If <code>object</code>
+is an object of class <code>ggeffects</code>, the same <code>ci_level</code> argument is used as
+for the predictions, i.e. <code>ci_level</code> can be ignored.</p>
 </td></tr>
 <tr><td><code id="test_predictions_+3A_collapse_levels">collapse_levels</code></td>
 <td>
@@ -2937,13 +3116,37 @@ the model using <code><a href="insight.html#topic+get_df">insight::get_df()</a><
 levels are no longer separated by &quot;-&quot;, but instead collapsed into a unique
 term label (e.g., <code>"level a-level a"</code> becomes <code>"level a"</code>). See 'Examples'.</p>
 </td></tr>
+<tr><td><code id="test_predictions_+3A_margin">margin</code></td>
+<td>
+<p>Character string, indicates the method how to marginalize over
+non-focal terms. See <code><a href="#topic+predict_response">predict_response()</a></code> for details. If <code>object</code> is an
+object of class <code>ggeffects</code>, the same <code>margin</code> argument is used as for the
+predictions, i.e. <code>margin</code> can be ignored.</p>
+</td></tr>
+<tr><td><code id="test_predictions_+3A_engine">engine</code></td>
+<td>
+<p>Character string, indicates the package to use for computing
+contrasts and comparisons. Usually, this argument can be ignored, unless you
+want to explicitly use another package than <em>marginaleffects</em> to calculate
+contrasts and pairwise comparisons. <code>engine</code> can be either <code>"marginaleffects"</code>
+(default) or <code>"emmeans"</code>. The latter is useful when the <strong>marginaleffects</strong>
+package is not available, or when the <strong>emmeans</strong> package is preferred. Note
+that using <strong>emmeans</strong> as back-end is currently not as feature rich as the default
+(<strong>marginaleffects</strong>) and still in development. Setting <code>engine = "emmeans"</code>
+provides some additional test options: <code>"interaction"</code> to calculate interaction
+contrasts, <code>"consecutive"</code> to calculate contrasts between consecutive levels of a
+predictor, or a data frame with custom contrasts (see also <code>test</code>). There is
+an experimental option as well, <code>engine = "ggeffects"</code>. However, this is
+currently work-in-progress and offers much less options as the default engine,
+<code>"marginaleffects"</code>. It can be faster in some cases, though, and works for
+comparing predicted random effects in mixed models, or predicted probabilities
+of the zero-inflation component. If the <strong>marginaleffects</strong> package is not
+installed, the <strong>emmeans</strong> package is used automatically. If this package is
+not installed as well, <code>engine = "ggeffects"</code> is used.</p>
+</td></tr>
 <tr><td><code id="test_predictions_+3A_verbose">verbose</code></td>
 <td>
 <p>Toggle messages and warnings.</p>
-</td></tr>
-<tr><td><code id="test_predictions_+3A_ci.lvl">ci.lvl</code></td>
-<td>
-<p>Deprecated, please use <code>ci_level</code>.</p>
 </td></tr>
 </table>
 
@@ -2962,6 +3165,77 @@ marginal means.
 detailed introduction with many (visual) examples is shown in
 <a href="https://strengejacke.github.io/ggeffects/articles/introduction_comparisons_1.html">this vignette</a>.
 </p>
+
+
+<h3>Simple workflow for pairwise comparisons</h3>
+
+<p>A simple workflow includes calculating adjusted predictions and passing the
+results directly to <code>test_predictions()</code>, e.g.:
+</p>
+<div class="sourceCode"><pre># 1. fit your model
+model &lt;- lm(mpg ~ hp + wt + am, data = mtcars)
+# 2. calculate adjusted predictions
+pr &lt;- predict_response(model, "am")
+pr
+# 3. test pairwise comparisons
+test_predictions(pr)
+</pre></div>
+<p>See also <a href="https://strengejacke.github.io/ggeffects/articles/practical_glm_workflow.html">this vignette</a>.
+</p>
+
+
+<h3>Packages used as back-end to calculate contrasts and pairwise comparisons</h3>
+
+<p>The <code>test</code> argument is used to define which kind of contrast or comparison
+should be calculated. The default is to use the <strong>marginaleffects</strong> package.
+Here are some technical details about the packages used as back-end. When
+<code>test</code> is...
+</p>
+
+<ul>
+<li> <p><code>"pairwise"</code> (default), pairwise comparisons are based on the <strong>marginaleffects</strong>
+package.
+</p>
+</li>
+<li> <p><code>"contrast"</code> uses the <strong>emmeans</strong> package, i.e. <code>emmeans::contrast(method = "eff")</code>
+is called.
+</p>
+</li>
+<li> <p><code>"exclude"</code> relies on the <strong>emmeans</strong> package, i.e. <code>emmeans::contrast(method = "del.eff")</code>
+is called.
+</p>
+</li>
+<li> <p><code>"polynomial"</code> relies on the <strong>emmeans</strong> package, i.e. <code>emmeans::contrast(method = "poly")</code>
+is called.
+</p>
+</li>
+<li> <p><code>"interaction"</code> uses the <strong>emmeans</strong> package, i.e. <code>emmeans::contrast(interaction = ...)</code>
+is called.
+</p>
+</li>
+<li> <p><code>"consecutive"</code> also relies on the <strong>emmeans</strong> package, i.e.
+<code>emmeans::contrast(method = "consec")</code> is called.
+</p>
+</li>
+<li><p> a character string with a custom hypothesis, the <strong>marginaleffects</strong>
+package is used.
+</p>
+</li>
+<li><p> a data frame with custom contrasts, <strong>emmeans</strong> is used again.
+</p>
+</li>
+<li> <p><code>NULL</code> calls functions from the <strong>marginaleffects</strong> package with
+<code>hypothesis = NULL</code>.
+</p>
+</li>
+<li><p> If all focal terms are only present as random effects in a mixed model,
+or if predicted probabilities for the zero-inflation component of a model
+should be tested, functions from the <strong>ggeffects</strong> package are used. There
+is an example for pairwise comparisons of random effects in
+<a href="https://strengejacke.github.io/ggeffects/articles/practical_intersectionality.html">this vignette</a>.
+</p>
+</li></ul>
+
 
 
 <h3>P-value adjustment for multiple comparisons</h3>
@@ -2983,6 +3257,29 @@ only, in particular pairwise comparisons.
 difference is that <code>"fdr"</code> can be slightly faster and more stable in edge
 cases, however, confidence intervals are not updated. Only the p-values are
 adjusted. <code>"esarey"</code> is slower, but confidence intervals are updated as well.
+</p>
+
+
+<h3>Global options to choose package for calculating comparisons</h3>
+
+<p><code>ggeffects_test_engine</code> can be used as option to either use the <strong>marginaleffects</strong>
+package for computing contrasts and comparisons (default), or the <strong>emmeans</strong>
+package (e.g. <code>options(ggeffects_test_engine = "emmeans")</code>). The latter is
+useful when the <strong>marginaleffects</strong> package is not available, or when the
+<strong>emmeans</strong> package is preferred. You can also provide the engine directly, e.g.
+<code>test_predictions(..., engine = "emmeans")</code>. Note that using <strong>emmeans</strong> as
+backend is currently not as feature rich as the default (<strong>marginaleffects</strong>)
+and still in development.
+</p>
+<p>If <code>engine = "emmeans"</code>, the <code>test</code> argument can also be <code>"interaction"</code>
+to calculate interaction contrasts (difference-in-difference contrasts),
+<code>"consecutive"</code> to calculate contrasts between consecutive levels of a predictor,
+or a data frame with custom contrasts. If <code>test</code> is one of the latter options,
+and <code>engine</code> is not specified, the <code>engine</code> is automatically set to <code>"emmeans"</code>.
+</p>
+<p>If the <strong>marginaleffects</strong> package is not installed, the <strong>emmeans</strong> package is
+used automatically. If this package is not installed as well,
+<code>engine = "ggeffects"</code> is used.
 </p>
 
 
@@ -3109,16 +3406,33 @@ test_predictions(m, c("c161sex", "c172code"), test = "b2 = b1")
 m &lt;- lm(barthtot ~ c12hour + neg_c_7 * c172code + c161sex, data = efc)
 test_predictions(m, c("neg_c_7", "c172code"))
 
+# Interaction and consecutive contrasts -----------------
+# -------------------------------------------------------
+data(coffee_data, package = "ggeffects")
+m &lt;- lm(alertness ~ time * coffee + sex, data = coffee_data)
+
+# consecutive contrasts
+test_predictions(m, "time", by = "coffee", test = "consecutive")
+
+# interaction contrasts - difference-in-difference comparisons
+pr &lt;- predict_response(m, c("time", "coffee"), margin = "marginalmeans")
+test_predictions(pr, test = "interaction")
+
+# Custom contrasts --------------------------------------
+# -------------------------------------------------------
+wakeup_time &lt;- data.frame(
+  "wakeup vs later" = c(-2, 1, 1) / 2, # make sure each "side" sums to (+/-)1!
+  "start vs end of day" = c(-1, 0, 1)
+)
+test_predictions(m, "time", by = "coffee", test = wakeup_time)
+
 # Example: marginal effects -----------------------------
 # -------------------------------------------------------
 data(iris)
 m &lt;- lm(Petal.Width ~ Petal.Length + Species, data = iris)
 
 # we now want the marginal effects for "Species". We can calculate
-# the marginal effect using the "margins" package
-margins::margins(m, variables = "Species")
-
-# we get the same marginal effect from the "marginaleffects" package
+# the marginal effect using the "marginaleffects" package
 marginaleffects::avg_slopes(m, variables = "Species")
 
 # finally, test_predictions() returns the same. while the previous results
@@ -3199,6 +3513,11 @@ the moderator value, <em>including</em> minimum and maximum value.
 of the moderator value, <em>excluding</em> minimum and maximum value.
 </p>
 </li>
+<li><p> an option to compute a range of percentiles is also possible, using
+<code>"percentile"</code>, followed by the percentage of the range. For example,
+<code>"percentile95"</code> will calculate the 95% range of the variable.
+</p>
+</li>
 <li> <p><code>"all"</code>: uses all values of the moderator variable. Note that this option
 only applies to <code>type = "eff"</code>, for numeric moderator values.
 </p>
@@ -3246,6 +3565,7 @@ vcov(
   vcov.fun = vcov_fun,
   vcov.type = vcov_type,
   vcov.args = vcov_args,
+  verbose = TRUE,
   ...
 )
 </code></pre>
@@ -3291,7 +3611,7 @@ which is used to compute (cluster) robust standard errors for predictions.
 
 <p>If <code>NULL</code>, standard errors (and confidence intervals) for predictions are
 based on the standard errors as returned by the <code>predict()</code>-function.
-<strong>Note</strong> that probably not all model objects that work with <code>ggpredict()</code>
+<strong>Note</strong> that probably not all model objects that work with <code>predict_response()</code>
 are also supported by the <strong>sandwich</strong> or <strong>clubSandwich</strong> packages.
 </p>
 <p>See details in <a href="https://strengejacke.github.io/ggeffects/articles/practical_robustestimation.html">this vignette</a>.</p>
@@ -3301,7 +3621,9 @@ are also supported by the <strong>sandwich</strong> or <strong>clubSandwich</str
 <p>Character vector, specifying the estimation type for the
 robust covariance matrix estimation (see <code>?sandwich::vcovHC</code>
 or <code>?clubSandwich::vcovCR</code> for details). Only used when <code>vcov_fun</code> is a
-character string indicating one of the functions from those packages.</p>
+character string indicating one of the functions from those packages.
+When <code>vcov_fun</code> is a function, a possible <code>type</code> argument <em>must</em> be provided
+via the <code>vcov_args</code> argument.</p>
 </td></tr>
 <tr><td><code id="vcov_+3A_vcov_args">vcov_args</code></td>
 <td>
@@ -3312,6 +3634,10 @@ are passed down to <code>vcov_fun</code>.</p>
 <td>
 <p>Deprecated. Use <code>vcov_fun</code>, <code>vcov_type</code>
 and <code>vcov_args</code> instead.</p>
+</td></tr>
+<tr><td><code id="vcov_+3A_verbose">verbose</code></td>
+<td>
+<p>Toggle messages or warnings.</p>
 </td></tr>
 <tr><td><code id="vcov_+3A_...">...</code></td>
 <td>

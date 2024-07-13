@@ -18,8 +18,8 @@ function processMathHTML() {
 <h1>Package {srcr}</h1>
 <h2>Contents</h2>
 <ul class="menu">
-<li><a href='#find_config_files'><p>Locate candidate configuration files</p></a></li>
 <li><a href='#srcr'><p>Connect to database using config file</p></a></li>
+<li><a href='#find_config_files'><p>Locate candidate configuration files</p></a></li>
 </ul>
 </div>
 <hr>
@@ -36,7 +36,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.1.0</td>
+<td>1.1.1</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -78,7 +78,15 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.1.1</td>
+<td>7.3.1</td>
+</tr>
+<tr>
+<td>URL:</td>
+<td><a href="https://github.com/baileych/srcr">https://github.com/baileych/srcr</a></td>
+</tr>
+<tr>
+<td>BugReports:</td>
+<td><a href="https://github.com/baileych/srcr/issues">https://github.com/baileych/srcr/issues</a></td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -86,7 +94,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2021-10-30 19:49:26 UTC; baileyc</td>
+<td>2024-05-12 05:03:13 UTC; baileyc</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -99,9 +107,183 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2021-10-30 20:00:02 UTC</td>
+<td>2024-05-12 05:20:03 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='srcr'>Connect to database using config file</h2><span id='topic+srcr-package'></span><span id='topic+srcr'></span>
+
+<h3>Description</h3>
+
+<p>Set up a or DBI or legacy dplyr database connection using information from a
+JSON configuration file, and return the connection.
+</p>
+<p>Connecting to databases requires boilerplate code to specify
+connection parameters and to set up sessions properly with the DBMS.
+This package provides a simple tool to fill two purposes: abstracting
+connection details, including secret credentials, out of your source
+code and managing configuration for frequently-used database connections
+in a persistent and flexible way, while minimizing requirements on the
+runtime environment.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>srcr(
+  basenames = NA,
+  dirs = NA,
+  suffices = NA,
+  paths = NA,
+  config = NA,
+  allow_post_connect = getOption("srcr.allow_post_connect", c())
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="srcr_+3A_basenames">basenames</code></td>
+<td>
+<p>A vector of file names (without directory or file type) to
+use in searching for configuration files.</p>
+</td></tr>
+<tr><td><code id="srcr_+3A_dirs">dirs</code></td>
+<td>
+<p>A vector of directory names to use in searching for configuration
+files.</p>
+</td></tr>
+<tr><td><code id="srcr_+3A_suffices">suffices</code></td>
+<td>
+<p>A vector of suffices (file &quot;type&quot;s) to use in searching for
+the configuration file.</p>
+</td></tr>
+<tr><td><code id="srcr_+3A_paths">paths</code></td>
+<td>
+<p>A vector of full path names for the configuration file.  If
+present, only these paths are checked; <code><a href="#topic+find_config_files">find_config_files()</a></code> is not called.</p>
+</td></tr>
+<tr><td><code id="srcr_+3A_config">config</code></td>
+<td>
+<p>A list containing the configuration data, to be used instead of
+reading a configuration file, should you wish to skip that step.</p>
+</td></tr>
+<tr><td><code id="srcr_+3A_allow_post_connect">allow_post_connect</code></td>
+<td>
+<p>A vector specifying what session setup you will
+permit after the connection is established.  If any element of the vector
+is <code>sql</code>, then the post_connect_sql section of the configuration file is
+executed.  Similarly, if any element is <code>fun</code>, then the post_connect_fun
+section of the config file is executed (after post_connect_sql, if both are
+present and allowed).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The configuration file must provide all of the information necessary to set
+up the DBI connection or dplyr src.  Given the variety of ways a data source
+can be specified, the JSON must be a hash containing at least two elements:
+</p>
+
+<ul>
+<li><p> The <code>src_name</code> key points to a string containing name of a DBI driver
+method (e.g. <code>SQLite</code>), as one might pass to <code><a href="DBI.html#topic+dbDriver">DBI::dbDriver()</a></code>, or an old-style
+dplyr function that sets up the data source (e.g.  <code><a href="dplyr.html#topic+src_dbi">dplyr::src_postgres()</a></code>.
+If the value associated with <code>src_name</code> begins with 'src_', it is taken as the
+latter, otherwise it is taken as the former.  In this case, an attempt will
+be made to load the appropriate DBI-compliant database library (e.g. RSQLite
+for the above example) if it hasn't already been loaded.
+</p>
+</li>
+<li><p> The <code>src_args</code> key points to a nested hash, whose keys are the arguments
+to that function, and whose values are the argument values.
+</p>
+</li></ul>
+
+<p>To locate the necessary configuration file, you can use all of the arguments
+taken by <code><a href="#topic+find_config_files">find_config_files()</a></code>, but remember that the contents of the file
+must be JSON, regardless of the file's name.  Alternatively, if <code>paths</code> is
+present, only the specified paths are checked. The first file that exists, is
+readable, and evaluates as legal JSON is used as the source of configuration
+data.
+</p>
+<p>If your deployment strategy does not make use of configuration files (e.g. you
+access configuration data via a web service or similar API), you may also
+pass a list containing the configuration data directly via the <code>config</code>
+parameter.  In this case, no configuration files are used.
+</p>
+<p>Once the connection is established, the <code>post_connect_sql</code> and
+<code>post_connect_fun</code> elements of the configuration data can be used to perform
+additional processing to set session characteristics, roles, etc.  However,
+because this entails the configuration file providing code that you won't see
+prior to runtime, you need to opt in to these features.  You can make this
+choice globally by setting the <code>srcr.allow_post_connect</code> option via
+<code><a href="base.html#topic+options">base::options()</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A database connection.  The specific class of the object is determined
+by the <code>src_name</code> in the configuration data.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><strong>Maintainer</strong>: Charles Bailey <a href="mailto:baileyc@chop.edu">baileyc@chop.edu</a>
+</p>
+<p>Authors:
+</p>
+
+<ul>
+<li><p> Hanieh Razzaghi <a href="mailto:razzaghih@chop.edu">razzaghih@chop.edu</a>
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://github.com/baileych/srcr">https://github.com/baileych/srcr</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/baileych/srcr/issues">https://github.com/baileych/srcr/issues</a>
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# Search all the (filename-based) defaults
+srcr()
+
+# "The usual"
+srcr('myproj_prod')
+
+# Look around
+srcr(dirs = c(Sys.getenv('PROJ_CONF_DIR'), 'var/lib', getwd()),
+     basenames = c('myproj', Sys.getenv('PROJ_NAME')) )
+
+# No defaults
+srcr(paths = c('/path/to/known/config.json'))
+srcr(config =
+       list(src_name = 'Postgres',
+            src_args = list(host = 'my.host', dbname = 'my_db', user = 'me'),
+            post_connect_sql = 'set role project_role;'))
+
+## End(Not run)
+</code></pre>
+
 <hr>
 <h2 id='find_config_files'>Locate candidate configuration files</h2><span id='topic+find_config_files'></span>
 
@@ -224,151 +406,6 @@ find_config_files(dirs = c(file.path(Sys.getenv('HOME'),'etc'),
                           '/usr/local/etc', '/etc'),
                  basenames = c('my_app'),
                  suffices = c('.conf', '.rc'))
-
-## End(Not run)
-</code></pre>
-
-<hr>
-<h2 id='srcr'>Connect to database using config file</h2><span id='topic+srcr'></span>
-
-<h3>Description</h3>
-
-<p>Set up a or DBI or legacy dplyr database connection using information from a
-JSON configuration file, and return the connection.
-</p>
-<p>Connecting to databases requires boilerplate code to specify
-connection parameters and to set up sessions properly with the DBMS.
-This package provides a simple tool to fill two purposes: abstracting
-connection details, including secret credentials, out of your source
-code and managing configuration for frequently-used database connections
-in a persistent and flexible way, while minimizing requirements on the
-runtime environment.
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>srcr(
-  basenames = NA,
-  dirs = NA,
-  suffices = NA,
-  paths = NA,
-  config = NA,
-  allow_post_connect = getOption("srcr.allow_post_connect", c())
-)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="srcr_+3A_basenames">basenames</code></td>
-<td>
-<p>A vector of file names (without directory or file type) to
-use in searching for configuration files.</p>
-</td></tr>
-<tr><td><code id="srcr_+3A_dirs">dirs</code></td>
-<td>
-<p>A vector of directory names to use in searching for configuration
-files.</p>
-</td></tr>
-<tr><td><code id="srcr_+3A_suffices">suffices</code></td>
-<td>
-<p>A vector of suffices (file &quot;type&quot;s) to use in searching for
-the configuration file.</p>
-</td></tr>
-<tr><td><code id="srcr_+3A_paths">paths</code></td>
-<td>
-<p>A vector of full path names for the configuration file.  If
-present, only these paths are checked; <code><a href="#topic+find_config_files">find_config_files()</a></code> is not called.</p>
-</td></tr>
-<tr><td><code id="srcr_+3A_config">config</code></td>
-<td>
-<p>A list containing the configuration data, to be used instead of
-reading a configuration file, should you wish to skip that step.</p>
-</td></tr>
-<tr><td><code id="srcr_+3A_allow_post_connect">allow_post_connect</code></td>
-<td>
-<p>A vector specifying what session setup you will
-permit after the connection is established.  If any element of the vector
-is <code>sql</code>, then the post_connect_sql section of the configuration file is
-executed.  Similarly, if any element is <code>fun</code>, then the post_connect_fun
-section of the config file is executed (after post_connect_sql, if both are
-present and allowed).</p>
-</td></tr>
-</table>
-
-
-<h3>Details</h3>
-
-<p>The configuration file must provide all of the information necessary to set
-up the DBI connection or dplyr src.  Given the variety of ways a data source
-can be specified, the JSON must be a hash containing at least two elements:
-</p>
-
-<ul>
-<li><p> The <code>src_name</code> key points to a string containing name of a DBI driver
-method (e.g. <code>SQLite</code>), as one might pass to <code><a href="DBI.html#topic+dbDriver">DBI::dbDriver()</a></code>, or an old-style
-dplyr function that sets up the data source (e.g.  <code><a href="dplyr.html#topic+src_dbi">dplyr::src_postgres()</a></code>.
-If the value associated with <code>src_name</code> begins with 'src_', it is taken as the
-latter, otherwise it is taken as the former.  In this case, an attempt will
-be made to load the appropriate DBI-compliant database library (e.g. RSQLite
-for the above example) if it hasn't already been loaded.
-</p>
-</li>
-<li><p> The <code>src_args</code> key points to a nested hash, whose keys are the arguments
-to that function, and whose values are the argument values.
-</p>
-</li></ul>
-
-<p>To locate the necessary configuration file, you can use all of the arguments
-taken by <code><a href="#topic+find_config_files">find_config_files()</a></code>, but remember that the contents of the file
-must be JSON, regardless of the file's name.  Alternatively, if <code>paths</code> is
-present, only the specified paths are checked. The first file that exists, is
-readable, and evaluates as legal JSON is used as the source of configuration
-data.
-</p>
-<p>If your deployment strategy does not make use of configuration files (e.g. you
-access configuration data via a web service or similar API), you may also
-pass a list containing the configuration data directly via the <code>config</code>
-parameter.  In this case, no configuration files are used.
-</p>
-<p>Once the connection is established, the <code>post_connect_sql</code> and
-<code>post_connect_fun</code> elements of the configuration data can be used to perform
-additional processing to set session characteristics, roles, etc.  However,
-because this entails the configuration file providing code that you won't see
-prior to runtime, you need to opt in to these features.  You can make this
-choice globally by setting the <code>srcr.allow_post_connect</code> option via
-<code><a href="base.html#topic+options">base::options()</a></code>.
-</p>
-
-
-<h3>Value</h3>
-
-<p>A database connection.  The specific class of the object is determined
-by the <code>src_name</code> in the configuration data.
-</p>
-
-
-<h3>Examples</h3>
-
-<pre><code class='language-R'>## Not run: 
-# Search all the (filename-based) defaults
-srcr()
-
-# "The usual"
-srcr('myproj_prod')
-
-# Look around
-srcr(dirs = c(Sys.getenv('PROJ_CONF_DIR'), 'var/lib', getwd()),
-     basenames = c('myproj', Sys.getenv('PROJ_NAME')) )
-
-# No defaults
-srcr(paths = c('/path/to/known/config.json'))
-srcr(config =
-       list(src_name = 'Postgres',
-            src_args = list(host = 'my.host', dbname = 'my_db', user = 'me'),
-            post_connect_sql = 'set role project_role;'))
 
 ## End(Not run)
 </code></pre>

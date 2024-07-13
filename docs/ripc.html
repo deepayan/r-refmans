@@ -38,7 +38,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.1</td>
+<td>0.3.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -70,8 +70,8 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>countrycode, dplyr, httr, lifecycle, lubridate, magrittr,
-purrr, rlang, stringr, tidyr</td>
+<td>countrycode, dplyr, httr, jsonlite, lifecycle, lubridate,
+purrr, readr, rlang, sf, stringr, tidyr</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -87,7 +87,7 @@ purrr, rlang, stringr, tidyr</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-15 12:14:37 UTC; caldwellst</td>
+<td>2024-06-25 11:16:08 UTC; caldwellst</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -103,7 +103,7 @@ purrr, rlang, stringr, tidyr</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-15 12:30:02 UTC</td>
+<td>2024-06-25 11:40:07 UTC</td>
 </tr>
 </table>
 <hr>
@@ -147,7 +147,7 @@ family of functions.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>ipc_get(resource, api_key = NULL, ..., drop_metadata = FALSE)
+<pre><code class='language-R'>ipc_get(resource, return_format, pass_format, api_key = NULL, ...)
 </code></pre>
 
 
@@ -159,6 +159,15 @@ family of functions.
 <p>One of the resources exposed in the IPC API, such
 <code>"areas"</code> , <code>"analyses"</code>, <code>"points"</code>, or <code>"country"</code>.</p>
 </td></tr>
+<tr><td><code id="ipc_get_+3A_return_format">return_format</code></td>
+<td>
+<p>The format that should be returned by the API. Allows
+<code>"csv"</code> (the default) and <code>"geojson"</code>.</p>
+</td></tr>
+<tr><td><code id="ipc_get_+3A_pass_format">pass_format</code></td>
+<td>
+<p>Pass format explicitly in the API call.</p>
+</td></tr>
 <tr><td><code id="ipc_get_+3A_api_key">api_key</code></td>
 <td>
 <p>IPC API key. If <code>NULL</code> (the default), looks for <code>IPC_API_KEY</code>
@@ -168,11 +177,6 @@ in the environment.</p>
 <td>
 <p>Named parameters passed to the API call URL in the form of
 <code>argument=value</code>.</p>
-</td></tr>
-<tr><td><code id="ipc_get_+3A_drop_metadata">drop_metadata</code></td>
-<td>
-<p>Logical, whether or not to drop metadata from the
-original list return.</p>
 </td></tr>
 </table>
 
@@ -269,8 +273,7 @@ output to ensure each row represents a single analysis:
 </p>
 
 <ol>
-<li> <p><code>created</code> and <code>modified</code> columns are converted from character columns
-to date columns.
+<li><p> The data is arranged by <code>country</code>, <code>year</code>, and <code>created</code>.
 </p>
 </li>
 <li> <p><code>id</code> column is renamed to be <code>analysis_id</code>.
@@ -312,6 +315,7 @@ pass in <code>id</code> and <code>period</code>. You cannot pass in both sets of
   type = NULL,
   id = NULL,
   period = NULL,
+  return_format = c("csv", "geojson"),
   api_key = NULL,
   tidy_df = TRUE
 )
@@ -346,6 +350,11 @@ data for all types.</p>
 <p>Period code, either 'C', 'P', or 'A' for current, projection,
 and second projection.</p>
 </td></tr>
+<tr><td><code id="ipc_get_areas_+3A_return_format">return_format</code></td>
+<td>
+<p>The format that should be returned by the API. Allows
+<code>"csv"</code> (the default) and <code>"geojson"</code>.</p>
+</td></tr>
 <tr><td><code id="ipc_get_areas_+3A_api_key">api_key</code></td>
 <td>
 <p>IPC API key. If <code>NULL</code> (the default), looks for <code>IPC_API_KEY</code>
@@ -365,8 +374,7 @@ the data frame as returned direct from the IPC-CH API.</p>
 <p>Areas data is the typical unit of analysis in IPC-CH outputs. These are
 typically administrative units (or clusters of them together). For each area,
 estimates of the population in each phase is provided and a general phase
-classification is assigned. Data is currently output only for current
-periods through <strong>areas</strong> endpoint. Use <code><a href="#topic+ipc_get_population">ipc_get_population()</a></code> to get
+classification is assigned. Use <code><a href="#topic+ipc_get_population">ipc_get_population()</a></code> to get
 detailed population data and classifications for all analysis periods.
 </p>
 <p>See the <a href="https://www.ipcinfo.org">IPC website</a> and
@@ -395,16 +403,12 @@ from the <code>from</code> and <code>to</code> columns respectively, allocating 
 start and end periods to be the 15th of the month.
 </p>
 </li>
-<li> <p><code>phases</code> is unnested from a list column to bring the phase data into
-the main data frame.
-</p>
-</li>
-<li><p> The population estimates are pivoted to a wider format with names <code>phase#_num</code>
-and <code>phase#_pct</code>.
-</p>
-</li>
 <li> <p><code>title</code> column is renamed to be <code>area_name</code>, <code>anl_id</code> to <code>analysis_id</code>,
 and <code>id</code> and <code>aar_id</code> are changed to <code>area_id</code>.
+</p>
+</li>
+<li><p> Duplicated rows are removed from the data frame if the return value is CSV,
+because the duplicates are there due to polygon geometries.
 </p>
 </li></ol>
 
@@ -418,6 +422,9 @@ ipc_get_areas()
 
 # get areas for specific analysis ID and period from advanced API
 ipc_get_areas(id = 12856213, period = "P")
+
+# request GeoJSON return
+ipc_get_areas(id = 12856213, period = "P", return_format = "geojson")
 
 </code></pre>
 
@@ -512,14 +519,6 @@ and values are stored as columns:
 <li> <p><code>analysis_period_start</code> and <code>analysis_period_end</code> created as <code>Date</code> columns
 from the <code>from</code> and <code>to</code> columns respectively, allocating the day of the
 start and end periods to be the 15th of the month.
-</p>
-</li>
-<li> <p><code>phases</code> is unnested from a list column to bring the phase data into
-the main data frame.
-</p>
-</li>
-<li><p> The population estimates are pivoted to a wider format with names <code>phase#_num</code>
-and <code>phase#_pct</code>.
 </p>
 </li>
 <li> <p><code>id</code> column is renamed to be <code>analysis_id</code>.
@@ -744,12 +743,7 @@ and values are stored as columns:
 </p>
 
 <ol>
-<li> <p><code>phases</code> is unnested from a list column to bring the phase data into the
-main data frame.
-</p>
-</li>
-<li><p> The population estimates are pivoted to a wider format with names <code>phase#_num</code>
-and <code>phase#_pct</code>.
+<li><p> All columns containing <code>phase</code> or <code>population</code> are converted to numeric.
 </p>
 </li>
 <li> <p><code>aar_id</code> is renamed to <code>area_id</code> and <code>anl_id</code> to <code>analysis_id</code>.
@@ -931,7 +925,8 @@ single data frame.
 ipc_get_population()
 
 # get populations for specific analysis ID from advanced API
-ipc_get_population(id = 12856213)
+ipc_get_population(id = 12856213) # analysis with areas data frame
+ipc_get_population(id = 65508276) # analysis with groups data frame
 
 </code></pre>
 

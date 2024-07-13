@@ -60,6 +60,7 @@ function processMathHTML() {
 <li><a href='#logDoubleFactorials'><p>Natural logarithms of double factorials</p></a></li>
 <li><a href='#MakeTreeBinary'><p>Generate binary tree by collapsing polytomies</p></a></li>
 <li><a href='#match.Splits'><p>Split matching</p></a></li>
+<li><a href='#MatchEdges'><p>Match nodes and edges between trees</p></a></li>
 <li><a href='#MatrixToPhyDat'><p>Convert between matrices and <code>phyDat</code> objects</p></a></li>
 <li><a href='#MorphoBankDecode'><p>Decode MorphoBank text</p></a></li>
 <li><a href='#MRCA'><p>Most recent common ancestor</p></a></li>
@@ -70,6 +71,8 @@ function processMathHTML() {
 <li><a href='#Neworder'><p>Reorder edges of a phylogenetic tree</p></a></li>
 <li><a href='#NJTree'><p>Generate a neighbour joining tree</p></a></li>
 <li><a href='#NodeDepth'><p>Distance of each node from tree exterior</p></a></li>
+<li><a href='#NodeNumbers'><p>Numeric index of each node in a tree</p>
+<code>NodeNumbers()</code> returns a sequence corresponding to the nodes in a tree</a></li>
 <li><a href='#NodeOrder'><p>Number of edges incident to each node in a tree</p></a></li>
 <li><a href='#NPartitionPairs'><p>Distributions of tips consistent with a partition pair</p></a></li>
 <li><a href='#NRooted'><p>Number of trees</p></a></li>
@@ -88,6 +91,7 @@ function processMathHTML() {
 <li><a href='#RenumberTree'><p>Reorder tree edges and nodes</p></a></li>
 <li><a href='#RightmostCharacter'><p>Rightmost character of string</p></a></li>
 <li><a href='#RoguePlot'><p>Visualize position of rogue taxa</p></a></li>
+<li><a href='#root_on_node'><p>Wrapper for internal C function <code>root_on_node()</code></p></a></li>
 <li><a href='#RootNode'><p>Which node is a tree's root?</p></a></li>
 <li><a href='#RootTree'><p>Root or unroot a phylogenetic tree</p></a></li>
 <li><a href='#SampleOne'><p>Quickly sample</p></a></li>
@@ -133,7 +137,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.10.0</td>
+<td>1.11.1</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -254,7 +258,7 @@ rlang, rmarkdown, testthat (&ge; 3.0), vdiffr (&ge; 1.0.0),</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -262,7 +266,7 @@ rlang, rmarkdown, testthat (&ge; 3.0), vdiffr (&ge; 1.0.0),</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-08-18 07:30:14 UTC; pjjg18</td>
+<td>2024-06-06 19:27:18 UTC; pjjg18</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -281,7 +285,7 @@ rlang, rmarkdown, testthat (&ge; 3.0), vdiffr (&ge; 1.0.0),</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-08-19 00:22:39 UTC</td>
+<td>2024-06-07 15:30:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -396,6 +400,7 @@ sequentially from <code>1:n</code>.
   tree,
   where = sample.int(tree[["Nnode"]] * 2 + 2L, size = 1) - 1L,
   label = "New tip",
+  nodeLabel = "",
   edgeLength = 0,
   lengthBelow = NULL,
   nTip = NTip(tree),
@@ -424,9 +429,17 @@ new tip is added to a random edge.</p>
 <td>
 <p>Character string providing the label to apply to the new tip.</p>
 </td></tr>
+<tr><td><code id="AddTip_+3A_nodelabel">nodeLabel</code></td>
+<td>
+<p>Character string providing a label to apply to the newly
+created node, if <code>tree$node.label</code> is specified.</p>
+</td></tr>
 <tr><td><code id="AddTip_+3A_edgelength">edgeLength</code></td>
 <td>
-<p>Numeric specifying length of new edge</p>
+<p>Numeric specifying length of new edge. If <code>NULL</code>,
+defaults to <code>lengthBelow</code>.
+This will become the default behaviour in a
+future release; please manually specify the desired behaviour in your code.</p>
 </td></tr>
 <tr><td><code id="AddTip_+3A_lengthbelow">lengthBelow</code></td>
 <td>
@@ -438,10 +451,10 @@ a new edge of length <code>lengthBelow</code> will be inserted.</p>
 </td></tr>
 <tr><td><code id="AddTip_+3A_ntip">nTip</code>, <code id="AddTip_+3A_nnode">nNode</code>, <code id="AddTip_+3A_rootnode">rootNode</code></td>
 <td>
-<p>Optional integer vectors specifying number of tips and
-nodes in <code>tree</code>, and index of root node.
-Not checked for correctness: specifying values here trades code safety for a
-nominal speed increase.</p>
+<p>Optional integer vectors specifying number of tips
+and nodes in <code>tree</code>, and index of root node.
+Not checked for correctness: specifying values here yields a marginal speed
+increase at the cost of code safety.</p>
 </td></tr>
 <tr><td><code id="AddTip_+3A_includeroot">includeRoot</code></td>
 <td>
@@ -492,9 +505,9 @@ the trees produced by adding <code>label</code> to each edge of <code>tree</code
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -505,24 +518,41 @@ the trees produced by adding <code>label</code> to each edge of <code>tree</code
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>plot(tree &lt;- BalancedTree(10))
+<pre><code class='language-R'>tree &lt;- BalancedTree(10)
+
+# Add a leaf below an internal node
+plot(tree)
 ape::nodelabels()
-ape::nodelabels(15, 15, bg="green")
+node &lt;- 15
+ape::nodelabels(bg = ifelse(NodeNumbers(tree) == node, "green", "grey"))
 
 plot(AddTip(tree, 15, "NEW_TIP"))
 
+# Add edge lengths for an ultrametric tree
+tree$edge.length &lt;- rep(c(rep(1, 5), 2, 1, 2, 2), 2)
+
+# Add a leaf to an external edge
+leaf &lt;- 5
+plot(tree)
+ape::tiplabels(bg = ifelse(seq_len(NTip(tree)) == leaf, "green", "grey"))
+
+plot(AddTip(tree, 5, "NEW_TIP", edgeLength = NULL))
+
+# Set up multi-panel plot
 oldPar &lt;- par(mfrow = c(2, 4), mar = rep(0.3, 4), cex = 0.9)
 
+# Add leaf to each edge on a tree in turn
 backbone &lt;- BalancedTree(4)
 # Treating the position of the root as instructive:
 additions &lt;- AddTipEverywhere(backbone, includeRoot = TRUE)
 xx &lt;- lapply(additions, plot)
 
-par(mfrow=c(2, 3))
+par(mfrow = c(2, 3))
 # Don't treat root edges as distinct:
 additions &lt;- AddTipEverywhere(backbone, includeRoot = FALSE)
 xx &lt;- lapply(additions, plot)
 
+# Restore original plotting parameters
 par(oldPar)
 
 </code></pre>
@@ -578,8 +608,10 @@ is the immediate ancestor of the given edge.
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -1013,8 +1045,8 @@ replaced with <code style="white-space: pre;">&#8288;?&#8288;</code>.</p>
 <h3>Value</h3>
 
 <p><code>CharacterInformation()</code> returns a numeric specifying the
-phylogenetic information content of the character (<em>sensu</em>
-Steel and Penny 2006), in bits.
+phylogenetic information content of the character
+(<em>sensu</em> Steel and Penny 2006), in bits.
 </p>
 
 
@@ -1027,9 +1059,7 @@ Steel and Penny 2006), in bits.
 
 <h3>References</h3>
 
-
-<ul>
-<li> <p>Cotton JA, Wilkinson M (2008).
+<p>Cotton JA, Wilkinson M (2008).
 &ldquo;Quantifying the potential utility of phylogenetic characters.&rdquo;
 <em>Taxon</em>, <b>57</b>(1), 131&ndash;136.<br /><br /> Faith DP, Trueman JWH (2001).
 &ldquo;Towards an inclusive philosophy for phylogenetic inference.&rdquo;
@@ -1039,8 +1069,6 @@ Steel and Penny 2006), in bits.
 In Albert VA (ed.), <em>Parsimony, Phylogeny, and Genomics</em>, 163&ndash;178.
 Oxford University Press, Oxford.
 </p>
-</li></ul>
-
 
 
 <h3>See Also</h3>
@@ -1104,8 +1132,10 @@ are descended from each node, not including the node itself.
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -1443,9 +1473,9 @@ edge.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -1723,9 +1753,9 @@ without the excluded taxa.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -1733,8 +1763,10 @@ without the excluded taxa.
 <code><a href="#topic+TrivialTree">TrivialTree</a></code>
 </p>
 <p>Other tree properties: 
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+PathLengths">PathLengths</a>()</code>,
 <code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
@@ -1847,17 +1879,30 @@ plot(ConstrainedNJ(dataset, constraint))
 </code></pre>
 
 <hr>
-<h2 id='DescendantEdges'>Identify descendant edges</h2><span id='topic+DescendantEdges'></span><span id='topic+AllDescendantEdges'></span>
+<h2 id='DescendantEdges'>Identify descendant edges</h2><span id='topic+DescendantEdges'></span><span id='topic+DescendantTips'></span><span id='topic+AllDescendantEdges'></span>
 
 <h3>Description</h3>
 
-<p>Quickly identify edges that are &quot;descended&quot; from edges in a tree.
+<p><code>DescendantEdges()</code> efficiently identifies edges that are &quot;descended&quot; from
+edges in a tree.
+</p>
+<p><code>DescendantTips()</code> efficiently identifies leaves (external nodes) that are
+&quot;descended&quot; from edges in a tree.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>DescendantEdges(parent, child, edge = NULL, nEdge = length(parent))
+<pre><code class='language-R'>DescendantEdges(
+  parent,
+  child,
+  edge = NULL,
+  node = NULL,
+  nEdge = length(parent),
+  includeSelf = TRUE
+)
+
+DescendantTips(parent, child, edge = NULL, node = NULL, nEdge = length(parent))
 
 AllDescendantEdges(parent, child, nEdge = length(parent))
 </code></pre>
@@ -1878,13 +1923,24 @@ matrix of a tree of class <code><a href="ape.html#topic+phylo">phylo</a></code>,
 </td></tr>
 <tr><td><code id="DescendantEdges_+3A_edge">edge</code></td>
 <td>
-<p>Integer specifying the number of the edge whose child edges are
+<p>Integer specifying the number of the edge whose children are
 required (see <code><a href="ape.html#topic+nodelabels">edgelabels</a>()</code>).</p>
+</td></tr>
+<tr><td><code id="DescendantEdges_+3A_node">node</code></td>
+<td>
+<p>Integer specifying the number(s) of nodes whose children are
+required.  Specify <code>0</code> to return all nodes.  If <code>NULL</code> (the default), the
+<code>edge</code> parameter will be used instead.</p>
 </td></tr>
 <tr><td><code id="DescendantEdges_+3A_nedge">nEdge</code></td>
 <td>
 <p>number of edges (calculated from <code>length(parent)</code> if not
 supplied).</p>
+</td></tr>
+<tr><td><code id="DescendantEdges_+3A_includeself">includeSelf</code></td>
+<td>
+<p>Logical specifying whether to mark <code>edge</code> as its own
+descendant.</p>
 </td></tr>
 </table>
 
@@ -1892,7 +1948,11 @@ supplied).</p>
 <h3>Value</h3>
 
 <p><code>DescendantEdges()</code> returns a logical vector stating whether each
-edge in turn is a descendant of the specified edge (or the edge itself).
+edge in turn is the specified edge (if <code>includeSelf = TRUE</code>)
+or one of its descendants.
+</p>
+<p><code>DescendantTips()</code> returns a logical vector stating whether each
+leaf in turn is a descendant of the specified edge.
 </p>
 <p><code>AllDescendantEdges()</code> is deprecated; use <code>DescendantEdges()</code>
 instead.
@@ -1910,11 +1970,26 @@ edge is a descendant of edge <em>N</em> (or the edge itself).
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>tree &lt;- as.phylo(0, 6)
+plot(tree)
+desc &lt;- DescendantEdges(tree$edge[, 1], tree$edge[, 2], edge = 5)
+which(desc)
+ape::edgelabels(bg = 3 + desc)
+tips &lt;- DescendantTips(tree$edge[, 1], tree$edge[, 2], edge = 5)
+which(tips)
+tiplabels(bg = 3 + tips)
+</code></pre>
 
 <hr>
 <h2 id='DoubleFactorial'>Double factorial</h2><span id='topic+DoubleFactorial'></span><span id='topic+DoubleFactorial64'></span><span id='topic+LnDoubleFactorial'></span><span id='topic+Log2DoubleFactorial'></span><span id='topic+LogDoubleFactorial'></span><span id='topic+LnDoubleFactorial.int'></span><span id='topic+LogDoubleFactorial.int'></span>
@@ -2134,14 +2209,14 @@ querying object's class.
 </p>
 </li>
 <li> <p><code>KeepTipPreorder()</code>: Faster version with no checks.
-Does not retain tip labels or edge weights.
-edges must be listed in preorder.
+Does not retain labels or edge weights.
+Edges must be listed in preorder.
 May crash if improper input is specified.
 </p>
 </li>
 <li> <p><code>KeepTipPostorder()</code>: Faster version with no checks.
-Does not retain tip labels or edge weights.
-edges must be listed in postorder.
+Does not retain labels or edge weights.
+Edges must be listed in postorder.
 May crash if improper input is specified.
 </p>
 </li></ul>
@@ -2166,9 +2241,9 @@ May crash if improper input is specified.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -2334,8 +2409,10 @@ in turn is a descendant of the specified edge.
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -2406,8 +2483,10 @@ position of the root is significant.
 <code><a href="#topic+EdgeAncestry">EdgeAncestry</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -2481,7 +2560,9 @@ EdgeDistances(tree)
 
 <h3>Description</h3>
 
-<p>Deprecated. Use <code>RootTree()</code> instead.
+<p><strong>Deprecated.</strong> This function will be removed in a future version of
+<span class="pkg">TreeTools</span>.
+Use <code>RootTree()</code> instead.
 </p>
 
 
@@ -2516,7 +2597,7 @@ the outgroup.</p>
 
 <h3>Details</h3>
 
-<p>Given a tree or a list of taxa, <code>EnforceOutgroup()</code> rearranges the ingroup
+<p>Given a tree or a list of taxa, <code>EnforceOutgroup()</code> rearranged the ingroup
 and outgroup taxa such that the two are sister taxa across the root, without
 changing the relationships within the ingroup or within the outgroup.
 </p>
@@ -2524,7 +2605,7 @@ changing the relationships within the ingroup or within the outgroup.
 
 <h3>Value</h3>
 
-<p><code>EnforceOutgroup()</code> returns a tree of class <code>phylo</code> where all
+<p><code>EnforceOutgroup()</code> returned a tree of class <code>phylo</code> where all
 outgroup taxa are sister to all remaining taxa, without modifying the
 ingroup topology.
 </p>
@@ -2553,9 +2634,9 @@ eventually replace this function
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -2629,7 +2710,7 @@ NexusTokens("01[01]-?")
 </code></pre>
 
 <hr>
-<h2 id='GenerateTree'>Generate pectinate, balanced or random trees</h2><span id='topic+GenerateTree'></span><span id='topic+RandomTree'></span><span id='topic+PectinateTree'></span><span id='topic+BalancedTree'></span><span id='topic+StarTree'></span>
+<h2 id='GenerateTree'>Generate pectinate, balanced or random trees</h2><span id='topic+GenerateTree'></span><span id='topic+RandomTree'></span><span id='topic+YuleTree'></span><span id='topic+PectinateTree'></span><span id='topic+BalancedTree'></span><span id='topic+StarTree'></span>
 
 <h3>Description</h3>
 
@@ -2641,6 +2722,8 @@ generate trees with the specified shapes and leaf labels.
 <h3>Usage</h3>
 
 <pre><code class='language-R'>RandomTree(tips, root = FALSE, nodes)
+
+YuleTree(tips, addInTurn = FALSE, root = TRUE)
 
 PectinateTree(tips)
 
@@ -2661,14 +2744,20 @@ extract leaf labels.</p>
 </td></tr>
 <tr><td><code id="GenerateTree_+3A_root">root</code></td>
 <td>
-<p>Character or integer specifying tip to use as root, if desired;
-or <code>FALSE</code> for an unrooted tree.</p>
+<p>Character or integer specifying tip to use as root;
+or <code>TRUE</code> to root the tree on a random edge;
+or <code>FALSE</code> to return an unrooted tree.</p>
 </td></tr>
 <tr><td><code id="GenerateTree_+3A_nodes">nodes</code></td>
 <td>
 <p>Number of nodes to generate.  The default and maximum,
 <code>tips - 1</code>, generates a binary tree; setting a lower value will induce
 polytomies.</p>
+</td></tr>
+<tr><td><code id="GenerateTree_+3A_addinturn">addInTurn</code></td>
+<td>
+<p>Logical specifying whether to add leaves in the order of
+<code>tips</code>.  If <code>FALSE</code>, leaves will be added in a random order.</p>
 </td></tr>
 </table>
 
@@ -2686,6 +2775,10 @@ Random numbers are generated using a Mersenne Twister.
 If <code>root = FALSE</code>, the tree will be unrooted, with the first tip in a
 basal position.  Otherwise, the tree will be rooted on <code>root</code>.
 </p>
+<p><code>YuleTree()</code> returns a topology generated by the Yule process
+(Steel and McKenzie 2001),
+i.e. adding leaves in turn adjacent to a randomly-chosen existing leaf.
+</p>
 <p><code>PectinateTree()</code> returns a pectinate (caterpillar) tree.
 </p>
 <p><code>BalancedTree()</code> returns a balanced (symmetrical) tree, in preorder.
@@ -2698,6 +2791,15 @@ basal position.  Otherwise, the tree will be rooted on <code>root</code>.
 
 <p><a href="https://orcid.org/0000-0001-5660-1727">Martin R. Smith</a>
 (<a href="mailto:martin.smith@durham.ac.uk">martin.smith@durham.ac.uk</a>)
+</p>
+
+
+<h3>References</h3>
+
+<p>Steel MA, McKenzie A (2001).
+&ldquo;Properties of Phylogenetic Trees Generated by Yule-type Speciation Models.&rdquo;
+<em>Mathematical Biosciences</em>, <b>170</b>(1), 91&ndash;112.
+<a href="https://doi.org/10.1016/S0025-5564%2800%2900061-4">doi:10.1016/S0025-5564(00)00061-4</a>.()
 </p>
 
 
@@ -2717,6 +2819,8 @@ basal position.  Otherwise, the tree will be rooted on <code>root</code>.
 
 data("Lobo")
 RandomTree(Lobo.phy)
+
+YuleTree(LETTERS[1:10])
 
 plot(PectinateTree(LETTERS[1:10]))
 
@@ -2903,9 +3007,9 @@ taxa.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -3048,9 +3152,9 @@ in <code>paths</code> occurs when <code>keptVerts</code> vertices are retained.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -3141,9 +3245,9 @@ if <code>keptTips</code> is not logical.  Inferred from <code>tree</code> if uns
 <code><a href="#topic+KeptPaths">KeptPaths</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -3237,8 +3341,8 @@ each relevant edge of a plot (which should already have been produced using
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>,
@@ -3349,9 +3453,9 @@ The tree's internal topology will not change.
 <code><a href="#topic+KeptPaths">KeptPaths</a>()</code>,
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -3456,8 +3560,10 @@ code is based.
 <code><a href="#topic+EdgeAncestry">EdgeAncestry</a>()</code>,
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -3468,8 +3574,10 @@ code is based.
 <code><a href="#topic+EdgeAncestry">EdgeAncestry</a>()</code>,
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -3636,9 +3744,9 @@ in equal frequencies.
 <code><a href="#topic+KeptPaths">KeptPaths</a>()</code>,
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -3724,8 +3832,8 @@ It is deprecated and will be removed in a future release.
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+xor">xor</a>()</code>
@@ -3738,6 +3846,96 @@ It is deprecated and will be removed in a future release.
 splits2 &lt;- as.Splits(PectinateTree(7))
 
 match(splits1, splits2)
+</code></pre>
+
+<hr>
+<h2 id='MatchEdges'>Match nodes and edges between trees</h2><span id='topic+MatchEdges'></span><span id='topic+MatchNodes'></span>
+
+<h3>Description</h3>
+
+<p><code>MatchNodes()</code> and <code>MatchEdges()</code> matches nodes or edges in one tree to
+entries in the second that denote a clade with identical tip labels.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>MatchEdges(x, table, nomatch = NA_integer_)
+
+MatchNodes(x, table, nomatch = NA_integer_, tips = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="MatchEdges_+3A_x">x</code></td>
+<td>
+<p>Tree whose nodes are to be matched.</p>
+</td></tr>
+<tr><td><code id="MatchEdges_+3A_table">table</code></td>
+<td>
+<p>Tree containing nodes to be matched against.</p>
+</td></tr>
+<tr><td><code id="MatchEdges_+3A_nomatch">nomatch</code></td>
+<td>
+<p>Integer value that will be used in place of <code>NA</code> in the case
+where no match is found.</p>
+</td></tr>
+<tr><td><code id="MatchEdges_+3A_tips">tips</code></td>
+<td>
+<p>Logical specifying whether to return matches for tips;
+unless <code>TRUE</code>, only the matches for internal nodes will be returned.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The current implementation is potentially inefficient.
+Please contact the maintainer to request a more efficient implementation if
+this function is proving a bottleneck.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><a href="https://orcid.org/0000-0001-5660-1727">Martin R. Smith</a>
+(<a href="mailto:martin.smith@durham.ac.uk">martin.smith@durham.ac.uk</a>)
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other tree navigation: 
+<code><a href="#topic+AncestorEdge">AncestorEdge</a>()</code>,
+<code><a href="#topic+CladeSizes">CladeSizes</a>()</code>,
+<code><a href="#topic+DescendantEdges">DescendantEdges</a>()</code>,
+<code><a href="#topic+EdgeAncestry">EdgeAncestry</a>()</code>,
+<code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
+<code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
+<code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+NDescendants">NDescendants</a>()</code>,
+<code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
+<code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
+<code><a href="#topic+RootNode">RootNode</a>()</code>
+</p>
+<p>Other tree properties: 
+<code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+NSplits">NSplits</a>()</code>,
+<code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
+<code><a href="#topic+PathLengths">PathLengths</a>()</code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
+<code><a href="#topic+TipLabels">TipLabels</a>()</code>,
+<code><a href="#topic+TreeIsRooted">TreeIsRooted</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>MatchNodes(BalancedTree(8), RootTree(BalancedTree(8)))
 </code></pre>
 
 <hr>
@@ -3949,8 +4147,10 @@ common ancestor of <code>x1</code> and <code>x2</code>.
 <code><a href="#topic+EdgeAncestry">EdgeAncestry</a>()</code>,
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -4182,7 +4382,9 @@ descendants (leaves or internal nodes) for each node in a tree.
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -4473,7 +4675,9 @@ node.
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
@@ -4487,6 +4691,78 @@ nodelabels(NodeDepth(tree, includeTips = FALSE))
 
 
 </code></pre>
+
+<hr>
+<h2 id='NodeNumbers'>Numeric index of each node in a tree
+<code>NodeNumbers()</code> returns a sequence corresponding to the nodes in a tree</h2><span id='topic+NodeNumbers'></span>
+
+<h3>Description</h3>
+
+<p>Numeric index of each node in a tree
+<code>NodeNumbers()</code> returns a sequence corresponding to the nodes in a tree
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>NodeNumbers(tree, tips = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="NodeNumbers_+3A_tree">tree</code></td>
+<td>
+<p>A tree of class <code><a href="ape.html#topic+read.tree">phylo</a></code>.</p>
+</td></tr>
+<tr><td><code id="NodeNumbers_+3A_tips">tips</code></td>
+<td>
+<p>Logical specifying whether to also include the indices of leaves.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>NodeNumbers()</code> returns an integer vector corresponding to the
+indices of nodes within a tree.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><a href="https://orcid.org/0000-0001-5660-1727">Martin R. Smith</a>
+(<a href="mailto:martin.smith@durham.ac.uk">martin.smith@durham.ac.uk</a>)
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other tree properties: 
+<code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
+<code><a href="#topic+NSplits">NSplits</a>()</code>,
+<code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+PathLengths">PathLengths</a>()</code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
+<code><a href="#topic+TipLabels">TipLabels</a>()</code>,
+<code><a href="#topic+TreeIsRooted">TreeIsRooted</a>()</code>
+</p>
+<p>Other tree navigation: 
+<code><a href="#topic+AncestorEdge">AncestorEdge</a>()</code>,
+<code><a href="#topic+CladeSizes">CladeSizes</a>()</code>,
+<code><a href="#topic+DescendantEdges">DescendantEdges</a>()</code>,
+<code><a href="#topic+EdgeAncestry">EdgeAncestry</a>()</code>,
+<code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
+<code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
+<code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
+<code><a href="#topic+NDescendants">NDescendants</a>()</code>,
+<code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeOrder">NodeOrder</a>()</code>,
+<code><a href="#topic+RootNode">RootNode</a>()</code>
+</p>
 
 <hr>
 <h2 id='NodeOrder'>Number of edges incident to each node in a tree</h2><span id='topic+NodeOrder'></span>
@@ -4550,8 +4826,10 @@ entries are named with the number of each node.
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+RootNode">RootNode</a>()</code>
 </p>
 
@@ -4925,7 +5203,9 @@ the specified objects, or in a binary tree with <code>x</code> tips.
 
 <p>Other tree properties: 
 <code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+PathLengths">PathLengths</a>()</code>,
 <code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
@@ -4936,8 +5216,8 @@ the specified objects, or in a binary tree with <code>x</code> tips.
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>,
@@ -5011,7 +5291,9 @@ object in <code>phy</code>.
 
 <p>Other tree properties: 
 <code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+PathLengths">PathLengths</a>()</code>,
 <code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
@@ -5022,8 +5304,8 @@ object in <code>phy</code>.
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>,
@@ -5149,8 +5431,10 @@ to the root); <code>end</code> lists the shallowest node (i.e. that closest to a
 
 <p>Other tree properties: 
 <code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TreeIsRooted">TreeIsRooted</a>()</code>
@@ -5211,8 +5495,8 @@ represented by a zero bit
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>,
@@ -5342,7 +5626,7 @@ maximum one matrix per file.  Continuous characters will be read as strings
 Errors pertaining to an <code style="white-space: pre;">&#8288;invalid multibyte string&#8288;</code> or
 <code style="white-space: pre;">&#8288;string invalid at that locale&#8288;</code> indicate that R has failed to detect
 the appropriate encoding.  Either
-<a href="https://support.posit.co/hc/en-us/articles/200532197">re-save the file</a>
+<a href="https://support.posit.co/hc/en-us/articles/200532197-Character-Encoding-in-the-RStudio-IDE">re-save the file</a>
 in a supported encoding (<code>UTF-8</code> is a good choice) or
 specify the file encoding (which you can find by, for example, opening in
 <a href="https://notepad-plus-plus.org/downloads/">Notepad++</a> and identifying
@@ -5608,7 +5892,7 @@ object of class <code>phylo</code>.
 <h3>Value</h3>
 
 <p><code>ReadTntTree()</code> returns a tree of class <code>phylo</code> in
-<a href="#topic+TNTOrder">TNTOrder</a><code>tnt</code> order,
+<a href="#topic+TNTOrder">TNT order</a>,
 corresponding to the tree in <code>filepath</code>, or NULL if no trees are found.
 </p>
 
@@ -5833,8 +6117,8 @@ representation numbered to match <code>tipOrder</code>.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
-<code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
 <code><a href="#topic+Renumber">Renumber</a>()</code>,
+<code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -6078,7 +6362,8 @@ advice.
 following the preorder convention for edge and node numbering.
 </p>
 <p><code>RenumberEdges()</code> formats the output of <code>RenumberTree()</code> into a list
-whose two entries correspond to the new parent and child vectors.
+whose two entries correspond to the new parent and child vectors,
+in preorder.
 </p>
 <p><code>ApePostorder()</code>, <code>Cladewise()</code>, <code>Postorder()</code>, <code>Preorder()</code> and
 <code>Pruningwise()</code> each return a tree of class <code>phylo</code> with nodes following the
@@ -6143,8 +6428,8 @@ Smith from <code>.reorder_ape()</code> in <span class="pkg">ape</span> (Emmanuel
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
-<code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+Renumber">Renumber</a>()</code>,
+<code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -6294,8 +6579,8 @@ never / sometimes does attach to them.</p>
 <tr><td><code id="RoguePlot_+3A_outgrouptips">outgroupTips</code></td>
 <td>
 <p>Vector of type character, integer or logical, specifying
-the names or indices of the tips to include in the outgroup.  If
-<code>outgroupTips</code> is a of type character, and a tree contains multiple tips
+the names or indices of the tips to include in the outgroup.
+If <code>outgroupTips</code> is a of type character, and a tree contains multiple tips
 with a matching label, the first will be used.</p>
 </td></tr>
 <tr><td><code id="RoguePlot_+3A_sort">sort</code></td>
@@ -6346,6 +6631,10 @@ of the consensus tree;
 in which the rogue leaf is attached to an edge collapsed into each node
 of the consensus tree.
 </p>
+</li>
+<li> <p><code>legendLabels</code>: A character vector suggesting labels for a plot legend;
+suitable for <code>PlotTools::SpectrumLegend(legend = x$legendLabels)</code>.
+</p>
 </li></ul>
 
 
@@ -6372,8 +6661,8 @@ of the consensus tree.
 <h3>See Also</h3>
 
 <p>Other consensus tree functions: 
-<code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
-<code><a href="#topic+Consensus">Consensus</a>()</code>
+<code><a href="#topic+Consensus">Consensus</a>()</code>,
+<code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>
 </p>
 
 
@@ -6388,8 +6677,60 @@ of the consensus tree.
               read.tree(text = "(a, (b, ((c, d), (rogue, (e, f)))));"),
               read.tree(text = "(a, (b, ((c, (rogue, d)), (e, f))));"),
               read.tree(text = "(a, (b, (c, (d, (rogue, (e, f))))));"))
-RoguePlot(trees, "rogue", legend = "topleft", legend.inset = 0.02)
+plotted &lt;- RoguePlot(trees, "rogue", legend = "topleft", legend.inset = 0.02)
+PlotTools::SpectrumLegend(
+  "bottomleft",
+  palette = colorRampPalette(c(par("fg"), "#009E73"), space = "Lab")(100),
+  legend = plotted$legendLabels,
+  cex = 0.4
+)
 </code></pre>
+
+<hr>
+<h2 id='root_on_node'>Wrapper for internal C function <code>root_on_node()</code></h2><span id='topic+root_on_node'></span>
+
+<h3>Description</h3>
+
+<p>Direct entry point to <code>root_on_node()</code>; recommended for expert use only.
+<code>RootTree()</code> checks that input is properly formatted and is recommended
+for general use.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>root_on_node(phy, outgroup)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="root_on_node_+3A_phy">phy</code></td>
+<td>
+<p>Minimally, a named list with entries <code>edge</code> and <code>Nnode</code>, in the
+format of equivalent entries in a tree of class <code>phylo</code>. <code>edge.length</code> will
+also be considered if supplied.</p>
+</td></tr>
+<tr><td><code id="root_on_node_+3A_outgroup">outgroup</code></td>
+<td>
+<p>Integer specifying index of leaf or node to set as the
+outgroup.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p><code>root_on_node()</code> returns <code>phy</code> rooted on the specified node.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p><a href="https://orcid.org/0000-0001-5660-1727">Martin R. Smith</a>
+(<a href="mailto:martin.smith@durham.ac.uk">martin.smith@durham.ac.uk</a>)
+</p>
 
 <hr>
 <h2 id='RootNode'>Which node is a tree's root?</h2><span id='topic+RootNode'></span>
@@ -6448,8 +6789,10 @@ Badly conformed trees trigger an error.
 <code><a href="#topic+EdgeDistances">EdgeDistances</a>()</code>,
 <code><a href="#topic+ListAncestors">ListAncestors</a>()</code>,
 <code><a href="#topic+MRCA">MRCA</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NDescendants">NDescendants</a>()</code>,
 <code><a href="#topic+NodeDepth">NodeDepth</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+NodeOrder">NodeOrder</a>()</code>
 </p>
 
@@ -6497,8 +6840,8 @@ of class <code>list</code> or <code>multiPhylo</code>.</p>
 <tr><td><code id="RootTree_+3A_outgrouptips">outgroupTips</code></td>
 <td>
 <p>Vector of type character, integer or logical, specifying
-the names or indices of the tips to include in the outgroup.  If
-<code>outgroupTips</code> is a of type character, and a tree contains multiple tips
+the names or indices of the tips to include in the outgroup.
+If <code>outgroupTips</code> is a of type character, and a tree contains multiple tips
 with a matching label, the first will be used.</p>
 </td></tr>
 <tr><td><code id="RootTree_+3A_node">node</code></td>
@@ -6516,7 +6859,7 @@ with a matching label, the first will be used.</p>
 
 <p><code>RootTree()</code> returns a tree of class <code>phylo</code>, rooted on the smallest
 clade that contains the specified tips, with edges and nodes numbered in
-preorder.
+preorder. Node labels are not retained.
 </p>
 <p><code>RootOnNode()</code> returns a tree of class <code>phylo</code>, rooted on the
 requested <code>node</code> and ordered in <code><a href="#topic+Preorder">Preorder</a></code>.
@@ -6552,9 +6895,9 @@ having collapsed the first child of the root node in each tree.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
 <code><a href="#topic+TipTimedTree">TipTimedTree</a>()</code>,
@@ -6886,9 +7229,9 @@ object.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
 <code><a href="#topic+TipTimedTree">TipTimedTree</a>()</code>,
@@ -7134,8 +7477,8 @@ Use as.Splits instead.
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>,
@@ -7580,8 +7923,10 @@ of unique non-trivial splits in a binary tree with <em>n</em> leaves.
 
 <p>Other tree properties: 
 <code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+PathLengths">PathLengths</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TreeIsRooted">TreeIsRooted</a>()</code>
@@ -8005,9 +8350,9 @@ clade extracted from the original tree.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+TipTimedTree">TipTimedTree</a>()</code>,
@@ -8122,7 +8467,7 @@ LabelSplits(cons, splitFreqs, unit = "%",
 </code></pre>
 
 <hr>
-<h2 id='TipLabels'>Extract tip labels</h2><span id='topic+TipLabels'></span><span id='topic+TipLabels.matrix'></span><span id='topic+TipLabels.phylo'></span><span id='topic+TipLabels.default'></span><span id='topic+TipLabels.phyDat'></span><span id='topic+TipLabels.MixedBase'></span><span id='topic+TipLabels.TreeNumber'></span><span id='topic+TipLabels.Splits'></span><span id='topic+TipLabels.list'></span><span id='topic+AllTipLabels'></span><span id='topic+AllTipLabels.list'></span><span id='topic+AllTipLabels.multiPhylo'></span><span id='topic+AllTipLabels.phylo'></span><span id='topic+AllTipLabels.Splits'></span><span id='topic+AllTipLabels.TreeNumber'></span><span id='topic+AllTipLabels.matrix'></span><span id='topic+TipLabels.multiPhylo'></span><span id='topic+TipLabels.character'></span><span id='topic+TipLabels.numeric'></span>
+<h2 id='TipLabels'>Extract tip labels</h2><span id='topic+TipLabels'></span><span id='topic+TipLabels.default'></span><span id='topic+TipLabels.matrix'></span><span id='topic+TipLabels.logical'></span><span id='topic+TipLabels.phylo'></span><span id='topic+TipLabels.phyDat'></span><span id='topic+TipLabels.MixedBase'></span><span id='topic+TipLabels.TreeNumber'></span><span id='topic+TipLabels.Splits'></span><span id='topic+TipLabels.list'></span><span id='topic+TipLabels.multiPhylo'></span><span id='topic+TipLabels.character'></span><span id='topic+TipLabels.numeric'></span><span id='topic+AllTipLabels'></span><span id='topic+AllTipLabels.list'></span><span id='topic+AllTipLabels.multiPhylo'></span><span id='topic+AllTipLabels.phylo'></span><span id='topic+AllTipLabels.Splits'></span><span id='topic+AllTipLabels.TreeNumber'></span><span id='topic+AllTipLabels.matrix'></span>
 
 <h3>Description</h3>
 
@@ -8136,13 +8481,16 @@ where entries of a list of trees may pertain to different taxa.
 
 <pre><code class='language-R'>TipLabels(x, single = TRUE)
 
+## Default S3 method:
+TipLabels(x, single = TRUE)
+
 ## S3 method for class 'matrix'
 TipLabels(x, single = TRUE)
 
-## S3 method for class 'phylo'
+## S3 method for class 'logical'
 TipLabels(x, single = TRUE)
 
-## Default S3 method:
+## S3 method for class 'phylo'
 TipLabels(x, single = TRUE)
 
 ## S3 method for class 'phyDat'
@@ -8160,6 +8508,18 @@ TipLabels(x, single = TRUE)
 ## S3 method for class 'list'
 TipLabels(x, single = FALSE)
 
+## S3 method for class 'multiPhylo'
+TipLabels(x, single = FALSE)
+
+## S3 method for class 'character'
+TipLabels(x, single = TRUE)
+
+## S3 method for class 'numeric'
+TipLabels(x, single = TRUE)
+
+## S3 method for class 'phyDat'
+TipLabels(x, single = TRUE)
+
 AllTipLabels(x)
 
 ## S3 method for class 'list'
@@ -8179,21 +8539,6 @@ AllTipLabels(x)
 
 ## S3 method for class 'matrix'
 AllTipLabels(x)
-
-## S3 method for class 'multiPhylo'
-TipLabels(x, single = FALSE)
-
-## S3 method for class 'character'
-TipLabels(x, single = TRUE)
-
-## S3 method for class 'numeric'
-TipLabels(x, single = TRUE)
-
-## S3 method for class 'phyDat'
-TipLabels(x, single = TRUE)
-
-## Default S3 method:
-TipLabels(x, single = TRUE)
 </code></pre>
 
 
@@ -8231,8 +8576,10 @@ appropriate to <code>x</code>. If <code>x</code> is a single integer, this will 
 
 <p>Other tree properties: 
 <code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+PathLengths">PathLengths</a>()</code>,
 <code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TreeIsRooted">TreeIsRooted</a>()</code>
@@ -8243,8 +8590,8 @@ appropriate to <code>x</code>. If <code>x</code> is a single integer, this will 
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>,
 <code><a href="#topic+xor">xor</a>()</code>
@@ -8337,8 +8684,8 @@ splits two tips from ten has an imbalance of 10 - 2 = 8.
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>,
 <code><a href="#topic+xor">xor</a>()</code>
@@ -8425,9 +8772,9 @@ ages of each tip.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -8597,8 +8944,10 @@ resolved.
 
 <p>Other tree properties: 
 <code><a href="#topic+ConsensusWithout">ConsensusWithout</a>()</code>,
+<code><a href="#topic+MatchEdges">MatchEdges</a>()</code>,
 <code><a href="#topic+NSplits">NSplits</a>()</code>,
 <code><a href="#topic+NTip">NTip</a>()</code>,
+<code><a href="#topic+NodeNumbers">NodeNumbers</a>()</code>,
 <code><a href="#topic+PathLengths">PathLengths</a>()</code>,
 <code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>
@@ -9103,9 +9452,9 @@ tip with the specified label.
 <code><a href="#topic+KeptVerts">KeptVerts</a>()</code>,
 <code><a href="#topic+LeafLabelInterchange">LeafLabelInterchange</a>()</code>,
 <code><a href="#topic+MakeTreeBinary">MakeTreeBinary</a>()</code>,
+<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RenumberTips">RenumberTips</a>()</code>,
 <code><a href="#topic+RenumberTree">RenumberTree</a>()</code>,
-<code><a href="#topic+Renumber">Renumber</a>()</code>,
 <code><a href="#topic+RootTree">RootTree</a>()</code>,
 <code><a href="#topic+SortTree">SortTree</a>()</code>,
 <code><a href="#topic+Subtree">Subtree</a>()</code>,
@@ -9646,8 +9995,8 @@ xor(x, y)
 <code><a href="#topic+NTip">NTip</a>()</code>,
 <code><a href="#topic+PolarizeSplits">PolarizeSplits</a>()</code>,
 <code><a href="#topic+SplitFrequency">SplitFrequency</a>()</code>,
-<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+Splits">Splits</a></code>,
+<code><a href="#topic+SplitsInBinaryTree">SplitsInBinaryTree</a>()</code>,
 <code><a href="#topic+TipLabels">TipLabels</a>()</code>,
 <code><a href="#topic+TipsInSplits">TipsInSplits</a>()</code>,
 <code><a href="#topic+match.Splits">match.Splits</a></code>

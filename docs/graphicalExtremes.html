@@ -34,6 +34,7 @@ function processMathHTML() {
 <li><a href='#computeLimits'><p>Compute plot limits</p></a></li>
 <li><a href='#danube'><p>Upper Danube basin dataset</p></a></li>
 <li><a href='#data2mpareto'><p>Data standardization to multivariate Pareto scale</p></a></li>
+<li><a href='#eglatent'><p>Learning extremal graph structure with latent variables</p></a></li>
 <li><a href='#eglearn'><p>Learning extremal graph structure</p></a></li>
 <li><a href='#emp_chi'><p>Empirical estimation of extremal correlation matrix <code class="reqn">\chi</code></p></a></li>
 <li><a href='#emp_chi_multdim'><p>Empirical estimation of extremal correlation <code class="reqn">\chi</code></p></a></li>
@@ -67,6 +68,7 @@ function processMathHTML() {
 <li><a href='#get_small_tol'><p>Tolerances to be used in computations</p></a></li>
 <li><a href='#getDanubeFlowGraph'><p>Get Danube flow graph</p></a></li>
 <li><a href='#getFlightDelayData'><p>Get filtered flight delays</p></a></li>
+<li><a href='#getFlightGraph'><p>Get flight graph</p></a></li>
 <li><a href='#getPackageData'><p>Get package data</p></a></li>
 <li><a href='#getSubMatrixForSubgraph'><p>Get the submatrix corresponding to a subgraph</p></a></li>
 <li><a href='#graphs_equal'><p>Graph equality</p></a></li>
@@ -109,7 +111,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.1</td>
+<td>0.3.2</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -154,7 +156,7 @@ bookdown, maps</td>
 <tr>
 <td>Imports:</td>
 <td>igraph (&ge; 1.2.4.1), mvtnorm (&ge; 1.0.10), Rdpack, stats (&ge;
-3.6.0), utils, corpcor, osqp, glmnet, glassoFast, edmcr</td>
+3.6.0), utils, corpcor, osqp, glmnet, glassoFast, edmcr, CVXR</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -178,7 +180,7 @@ bookdown, maps</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-22 15:21:22 UTC; manuel</td>
+<td>2024-04-18 14:18:13 UTC; Manuel</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -193,7 +195,7 @@ bookdown, maps</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-22 16:30:02 UTC</td>
+<td>2024-04-18 16:43:32 UTC</td>
 </tr>
 </table>
 <hr>
@@ -1307,6 +1309,7 @@ of rows in the original <code>data</code> matrix that are above the threshold.
 <code><a href="#topic+loglik_HR">loglik_HR</a>()</code>
 </p>
 <p>Other structure estimation methods:
+<code><a href="#topic+eglatent">eglatent</a>()</code>,
 <code><a href="#topic+eglearn">eglearn</a>()</code>,
 <code><a href="#topic+emst">emst</a>()</code>,
 <code><a href="#topic+fit_graph_to_Theta">fit_graph_to_Theta</a>()</code>
@@ -1330,6 +1333,120 @@ my_data &lt;- rmstable(n, "HR", d = d, par = G)
 data2mpareto(my_data, p)
 
 </code></pre>
+
+<hr>
+<h2 id='eglatent'>Learning extremal graph structure with latent variables</h2><span id='topic+eglatent'></span>
+
+<h3>Description</h3>
+
+<p>Following the methodology from Engelke and Taeb (2024),
+fits an extremal graph structure with latent variables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>eglatent(
+  Gamma,
+  lam1_list = c(0.1, 0.15, 0.19, 0.205),
+  lam2_list = c(2),
+  refit = TRUE,
+  verbose = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="eglatent_+3A_gamma">Gamma</code></td>
+<td>
+<p>conditionally negative semidefinite matrix. This will be typically the empirical variogram matrix.</p>
+</td></tr>
+<tr><td><code id="eglatent_+3A_lam1_list">lam1_list</code></td>
+<td>
+<p>Numeric vector of non-negative regularization parameters for eglatent.
+Default is <code>lam1_list = c(0.1, 0.15, 0.19, 0.205)</code>.</p>
+</td></tr>
+<tr><td><code id="eglatent_+3A_lam2_list">lam2_list</code></td>
+<td>
+<p>Numeric vector of non-negative regularization parameters for eglatent.
+Default is <code>lam2_list = c(2)</code>.</p>
+</td></tr>
+<tr><td><code id="eglatent_+3A_refit">refit</code></td>
+<td>
+<p>Logical scalar, if TRUE then the model is refit on the estimated graph to obtain an estimate of the Gamma matrix on that graph.
+Default is <code>refit = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="eglatent_+3A_verbose">verbose</code></td>
+<td>
+<p>Logical scalar, indicating whether to print progress updates.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The function fits one model for each combination
+of values in <code>lam1_list</code> and <code>lam2_list</code>. All returned objects
+have one entry per model. List consisting of:
+#' </p>
+<table>
+<tr><td><code>graph</code></td>
+<td>
+
+<p>A list of <code><a href="igraph.html#topic+make_graph">igraph::graph</a></code> objects representing the
+fitted graphs.
+</p>
+</td></tr>
+<tr><td><code>rk</code></td>
+<td>
+
+<p>Numeric vector containing the estimated ranks of the latent
+variables.
+</p>
+</td></tr>
+<tr><td><code>G_est</code></td>
+<td>
+
+<p>A list of numeric estimated <code class="reqn">d \times d</code>
+variogram matrices <code class="reqn">\Gamma</code> corresponding to the fitted graphs.
+</p>
+</td></tr>
+<tr><td><code>G_refit</code></td>
+<td>
+
+<p>A list of numeric estimated <code class="reqn">d \times d</code>
+variogram matrices <code class="reqn">\Gamma</code> refitted with fixed graphs
+corresponding to the fitted graphs.
+</p>
+</td></tr>
+<tr><td><code>lambdas</code></td>
+<td>
+
+<p>A list containing the values of <code>lam1_list</code> and <code>lam2_list</code>
+used for the model fit.
+</p>
+</td></tr>
+</table>
+
+
+<h3>References</h3>
+
+<p>Engelke S, Taeb A (2024).
+&ldquo;Extremal graphical modeling with latent variables.&rdquo;
+2403.09604.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other structure estimation methods:
+<code><a href="#topic+data2mpareto">data2mpareto</a>()</code>,
+<code><a href="#topic+eglearn">eglearn</a>()</code>,
+<code><a href="#topic+emst">emst</a>()</code>,
+<code><a href="#topic+fit_graph_to_Theta">fit_graph_to_Theta</a>()</code>
+</p>
 
 <hr>
 <h2 id='eglearn'>Learning extremal graph structure</h2><span id='topic+eglearn'></span>
@@ -1459,6 +1576,7 @@ graph is not connected, it returns a list of <code>NULL</code>.
 
 <p>Other structure estimation methods:
 <code><a href="#topic+data2mpareto">data2mpareto</a>()</code>,
+<code><a href="#topic+eglatent">eglatent</a>()</code>,
 <code><a href="#topic+emst">emst</a>()</code>,
 <code><a href="#topic+fit_graph_to_Theta">fit_graph_to_Theta</a>()</code>
 </p>
@@ -1794,6 +1912,7 @@ corresponding to the fitted minimum spanning tree.
 
 <p>Other structure estimation methods:
 <code><a href="#topic+data2mpareto">data2mpareto</a>()</code>,
+<code><a href="#topic+eglatent">eglatent</a>()</code>,
 <code><a href="#topic+eglearn">eglearn</a>()</code>,
 <code><a href="#topic+fit_graph_to_Theta">fit_graph_to_Theta</a>()</code>
 </p>
@@ -2085,6 +2204,7 @@ correspond to high absolute values in Theta.
 
 <p>Other structure estimation methods:
 <code><a href="#topic+data2mpareto">data2mpareto</a>()</code>,
+<code><a href="#topic+eglatent">eglatent</a>()</code>,
 <code><a href="#topic+eglearn">eglearn</a>()</code>,
 <code><a href="#topic+emst">emst</a>()</code>
 </p>
@@ -2171,6 +2291,7 @@ Each row represents one connection with &gt;=1 flights in the input matrix.
 <p>Other flight data related topics:
 <code><a href="#topic+flights">flights</a></code>,
 <code><a href="#topic+getFlightDelayData">getFlightDelayData</a>()</code>,
+<code><a href="#topic+getFlightGraph">getFlightGraph</a>()</code>,
 <code><a href="#topic+plotFlights">plotFlights</a>()</code>
 </p>
 
@@ -2316,6 +2437,7 @@ Some entries are missing, which is indicated by <code>NA</code>s.
 <p>Other flight data related topics:
 <code><a href="#topic+flightCountMatrixToConnectionList">flightCountMatrixToConnectionList</a>()</code>,
 <code><a href="#topic+getFlightDelayData">getFlightDelayData</a>()</code>,
+<code><a href="#topic+getFlightGraph">getFlightGraph</a>()</code>,
 <code><a href="#topic+plotFlights">plotFlights</a>()</code>
 </p>
 <p>Other datasets:
@@ -3564,8 +3686,70 @@ with dimensions corresponding to dates, airports, and delay types.
 <p>Other flight data related topics:
 <code><a href="#topic+flightCountMatrixToConnectionList">flightCountMatrixToConnectionList</a>()</code>,
 <code><a href="#topic+flights">flights</a></code>,
+<code><a href="#topic+getFlightGraph">getFlightGraph</a>()</code>,
 <code><a href="#topic+plotFlights">plotFlights</a>()</code>
 </p>
+
+<hr>
+<h2 id='getFlightGraph'>Get flight graph</h2><span id='topic+getFlightGraph'></span>
+
+<h3>Description</h3>
+
+<p>Convert the info from <code>flights$flightCounts</code> to an <code><a href="igraph.html#topic+make_graph">igraph::graph</a></code> object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>getFlightGraph(IATAs = NULL, years = NULL, minNFlights = 1, directed = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="getFlightGraph_+3A_iatas">IATAs</code></td>
+<td>
+<p>Character vector. IATA codes of airports to include</p>
+</td></tr>
+<tr><td><code id="getFlightGraph_+3A_years">years</code></td>
+<td>
+<p>Character vector. Years to include (as strings).</p>
+</td></tr>
+<tr><td><code id="getFlightGraph_+3A_minnflights">minNFlights</code></td>
+<td>
+<p>Numerical scalar. Minimum number of flights on a connection to
+be included as an edge.</p>
+</td></tr>
+<tr><td><code id="getFlightGraph_+3A_directed">directed</code></td>
+<td>
+<p>Logical scalar. Whether flights A-&gt;B and B-&gt;A should be considered separately.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>An <code><a href="igraph.html#topic+make_graph">igraph::graph</a></code> object containing a vertex for each airport
+and an edge whenever there are at least <code>minNFlights</code> between two airports.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other flight data related topics:
+<code><a href="#topic+flightCountMatrixToConnectionList">flightCountMatrixToConnectionList</a>()</code>,
+<code><a href="#topic+flights">flights</a></code>,
+<code><a href="#topic+getFlightDelayData">getFlightDelayData</a>()</code>,
+<code><a href="#topic+plotFlights">plotFlights</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>g &lt;- getFlightGraph()
+
+</code></pre>
 
 <hr>
 <h2 id='getPackageData'>Get package data</h2><span id='topic+getPackageData'></span>
@@ -4412,7 +4596,8 @@ If it is a positive scalar, the plot limits are extended by that factor.</p>
 <p>Other flight data related topics:
 <code><a href="#topic+flightCountMatrixToConnectionList">flightCountMatrixToConnectionList</a>()</code>,
 <code><a href="#topic+flights">flights</a></code>,
-<code><a href="#topic+getFlightDelayData">getFlightDelayData</a>()</code>
+<code><a href="#topic+getFlightDelayData">getFlightDelayData</a>()</code>,
+<code><a href="#topic+getFlightGraph">getFlightGraph</a>()</code>
 </p>
 
 

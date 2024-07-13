@@ -28,6 +28,7 @@ function processMathHTML() {
 <li><a href='#sim_ame'><p>Compute average marginal effects</p></a></li>
 <li><a href='#sim_apply'><p>Apply a function to simulated parameter values</p></a></li>
 <li><a href='#sim_setx'><p>Compute predictions and first differences at set values</p></a></li>
+<li><a href='#transform.clarify_est'><p>#' Transform and combine <code>clarify_est</code> objects</p></a></li>
 </ul>
 </div>
 <hr>
@@ -44,7 +45,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.2.0</td>
+<td>0.2.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -65,7 +66,7 @@ function processMathHTML() {
 <tr>
 <td>Imports:</td>
 <td>ggplot2 (&ge; 3.4.0), pbapply (&ge; 1.7-0), chk (&ge; 0.9.0), rlang
-(&ge; 1.0.6), insight (&ge; 0.19.2), marginaleffects (&ge; 0.14.0),
+(&ge; 1.0.6), insight (&ge; 0.19.11), marginaleffects (&ge; 0.20.0),
 mvnfast (&ge; 0.2.6)</td>
 </tr>
 <tr>
@@ -81,7 +82,7 @@ sandwich</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -101,7 +102,7 @@ sandwich</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-21 15:59:36 UTC; NoahGreifer</td>
+<td>2024-05-30 16:19:45 UTC; ngreifer</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -123,7 +124,7 @@ sandwich</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-21 20:10:02 UTC</td>
+<td>2024-05-30 16:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -450,7 +451,7 @@ confint(object, parm, level = 0.95, method = "quantile", ...)
 </p>
 <p>When <code>method = "wald"</code>, the standard deviation of the simulation estimates is used as the standard error, which is used in the z-statistics and the confidence intervals. The p-values and confidence intervals are valid only when the sampling distribution of the resulting statistic is normal (which can be assessed using <code>plot()</code>). When <code>method = "quantile"</code>, the confidence interval is calculated using the quantiles of the simulation estimates corresponding to <code>level</code>, and the p-value is calculated as twice the proportion of simulation estimates less than or greater than <code>null</code>, whichever is smaller; this is equivalent to inverting the confidence interval but is only truly valid when the true sampling distribution is only a location shift from the sampling distribution under the null hypothesis and should therefore be interpreted with caution. Using <code style="white-space: pre;">&#8288;"method = "quantile"&#8288;</code> (the default) is recommended because the confidence intervals will be valid even if the sampling distribution is not Normally distributed. The precision of the p-values and confidence intervals depends on the number of simulations requested (the value of <code>n</code> supplied to <code><a href="#topic+sim">sim()</a></code>).
 </p>
-<p>The plots are produced using <code><a href="ggplot2.html#topic+geom_density">ggplot2::geom_density()</a></code> and can be customized with <span class="pkg">ggplot2</span> functions.
+<p>The plots are produced using <code><a href="ggplot2.html#topic+geom_density">ggplot2::geom_density()</a></code> and can be customized with <span class="pkg">ggplot2</span> functions. When <code>reference = TRUE</code>, a reference Normal distribution is produced using the empirical mean and standard deviation of the simulated values. A blue references line is plotted at the median of the simulated values. For Wald-based inference to be valid, the reference distribution should overlap with the empirical distribution, in which case the quantile-based and Wald-based intervals should be similar. For quantile-based inference to be valid, the median of the estimates should overlap with the estimated value; this is a necessary but not sufficient condition, though.
 </p>
 
 
@@ -832,8 +833,6 @@ details. If <code>NULL</code>, no parallelization will take place.</p>
 </p>
 <p>The AMEF is the derivative of the ADRF; if we call the derivative of the ADRF at each point a &quot;treatment effect&quot; (i.e., the rate at which the outcome changes corresponding to a small change in the predictor, or &quot;treatment&quot;), the AMEF is a function that relates the size of the treatment effect to the level of the treatment. The shape of the AMEF is usually of less importance than the value of the AMEF at each level of the predictor, which corresponds to the size of the treatment effect at the corresponding level. The AMEF is computed by computing the ADRF at each level of the focal predictor specified in <code>at</code>, shifting the predictor value by a tiny amount (control by <code>eps</code>), and computing the ratio of the change in the outcome to the shift, then averaging this value across all units. This quantity is related the the average marginal effect of a continuous predictor as computed by <code><a href="#topic+sim_ame">sim_ame()</a></code>, but rather than average these treatment effects across all observed levels of the treatment, the AMEF is a function evaluated at each possible level of the treatment. The &quot;tiny amount&quot; used is <code>eps</code> times the standard deviation of <code>var</code>.
 </p>
-<p>If unit-level weights are included in the model fit (and discoverable using <code><a href="insight.html#topic+get_weights">insight::get_weights()</a></code>), all means will be computed as weighted means.
-</p>
 
 
 <h3>Value</h3>
@@ -852,7 +851,7 @@ named <code>dY/d({x})|{a}</code> where <code>{x}</code> is replaced with <code>v
 quantities for simulation-based inference; <code><a href="#topic+summary.clarify_est">summary.clarify_est()</a></code> for computing
 p-values and confidence intervals for the estimated quantities.
 </p>
-<p><code>marginaleffects::marginaleffects()</code> and <code>marginaleffects::predictions()</code> for delta method-based implementations of computing average marginal effects and average marginal means.
+<p><code><a href="marginaleffects.html#topic+slopes">marginaleffects::avg_slopes()</a></code> and <code><a href="marginaleffects.html#topic+predictions">marginaleffects::avg_predictions()</a></code> for delta method-based implementations of computing average marginal effects and average marginal means.
 </p>
 
 
@@ -902,7 +901,10 @@ plot(est_diff) + ggplot2::labs(y = "Diff")
 
 <h3>Description</h3>
 
-<p><code>sim_ame()</code> is a wrapper for <code><a href="#topic+sim_apply">sim_apply()</a></code> that computes average marginal effects, the average effect of changing a single variable from one value to another (i.e., from one category to another for categorical variables or a tiny change for continuous variables).
+<p><code>sim_ame()</code> is a wrapper for <code><a href="#topic+sim_apply">sim_apply()</a></code> that computes average
+marginal effects, the average effect of changing a single variable from one
+value to another (i.e., from one category to another for categorical
+variables or a tiny change for continuous variables).
 </p>
 
 
@@ -936,31 +938,53 @@ print(x, digits = NULL, max.ests = 6, ...)
 </td></tr>
 <tr><td><code id="sim_ame_+3A_var">var</code></td>
 <td>
-<p>either the name of a variable for which marginal effects are to be computed or a named list of length one containing the values the variable should take. If a list is supplied or the named variables is categorical (factor, character, or having two values), categorical calculations will be triggered. Otherwise, continuous calculations will be triggered. See Details.</p>
+<p>either the names of the variables for which marginal effects are
+to be computed or a named list containing the values the variables should
+take. See Details.</p>
 </td></tr>
 <tr><td><code id="sim_ame_+3A_subset">subset</code></td>
 <td>
-<p>optional; a vector used to subset the data used to compute the marginal effects. This will be evaluated within the original dataset used to fit the model using <code><a href="base.html#topic+subset">subset()</a></code>, so nonstandard evaluation is allowed.</p>
+<p>optional; a vector used to subset the data used to compute the
+marginal effects. This will be evaluated within the original dataset used
+to fit the model using <code><a href="base.html#topic+subset">subset()</a></code>, so nonstandard evaluation is allowed.</p>
 </td></tr>
 <tr><td><code id="sim_ame_+3A_by">by</code></td>
 <td>
-<p>a one-sided formula or character vector containing the names of variables for which to stratify the estimates. Each quantity will be computed within each level of the complete cross of the variables specified in <code>by</code>.</p>
+<p>a one-sided formula or character vector containing the names of
+variables for which to stratify the estimates. Each quantity will be
+computed within each level of the complete cross of the variables specified
+in <code>by</code>.</p>
 </td></tr>
 <tr><td><code id="sim_ame_+3A_contrast">contrast</code></td>
 <td>
-<p>a string containing the name of a contrast between the average marginal means when the variable named in <code>var</code> is categorical and takes on two values. Allowed options include <code>"diff"</code> for the difference in means (also <code>"rd"</code>), <code>"rr"</code> for the risk ratio (also <code>"irr"</code>), <code style="white-space: pre;">&#8288;"log(rr):&#8288;</code> for the log risk ratio (also <code>"log(irr)"</code>), <code>"sr"</code> for the survival ratio, <code style="white-space: pre;">&#8288;"log(sr):&#8288;</code> for the log survival ratio, <code>"srr"</code> for the switch relative risk (also <code>"grrr"</code>), <code>"or"</code> for the odds ratio, <code>"log(or)"</code> for the log odds ratio, and <code>"nnt"</code> for the number needed to treat. These options are not case sensitive, but the parentheses must be included if present.</p>
+<p>a string containing the name of a contrast between the
+average marginal means when the variable named in <code>var</code> is categorical and
+takes on two values. Allowed options include <code>"diff"</code> for the difference in
+means (also <code>"rd"</code>), <code>"rr"</code> for the risk ratio (also <code>"irr"</code>), <code style="white-space: pre;">&#8288;"log(rr):&#8288;</code>
+for the log risk ratio (also <code>"log(irr)"</code>), <code>"sr"</code> for the survival ratio,
+<code style="white-space: pre;">&#8288;"log(sr):&#8288;</code> for the log survival ratio, <code>"srr"</code> for the switch relative
+risk (also <code>"grrr"</code>), <code>"or"</code> for the odds ratio, <code>"log(or)"</code> for the log
+odds ratio, and <code>"nnt"</code> for the number needed to treat. These options are
+not case sensitive, but the parentheses must be included if present.</p>
 </td></tr>
 <tr><td><code id="sim_ame_+3A_outcome">outcome</code></td>
 <td>
-<p>a string containing the name of the outcome or outcome level for multivariate (multiple outcomes) or multi-category outcomes. Ignored for univariate (single outcome) and binary outcomes.</p>
+<p>a string containing the name of the outcome or outcome level
+for multivariate (multiple outcomes) or multi-category outcomes. Ignored
+for univariate (single outcome) and binary outcomes.</p>
 </td></tr>
 <tr><td><code id="sim_ame_+3A_type">type</code></td>
 <td>
-<p>a string containing the type of predicted values (e.g., the link or the response). Passed to <code><a href="marginaleffects.html#topic+get_predict">marginaleffects::get_predict()</a></code> and eventually to <code>predict()</code> in most cases. The default and allowable option depend on the type of model supplied, but almost always corresponds to the response scale (e.g., predicted probabilities for binomial models).</p>
+<p>a string containing the type of predicted values (e.g., the link
+or the response). Passed to <code><a href="marginaleffects.html#topic+get_predict">marginaleffects::get_predict()</a></code> and eventually
+to <code>predict()</code> in most cases. The default and allowable option depend on
+the type of model supplied, but almost always corresponds to the response
+scale (e.g., predicted probabilities for binomial models).</p>
 </td></tr>
 <tr><td><code id="sim_ame_+3A_eps">eps</code></td>
 <td>
-<p>when the variable named in <code>var</code> is continuous, the value by which to change the variable values to approximate the derivative. See Details.</p>
+<p>when the variable named in <code>var</code> is continuous, the value by which
+to change the variable values to approximate the derivative. See Details.</p>
 </td></tr>
 <tr><td><code id="sim_ame_+3A_verbose">verbose</code></td>
 <td>
@@ -995,60 +1019,98 @@ details. If <code>NULL</code>, no parallelization will take place.</p>
 
 <h3>Details</h3>
 
-<p><code>sim_ame()</code> operates differently depending on whether continuous or categorical calculations are triggered. To trigger categorical calculations, <code>var</code> should be a string naming a factor, character, or binary variable or a named list with specific values given (e.g., <code>var = list(x1 = c(1, 2 ,3))</code>). Otherwise, continuous calculations are triggered.
+<p><code>sim_ame()</code> computes average adjusted predictions or average marginal effects depending on which variables are named in <code>var</code> and how they are specified. Canonically, <code>var</code> should be specified as a named list with the value(s) each variable should be set to. For example, specifying <code>var = list(x1 = 0:1)</code> computes average adjusted predictions setting <code>x1</code> to 0 and 1. Specifying a variable's values as <code>NULL</code>, e.g., <code>list(x1 = NULL)</code>, is equivalent to requesting average adjusted predictions at each unique value of the variable when that variable is binary or a factor or character and requests the average marginal effect of that variable otherwise. Specifying an unnamed entry in the list with a string containing the value of that variable, e.g., <code>list("x1")</code> is equivalent to specifying <code>list(x1 = NULL)</code>. Similarly, supplying a vector with the names of the variables is equivalent to specifying a list, e.g., <code>var = "x1"</code> is equivalent to <code>var = list(x1 = NULL)</code>.
 </p>
-<p>Categorical calculations involve computing average marginal means at each level of <code>var</code>. The average marginal mean is the average predicted outcome value after setting all units' value of <code>var</code> to one level. (This quantity has several names, including the average potential outcome, average adjusted prediction, and standardized mean). When <code>var</code> only takes on two levels (or it is supplied as a list and only two values are specified), a contrast between the average marginal means can be computed by supplying an argument to <code>contrast</code>. Contrasts can be manually computed using <code><a href="base.html#topic+transform">transform()</a></code> afterward as well.
+<p>Multiple variables can be supplied to <code>var</code> at the same time to set the corresponding variables to those values. If all values are specified directly or the variables are categorical, e.g., <code>list(x1 = 0:1, x2 = c(5, 10))</code>, this computes average adjusted predictions at each combination of the supplied variables. If any one variable's values is specified as <code>NULL</code> and the variable is continuous, the average marginal effect of that variable will be computed with the other variables set to their corresponding combinations. For example, if <code>x2</code> is a continuous variable, specifying <code>var = list(x1 = 0:1, x2 = NULL)</code> requests the average marginal effect of <code>x2</code> computed first setting <code>x1</code> to 0 and then setting <code>x1</code> to 1. The average marginal effect can only be computed for one variable at a time.
 </p>
-<p>Continuous calculations involve computing the average of marginal effects of <code>var</code> across units. A marginal effect is the instantaneous rate of change corresponding to changing a unit's observed value of <code>var</code> by a tiny amount and considering to what degree the predicted outcome changes. The ratio of the change in the predicted outcome to the change in the value of <code>var</code> is the marginal effect; these are averaged across the sample to arrive at an average marginal effect. The &quot;tiny amount&quot; used is <code>eps</code> times the standard deviation of the focal variable.
+<p>Below are some examples of specifications and what they request, assuming <code>x1</code> is a binary variable taking on values of 0 and 1 and <code>x2</code> is a continuous variable:
 </p>
-<p>If unit-level weights are included in the model fit (and discoverable using <code><a href="insight.html#topic+get_weights">insight::get_weights()</a></code>), all means will be computed as weighted means.
+
+<ul>
+<li> <p><code>list(x1 = 0:1)</code>, <code>list(x1 = NULL)</code>, <code>list("x1")</code>, <code>"x1"</code> &ndash; the average adjusted predictions setting <code>x1</code> to 0 and to 1
+</p>
+</li>
+<li> <p><code>list(x2 = NULL)</code>, <code>list("x2")</code>, <code>"x2"</code> &ndash; the average marginal effect of <code>x2</code>
+</p>
+</li>
+<li> <p><code>list(x2 = c(5, 10))</code> &ndash; the average adjusted predictions setting <code>x2</code> to 5 and to 10
+</p>
+</li>
+<li> <p><code>list(x1 = 0:1, x2 = c(5, 10))</code>, <code>list("x1", x2 = c(5, 10))</code> &ndash; the average adjusted predictions setting <code>x1</code> and <code>x2</code> in a full cross of 0, 1 and 5, 10, respectively (e.g., (0, 5), (0, 10), (1, 5), and (1, 10))
+</p>
+</li>
+<li> <p><code>list(x1 = 0:1, "x2")</code>, <code>list("x1", "x2")</code>, <code>c("x1", "x2")</code> &ndash; the average marginal effects of <code>x2</code> setting <code>x1</code> to 0 and to 1
+</p>
+</li></ul>
+
+<p>The average adjusted prediction is the average predicted outcome
+value after setting all units' value of a variable to a specified level. (This quantity
+has several names, including the average potential outcome, average marginal mean, and standardized mean). When exactly two average adjusted predictions are requested, a contrast
+between them can be requested by supplying an argument
+to <code>contrast</code> (see Effect Measures section below). Contrasts can be manually computed using <code><a href="base.html#topic+transform">transform()</a></code>
+afterward as well; this is required when multiple average adjusted predictions are requested (i.e., because a single variable was supplied to <code>var</code> with more than two levels or a combination of multiple variables was supplied).
+</p>
+<p>A marginal effect is the instantaneous rate of change
+corresponding to changing a unit's observed value of a variable by a tiny amount
+and considering to what degree the predicted outcome changes. The ratio of
+the change in the predicted outcome to the change in the value of the variable is
+the marginal effect; these are averaged across the sample to arrive at an
+average marginal effect. The &quot;tiny amount&quot; used is <code>eps</code> times the standard
+deviation of the focal variable.
+</p>
+<p>The difference between using <code>by</code> or <code>subset</code> vs. <code>var</code> is that <code>by</code> and <code>subset</code> subset the data when computing the requested quantity, whereas <code>var</code> sets the corresponding variable to given a value for all units. For example, using <code>by = ~v</code> computes the quantity of interest separately for each subset of the data defined by <code>v</code>, whereas setting <code>var = list(., "v")</code> computes the quantity of interest for all units setting their value of <code>v</code> to its unique values. The resulting quantities have different interpretations. Both <code>by</code> and <code>var</code> can be used simultaneously.
 </p>
 
 
 <h4>Effect measures</h4>
 
-<p>The effect measures specified in <code>contrast</code> are defined below. Typically only <code>"diff"</code> is appropriate for continuous outcomes and <code>"diff"</code> or <code>"irr"</code> are appropriate for count outcomes; the rest are appropriate for binary outcomes. For a focal variable with two levels, <code>0</code> and <code>1</code>, and an outcome <code>Y</code>, the average marginal means will be denoted in the below formulas as <code>E[Y(0)]</code> and <code>E[Y(1)]</code>, respectively.</p>
+<p>The effect measures specified in <code>contrast</code> are defined below. Typically only
+<code>"diff"</code> is appropriate for continuous outcomes and <code>"diff"</code> or <code>"irr"</code> are
+appropriate for count outcomes; the rest are appropriate for binary outcomes.
+For a focal variable with two levels, <code>0</code> and <code>1</code>, and an outcome <code>Y</code>, the
+average marginal means will be denoted in the below formulas as <code>E[Y(0)]</code> and
+<code>E[Y(1)]</code>, respectively.</p>
 
 <table>
 <tr>
  <td style="text-align: left;">
-   <code>contrast</code> </td><td style="text-align: left;"> Formula </td>
+   <code>contrast</code> </td><td style="text-align: left;"> <strong>Description</strong> </td><td style="text-align: left;"> <strong>Formula</strong> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-   <code>"diff"</code> </td><td style="text-align: left;"> <code>E[Y(1)] - E[Y(0)]</code> </td>
+   <code>"diff"</code>/<code>"rd"</code> </td><td style="text-align: left;"> Mean/risk difference </td><td style="text-align: left;"> <code>E[Y(1)] - E[Y(0)]</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-   <code>"rr"</code> </td><td style="text-align: left;"> <code>E[Y(1)] / E[Y(0)]</code> </td>
+   <code>"rr"</code>/<code>"irr"</code> </td><td style="text-align: left;"> Risk ratio/incidence rate ratio </td><td style="text-align: left;"> <code>E[Y(1)] / E[Y(0)]</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-   <code>"sr"</code> </td><td style="text-align: left;"> <code>(1 - E[Y(1)]) / (1 - E[Y(0)])</code> </td>
+   <code>"sr"</code> </td><td style="text-align: left;"> Survival ratio </td><td style="text-align: left;"> <code>(1 - E[Y(1)]) / (1 - E[Y(0)])</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-   <code>"srr"</code> </td><td style="text-align: left;"> <code>1 - sr</code> if  <code>E[Y(1)] &gt; E[Y(0)]</code> </td>
+   <code>"srr"</code>/<code>"grrr"</code> </td><td style="text-align: left;"> Switch risk ratio </td><td style="text-align: left;"> <code>1 - sr</code> if <code>E[Y(1)] &gt; E[Y(0)]</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-    </td><td style="text-align: left;"> <code>rr - 1</code> if <code>E[Y(1)] &lt; E[Y(0)]</code> </td>
+    </td><td style="text-align: left;">  </td><td style="text-align: left;"> <code>rr - 1</code> if <code>E[Y(1)] &lt; E[Y(0)]</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-    </td><td style="text-align: left;"> <code>0</code> otherwise </td>
+    </td><td style="text-align: left;">  </td><td style="text-align: left;"> <code>0</code> otherwise </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-   <code>"or"</code> </td><td style="text-align: left;"> <code>O[Y(1)] / O[Y(0)]</code> </td>
+   <code>"or"</code> </td><td style="text-align: left;"> Odds ratio </td><td style="text-align: left;"> <code>O[Y(1)] / O[Y(0)]</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-    </td><td style="text-align: left;"> where <code>O[Y(.)]</code> = <code>E[Y(.)] / (1 - E[Y(.)])</code> </td>
+    </td><td style="text-align: left;">  </td><td style="text-align: left;"> where <code>O[Y(.)]</code> = <code>E[Y(.)] / (1 - E[Y(.)])</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
-   <code>"nnt"</code> </td><td style="text-align: left;"> <code>1 / (E[Y(1)] - E[Y(0)])</code> </td>
+   <code>"nnt"</code> </td><td style="text-align: left;"> Number needed to treat </td><td style="text-align: left;"> <code>1 / rd</code> </td>
 </tr>
 <tr>
  <td style="text-align: left;">
@@ -1057,19 +1119,25 @@ details. If <code>NULL</code>, no parallelization will take place.</p>
 
 </table>
 
-<p>The <code>log(.)</code> versions are defined by taking the <code><a href="base.html#topic+log">log()</a></code> (natural log) of the corresponding effect measure.
+<p>The <code>log(.)</code> versions are defined by taking the <code><a href="base.html#topic+log">log()</a></code> (natural log) of the
+corresponding effect measure.
 </p>
 
 
 
 <h3>Value</h3>
 
-<p>A <code>clarify_ame</code> object, which inherits from <code>clarify_est</code> and is similar to
-the output of <code>sim_apply()</code>, with the additional attributes <code>"var"</code> containing
-the variable named in <code>var</code> and <code>"by"</code> containing the names of the variables specified in <code>by</code> (if any). The average adjusted predictions will be named
-<code>E[Y({v})]</code>, where <code>{v}</code> is replaced with the values the focal variable
-(<code>var</code>) takes on. The average marginal effect for a continuous <code>var</code> will be
-named <code>E[dY/d({x})]</code> where <code>{x}</code> is replaced with <code>var</code>. When <code>by</code> is specified, the average adjusted predictions will be named <code>E[Y({v})|{b}]</code> and the average marginel effect <code>E[dY/d({x})|{b}]</code> where <code>{b}</code> is a comma-separated list of of values of the <code>by</code> variables at which the quantity is computed. See examples.
+<p>A <code>clarify_ame</code> object, which inherits from <code>clarify_est</code> and is
+similar to the output of <code>sim_apply()</code>, with the additional attributes
+<code>"var"</code> containing the variable values specified in <code>var</code> and <code>"by"</code> containing the
+names of the variables specified in <code>by</code> (if any). The average adjusted
+predictions will be named <code>E[Y({v})]</code>, where <code>{v}</code> is replaced with the
+values the variables named in <code>var</code> take on. The average marginal effect for a
+continuous <code>var</code> will be named <code>E[dY/d({x})]</code> where <code>{x}</code> is replaced with
+<code>var</code>. When <code>by</code> is specified, the average adjusted predictions will be named
+<code>E[Y({v})|{b}]</code> and the average marginal effect <code>E[dY/d({x})|{b}]</code> where
+<code>{b}</code> is a comma-separated list of of values of the <code>by</code> variables at which
+the quantity is computed. See examples.
 </p>
 
 
@@ -1080,7 +1148,7 @@ quantities for simulation-based inference; <code><a href="#topic+plot.clarify_es
 output of a call to <code>sim_ame()</code>; <code><a href="#topic+summary.clarify_est">summary.clarify_est()</a></code> for computing
 p-values and confidence intervals for the estimated quantities.
 </p>
-<p><code>marginaleffects::marginaleffects()</code>, <code>marginaleffects::comparisons()</code>, and <code>margins::margins()</code> for delta method-based implementations of computing average marginal effects.
+<p><code><a href="marginaleffects.html#topic+predictions">marginaleffects::avg_predictions()</a></code>, <code><a href="marginaleffects.html#topic+comparisons">marginaleffects::avg_comparisons()</a></code> and <code><a href="marginaleffects.html#topic+slopes">marginaleffects::avg_slopes()</a></code> for delta method-based implementations of computing average marginal effects.
 </p>
 
 
@@ -1133,7 +1201,7 @@ est &lt;- sim_ame(s, var = "treat", by = ~married,
 est
 summary(est)
 
-# Average marginal effect of `re74` within levels of
+# Average marginal effect of `age` within levels of
 # married*race
 est &lt;- sim_ame(s, var = "age", by = ~married + race,
                verbose = FALSE)
@@ -1146,6 +1214,15 @@ est_diff &lt;- est[4:6] - est[1:3]
 names(est_diff) &lt;- paste0("AME_diff|", levels(lalonde$race))
 summary(est_diff)
 
+# Average adjusted predictions at a combination of `treat`
+# and `married`
+est &lt;- sim_ame(s, var = c("treat", "married"),
+               verbose = FALSE)
+est
+
+# Average marginal effect of `age` setting `married` to 1
+est &lt;- sim_ame(s, var = list("age", married = 1),
+               verbose = FALSE)
 </code></pre>
 
 <hr>
@@ -1503,6 +1580,113 @@ est &lt;- sim_setx(s, x = data.frame(treat = 0, race = "hispan"),
 summary(est)
 plot(est)
 
+</code></pre>
+
+<hr>
+<h2 id='transform.clarify_est'>#' Transform and combine <code>clarify_est</code> objects</h2><span id='topic+transform.clarify_est'></span><span id='topic+cbind.clarify_est'></span>
+
+<h3>Description</h3>
+
+<p><code>transform()</code> modifies a <code>clarify_est</code> object by allowing for the calculation of new quantities from the existing quantities without re-simulating them. <code>cbind()</code> binds two <code>clarify_est</code> objects together.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'clarify_est'
+transform(`_data`, ...)
+
+## S3 method for class 'clarify_est'
+cbind(..., deparse.level = 1)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="transform.clarify_est_+3A__data">_data</code></td>
+<td>
+<p>the <code>clarify_est</code> object to be transformed.</p>
+</td></tr>
+<tr><td><code id="transform.clarify_est_+3A_...">...</code></td>
+<td>
+<p>for <code>transform()</code>, arguments in the form <code>name = value</code>, where <code>name</code> is the name of a new quantity to be computed and <code>value</code> is an expression that is a function of the existing quantities corresponding to the new quantity to be computed. See Details. For <code>cbind()</code>, <code>clarify_est</code> objects to be combined.</p>
+</td></tr>
+<tr><td><code id="transform.clarify_est_+3A_deparse.level">deparse.level</code></td>
+<td>
+<p>ignored.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>For <code>transform()</code>, the expression on the right side of the <code>=</code> should use the names of the existing quantities (e.g., <code>`E[Y(1)]` - `E[Y(1)]`</code>), with <code style="white-space: pre;">&#8288;`&#8288;</code> appropriately included when the quantity name include parentheses or brackets. Alternatively, it can use indexes prefixed by <code>.b</code>, e.g., <code>.b2 - .b1</code>, to refer to the corresponding quantity by position. This can aid in computing derived quantities of quantities with complicated names. (Note that if a quantity is named something like <code>.b1</code>, it will need to be referred to by position rather than name, as the position-based label takes precedence). See examples. Setting an existing value to <code>NULL</code> will remove that quantity from the object.
+</p>
+<p><code>cbind()</code> does not rename the quanities or check for uniqueness of the names, so it is important to rename them yourself prior to combining the objects.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <code>clarify_est</code> object, either with new columns added (when using <code>transform()</code>) or combining two <code>clarify_est</code> objects. Note that any type attributes corresponding to the <code>sim_apply()</code> wrapper used (e.g., <code>sim_ame()</code>) is lost when using either function. This can affect any helper functions (e.g., <code>plot()</code>) designed to work with the output of specific wrappers.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="base.html#topic+transform">transform()</a></code>, <code><a href="base.html#topic+cbind">cbind()</a></code>, <code><a href="#topic+sim">sim()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data("lalonde", package = "MatchIt")
+
+# Fit the model
+fit &lt;- lm(re78 ~ treat * (age + educ + race +
+             married + re74 + re75),
+           data = lalonde)
+
+# Simulate coefficients
+set.seed(123)
+s &lt;- sim(fit, n = 100)
+
+# Average adjusted predictions for `treat` within
+# subsets of `race`
+est_b &lt;- sim_ame(s, var = "treat", verbose = FALSE,
+                 subset = race == "black")
+est_b
+
+est_h &lt;- sim_ame(s, var = "treat", verbose = FALSE,
+                 subset = race == "hispan")
+est_h
+
+# Compute differences between adjusted predictions
+est_b &lt;- transform(est_b,
+                   diff = `E[Y(1)]` - `E[Y(0)]`)
+est_b
+
+est_h &lt;- transform(est_h,
+                   diff = `E[Y(1)]` - `E[Y(0)]`)
+est_h
+
+# Bind estimates together after renaming
+names(est_b) &lt;- paste0(names(est_b), "_b")
+names(est_h) &lt;- paste0(names(est_h), "_h")
+
+est &lt;- cbind(est_b, est_h)
+est
+
+# Compute difference in race-specific differences
+est &lt;- transform(est,
+                 `diff-diff` = .b6 - .b3)
+
+summary(est,
+        parm = c("diff_b", "diff_h", "diff-diff"))
+
+# Remove last quantity by using `NULL`
+transform(est, `diff-diff` = NULL)
 </code></pre>
 
 </main>

@@ -19,6 +19,7 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#bits'><p>Bayesian Iterated Screening (ultra-high, high or low dimensional).</p></a></li>
+<li><a href='#mip.sven'><p>Compute marginal inclusion probabilities from a fitted &quot;sven&quot; object.</p></a></li>
 <li><a href='#predict.sven'><p>Make predictions from a fitted &quot;sven&quot; object.</p></a></li>
 <li><a href='#sven'><p>Selection of variables with embedded screening using Bayesian methods (SVEN)</p>
 in Gaussian linear models (ultra-high, high or low dimensional).</a></li>
@@ -38,11 +39,11 @@ in Gaussian linear models (ultra-high, high or low dimensional).</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.3.1</td>
+<td>3.2.1</td>
 </tr>
 <tr>
 <td>Author:</td>
-<td>Dongjin Li [aut, cre], Somak Dutta [aut], Vivekananda Roy [ctb]</td>
+<td>Dongjin Li [aut, cre], Debarshi Chakraborty[aut], Somak Dutta [aut], Vivekananda Roy [ctb]</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -78,11 +79,11 @@ in Gaussian linear models (ultra-high, high or low dimensional).</a></li>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-08-25 02:23:29 UTC; somakd</td>
+<td>2024-05-13 17:41:06 UTC; somakd</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -90,7 +91,7 @@ in Gaussian linear models (ultra-high, high or low dimensional).</a></li>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-08-26 22:40:02 UTC</td>
+<td>2024-05-13 19:13:07 UTC</td>
 </tr>
 </table>
 <hr>
@@ -188,6 +189,71 @@ y &lt;- 0.5 + X %*% TrueBeta + rnorm(n)
 res&lt;-bits(X,y, pp=TRUE)
 res$model.pp # the vector of screened model
 res$postprobs # the log (unnormalized) posterior probabilities corresponding to the model.pp.
+</code></pre>
+
+<hr>
+<h2 id='mip.sven'>Compute marginal inclusion probabilities from a fitted &quot;sven&quot; object.</h2><span id='topic+mip.sven'></span>
+
+<h3>Description</h3>
+
+<p>This function computes the marginal inclusion probabilities of all variables from
+a fitted &quot;sven&quot; object.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>mip.sven(object, threshold = 0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="mip.sven_+3A_object">object</code></td>
+<td>
+<p>A fitted &quot;sven&quot; object</p>
+</td></tr>
+<tr><td><code id="mip.sven_+3A_threshold">threshold</code></td>
+<td>
+<p>marginal inclusion probabilities above this threshold are stored. Default 0.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The object returned is a data frame if the <code>sven</code> was run with a single matrix, 
+or a list of two data frames if <code>sven</code> was run with a list of two matrices.
+The first column are the variable names (or numbers if column names of were absent). 
+Only the nonzero marginal inclusion probabilities are stored.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Somak Dutta<br /> Maintainer:
+Somak Dutta &lt;somakd@iastate.edu&gt;
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+n &lt;- 50; p &lt;- 100; nonzero &lt;- 3
+trueidx &lt;- 1:3
+truebeta &lt;- c(4,5,6)
+X &lt;- matrix(rnorm(n*p), n, p) # n x p covariate matrix
+y &lt;- 0.5 + X[,trueidx] %*% truebeta + rnorm(n)
+res &lt;- sven(X=X, y=y)
+res$model.map # the MAP model
+mip.sven(res)
+
+Z &lt;- matrix(rnorm(n*p), n, p) # another covariate matrix
+y2 = 0.5 + X[,trueidx] %*% truebeta  + Z[,1:2] %*% c(-2,-2) + rnorm(n)
+res2 &lt;- sven(X=list(X,Z), y=y2)
+mip.sven(res2) # two data frames, one for X and another for Z
+
 </code></pre>
 
 <hr>
@@ -332,7 +398,7 @@ based screening and using fast Cholesky updates, SVEN produces a highly scalable
 algorithm to explore gigantic model spaces and rapidly identify the regions of 
 high posterior probabilities. It outputs the log (unnormalized) posterior 
 probability of a set of best (highest probability) models. 
-For more details, see Li et al. (2020).
+For more details, see Li et al. (2023, https://doi.org/10.1080/10618600.2022.2074428)
 </p>
 
 
@@ -341,15 +407,15 @@ For more details, see Li et al. (2020).
 <pre><code class='language-R'>sven(
   X,
   y,
-  w = sqrt(nrow(X))/ncol(X),
-  lam = nrow(X)/ncol(X)^2,
-  Ntemp = 3,
-  Tmax = (log(log(ncol(X))) + log(ncol(X))),
+  w = NULL,
+  lam = NULL,
+  Ntemp = 10,
+  Tmax = NULL,
   Miter = 50,
   wam.threshold = 0.5,
   log.eps = -16,
   L = 20,
-  verbose = TRUE
+  verbose = FALSE
 )
 </code></pre>
 
@@ -359,10 +425,11 @@ For more details, see Li et al. (2020).
 <table>
 <tr><td><code id="sven_+3A_x">X</code></td>
 <td>
-<p>The <code class="reqn">n\times p</code> covariate matrix without intercept. The following classes are supported:
-<code>matrix</code> and <code>dgCMatrix</code>. Every care is taken not to make copies of this (typically)
-giant matrix. No need to center or scale this matrix manually. Scaling is performed implicitly and 
-regression coefficient are returned on the original scale.</p>
+<p>The <code class="reqn">n\times p</code> covariate matrix or list of two matrices without intercept. 
+The following classes are supported: <code>matrix</code> and <code>dgCMatrix</code>. Every care is taken not to make copies of these (typically)
+giant matrices. No need to center or scale these matrices manually. Scaling is performed implicitly and 
+regression coefficient are returned on the original scale. Typically, in a combined GWAS-TWAS type 
+analysis, <code>X[[1]]</code> should be a sparse matrix and <code>X[[2]]</code> should be a dense matrix.</p>
 </td></tr>
 <tr><td><code id="sven_+3A_y">y</code></td>
 <td>
@@ -370,16 +437,19 @@ regression coefficient are returned on the original scale.</p>
 </td></tr>
 <tr><td><code id="sven_+3A_w">w</code></td>
 <td>
-<p>The prior inclusion probability of each variable. Default: <code class="reqn">sqrt(n)/p</code>.</p>
+<p>The prior inclusion probability of each variable. Default: NULL, whence it is set as
+<code class="reqn">\sqrt{n}/p</code> if <code class="reqn">X</code> is a matrix. Or <code class="reqn">(\sqrt{n}/p_1,\sqrt{n}/p_2)</code> if $X$ is a list of 
+two matrices with <code class="reqn">p_1</code> and <code class="reqn">p_2</code> columns.</p>
 </td></tr>
 <tr><td><code id="sven_+3A_lam">lam</code></td>
 <td>
-<p>The slab precision parameter. Default: <code class="reqn">n/p^2</code>
-as suggested by the theory of Li et al. (2020).</p>
+<p>The slab precision parameter. Default: NULL, whence it is set as <code class="reqn">n/p^2</code> for 
+as suggested by the theory of Li et al. (2023). Similarly, it's a vector of length two with values
+<code class="reqn">\sqrt{n}/P_1^2</code> and <code class="reqn">\sqrt{n}/p_2^2</code> when <code>X</code> is a list.</p>
 </td></tr>
 <tr><td><code id="sven_+3A_ntemp">Ntemp</code></td>
 <td>
-<p>The number of temperatures. Default: 3.</p>
+<p>The number of temperatures. Default: 10.</p>
 </td></tr>
 <tr><td><code id="sven_+3A_tmax">Tmax</code></td>
 <td>
@@ -405,7 +475,7 @@ probability is greater than the threshold. Default: 0.5.</p>
 </td></tr>
 <tr><td><code id="sven_+3A_verbose">verbose</code></td>
 <td>
-<p>If <code>TRUE</code>, the function prints the current temperature SVEN is at; the default is TRUE.</p>
+<p>If <code>FALSE</code>, the function prints the current temperature SVEN is at; the default is TRUE.</p>
 </td></tr>
 </table>
 
@@ -465,7 +535,15 @@ for the <code class="reqn">j</code>th variable as </p>
 <p>Then, the WAM is defined as the model containing variables <code class="reqn">j</code> with 
 <code class="reqn">\hat\pi_j &gt; \code{wam.threshold}</code>. SVEN also provides all the top <code class="reqn">K</code> models which
 are stored in an <code class="reqn">p \times K</code> sparse matrix, along with their corresponding log (unnormalized) 
-posterior probabilities.
+posterior probabilities. 
+</p>
+<p>When <code>X</code> is a list with two matrices, say, <code>W</code> and <code>Z</code>, the above method is extended 
+to <code>ncol(W)+ncol(Z)</code> dimensional regression. However, the hyperparameters <code>lam</code> and <code>w</code>
+are chosen separately for the two matrices, the default values being  <code>nrow(W)/ncol(W)^2</code>
+and <code>nrow(Z)/ncol(Z)^2</code> for <code>lam</code> and <code>sqrt(nrow(W))/ncol(W)</code> and
+<code>sqrt(nrow(Z))/ncol(Z)</code> for <code>w</code>.
+</p>
+<p>The marginal inclusion probabities can be extracted by using the function <code>mip</code>.
 </p>
 
 
@@ -523,39 +601,42 @@ corresponding to the top models.</p>
 
 <h3>Author(s)</h3>
 
-<p>Dongjin Li and Somak Dutta<br /> Maintainer:
-Dongjin Li &lt;dongjl@iastate.edu&gt;
+<p>Dongjin Li, Debarshi Chakraborty, and Somak Dutta<br /> Maintainer:
+Dongjin Li &lt;liyangxiaobei@gmail.com&gt;
 </p>
 
 
 <h3>References</h3>
 
-<p>Li, D., Dutta, S., Roy, V.(2020) Model Based Screening Embedded Bayesian 
-Variable Selection for Ultra-high Dimensional Settings http://arxiv.org/abs/2006.07561
+<p>Li, D., Dutta, S., and Roy, V. (2023). Model based screening embedded Bayesian variable 
+selection for ultra-high dimensional settings. Journal of Computational and Graphical Statistics, 
+32(1), 61-73.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>[mip.sven()] for marginal inclusion probabilities, [predict.sven()](via [predict()]) for prediction for .
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>n=50; p=100; nonzero = 3
+<pre><code class='language-R'>
+n &lt;- 50; p &lt;- 100; nonzero &lt;- 3
 trueidx &lt;- 1:3
-nonzero.value &lt;- 5
-TrueBeta &lt;- numeric(p)
-TrueBeta[trueidx] &lt;- nonzero.value
-
-rho &lt;- 0.6
-x1 &lt;- matrix(rnorm(n*p), n, p)
-X &lt;- sqrt(1-rho)*x1 + sqrt(rho)*rnorm(n)
-y &lt;- 0.5 + X %*% TrueBeta + rnorm(n)
+truebeta &lt;- c(4,5,6)
+X &lt;- matrix(rnorm(n*p), n, p) # n x p covariate matrix
+y &lt;- 0.5 + X[,trueidx] %*% truebeta + rnorm(n)
 res &lt;- sven(X=X, y=y)
 res$model.map # the MAP model
-res$model.wam # the WAM
-res$mip.map # the marginal inclusion probabilities of the variables in the MAP model
-res$mip.wam # the marginal inclusion probabilities of the variables in the WAM
-res$pprob.top # the log (unnormalized) posterior probabilities corresponding to the top models.
 
-res$beta.map # the ridge estimator of regression coefficients in the MAP model 
-res$beta.wam # the ridge estimator of regression coefficients in the WAM
+
+Z &lt;- matrix(rnorm(n*p), n, p) # another covariate matrix
+y2 = 0.5 + X[,trueidx] %*% truebeta  + Z[,1:2] %*% c(-2,-2) + rnorm(n)
+res2 &lt;- sven(X=list(X,Z), y=y2)
+
+
 </code></pre>
 
 </main>

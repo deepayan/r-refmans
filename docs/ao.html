@@ -20,6 +20,8 @@ function processMathHTML() {
 <ul class="menu">
 <li><a href='#ao-package'><p>ao: Alternating Optimization</p></a></li>
 <li><a href='#ao'><p>Alternating Optimization</p></a></li>
+<li><a href='#ao_input_check'><p>Input checks</p></a></li>
+<li><a href='#Procedure'><p>Procedure Object</p></a></li>
 </ul>
 </div>
 <hr>
@@ -32,13 +34,15 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.3</td>
+<td>1.0.0</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Alternating optimization of (high-dimensional) functions is an 
-    iterative procedure for optimizing jointly over all parameters by 
-    alternately optimizing parameter subsets.</td>
+<td>Alternating optimization is an iterative procedure that optimizes 
+    a function by alternately performing restricted optimization over individual 
+    parameter subsets. Instead of tackling joint optimization directly, it 
+    breaks the problem down into simpler sub-problems. This approach can make 
+    optimization feasible when joint optimization is too difficult.</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -62,11 +66,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>checkmate, cli, oeli, utils</td>
+<td>checkmate, cli, oeli (&ge; 0.5.2), R6, stats, utils</td>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>knitr, rmarkdown, testthat (&ge; 3.0.0)</td>
+<td>ggplot2, knitr, rmarkdown, testthat (&ge; 3.0.0)</td>
 </tr>
 <tr>
 <td>Config/testthat/edition:</td>
@@ -78,7 +82,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Depends:</td>
-<td>R (&ge; 4.0.0), optimizeR (&ge; 1.0.4)</td>
+<td>R (&ge; 4.0.0), optimizeR (&ge; 1.1.1)</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -86,12 +90,13 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-29 20:05:27 UTC; Oelschlaeger</td>
+<td>2024-06-20 13:06:11 UTC; Lennart Oelschläger</td>
 </tr>
 <tr>
 <td>Author:</td>
 <td>Lennart Oelschläger
-    <a href="https://orcid.org/0000-0001-5421-9313"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut, cre]</td>
+    <a href="https://orcid.org/0000-0001-5421-9313"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut, cre],
+  Siddhartha Chib [ctb]</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -103,7 +108,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-29 21:12:46 UTC</td>
+<td>2024-06-20 13:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -113,7 +118,7 @@ function processMathHTML() {
 
 <p><img src="../help/figures/logo.png" style='float: right' alt='logo' width='120' />
 </p>
-<p>Alternating optimization of (high-dimensional) functions is an iterative procedure for optimizing jointly over all parameters by alternately optimizing parameter subsets.
+<p>Alternating optimization is an iterative procedure that optimizes a function by alternately performing restricted optimization over individual parameter subsets. Instead of tackling joint optimization directly, it breaks the problem down into simpler sub-problems. This approach can make optimization feasible when joint optimization is too difficult.
 </p>
 
 
@@ -121,6 +126,14 @@ function processMathHTML() {
 
 <p><strong>Maintainer</strong>: Lennart Oelschläger <a href="mailto:oelschlaeger.lennart@gmail.com">oelschlaeger.lennart@gmail.com</a> (<a href="https://orcid.org/0000-0001-5421-9313">ORCID</a>)
 </p>
+<p>Other contributors:
+</p>
+
+<ul>
+<li><p> Siddhartha Chib <a href="mailto:chib@wustl.edu">chib@wustl.edu</a> [contributor]
+</p>
+</li></ul>
+
 
 
 <h3>See Also</h3>
@@ -145,7 +158,9 @@ function processMathHTML() {
 
 <h3>Description</h3>
 
-<p>This function performs alternating optimization of the function <code>f</code>.
+<p>Alternating optimization is an iterative procedure for optimizing a
+real-valued function jointly over all its parameters by alternating
+restricted optimization over parameter partitions.
 </p>
 
 
@@ -153,14 +168,23 @@ function processMathHTML() {
 
 <pre><code class='language-R'>ao(
   f,
-  p,
+  initial,
+  target = NULL,
+  npar = NULL,
+  gradient = NULL,
   ...,
-  partition = as.list(1:length(p)),
-  base_optimizer = optimizeR::Optimizer$new("stats::optim"),
-  iterations = 10,
-  tolerance = 1e-06,
-  f_partition = vector(mode = "list", length = length(partition)),
-  joint_end = FALSE,
+  partition = "sequential",
+  new_block_probability = 0.3,
+  minimum_block_number = 2,
+  minimize = TRUE,
+  lower = -Inf,
+  upper = Inf,
+  iteration_limit = Inf,
+  seconds_limit = Inf,
+  tolerance_value = 1e-06,
+  tolerance_parameter = 1e-06,
+  tolerance_parameter_norm = function(x, y) sqrt(sum((x - y)^2)),
+  base_optimizer = Optimizer$new("stats::optim", method = "L-BFGS-B"),
   verbose = FALSE
 )
 </code></pre>
@@ -171,104 +195,200 @@ function processMathHTML() {
 <table>
 <tr><td><code id="ao_+3A_f">f</code></td>
 <td>
-<p>A <code>function</code> to be optimized, returning a single <code>numeric</code>.
-The first argument of <code>f</code> must be a <code>numeric</code> of the same length as
-<code>p</code> followed by any other arguments specified by the <code>...</code>
-argument.</p>
+<p>(<code>function</code>)<br />
+A <code>function</code> to be optimized, returning a single <code>numeric</code> value.
+</p>
+<p>The first argument of <code>f</code> should be a <code>numeric</code> of the same length
+as <code>initial</code>, followed by any other arguments specified by the
+<code>...</code> argument.
+</p>
+<p>If <code>f</code> is to be optimized over an argument other than the first, or more
+than one argument, this has to be specified via the <code>target</code> argument.</p>
 </td></tr>
-<tr><td><code id="ao_+3A_p">p</code></td>
+<tr><td><code id="ao_+3A_initial">initial</code></td>
 <td>
-<p>A <code>numeric</code> vector, the starting parameter values for the optimization.</p>
+<p>(<code>numeric()</code>)<br />
+The starting parameter values for the target argument(s).</p>
+</td></tr>
+<tr><td><code id="ao_+3A_target">target</code></td>
+<td>
+<p>(<code>character()</code> or <code>NULL</code>)<br />
+The name(s) of the argument(s) over which <code>f</code> gets optimized.
+</p>
+<p>This can only be <code>numeric</code> arguments.
+</p>
+<p>Can be <code>NULL</code> (default), then it is the first argument of <code>f</code>.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_npar">npar</code></td>
+<td>
+<p>(<code>integer()</code>)<br />
+The length of the target argument(s).
+</p>
+<p>Must be specified if more than two target arguments are specified via
+the <code>target</code> argument.
+</p>
+<p>Can be <code>NULL</code> if there is only one target argument, in which case <code>npar</code> is
+set to be <code>length(initial)</code>.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_gradient">gradient</code></td>
+<td>
+<p>(<code>function</code> or <code>NULL</code>)<br />
+A <code>function</code> that returns the gradient of <code>f</code>.
+</p>
+<p>The function call of <code>gradient</code> must be identical to <code>f</code>.
+</p>
+<p>Can be <code>NULL</code>, in which case a finite-difference approximation will be used.</p>
 </td></tr>
 <tr><td><code id="ao_+3A_...">...</code></td>
 <td>
-<p>Additional arguments to be passed to <code>f</code>.</p>
+<p>Additional arguments to be passed to <code>f</code> (and <code>gradient</code>).</p>
 </td></tr>
 <tr><td><code id="ao_+3A_partition">partition</code></td>
 <td>
-<p>A <code>list</code> of vectors of indices of <code>p</code>, specifying the partition of
-the parameter vector in the alternating optimization process.
-The default is <code>as.list(1:length(p))</code>, i.e. each parameter is
-optimized separately.
-Parameter indices can be members of multiple subsets.</p>
-</td></tr>
-<tr><td><code id="ao_+3A_base_optimizer">base_optimizer</code></td>
-<td>
-<p>An <code>Optimizer</code> object, which can be created via
-<code><a href="optimizeR.html#topic+Optimizer">Optimizer</a></code>.
-It numerically solves the optimization problems in the partitions.</p>
-</td></tr>
-<tr><td><code id="ao_+3A_iterations">iterations</code></td>
-<td>
-<p>An <code>integer</code>, the maximum number of iterations through
-<code>partitions</code> before the alternating optimization process is terminated.
-Can also be <code>Inf</code>, in which case <code>tolerance</code> is responsible for the
-termination.
-The default is <code>10</code>.</p>
-</td></tr>
-<tr><td><code id="ao_+3A_tolerance">tolerance</code></td>
-<td>
-<p>A non-negative <code>numeric</code>. The alternating optimization terminates
-prematurely (i.e., before <code>interations</code> is reached) if the euclidean
-distance between the current estimate and the one from the last iteration is
-smaller than <code>tolerance</code>.
-The default is <code>1e-6</code>.</p>
-</td></tr>
-<tr><td><code id="ao_+3A_f_partition">f_partition</code></td>
-<td>
-<p>A <code>list</code> of the same length as <code>partition</code>.
-The <code>i</code>-th element can be a <code>function</code> that computes the value of
-<code>f</code> for the <code>i</code>-th parameter set defined in <code>partition</code>.
-The <code>function</code> must be of the form
-<code>function(theta_part, theta_rest, ...)</code>, where
+<p>(<code>character(1)</code> or <code>list()</code>)<br />
+Defines the parameter partition, and can be either
 </p>
 
 <ul>
-<li> <p><code>theta_part</code> receives the parameter set for the current partition
-(this argument can be named differently),
+<li> <p><code>"sequential"</code> for treating each parameter separately,
 </p>
 </li>
-<li> <p><code>theta_rest</code> receives the remaining parameters
-(this argument must be named <code>theta_rest</code>),
+<li> <p><code>"random"</code> for a random partition in each iteration,
 </p>
 </li>
-<li> <p><code>...</code> receives the additional arguments to <code>f</code>.
-Alternatively, it can be <code>NULL</code>, in which case <code>f</code> is used.
+<li> <p><code>"none"</code> for no partition (which is equivalent to joint optimization),
+</p>
+</li>
+<li><p> or a <code>list</code> of vectors of parameter indices, specifying a custom
+partition for the alternating optimization process.
 </p>
 </li></ul>
 </td></tr>
-<tr><td><code id="ao_+3A_joint_end">joint_end</code></td>
+<tr><td><code id="ao_+3A_new_block_probability">new_block_probability</code></td>
 <td>
-<p>If <code>TRUE</code>, the parameter set is optimized jointly after the alternating
-optimization process is terminated.
-The default is <code>FALSE</code>.</p>
+<p>(<code>numeric(1)</code>)<br />
+Only relevant if <code>partition = "random"</code>.
+The probability for a new parameter block when creating a random
+partitions.
+Values close to 0 result in larger parameter blocks, values close to 1
+result in smaller parameter blocks.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_minimum_block_number">minimum_block_number</code></td>
+<td>
+<p>(<code>integer(1)</code>)<br />
+Only relevant if <code>partition = "random"</code>.
+The minimum number of blocks in random partitions.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_minimize">minimize</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br />
+Whether to minimize during the alternating optimization process.
+If <code>FALSE</code>, maximization is performed.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_lower">lower</code></td>
+<td>
+<p>(<code>numeric()</code>)<br />
+Optionally lower parameter bounds.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_upper">upper</code></td>
+<td>
+<p>(<code>numeric()</code>)<br />
+Optionally upper parameter bounds.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_iteration_limit">iteration_limit</code></td>
+<td>
+<p>(<code>integer(1)</code> or <code>Inf</code>)<br />
+The maximum number of iterations through the parameter partition before
+the alternating optimization process is terminated.
+Can also be <code>Inf</code> for no iteration limit.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_seconds_limit">seconds_limit</code></td>
+<td>
+<p>(<code>numeric(1)</code>)<br />
+The time limit in seconds before the alternating optimization process is
+terminated.
+Can also be <code>Inf</code> for no time limit.
+Note that this stopping criteria is only checked <em>after</em>
+a sub-problem is solved and not <em>within</em> solving a sub-problem, so the
+actual process time can exceed this limit.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_tolerance_value">tolerance_value</code></td>
+<td>
+<p>(<code>numeric(1)</code>)<br />
+A non-negative tolerance value. The alternating optimization terminates
+if the absolute difference between the current function value and the one
+from the last iteration is smaller than <code>tolerance_value</code>.
+Can be <code>0</code> for no value threshold.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_tolerance_parameter">tolerance_parameter</code></td>
+<td>
+<p>(<code>numeric(1)</code>)<br />
+A non-negative tolerance value. The alternating optimization terminates
+if the distance between the current estimate and the one from the last
+iteration is smaller than <code>tolerance_parameter</code>.
+Can be <code>0</code> for no parameter threshold.
+By default, the distance is measured using the euclidean norm, but
+another norm can be specified via the <code>tolerance_parameter_norm</code>
+field.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_tolerance_parameter_norm">tolerance_parameter_norm</code></td>
+<td>
+<p>(<code>function</code>)<br />
+The norm that measures the distance between the current estimate and the
+one from the last iteration. If the distance is smaller than
+<code>tolerance_parameter</code>, the procedure is terminated.
+It must be of the form <code>function(x, y)</code> for two vector inputs
+<code>x</code> and <code>y</code>, and return a single <code>numeric</code> value.
+By default, the euclidean norm <code>function(x, y) sqrt(sum((x - y)^2))</code>
+is used.</p>
+</td></tr>
+<tr><td><code id="ao_+3A_base_optimizer">base_optimizer</code></td>
+<td>
+<p>(<code>Optimizer</code>)<br />
+An <code>Optimizer</code> object, which can be created via
+<code><a href="optimizeR.html#topic+Optimizer">Optimizer</a></code>. It numerically solves the sub-problems.
+</p>
+<p>By default, the <code><a href="stats.html#topic+optim">optim</a></code> optimizer is used. If another
+optimizer is specified, the arguments <code>gradient</code>, <code>lower</code>, and
+<code>upper</code> are ignored.</p>
 </td></tr>
 <tr><td><code id="ao_+3A_verbose">verbose</code></td>
 <td>
-<p>If <code>TRUE</code>, full tracing details are printed during the alternating
-optimization process.
-The default is <code>FALSE</code>.</p>
+<p>(<code>logical(1)</code>)<br />
+Whether to print tracing details during the alternating optimization
+process.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>A <code>list</code> with the elements
+<p>A <code>list</code> with the following elements:
 </p>
 
 <ul>
-<li> <p><code>estimate</code>, the optimal parameter vector found,
+<li> <p><code>estimate</code> is the parameter vector at termination.
 </p>
 </li>
-<li> <p><code>value</code>, the value of <code>f</code> at <code>estimate</code>,
+<li> <p><code>value</code> is the function value at termination.
 </p>
 </li>
-<li> <p><code>sequence</code>, a <code>data.frame</code> of the function values, estimates and
-computation times in the single iterations and partitions,
+<li> <p><code>details</code> is a <code>data.frame</code> with full information about the procedure:
+For each iteration (column <code>iteration</code>) it contains the function value
+(column <code>value</code>), parameter values (columns starting with <code>p</code> followed by
+the parameter index), the active parameter block (columns starting with <code>b</code>
+followed by the parameter index, where <code>1</code> stands for a parameter contained
+in the active parameter block and <code>0</code> if not), computation times in seconds
+(column <code>seconds</code>), and a code that summarizes whether the update got
+accepted (column <code>update_code</code>, where <code>0</code> stands for an accepted update,
+<code>1</code> for a rejected update due to an error when solving the sub-problem, and
+<code>2</code> for a rejected update because it did not improve the function value).
 </p>
 </li>
-<li><p> and <code>seconds</code>, the overall computation time in seconds.
+<li> <p><code>seconds</code> is the overall computation time in seconds.
+</p>
+</li>
+<li> <p><code>stopping_reason</code> is a message why the procedure has terminated.
 </p>
 </li></ul>
 
@@ -276,19 +396,892 @@ computation times in the single iterations and partitions,
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'># definition of the Himmelblau function
-himmelblau &lt;- function(x) (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
+<pre><code class='language-R'># Example 1: Minimization of Himmelblau's function --------------------------
 
-# alternating minimization separately for x_1 and x_2
-# parameter restriction: -5 &lt;= x_1, x_2 &lt;= 5
+himmelblau &lt;- function(x) (x[1]^2 + x[2] - 11)^2 + (x[1] + x[2]^2 - 7)^2
+ao(f = himmelblau, initial = c(0, 0))
+
+# Example 2: Maximization of 2-class Gaussian mixture log-likelihood --------
+
+# target arguments:
+# - class means mu (2, unrestricted)
+# - class standard deviations sd (2, must be non-negative)
+# - class proportion lambda (only 1 for identification, must be in [0, 1])
+
+normal_mixture_llk &lt;- function(mu, sd, lambda, data) {
+  c1 &lt;- lambda * dnorm(data, mu[1], sd[1])
+  c2 &lt;- (1 - lambda) * dnorm(data, mu[2], sd[2])
+  sum(log(c1 + c2))
+}
+
 ao(
-  f = himmelblau, p = c(0, 0), partition = list(1, 2), iterations = Inf,
-  base_optimizer = optimizeR::Optimizer$new(
-    which = "stats::optim", lower = -5, upper = 5, method = "L-BFGS-B"
-  )
+  f = normal_mixture_llk,
+  initial = c(2, 4, 1, 1, 0.5),
+  target = c("mu", "sd", "lambda"),
+  npar = c(2, 2, 1),
+  data = datasets::faithful$eruptions,
+  partition = "random",
+  minimize = FALSE,
+  lower = c(-Inf, -Inf, 0, 0, 0),
+  upper = c(Inf, Inf, Inf, Inf, 1)
 )
 
 </code></pre>
+
+<hr>
+<h2 id='ao_input_check'>Input checks</h2><span id='topic+ao_input_check'></span>
+
+<h3>Description</h3>
+
+<p>This helper function checks the inputs for the <code><a href="#topic+ao">ao</a></code> function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>ao_input_check(
+  argument_name,
+  check_result,
+  error_message = check_result,
+  prefix = "Input {.var {argument_name}} is bad:"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="ao_input_check_+3A_argument_name">argument_name</code></td>
+<td>
+<p>(<code>character(1)</code>)<br />
+The name of the argument that is checked.</p>
+</td></tr>
+<tr><td><code id="ao_input_check_+3A_check_result">check_result</code></td>
+<td>
+<p>(<code>logical(1)</code>)<br />
+<code>TRUE</code> if the check was successful.</p>
+</td></tr>
+<tr><td><code id="ao_input_check_+3A_error_message">error_message</code></td>
+<td>
+<p>(<code>character(1)</code>)<br />
+An error message to be printed.</p>
+</td></tr>
+<tr><td><code id="ao_input_check_+3A_prefix">prefix</code></td>
+<td>
+<p>(<code>character(1)</code>)<br />
+A prefix before the error message.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Either throws an error, or invisible <code>TRUE</code>.
+</p>
+
+<hr>
+<h2 id='Procedure'>Procedure Object</h2><span id='topic+Procedure'></span>
+
+<h3>Description</h3>
+
+<p>This object specifies alternating optimization procedure.
+</p>
+
+
+<h3>Active bindings</h3>
+
+<div class="r6-active-bindings">
+
+<dl>
+<dt><code>npar</code></dt><dd><p>(<code>integer(1)</code>)<br />
+The length of the target argument.</p>
+</dd>
+<dt><code>partition</code></dt><dd><p>(<code>character(1)</code> or <code>list()</code>)<br />
+Defines the parameter partition, and can be either
+</p>
+
+<ul>
+<li> <p><code>"sequential"</code> for treating each parameter separately,
+</p>
+</li>
+<li> <p><code>"random"</code> for a random partition in each iteration,
+</p>
+</li>
+<li> <p><code>"none"</code> for no partition (which is equivalent to joint optimization),
+</p>
+</li>
+<li><p> or a <code>list</code> of vectors of parameter indices, specifying a custom
+partition for the alternating optimization process.
+</p>
+</li></ul>
+</dd>
+<dt><code>new_block_probability</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+Only relevant if <code>partition = "random"</code>.
+The probability for a new parameter block when creating a random
+partitions.
+Values close to 0 result in larger parameter blocks, values close to 1
+result in smaller parameter blocks.</p>
+</dd>
+<dt><code>minimum_block_number</code></dt><dd><p>(<code>integer(1)</code>)<br />
+Only relevant if <code>partition = "random"</code>.
+The minimum number of blocks in random partitions.</p>
+</dd>
+<dt><code>verbose</code></dt><dd><p>(<code>logical(1)</code>)<br />
+Whether to print tracing details during the alternating optimization
+process.</p>
+</dd>
+<dt><code>minimize</code></dt><dd><p>(<code>logical(1)</code>)<br />
+Whether to minimize during the alternating optimization process.
+If <code>FALSE</code>, maximization is performed.</p>
+</dd>
+<dt><code>iteration_limit</code></dt><dd><p>(<code>integer(1)</code> or <code>Inf</code>)<br />
+The maximum number of iterations through the parameter partition before
+the alternating optimization process is terminated.
+Can also be <code>Inf</code> for no iteration limit.</p>
+</dd>
+<dt><code>seconds_limit</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+The time limit in seconds before the alternating optimization process is
+terminated.
+Can also be <code>Inf</code> for no time limit.
+Note that this stopping criteria is only checked <em>after</em>
+a sub-problem is solved and not <em>within</em> solving a sub-problem, so the
+actual process time can exceed this limit.</p>
+</dd>
+<dt><code>tolerance_value</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+A non-negative tolerance value. The alternating optimization terminates
+if the absolute difference between the current function value and the one
+from the last iteration is smaller than <code>tolerance_value</code>.
+Can be <code>0</code> for no value threshold.</p>
+</dd>
+<dt><code>tolerance_parameter</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+A non-negative tolerance value. The alternating optimization terminates
+if the distance between the current estimate and the one from the last
+iteration is smaller than <code>tolerance_parameter</code>.
+Can be <code>0</code> for no parameter threshold.
+By default, the distance is measured using the euclidean norm, but
+another norm can be specified via the <code>tolerance_parameter_norm</code>
+field.</p>
+</dd>
+<dt><code>tolerance_parameter_norm</code></dt><dd><p>(<code>function</code>)<br />
+The norm that measures the distance between the current estimate and the
+one from the last iteration. If the distance is smaller than
+<code>tolerance_parameter</code>, the procedure is terminated.
+It must be of the form <code>function(x, y)</code> for two vector inputs
+<code>x</code> and <code>y</code>, and return a single <code>numeric</code> value.
+By default, the euclidean norm <code>function(x, y) sqrt(sum((x - y)^2))</code>
+is used.</p>
+</dd>
+<dt><code>iteration</code></dt><dd><p>(<code>integer(1)</code>)<br />
+The current iteration number.</p>
+</dd>
+<dt><code>block</code></dt><dd><p>(<code>integer()</code>)<br />
+The currently active parameter block, represented as parameter indices.</p>
+</dd>
+<dt><code>output</code></dt><dd><p>(<code>list()</code>, read-only)<br />
+The output of the alternating optimization procedure, which is a
+<code>list</code> with the following elements:
+</p>
+
+<ul>
+<li> <p><code>estimate</code> is the parameter vector at termination.
+</p>
+</li>
+<li> <p><code>value</code> is the function value at termination.
+</p>
+</li>
+<li> <p><code>details</code> is a <code>data.frame</code> with full information about the procedure:
+For each iteration (column <code>iteration</code>) it contains the function value
+(column <code>value</code>), parameter values (columns starting with <code>p</code> followed by
+the parameter index), the active parameter block (columns starting with <code>b</code>
+followed by the parameter index, where <code>1</code> stands for a parameter contained
+in the active parameter block and <code>0</code> if not), computation times in seconds
+(column <code>seconds</code>), and a code that summarizes whether the update got
+accepted (column <code>update_code</code>, where <code>0</code> stands for an accepted update,
+<code>1</code> for a rejected update due to an error when solving the sub-problem, and
+<code>2</code> for a rejected update because it did not improve the function value).
+</p>
+</li>
+<li> <p><code>seconds</code> is the overall computation time in seconds.
+</p>
+</li>
+<li> <p><code>stopping_reason</code> is a message why the procedure has terminated.
+</p>
+</li></ul>
+</dd>
+</dl>
+
+</div>
+
+
+<h3>Methods</h3>
+
+
+
+<h4>Public methods</h4>
+
+
+<ul>
+<li> <p><a href="#method-Procedure-new"><code>Procedure$new()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-print_status"><code>Procedure$print_status()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-initialize_details"><code>Procedure$initialize_details()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-update_details"><code>Procedure$update_details()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_partition"><code>Procedure$get_partition()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_details"><code>Procedure$get_details()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_value"><code>Procedure$get_value()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_value_latest"><code>Procedure$get_value_latest()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_parameter"><code>Procedure$get_parameter()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_parameter_latest"><code>Procedure$get_parameter_latest()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_seconds"><code>Procedure$get_seconds()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-get_seconds_total"><code>Procedure$get_seconds_total()</code></a>
+</p>
+</li>
+<li> <p><a href="#method-Procedure-check_stopping"><code>Procedure$check_stopping()</code></a>
+</p>
+</li></ul>
+
+
+<hr>
+<a id="method-Procedure-new"></a>
+
+
+
+<h4>Method <code>new()</code></h4>
+
+<p>Creates a new object of this <a href="R6.html#topic+R6Class">R6</a> class.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$new(
+  npar = integer(),
+  partition = "sequential",
+  new_block_probability = 0.3,
+  minimum_block_number = 2,
+  verbose = FALSE,
+  minimize = TRUE,
+  iteration_limit = Inf,
+  seconds_limit = Inf,
+  tolerance_value = 1e-06,
+  tolerance_parameter = 1e-06,
+  tolerance_parameter_norm = function(x, y) sqrt(sum((x - y)^2))
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>npar</code></dt><dd><p>(<code>integer(1)</code>)<br />
+The (total) length of the target argument(s).</p>
+</dd>
+<dt><code>partition</code></dt><dd><p>(<code>character(1)</code> or <code>list()</code>)<br />
+Defines the parameter partition, and can be either
+</p>
+
+<ul>
+<li> <p><code>"sequential"</code> for treating each parameter separately,
+</p>
+</li>
+<li> <p><code>"random"</code> for a random partition in each iteration,
+</p>
+</li>
+<li> <p><code>"none"</code> for no partition (which is equivalent to joint optimization),
+</p>
+</li>
+<li><p> or a <code>list</code> of vectors of parameter indices, specifying a custom
+partition for the alternating optimization process.
+</p>
+</li></ul>
+</dd>
+<dt><code>new_block_probability</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+Only relevant if <code>partition = "random"</code>.
+The probability for a new parameter block when creating a random
+partitions.
+Values close to 0 result in larger parameter blocks, values close to 1
+result in smaller parameter blocks.</p>
+</dd>
+<dt><code>minimum_block_number</code></dt><dd><p>(<code>integer(1)</code>)<br />
+Only relevant if <code>partition = "random"</code>.
+The minimum number of blocks in random partitions.</p>
+</dd>
+<dt><code>verbose</code></dt><dd><p>(<code>logical(1)</code>)<br />
+Whether to print tracing details during the alternating optimization
+process.</p>
+</dd>
+<dt><code>minimize</code></dt><dd><p>(<code>logical(1)</code>)<br />
+Whether to minimize during the alternating optimization process.
+If <code>FALSE</code>, maximization is performed.</p>
+</dd>
+<dt><code>iteration_limit</code></dt><dd><p>(<code>integer(1)</code> or <code>Inf</code>)<br />
+The maximum number of iterations through the parameter partition before
+the alternating optimization process is terminated.
+Can also be <code>Inf</code> for no iteration limit.</p>
+</dd>
+<dt><code>seconds_limit</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+The time limit in seconds before the alternating optimization process is
+terminated.
+Can also be <code>Inf</code> for no time limit.
+Note that this stopping criteria is only checked <em>after</em>
+a sub-problem is solved and not <em>within</em> solving a sub-problem, so the
+actual process time can exceed this limit.</p>
+</dd>
+<dt><code>tolerance_value</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+A non-negative tolerance value. The alternating optimization terminates
+if the absolute difference between the current function value and the one
+from the last iteration is smaller than <code>tolerance_value</code>.
+Can be <code>0</code> for no value threshold.</p>
+</dd>
+<dt><code>tolerance_parameter</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+A non-negative tolerance value. The alternating optimization terminates
+if the distance between the current estimate and the one from the last
+iteration is smaller than <code>tolerance_parameter</code>.
+Can be <code>0</code> for no parameter threshold.
+By default, the distance is measured using the euclidean norm, but
+another norm can be specified via the <code>tolerance_parameter_norm</code>
+field.</p>
+</dd>
+<dt><code>tolerance_parameter_norm</code></dt><dd><p>(<code>function</code>)<br />
+The norm that measures the distance between the current estimate and the
+one from the last iteration. If the distance is smaller than
+<code>tolerance_parameter</code>, the procedure is terminated.
+It must be of the form <code>function(x, y)</code> for two vector inputs
+<code>x</code> and <code>y</code>, and return a single <code>numeric</code> value.
+By default, the euclidean norm <code>function(x, y) sqrt(sum((x - y)^2))</code>
+is used.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-print_status"></a>
+
+
+
+<h4>Method <code>print_status()</code></h4>
+
+<p>Prints a status message.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$print_status(message, message_type = 8, verbose = self$verbose)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>message</code></dt><dd><p>(<code>character(1)</code>)<br />
+The status message.</p>
+</dd>
+<dt><code>message_type</code></dt><dd><p>(<code>integer(1)</code>)<br />
+The type of the message, one of the following:
+</p>
+
+<ul>
+<li> <p><code>1</code> for <code>cli::cli_h1()</code>
+</p>
+</li>
+<li> <p><code>2</code> for <code>cli::cli_h2()</code>
+</p>
+</li>
+<li> <p><code>3</code> for <code>cli::cli_h3()</code>
+</p>
+</li>
+<li> <p><code>4</code> for <code>cli::cli_alert_success()</code>
+</p>
+</li>
+<li> <p><code>5</code> for <code>cli::cli_alert_info()</code>
+</p>
+</li>
+<li> <p><code>6</code> for <code>cli::cli_alert_warning()</code>
+</p>
+</li>
+<li> <p><code>7</code> for <code>cli::cli_alert_danger()</code>
+</p>
+</li>
+<li> <p><code>8</code> for <code>cli::cat_line()</code>
+</p>
+</li></ul>
+</dd>
+<dt><code>verbose</code></dt><dd><p>(<code>logical(1)</code>)<br />
+Whether to print tracing details during the alternating optimization
+process.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-initialize_details"></a>
+
+
+
+<h4>Method <code>initialize_details()</code></h4>
+
+<p>Initializes the <code>details</code> part of the output.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$initialize_details(initial_parameter, initial_value)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>initial_parameter</code></dt><dd><p>(<code>numeric()</code>)<br />
+The starting parameter values for the procedure.</p>
+</dd>
+<dt><code>initial_value</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+The function value at the initial parameters.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-update_details"></a>
+
+
+
+<h4>Method <code>update_details()</code></h4>
+
+<p>Updates the <code>details</code> part of the output.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$update_details(
+  value,
+  parameter_block,
+  seconds,
+  error,
+  block = self$block
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>value</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+The updated function value.</p>
+</dd>
+<dt><code>parameter_block</code></dt><dd><p>(<code>numeric()</code>)<br />
+The updated parameter values for the active parameter block.</p>
+</dd>
+<dt><code>seconds</code></dt><dd><p>(<code>numeric(1)</code>)<br />
+The time in seconds for solving the sub-problem.</p>
+</dd>
+<dt><code>error</code></dt><dd><p>(<code>logical(1)</code>)<br />
+Whether solving the sub-problem resulted in an error.</p>
+</dd>
+<dt><code>block</code></dt><dd><p>(<code>integer()</code>)<br />
+The currently active parameter block, represented as parameter indices.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-get_partition"></a>
+
+
+
+<h4>Method <code>get_partition()</code></h4>
+
+<p>Get a parameter partition.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_partition()</pre></div>
+
+
+<hr>
+<a id="method-Procedure-get_details"></a>
+
+
+
+<h4>Method <code>get_details()</code></h4>
+
+<p>Get the <code>details</code> part of the output.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_details(
+  which_iteration = NULL,
+  which_block = NULL,
+  which_column = c("iteration", "value", "parameter", "block", "seconds", "update_code")
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>which_iteration</code></dt><dd><p>(<code>integer()</code>)<br />
+Selects the iteration(s).
+Can also be <code>NULL</code> to select all iterations.</p>
+</dd>
+<dt><code>which_block</code></dt><dd><p>(<code>character(1)</code> or <code>integer()</code>)<br />
+Selects the parameter block in the partition and can be one of
+</p>
+
+<ul>
+<li> <p><code>"first"</code> for the first parameter block,
+</p>
+</li>
+<li> <p><code>"last"</code> for the last parameter block,
+</p>
+</li>
+<li><p> an <code>integer</code> vector of parameter indices,
+</p>
+</li>
+<li><p> or <code>NULL</code> for all parameter blocks.
+</p>
+</li></ul>
+</dd>
+<dt><code>which_column</code></dt><dd><p>(<code>character()</code>)<br />
+Selects the columns in the <code>details</code> part of the output and can be one or
+more of <code>"iteration"</code>, <code>"value"</code>, <code>"parameter"</code>, <code>"block"</code>, <code>"seconds"</code>,
+and <code>"update_code"</code>.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-get_value"></a>
+
+
+
+<h4>Method <code>get_value()</code></h4>
+
+<p>Get the function value in different steps of the alternating optimization
+procedure.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_value(
+  which_iteration = NULL,
+  which_block = NULL,
+  keep_iteration_column = FALSE,
+  keep_block_columns = FALSE
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>which_iteration</code></dt><dd><p>(<code>integer()</code>)<br />
+Selects the iteration(s).
+Can also be <code>NULL</code> to select all iterations.</p>
+</dd>
+<dt><code>which_block</code></dt><dd><p>(<code>character(1)</code> or <code>integer()</code>)<br />
+Selects the parameter block in the partition and can be one of
+</p>
+
+<ul>
+<li> <p><code>"first"</code> for the first parameter block,
+</p>
+</li>
+<li> <p><code>"last"</code> for the last parameter block,
+</p>
+</li>
+<li><p> an <code>integer</code> vector of parameter indices,
+</p>
+</li>
+<li><p> or <code>NULL</code> for all parameter blocks.
+</p>
+</li></ul>
+</dd>
+<dt><code>keep_iteration_column</code></dt><dd><p>(<code>logical()</code>)<br />
+Whether to keep the column containing the information about the iteration
+in the output.</p>
+</dd>
+<dt><code>keep_block_columns</code></dt><dd><p>(<code>logical()</code>)<br />
+Whether to keep the column containing the information about the active
+parameter block in the output.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-get_value_latest"></a>
+
+
+
+<h4>Method <code>get_value_latest()</code></h4>
+
+<p>Get the function value in the latest step of the alternating
+optimization procedure.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_value_latest()</pre></div>
+
+
+<hr>
+<a id="method-Procedure-get_parameter"></a>
+
+
+
+<h4>Method <code>get_parameter()</code></h4>
+
+<p>Get the parameter values in different steps of the alternating
+optimization procedure.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_parameter(
+  which_iteration = self$iteration,
+  which_block = NULL,
+  keep_iteration_column = FALSE,
+  keep_block_columns = FALSE
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>which_iteration</code></dt><dd><p>(<code>integer()</code>)<br />
+Selects the iteration(s).
+Can also be <code>NULL</code> to select all iterations.</p>
+</dd>
+<dt><code>which_block</code></dt><dd><p>(<code>character(1)</code> or <code>integer()</code>)<br />
+Selects the parameter block in the partition and can be one of
+</p>
+
+<ul>
+<li> <p><code>"first"</code> for the first parameter block,
+</p>
+</li>
+<li> <p><code>"last"</code> for the last parameter block,
+</p>
+</li>
+<li><p> an <code>integer</code> vector of parameter indices,
+</p>
+</li>
+<li><p> or <code>NULL</code> for all parameter blocks.
+</p>
+</li></ul>
+</dd>
+<dt><code>keep_iteration_column</code></dt><dd><p>(<code>logical()</code>)<br />
+Whether to keep the column containing the information about the iteration
+in the output.</p>
+</dd>
+<dt><code>keep_block_columns</code></dt><dd><p>(<code>logical()</code>)<br />
+Whether to keep the column containing the information about the active
+parameter block in the output.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-get_parameter_latest"></a>
+
+
+
+<h4>Method <code>get_parameter_latest()</code></h4>
+
+<p>Get the parameter value in the latest step of the alternating
+optimization procedure.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_parameter_latest(parameter_type = "full")</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>parameter_type</code></dt><dd><p>(<code>character(1)</code>)<br />
+Can be one of
+</p>
+
+<ul>
+<li> <p><code>"full"</code> (default) to get the full parameter vector,
+</p>
+</li>
+<li> <p><code>"block"</code> to get the parameter values for the current block,
+i.e., the parameters with the indices <code>self$block</code>
+</p>
+</li>
+<li> <p><code>"fixed"</code> to get the parameter values which are currently fixed,
+i.e., all except for those with the indices <code>self$block</code>
+</p>
+</li></ul>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-get_seconds"></a>
+
+
+
+<h4>Method <code>get_seconds()</code></h4>
+
+<p>Get the optimization time in seconds in different steps of the
+alternating optimization procedure.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_seconds(
+  which_iteration = NULL,
+  which_block = NULL,
+  keep_iteration_column = FALSE,
+  keep_block_columns = FALSE
+)</pre></div>
+
+
+
+<h5>Arguments</h5>
+
+<div class="arguments">
+
+<dl>
+<dt><code>which_iteration</code></dt><dd><p>(<code>integer()</code>)<br />
+Selects the iteration(s).
+Can also be <code>NULL</code> to select all iterations.</p>
+</dd>
+<dt><code>which_block</code></dt><dd><p>(<code>character(1)</code> or <code>integer()</code>)<br />
+Selects the parameter block in the partition and can be one of
+</p>
+
+<ul>
+<li> <p><code>"first"</code> for the first parameter block,
+</p>
+</li>
+<li> <p><code>"last"</code> for the last parameter block,
+</p>
+</li>
+<li><p> an <code>integer</code> vector of parameter indices,
+</p>
+</li>
+<li><p> or <code>NULL</code> for all parameter blocks.
+</p>
+</li></ul>
+</dd>
+<dt><code>keep_iteration_column</code></dt><dd><p>(<code>logical()</code>)<br />
+Whether to keep the column containing the information about the iteration
+in the output.</p>
+</dd>
+<dt><code>keep_block_columns</code></dt><dd><p>(<code>logical()</code>)<br />
+Whether to keep the column containing the information about the active
+parameter block in the output.</p>
+</dd>
+</dl>
+
+</div>
+
+
+<hr>
+<a id="method-Procedure-get_seconds_total"></a>
+
+
+
+<h4>Method <code>get_seconds_total()</code></h4>
+
+<p>Get the total optimization time in seconds of the alternating
+optimization procedure.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$get_seconds_total()</pre></div>
+
+
+<hr>
+<a id="method-Procedure-check_stopping"></a>
+
+
+
+<h4>Method <code>check_stopping()</code></h4>
+
+<p>Checks if the alternating optimization procedure can be terminated.
+</p>
+
+
+<h5>Usage</h5>
+
+<div class="r"><pre>Procedure$check_stopping()</pre></div>
+
+
 
 </main>
 

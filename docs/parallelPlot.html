@@ -19,10 +19,10 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#changeRow'><p>Row edition</p></a></li>
-<li><a href='#getPlotConfig'><p>Asks to retrieve the plot configuration.</p>
-Result will be sent through a reactive input.</a></li>
+<li><a href='#getPlotConfig'><p>Retrieve plot configuration</p></a></li>
 <li><a href='#getValue'><p>Plot attributes</p></a></li>
-<li><a href='#parallelPlot'><p>htmlwidget for d3.js parallel coordinate plot</p></a></li>
+<li><a href='#highlightRow'><p>Row highlight</p></a></li>
+<li><a href='#parallelPlot'><p><code>htmlwidget</code> for <code>d3.js</code> parallel coordinate plot</p></a></li>
 <li><a href='#parallelPlot-shiny'><p>Shiny bindings for parallelPlot</p></a></li>
 <li><a href='#setArrangeMethod'><p>Lines position</p></a></li>
 <li><a href='#setCategoricalColorScale'><p>Lines colors</p></a></li>
@@ -32,6 +32,7 @@ Result will be sent through a reactive input.</a></li>
 <li><a href='#setHistoVisibility'><p>Histograms visibility</p></a></li>
 <li><a href='#setInvertedAxes'><p>Axis orientation</p></a></li>
 <li><a href='#setKeptColumns'><p>Column visibility</p></a></li>
+<li><a href='#setRefColumnDim'><p>Line coloring</p></a></li>
 </ul>
 </div>
 <hr>
@@ -40,11 +41,11 @@ Result will be sent through a reactive input.</a></li>
 <table>
 <tr>
 <td>Title:</td>
-<td>'Htmlwidget' for a Parallel Coordinates Plot</td>
+<td>'htmlwidget' for a Parallel Coordinates Plot</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.3.1</td>
+<td>0.4.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -72,7 +73,7 @@ Result will be sent through a reactive input.</a></li>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.1.2</td>
+<td>7.2.3</td>
 </tr>
 <tr>
 <td>Imports:</td>
@@ -92,13 +93,11 @@ Result will be sent through a reactive input.</a></li>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-04-18 17:01:56 UTC; chazalda</td>
+<td>2024-06-17 09:07:09 UTC; chazalvd</td>
 </tr>
 <tr>
 <td>Author:</td>
-<td>Mike Bostock [aut, cph] (d3.js library in htmlwidgets/lib,
-    http://d3js.org),
-  David Chazalviel [aut, cre],
+<td>David Chazalviel [aut, cre],
   Benoit Lehman [aut]</td>
 </tr>
 <tr>
@@ -111,7 +110,7 @@ Result will be sent through a reactive input.</a></li>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-04-18 17:20:02 UTC</td>
+<td>2024-06-17 13:00:34 UTC</td>
 </tr>
 </table>
 <hr>
@@ -142,7 +141,8 @@ Result will be sent through a reactive input.</a></li>
 </td></tr>
 <tr><td><code id="changeRow_+3A_newvalues">newValues</code></td>
 <td>
-<p>list of new values to attribute to the row (list associating a value to a column identifier).</p>
+<p>list of new values to attribute to the row
+(list associating a value to a column identifier).</p>
 </td></tr>
 </table>
 
@@ -160,21 +160,25 @@ Result will be sent through a reactive input.</a></li>
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       sliderInput("rowValueSlider", "Value for 'Sepal.Length' of first row:",
-           min = 4, max = 8, step = 0.1, value = iris[["Sepal.Length"]][1]),
-       p("The slider controls the new value to assign to the 'Sepal.Length' of the first row"),
-       parallelPlotOutput("parPlot")
+     sliderInput(
+       "rowValueSlider",
+       "Value for 'Sepal.Length' of first row:",
+       min = 4, max = 8, step = 0.1,
+       value = iris[["Sepal.Length"]][1]
+     ),
+     p("Slider controls the new value to assign to 'Sepal.Length' of the first row"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(iris)
-       })
-       observeEvent(input$rowValueSlider, {
-           newValues &lt;- iris[1,]
-           newValues[["Sepal.Length"]] &lt;- input$rowValueSlider
-           parallelPlot::changeRow("parPlot", 1, newValues)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(iris)
+     })
+     observeEvent(input$rowValueSlider, {
+       newValues &lt;- iris[1,]
+       newValues[["Sepal.Length"]] &lt;- input$rowValueSlider
+       parallelPlot::changeRow("parPlot", 1, newValues)
+     })
    }
 
    shinyApp(ui, server)
@@ -183,13 +187,11 @@ Result will be sent through a reactive input.</a></li>
 </code></pre>
 
 <hr>
-<h2 id='getPlotConfig'>Asks to retrieve the plot configuration.
-Result will be sent through a reactive input.</h2><span id='topic+getPlotConfig'></span>
+<h2 id='getPlotConfig'>Retrieve plot configuration</h2><span id='topic+getPlotConfig'></span>
 
 <h3>Description</h3>
 
-<p>Asks to retrieve the plot configuration.
-Result will be sent through a reactive input.
+<p>Result will be sent through a reactive input (see example below).
 </p>
 
 
@@ -222,26 +224,27 @@ Result will be sent through a reactive input.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
-   library(shiny)
-   library(shinyjs)
-   library(parallelPlot)
+   if(interactive() &amp;&amp; require(shiny)) {
+     library(shiny)
+     library(shinyjs)
+     library(parallelPlot)
 
-   ui &lt;- fluidPage(
+     ui &lt;- fluidPage(
        useShinyjs(),
-       p("The button allows to save the widget as an html file, reproducing its configuration"),
+       p("Use button to save widget as an html file, reproducing its configuration"),
        actionButton("downloadButton", "Download Widget"),
        downloadButton("associatedDownloadButton", "Download Widget",
-           style = "visibility: hidden;"
+         style = "visibility: hidden;"
        ),
        parallelPlotOutput("parPlot")
-   )
+     )
 
-   server &lt;- function(input, output, session) {
+     server &lt;- function(input, output, session) {
        output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(iris)
+         parallelPlot(iris)
        })
        observeEvent(input$downloadButton, {
-           parallelPlot::getPlotConfig("parPlot", "ConfigForDownload")
+         parallelPlot::getPlotConfig("parPlot", "ConfigForDownload")
        })
        observeEvent(input$ConfigForDownload, {
          ppForDownload &lt;&lt;- parallelPlot(
@@ -261,7 +264,8 @@ Result will be sent through a reactive input.
            continuousCS = input$ConfigForDownload$continuousCS,
            categoricalCS = input$ConfigForDownload$categoricalCS,
            controlWidgets = NULL,
-           cssRules = input$ConfigForDownload$cssRules
+           cssRules = input$ConfigForDownload$cssRules,
+           sliderPosition = input$ConfigForDownload$sliderPosition
          )
          shinyjs::runjs("document.getElementById('associatedDownloadButton').click();")
        })
@@ -273,9 +277,10 @@ Result will be sent through a reactive input.
            htmlwidgets::saveWidget(ppForDownload, tmpContentFile)
          }
        )
-   }
+     }
 
-   shinyApp(ui, server)
+     shinyApp(ui, server)
+   }
  
 ## End(Not run)
 
@@ -316,7 +321,7 @@ Result will be sent through a reactive input.
 
 <h3>Details</h3>
 
-<p>Available attributes are 'Cutoffs', 'SelectedTraces' and 'ReferenceColumn'.
+<p>Available attributes are <code>Cutoffs</code>, <code>SelectedTraces</code> and <code>ReferenceColumn</code>.
 Result will be sent through a reactive input.
 </p>
 
@@ -334,25 +339,25 @@ Result will be sent through a reactive input.
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       actionButton("getSelectedTracesAction", "Retrieve Selected Lines"),
-       p("The button displays the list of uncutted rows (use brush to reduce it)"),
-       parallelPlotOutput("parPlot")
+     actionButton("getSelectedTracesAction", "Retrieve Selected Lines"),
+     p("The button displays the list of uncutted rows (use brush to reduce it)"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(iris)
-       })
-       observeEvent(input$getSelectedTracesAction, {
-           attributeType &lt;- "SelectedTraces"
-           parallelPlot::getValue("parPlot", attributeType, "MySelectedTraces")
-       })
-       observeEvent(input$MySelectedTraces, {
-           showModal(modalDialog(
-               title = "Selected Lines",
-               toString(input$MySelectedTraces)
-           ))
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(iris)
+     })
+     observeEvent(input$getSelectedTracesAction, {
+       attributeType &lt;- "SelectedTraces"
+       parallelPlot::getValue("parPlot", attributeType, "MySelectedTraces")
+     })
+     observeEvent(input$MySelectedTraces, {
+       showModal(modalDialog(
+         title = "Selected Lines",
+         toString(input$MySelectedTraces)
+       ))
+     })
    }
 
    shinyApp(ui, server)
@@ -361,11 +366,78 @@ Result will be sent through a reactive input.
 </code></pre>
 
 <hr>
-<h2 id='parallelPlot'>htmlwidget for d3.js parallel coordinate plot</h2><span id='topic+parallelPlot'></span>
+<h2 id='highlightRow'>Row highlight</h2><span id='topic+highlightRow'></span>
 
 <h3>Description</h3>
 
-<p>htmlwidget for d3.js parallel coordinate plot
+<p>Asks to change the highlighted row.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>highlightRow(id, rowIndex)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="highlightRow_+3A_id">id</code></td>
+<td>
+<p>output variable to read from (id which references the requested plot)</p>
+</td></tr>
+<tr><td><code id="highlightRow_+3A_rowindex">rowIndex</code></td>
+<td>
+<p>index of the row to highlight; <code>NULL</code> means no row is to highlight.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>No return value, called from shiny applications for side effects.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> if(interactive() &amp;&amp; require(shiny)) {
+   library(shiny)
+   library(parallelPlot)
+
+   ui &lt;- fluidPage(
+     actionButton("highlightRowAction", "Highlight Last Row"),
+     actionButton("clearHlRowAction", "Remove Highlighting"),
+     p("These buttons sets/unsets a selected line"),
+     parallelPlotOutput("parPlot")
+   )
+
+   server &lt;- function(input, output, session) {
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(iris)
+     })
+     observeEvent(input$highlightRowAction, {
+       lastRowIndex &lt;- nrow(iris)
+       parallelPlot::highlightRow("parPlot", lastRowIndex)
+     })
+
+     observeEvent(input$clearHlRowAction, {
+       parallelPlot::highlightRow("parPlot", NULL)
+     })
+   }
+
+   shinyApp(ui, server)
+ }
+
+</code></pre>
+
+<hr>
+<h2 id='parallelPlot'><code>htmlwidget</code> for <code>d3.js</code> parallel coordinate plot</h2><span id='topic+parallelPlot'></span>
+
+<h3>Description</h3>
+
+<p><code>htmlwidget</code> for <code>d3.js</code> parallel coordinate plot
 </p>
 
 
@@ -404,55 +476,87 @@ Result will be sent through a reactive input.
 <table>
 <tr><td><code id="parallelPlot_+3A_data">data</code></td>
 <td>
-<p>data.frame with data to use in the chart.</p>
+<p><code>data.frame</code> with data to use in the chart.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_categorical">categorical</code></td>
 <td>
 <p>List of list (one for each data column) containing the name of available categories,
 or <code>NULL</code> if column corresponds to continuous data;
-<code>NULL</code> is allowed, meaning all columns are continuous.</p>
+<code>NULL</code> is allowed, meaning all columns are continuous.
+A named list can also be provided to only indicate which columns are categorical,
+associating a column name to available categories.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_categoriesrep">categoriesRep</code></td>
 <td>
 <p>Within a category column, the height assigned to each category can either be:
-equal for each category (<code>EquallySizedBoxes</code>);
-or calculated to reflect the proportion of lines passing through each category (<code>EquallySpacedLines</code>).</p>
+</p>
+
+<ul>
+<li><p> equal for each category (<code>EquallySizedBoxes</code>);
+</p>
+</li>
+<li><p> or calculated to reflect the proportion of lines passing
+through each category (<code>EquallySpacedLines</code>).
+</p>
+</li></ul>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_arrangemethod">arrangeMethod</code></td>
 <td>
 <p>Within a category box:
-the position of lines can be calculated to minimize crossings on the left of the box (<code>fromLeft</code>);
-the position of lines can be calculated to minimize crossings on the right (<code>fromRight</code>, default behavior);
-lines can be split in two points to minimize crossings on the left and on the right (<code>fromBoth</code>).
+</p>
+
+<ul>
+<li><p> the position of lines can be calculated to minimize
+crossings on the left of the box (<code>fromLeft</code>);
+</p>
+</li>
+<li><p> the position of lines can be calculated to minimize
+crossings on the right (<code>fromRight</code>, default behavior);
+</p>
+</li>
+<li><p> lines can be split in two points to minimize
+crossings on the left and on the right (<code>fromBoth</code>).
 To turn this ordering off (for example for performance reasons),
-'arrangeMethod' can also be set to <code>fromNone</code>.</p>
+<code>arrangeMethod</code> can also be set to <code>fromNone</code>.
+</p>
+</li></ul>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_inputcolumns">inputColumns</code></td>
 <td>
-<p>List of boolean (one for each data column), <code>TRUE</code> for an input column, <code>FALSE</code> for an output column;
-<code>NULL</code> is allowed, meaning all columns are inputs.</p>
+<p>List of boolean (one for each data column),
+<code>TRUE</code> for an input column, <code>FALSE</code> for an output column;
+<code>NULL</code> is allowed, meaning all columns are inputs.
+A list of column names can also be provided to only indicate which columns are inputs.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_keptcolumns">keptColumns</code></td>
 <td>
 <p>List of boolean (one for each data column), <code>FALSE</code> if column has to be ignored;
-<code>NULL</code> is allowed, meaning all columns are available.</p>
+<code>NULL</code> is allowed, meaning all columns are available.
+A list of column names can also be provided
+to only indicate which columns are to be kept.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_histovisibility">histoVisibility</code></td>
 <td>
 <p>List of boolean (one for each data column), <code>TRUE</code> if an histogram must be displayed;
-<code>NULL</code> is allowed, meaning no histogram must be displayed.</p>
+<code>NULL</code> is allowed, meaning no histogram must be displayed.
+A list of column names can also be provided
+to only indicate which columns must have an histogram displayed.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_invertedaxes">invertedAxes</code></td>
 <td>
 <p>List of boolean (one for each data column), <code>TRUE</code> if orientation of axis must be inverted;
-<code>NULL</code> is allowed, meaning no axis must be inverted.</p>
+<code>NULL</code> is allowed, meaning no axis must be inverted.
+A list of column names can also be provided
+to only indicate which columns must have an inverted axis.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_cutoffs">cutoffs</code></td>
 <td>
 <p>List of list (one for each data column) of list (one for each cutoff)
 containing two values (min and max values defining the cutoff)
 or <code>NULL</code> if there is no cutoff to apply;
-<code>NULL</code> is allowed, meaning all columns are without cutoff.</p>
+<code>NULL</code> is allowed, meaning all columns are without cutoff.
+A named list can also be provided to only indicate which columns have cutoffs,
+associating a column name to its cutoffs.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_refrowindex">refRowIndex</code></td>
 <td>
@@ -473,14 +577,15 @@ or <code>NULL</code> if there is no cutoff to apply;
 <p>List of string (one for each data column) to display in place of column name found in data,
 or <code>NULL</code> if there is no alternative name;
 <code>NULL</code> is allowed, meaning all columns are without alternative name;
-<code>&lt;br&gt;</code> can be used to insert line breaks.</p>
+<code style="white-space: pre;">&#8288;&lt;br&gt;&#8288;</code> can be used to insert line breaks.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_continuouscs">continuousCS</code></td>
 <td>
 <p>Name of the color Scale to use for continuous data;
-supported names: &quot;Viridis&quot;, &quot;Inferno&quot;, &quot;Magma&quot;, &quot;Plasma&quot;, &quot;Warm&quot;, &quot;Cool&quot;, &quot;Rainbow&quot;, &quot;CubehelixDefault&quot;,
-&quot;Blues&quot;,&quot;Greens&quot;, &quot;Greys&quot;, &quot;Oranges&quot;, &quot;Purples&quot;, &quot;Reds&quot;, &quot;BuGn&quot;, &quot;BuPu&quot;, &quot;GnBu&quot;, &quot;OrRd&quot;, &quot;PuBuGn&quot;,&quot;PuBu&quot;,
-&quot;PuRd&quot;, &quot;RdBu&quot;, &quot;RdPu&quot;, &quot;YlGnBu&quot;, &quot;YlGn&quot;, &quot;YlOrBr&quot;, &quot;YlOrRd&quot;;
+supported names: <code>Viridis</code>, <code>Inferno</code>, <code>Magma</code>, <code>Plasma</code>, <code>Warm</code>, <code>Cool</code>, <code>Rainbow</code>,
+<code>CubehelixDefault</code>, <code>Blues</code>,<code>Greens</code>, <code>Greys</code>, <code>Oranges</code>, <code>Purples</code>, <code>Reds</code>, <code>BuGn</code>,
+<code>BuPu</code>, <code>GnBu</code>, <code>OrRd</code>, <code>PuBuGn</code>,<code>PuBu</code>, <code>PuRd</code>, <code>RdBu</code>, <code>RdPu</code>, <code>YlGnBu</code>, <code>YlGn</code>,
+<code>YlOrBr</code>, <code>YlOrRd</code>;
 default value is <code>Viridis</code>.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_categoricalcs">categoricalCS</code></td>
@@ -491,33 +596,101 @@ default value is <code>Category10</code>.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_eventinputid">eventInputId</code></td>
 <td>
-<p>When plot event occurred, reactive input to write to; <code>NULL</code> is allowed, default value is 'plotEvent'.</p>
+<p>When plot event occurred, reactive input to write to;
+<code>NULL</code> is allowed, meaning no event is sent.
+An event is a list with two named elements 'type' and 'value'.
+</p>
+
+<ul>
+<li><p> If <code>type</code> is equal to <code>cutoffChange</code>:
+</p>
+
+<ul>
+<li> <p><code>value$adjusting</code> is <code>TRUE</code> when pointer is moving, changing a cutoff;
+</p>
+</li>
+<li> <p><code>value$updatedDim</code> is the name of last cut column;
+</p>
+</li>
+<li> <p><code>value$selectedTraces</code> gives the indexes of uncut rows;
+</p>
+</li>
+<li> <p><code>value$cutoffs</code> gives the new values for the cutoffs.
+</p>
+</li></ul>
+
+</li>
+<li><p> If <code>type</code> is equal to <code>axeOrientationChange</code>:
+</p>
+
+<ul>
+<li> <p><code>value$invertedAxes</code> has the same form than <code>invertedAxes</code> argument.
+</p>
+</li></ul>
+
+</li>
+<li><p> If <code>type</code> is equal to <code>refColumnDimChange</code>:
+</p>
+
+<ul>
+<li> <p><code>value$refColumnDim</code> is the new column to use as reference
+(see <code>refColumnDim</code> argument).
+</p>
+</li></ul>
+
+</li>
+<li><p> If <code>type</code> is equal to <code>rowClicked</code>:
+</p>
+
+<ul>
+<li> <p><code>value$rowIndex</code> is the index of the clicked row.
+</p>
+</li></ul>
+
+</li>
+<li><p> If <code>type</code> is equal to <code>pointChange</code>:
+</p>
+
+<ul>
+<li> <p><code>value$dim</code> defines the column of the edited point;
+</p>
+</li>
+<li> <p><code>value$rowIndex</code> defines the row of the edited point;
+</p>
+</li>
+<li> <p><code>value$newValue</code> gives the new value for the edited point.
+</p>
+</li></ul>
+
+</li></ul>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_editionmode">editionMode</code></td>
 <td>
-<p>Supported edition modes: <code>EditionOff, EditionOnDrag, EditionOnDragEnd</code>; default value is <code>EditionOff</code> .</p>
+<p>Supported edition modes: <code>EditionOff</code>, <code>EditionOnDrag</code>, <code>EditionOnDragEnd</code>;
+default value is <code>EditionOff</code> .</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_controlwidgets">controlWidgets</code></td>
 <td>
 <p>Tells if some widgets must be available to control plot;
-<code>NULL</code> is allowed, meaning that '!HTMLWidgets.shinyMode' is to use;
+<code>NULL</code> is allowed, meaning that <code>!HTMLWidgets.shinyMode</code> is to use;
 default value is <code>FALSE</code>.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_cssrules">cssRules</code></td>
 <td>
 <p>CSS rules to add.
-Must be a named list of the form list(selector = declarations),
-where selector is a valid CSS selector and declarations is a string or vector of declarations.</p>
+Must be a named list of the form list(selector = declarations), where selector
+is a valid CSS selector and declarations is a string or vector of declarations.</p>
 </td></tr>
 <tr><td><code id="parallelPlot_+3A_sliderposition">sliderPosition</code></td>
 <td>
 <p>Set initial position of slider, specifying which columns interval is visible.
 Default value is <code>NULL</code> which is equivalent to:
-list(
-dimCount = 8,
-startingDimIndex = 1
-)</p>
-</td></tr>
+</p>
+<div class="sourceCode"><pre>  list(
+    dimCount = 8,
+    startingDimIndex = 1
+  )
+</pre></div></td></tr>
 <tr><td><code id="parallelPlot_+3A_width">width</code></td>
 <td>
 <p>Integer in pixels defining the width of the widget.</p>
@@ -535,8 +708,9 @@ startingDimIndex = 1
 
 <h3>Value</h3>
 
-<p>An object of class <code>htmlwidget</code> that will intelligently print itself into HTML in a variety of contexts
-including the R console, within R Markdown documents, and within Shiny output bindings.
+<p>An object of class <code>htmlwidget</code> that will intelligently print itself into HTML
+in a variety of contexts including the R console, within R Markdown documents,
+and within Shiny output bindings.
 </p>
 
 
@@ -545,31 +719,35 @@ including the R console, within R Markdown documents, and within Shiny output bi
 <pre><code class='language-R'> if(interactive()) {
    library(parallelPlot)
 
-   categorical &lt;- list(NULL, c(4, 6, 8), NULL, NULL, NULL, NULL, NULL, c(0, 1), c(0, 1), 3:5, 1:8)
+   categorical &lt;-
+     list(cyl = c(4, 6, 8), vs = c(0, 1), am = c(0, 1), gear = 3:5, carb = 1:8)
    parallelPlot(mtcars, categorical = categorical, refColumnDim = "cyl")
-   # 'cyl' and four last columns have a box representation for its categories
+   # `cyl` and four last columns have a box representation for categories
 
    histoVisibility &lt;- rep(TRUE, ncol(iris))
    parallelPlot(iris, histoVisibility = histoVisibility)
    # An histogram is displayed for each column
 
-   histoVisibility &lt;- rep(TRUE, ncol(iris))
-   cutoffs &lt;- list(list(c(6, 7)), NULL, NULL, NULL, c("virginica", "setosa"))
+   histoVisibility &lt;- names(iris) # Same as `rep(TRUE, ncol(iris))`
+   cutoffs &lt;- list(Sepal.Length = list(c(6, 7)), Species = c("virginica", "setosa"))
    parallelPlot(iris, histoVisibility = histoVisibility, cutoffs = cutoffs)
-   # Cut lines are shaded; an histogram is displayed considering only kept lines
+   # Cut lines are shaded;
+   # an histogram for each column is displayed considering only kept lines
 
    parallelPlot(iris, refRowIndex = 1)
-   # Axes are shifted vertically in such a way that first trace of the dataset looks horizontal
+   # Axes are shifted vertically in such a way that first trace
+   # of the dataset looks horizontal
 
    columnLabels &lt;- gsub("\\.", "&lt;br&gt;", colnames(iris))
    parallelPlot(iris, refColumnDim = "Species", columnLabels = columnLabels)
-   # Given names are displayed in place of dataset column names; &lt;br&gt; is used to insert line breaks
+   # Given names are displayed in place of dataset column names;
+   # &lt;br&gt; is used to insert line breaks
 
    parallelPlot(iris, cssRules = list(
-       "svg" = "background: white",
+       "svg" = "background: #C2C2C2",
        ".tick text" = c("fill: red", "font-size: 1.8em")
    ))
-   # Background of plot is white and text of axes ticks is red and greater
+   # Background of plot is grey and text of axes ticks is red and greater
  }
 
 </code></pre>
@@ -623,7 +801,8 @@ is useful if you want to save an expression in a variable.</p>
 
 <h3>Value</h3>
 
-<p>An output or render function that enables the use of the widget within Shiny applications.
+<p>An output or render function that enables the use of the widget
+within Shiny applications.
 </p>
 
 <hr>
@@ -632,12 +811,24 @@ is useful if you want to save an expression in a variable.</p>
 <h3>Description</h3>
 
 <p>Within a category box:
-the position of lines can be calculated to minimize crossings on the left of the box (<code>fromLeft</code>);
-the position of lines can be calculated to minimize crossings on the right (<code>fromRight</code>, default behavior);
-lines can be split in two points to minimize crossings on the left and on the right (<code>fromBoth</code>).
-To turn this ordering off (for example for performance reasons),
-'arrangeMethod' can also be set to <code>fromNone</code>.
 </p>
+
+<ul>
+<li><p> the position of lines can be calculated to minimize
+crossings on the left of the box (<code>fromLeft</code>);
+</p>
+</li>
+<li><p> the position of lines can be calculated to minimize
+crossings on the right (<code>fromRight</code>, default behavior);
+</p>
+</li>
+<li><p> lines can be split in two points to minimize crossings
+on the left and on the right (<code>fromBoth</code>).
+To turn this ordering off (for example for performance reasons),
+<code>arrangeMethod</code> can also be set to <code>fromNone</code>.
+</p>
+</li></ul>
+
 
 
 <h3>Usage</h3>
@@ -655,7 +846,7 @@ To turn this ordering off (for example for performance reasons),
 </td></tr>
 <tr><td><code id="setArrangeMethod_+3A_arrangemethod">arrangeMethod</code></td>
 <td>
-<p>One of the available arrange methods (&quot;fromLeft&quot;, &quot;fromRight&quot;, &quot;fromBoth&quot;, &quot;fromNone&quot;).</p>
+<p>One of the available arrange methods (<code>fromLeft</code>, <code>fromRight</code>, <code>fromBoth</code>, <code>fromNone</code>).</p>
 </td></tr>
 </table>
 
@@ -673,29 +864,28 @@ To turn this ordering off (for example for performance reasons),
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       selectInput(
-         "arrangeMethodSelect",
-         "Arrange Method:",
-         choices = list(
-           "fromLeft" = "fromLeft", "fromRight" = "fromRight",
-           "fromBoth" = "fromBoth", "fromNone" = "fromNone"
-         ),
-         selected = "fromRight"
+     selectInput(
+       "arrangeMethodSelect",
+       "Arrange Method:",
+       choices = list(
+         "fromLeft" = "fromLeft", "fromRight" = "fromRight",
+         "fromBoth" = "fromBoth", "fromNone" = "fromNone"
        ),
-       p("The selector controls the method used to arrange lines position in category boxes"),
-       parallelPlotOutput("parPlot")
+       selected = "fromRight"
+     ),
+     p("Selector controls the method used to arrange lines position in category boxes"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           categorical &lt;- list(
-               NULL, c(4, 6, 8), NULL, NULL, NULL, NULL, NULL, c(0, 1), c(0, 1), 3:5, 1:8
-           )
-           parallelPlot(mtcars, categorical = categorical, refColumnDim = "cyl")
-       })
-       observeEvent(input$arrangeMethodSelect, {
-           parallelPlot::setArrangeMethod("parPlot", input$arrangeMethodSelect)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       categorical &lt;-
+         list(cyl = c(4, 6, 8), vs = c(0, 1), am = c(0, 1), gear = 3:5, carb = 1:8)
+       parallelPlot(mtcars, categorical = categorical, refColumnDim = "cyl")
+     })
+     observeEvent(input$arrangeMethodSelect, {
+       parallelPlot::setArrangeMethod("parPlot", input$arrangeMethodSelect)
+     })
    }
 
    shinyApp(ui, server)
@@ -736,7 +926,7 @@ To turn this ordering off (for example for performance reasons),
 
 <p>If a column is defined as the reference (for example by clicking on its header),
 a color scale is associated to this column.
-Available color scale ids are: 'Category10', 'Accent', 'Dark2', 'Paired', 'Set1'.
+Available color scale ids are: <code>Category10</code>, <code>Accent</code>, <code>Dark2</code>, <code>Paired</code>, <code>Set1</code>.
 </p>
 
 
@@ -753,20 +943,24 @@ Available color scale ids are: 'Category10', 'Accent', 'Dark2', 'Paired', 'Set1'
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       selectInput("categoricalCsSelect", "Categorical Color Scale:",
-           choices = list("Category10" = "Category10", "Accent" = "Accent", "Dark2" = "Dark2",
-                           "Paired" = "Paired", "Set1" = "Set1"), selected = "Category10"),
-       p("The selector controls the colors used when reference column is of type categorical"),
-       parallelPlotOutput("parPlot")
+     selectInput("categoricalCsSelect", "Categorical Color Scale:",
+       choices = list(
+         "Category10" = "Category10", "Accent" = "Accent", "Dark2" = "Dark2",
+         "Paired" = "Paired", "Set1" = "Set1"
+       ),
+       selected = "Category10"
+     ),
+     p("Selector controls used colors when reference column is of type categorical"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(data = iris, refColumnDim = "Species")
-       })
-       observeEvent(input$categoricalCsSelect, {
-           parallelPlot::setCategoricalColorScale("parPlot", input$categoricalCsSelect)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(data = iris, refColumnDim = "Species")
+     })
+     observeEvent(input$categoricalCsSelect, {
+       parallelPlot::setCategoricalColorScale("parPlot", input$categoricalCsSelect)
+     })
    }
 
    shinyApp(ui, server)
@@ -780,9 +974,17 @@ Available color scale ids are: 'Category10', 'Accent', 'Dark2', 'Paired', 'Set1'
 <h3>Description</h3>
 
 <p>Within a category column, the height assigned to each category can either be:
-equal for each category (<code>EquallySizedBoxes</code>);
-or calculated to reflect the proportion of lines passing through each category (<code>EquallySpacedLines</code>).
 </p>
+
+<ul>
+<li><p> equal for each category (<code>EquallySizedBoxes</code>);
+</p>
+</li>
+<li><p> or calculated to reflect the proportion of lines
+passing through each category (<code>EquallySpacedLines</code>).
+</p>
+</li></ul>
+
 
 
 <h3>Usage</h3>
@@ -800,7 +1002,8 @@ or calculated to reflect the proportion of lines passing through each category (
 </td></tr>
 <tr><td><code id="setCategoriesRep_+3A_categoriesrep">categoriesRep</code></td>
 <td>
-<p>One of the available category representations (&quot;EquallySpacedLines&quot;, &quot;EquallySizedBoxes&quot;).</p>
+<p>One of the available category representations
+(<code>EquallySpacedLines</code>, <code>EquallySizedBoxes</code>).</p>
 </td></tr>
 </table>
 
@@ -818,28 +1021,28 @@ or calculated to reflect the proportion of lines passing through each category (
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       selectInput(
-         "categoriesRepSelect",
-         "Categories Representation:",
-         choices = list(
-           "EquallySpacedLines" = "EquallySpacedLines", "EquallySizedBoxes" = "EquallySizedBoxes"
-         ),
-         selected = "EquallySpacedLines"
+     selectInput(
+       "categoriesRepSelect",
+       "Categories Representation:",
+       choices = list(
+         "EquallySpacedLines" = "EquallySpacedLines",
+         "EquallySizedBoxes" = "EquallySizedBoxes"
        ),
-       p("The selector controls the the height assigned to each category"),
-       parallelPlotOutput("parPlot")
+       selected = "EquallySpacedLines"
+     ),
+     p("The selector controls the height assigned to each category"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           categorical &lt;- list(
-               NULL, c(4, 6, 8), NULL, NULL, NULL, NULL, NULL, c(0, 1), c(0, 1), 3:5, 1:8
-           )
-           parallelPlot(mtcars, categorical = categorical, refColumnDim = "cyl")
-       })
-       observeEvent(input$categoriesRepSelect, {
-           parallelPlot::setCategoriesRep("parPlot", input$categoriesRepSelect)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       categorical &lt;-
+         list(cyl = c(4, 6, 8), vs = c(0, 1), am = c(0, 1), gear = 3:5, carb = 1:8)
+       parallelPlot(mtcars, categorical = categorical, refColumnDim = "cyl")
+     })
+     observeEvent(input$categoriesRepSelect, {
+       parallelPlot::setCategoriesRep("parPlot", input$categoriesRepSelect)
+     })
    }
 
    shinyApp(ui, server)
@@ -872,9 +1075,10 @@ or calculated to reflect the proportion of lines passing through each category (
 <tr><td><code id="setContinuousColorScale_+3A_continuouscsid">continuousCsId</code></td>
 <td>
 <p>One of the available color scale ids
-(&quot;Viridis&quot;, &quot;Inferno&quot;, &quot;Magma&quot;, &quot;Plasma&quot;, &quot;Warm&quot;, &quot;Cool&quot;, &quot;Rainbow&quot;, &quot;CubehelixDefault&quot;,
-&quot;Blues&quot;,&quot;Greens&quot;, &quot;Greys&quot;, &quot;Oranges&quot;, &quot;Purples&quot;, &quot;Reds&quot;, &quot;BuGn&quot;, &quot;BuPu&quot;, &quot;GnBu&quot;, &quot;OrRd&quot;,
-&quot;PuBuGn&quot;,&quot;PuBu&quot;, &quot;PuRd&quot;, &quot;RdBu&quot;, &quot;RdPu&quot;, &quot;YlGnBu&quot;, &quot;YlGn&quot;, &quot;YlOrBr&quot;, &quot;YlOrRd&quot;).</p>
+(<code>Viridis</code>, <code>Inferno</code>, <code>Magma</code>, <code>Plasma</code>, <code>Warm</code>, <code>Cool</code>, <code>Rainbow</code>,
+<code>CubehelixDefault</code>, <code>Blues</code>,<code>Greens</code>, <code>Greys</code>, <code>Oranges</code>, <code>Purples</code>,
+<code>Reds</code>, <code>BuGn</code>, <code>BuPu</code>, <code>GnBu</code>, <code>OrRd</code>, <code>PuBuGn</code>,<code>PuBu</code>, <code>PuRd</code>, <code>RdBu</code>,
+<code>RdPu</code>, <code>YlGnBu</code>, <code>YlGn</code>, <code>YlOrBr</code>, <code>YlOrRd</code>).</p>
 </td></tr>
 </table>
 
@@ -883,7 +1087,7 @@ or calculated to reflect the proportion of lines passing through each category (
 
 <p>If a column is defined as the reference (for example by clicking on its header),
 a color scale is associated to this column.
-Available color scale ids are: 'Blues', 'RdBu', 'YlGnBu', 'YlOrRd', 'Reds'.
+Available color scale ids are: <code>Blues</code>, <code>RdBu</code>, <code>YlGnBu</code>, <code>YlOrRd</code>, <code>Reds</code>.
 </p>
 
 
@@ -900,23 +1104,23 @@ Available color scale ids are: 'Blues', 'RdBu', 'YlGnBu', 'YlOrRd', 'Reds'.
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       selectInput(
-         "continuousCsSelect",
-         "Continuous Color Scale:",
-         choices = list(
-           "Viridis" = "Viridis", "Inferno" = "Inferno", "Magma" = "Magma",
-           "Plasma" = "Plasma", "Warm" = "Warm", "Cool" = "Cool", "Rainbow" ="Rainbow",
-           "CubehelixDefault" = "CubehelixDefault", "Blues" = "Blues",
-           "Greens" = "Greens", "Greys" = "Greys", "Oranges" = "Oranges",
-           "Purples" = "Purples", "Reds" = "Reds", "BuGn" = "BuGn", "BuPu" = "BuPu",
-           "GnBu" = "GnBu", "OrRd" = "OrRd", "PuBuGn" = "PuBuGn", "PuBu" = "PuBu",
-           "PuRd" = "PuRd", "RdBu" = "RdBu", "RdPu" = "RdPu", "YlGnBu" = "YlGnBu",
-           "YlGn" = "YlGn", "YlOrBr" = "YlOrBr", "YlOrRd" = "YlOrRd"
-         ),
-         selected = "Viridis"
+     selectInput(
+       "continuousCsSelect",
+       "Continuous Color Scale:",
+       choices = list(
+         "Viridis" = "Viridis", "Inferno" = "Inferno", "Magma" = "Magma",
+         "Plasma" = "Plasma", "Warm" = "Warm", "Cool" = "Cool", "Rainbow" ="Rainbow",
+         "CubehelixDefault" = "CubehelixDefault", "Blues" = "Blues",
+         "Greens" = "Greens", "Greys" = "Greys", "Oranges" = "Oranges",
+         "Purples" = "Purples", "Reds" = "Reds", "BuGn" = "BuGn", "BuPu" = "BuPu",
+         "GnBu" = "GnBu", "OrRd" = "OrRd", "PuBuGn" = "PuBuGn", "PuBu" = "PuBu",
+         "PuRd" = "PuRd", "RdBu" = "RdBu", "RdPu" = "RdPu", "YlGnBu" = "YlGnBu",
+         "YlGn" = "YlGn", "YlOrBr" = "YlOrBr", "YlOrRd" = "YlOrRd"
        ),
-       p("The selector controls the colors used when reference column is of type continuous"),
-       parallelPlotOutput("parPlot")
+       selected = "Viridis"
+     ),
+     p("Selector controls used colors when reference column is of type continuous"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
@@ -962,7 +1166,8 @@ containing two values for continuous input (min and max value defining the cutof
 or one value for categorical input (name of the category to keep),
 or <code>NULL</code> if there is no cutoff to apply;
 <code>NULL</code> is allowed, meaning all columns are without cutoff.
-A named list can also be provided to only indicate which columns must be assigned to a new cutoff.</p>
+A named list can also be provided to only indicate which columns must be assigned
+to a new cutoff.</p>
 </td></tr>
 </table>
 
@@ -986,21 +1191,21 @@ A named list can also be provided to only indicate which columns must be assigne
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       sliderInput("brushSlider", "Brush for 'Sepal.Length' column:",
-           min = 4, max = 8, step = 0.1, value = c(4, 8)),
-       p("The slider controls the rows which are kept by cutoff (others are shaded)"),
-       parallelPlotOutput("parPlot")
+     sliderInput("brushSlider", "Brush for 'Sepal.Length' column:",
+       min = 4, max = 8, step = 0.1, value = c(4, 8)),
+     p("The slider controls the rows which are kept by cutoff (others are shaded)"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(iris)
-       })
-       observeEvent(input$brushSlider, {
-           cutoffs &lt;- list()
-           cutoffs["Sepal.Length"] &lt;- list(list(input$brushSlider))
-           parallelPlot::setCutoffs("parPlot", cutoffs)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(iris)
+     })
+     observeEvent(input$brushSlider, {
+       cutoffs &lt;- list()
+       cutoffs["Sepal.Length"] &lt;- list(list(input$brushSlider))
+       parallelPlot::setCutoffs("parPlot", cutoffs)
+     })
    }
 
    shinyApp(ui, server)
@@ -1034,7 +1239,8 @@ A named list can also be provided to only indicate which columns must be assigne
 <td>
 <p>Vector of boolean (one for each data column), <code>TRUE</code> if an histogram must be displayed;
 <code>NULL</code> is allowed, meaning no histogram must be displayed.
-A named list can also be provided to only indicate which columns must be assigned to a new display.</p>
+A named list can also be provided to only indicate which columns must be assigned
+to a new display.</p>
 </td></tr>
 </table>
 
@@ -1052,19 +1258,19 @@ A named list can also be provided to only indicate which columns must be assigne
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       checkboxInput("histCB", "Histogram Visibility", FALSE),
-       p("The check box controls the visibility of histograms"),
-       parallelPlotOutput("parPlot")
+     checkboxInput("histCB", "Histogram Visibility", FALSE),
+     p("The check box controls the visibility of histograms"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(iris)
-       })
-       observeEvent(input$histCB, {
-           histoVisibility &lt;- rep(input$histCB, ncol(iris))
-           parallelPlot::setHistoVisibility("parPlot", histoVisibility)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(iris)
+     })
+     observeEvent(input$histCB, {
+       histoVisibility &lt;- rep(input$histCB, ncol(iris))
+       parallelPlot::setHistoVisibility("parPlot", histoVisibility)
+     })
    }
 
    shinyApp(ui, server)
@@ -1096,9 +1302,11 @@ A named list can also be provided to only indicate which columns must be assigne
 </td></tr>
 <tr><td><code id="setInvertedAxes_+3A_invertedaxes">invertedAxes</code></td>
 <td>
-<p>Vector of boolean (one for each data column), <code>TRUE</code> if axis orientation must be inverted;
+<p>Vector of boolean (one for each data column),
+<code>TRUE</code> if axis orientation must be inverted;
 <code>NULL</code> is allowed, meaning no axis must be inverted.
-A named list can also be provided to only indicate which axes must be assigned to a new orientation.</p>
+A named list can also be provided to only indicate which axes must be assigned
+to a new orientation.</p>
 </td></tr>
 </table>
 
@@ -1116,19 +1324,19 @@ A named list can also be provided to only indicate which axes must be assigned t
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       checkboxInput("orientationCB", "Axis orientation", FALSE),
-       p("The check box controls the orientation of axes"),
-       parallelPlotOutput("parPlot")
+     checkboxInput("orientationCB", "Axis orientation", FALSE),
+     p("The check box controls the orientation of axes"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(iris)
-       })
-       observeEvent(input$orientationCB, {
-           invertedAxes &lt;- rep(input$orientationCB, ncol(iris))
-           parallelPlot::setInvertedAxes("parPlot", invertedAxes)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(iris)
+     })
+     observeEvent(input$orientationCB, {
+       invertedAxes &lt;- rep(input$orientationCB, ncol(iris))
+       parallelPlot::setInvertedAxes("parPlot", invertedAxes)
+     })
    }
 
    shinyApp(ui, server)
@@ -1161,7 +1369,8 @@ A named list can also be provided to only indicate which axes must be assigned t
 <tr><td><code id="setKeptColumns_+3A_keptcolumns">keptColumns</code></td>
 <td>
 <p>Vector of boolean (one for each data column), <code>FALSE</code> if column has to be hidden.
-A named list can also be provided to only indicate which columns must be assigned to a new visibility.</p>
+A named list can also be provided to only indicate which columns must be assigned
+to a new visibility.</p>
 </td></tr>
 </table>
 
@@ -1179,25 +1388,98 @@ A named list can also be provided to only indicate which columns must be assigne
    library(parallelPlot)
 
    ui &lt;- fluidPage(
-       checkboxInput("hideColumnsCB", "Hide last columns", FALSE),
-       p("The check box controls the visibility of the two last columns"),
-       parallelPlotOutput("parPlot")
+     checkboxInput("hideColumnsCB", "Hide last columns", FALSE),
+     p("The check box controls the visibility of the two last columns"),
+     parallelPlotOutput("parPlot")
    )
 
    server &lt;- function(input, output, session) {
-       output$parPlot &lt;- renderParallelPlot({
-           parallelPlot(mtcars)
-       })
-       observeEvent(input$hideColumnsCB, {
-           keptColumns &lt;- vapply(
-             1:ncol(mtcars),
-             function(i) {
-               return(ifelse(input$hideColumnsCB, ncol(mtcars) - i &gt;= 2, TRUE))
-             },
-             logical(1)
-           )
-           parallelPlot::setKeptColumns("parPlot", keptColumns)
-       })
+     output$parPlot &lt;- renderParallelPlot({
+       parallelPlot(mtcars)
+     })
+     observeEvent(input$hideColumnsCB, {
+       keptColumns &lt;- vapply(
+         1:ncol(mtcars),
+         function(i) {
+           return(ifelse(input$hideColumnsCB, ncol(mtcars) - i &gt;= 2, TRUE))
+         },
+         logical(1)
+       )
+       parallelPlot::setKeptColumns("parPlot", keptColumns)
+     })
+   }
+
+   shinyApp(ui, server)
+ }
+
+</code></pre>
+
+<hr>
+<h2 id='setRefColumnDim'>Line coloring</h2><span id='topic+setRefColumnDim'></span>
+
+<h3>Description</h3>
+
+<p>Tells which column is used to determine the color to attribute to each row.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>setRefColumnDim(id, dim)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="setRefColumnDim_+3A_id">id</code></td>
+<td>
+<p>output variable to read from (id which references the requested plot)</p>
+</td></tr>
+<tr><td><code id="setRefColumnDim_+3A_dim">dim</code></td>
+<td>
+<p>Name of the reference column (used to determine the color to attribute to a row);
+<code>NULL</code> is allowed, meaning there is no coloring to apply.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>No return value, called from shiny applications for side effects.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'> if(interactive() &amp;&amp; require(shiny)) {
+   library(shiny)
+   library(parallelPlot)
+
+   ui &lt;- fluidPage(
+     selectInput(
+       "refColumnDimSelect",
+       "Reference column:",
+       choices = list(
+         "None" = 1, "First" = 2, "Second" = 3
+       ),
+       selected = "None"
+     ),
+     p("Selector controls the colomn used to determine the color to attribute to rows"),
+     parallelPlotOutput("parPlot")
+   )
+
+   server &lt;- function(input, output, session) {
+     output$parPlot &lt;- renderParallelPlot({
+       categorical &lt;-
+         list(cyl = c(4, 6, 8), vs = c(0, 1), am = c(0, 1), gear = 3:5, carb = 1:8)
+       parallelPlot(mtcars, categorical = categorical)
+     })
+     observeEvent(input$refColumnDimSelect, {
+       choice &lt;- as.numeric(input$refColumnDimSelect)
+       refColumnDim &lt;- list(NULL, colnames(mtcars)[1], colnames(mtcars)[2])[[choice]]
+       parallelPlot::setRefColumnDim("parPlot", refColumnDim)
+     })
    }
 
    shinyApp(ui, server)

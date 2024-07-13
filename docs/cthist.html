@@ -24,6 +24,11 @@ entry was updated</a></li>
 <li><a href='#clinicaltrials_gov_download'><p>Mass-download registry entry historical versions from</p>
 ClinicalTrials.gov</a></li>
 <li><a href='#clinicaltrials_gov_version'><p>Download a registry entry version from ClinicalTrials.gov</p></a></li>
+<li><a href='#extract_publications'><p>Takes a data frame of the type provided by</p>
+<code>clinicaltrials_gov_download()</code> and returns a new data frame
+containing one row per publication of the publication type
+specified indexed on ClinicalTrials.gov for every version of the
+clinical trial record provided.</a></li>
 </ul>
 </div>
 <hr>
@@ -36,7 +41,7 @@ ClinicalTrials.gov</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.1.6</td>
+<td>2.1.10</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -60,7 +65,7 @@ ClinicalTrials.gov</a></li>
 <tr>
 <td>Imports:</td>
 <td>assertthat, dplyr, httr, jsonlite, magrittr, readr, rlang,
-stringr, tibble</td>
+stringr, tibble, purrr, tidyr</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -76,7 +81,7 @@ stringr, tibble</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -84,7 +89,7 @@ stringr, tibble</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-12-01 21:44:56 UTC; researchfairy</td>
+<td>2024-07-09 23:10:15 UTC; researchfairy</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -101,7 +106,7 @@ stringr, tibble</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-12-01 22:00:02 UTC</td>
+<td>2024-07-09 23:40:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -115,8 +120,8 @@ stringr, tibble</td>
 
 <h3>Details</h3>
 
-<p>This package provides 3 functions for mass-downloading
-historical clinical trial registry entry data from
+<p>This package provides 4 functions for mass-downloading and
+interpreting historical clinical trial registry entry data from
 ClinicalTrials.gov
 </p>
 <div class="sourceCode"><pre>The functions for downloading clinical trial registry data from
@@ -135,6 +140,11 @@ ClinicalTrials.gov
 <p>clinicaltrials_gov_download() mass-downloads clinical
 trial registry entry versions for one or many trials on
 ClinicalTrials.gov
+</p>
+<p>extract_publications() interprets a data frame provided by
+clinicaltrials_gov_download() and provides a new data frame
+with one row per publication of the type specified indexed by
+ClinicalTrials.gov per clinical trial registry history version.
 </p>
 
 
@@ -241,6 +251,7 @@ be passed directly to the function as the <code>nctids</code> argument.
   nctids,
   output_filename = NA,
   quiet = FALSE,
+  earliest = FALSE,
   latest = FALSE
 )
 </code></pre>
@@ -268,11 +279,19 @@ be returned by the function as a data frame.</p>
 printed during download. FALSE by default, messages printed for
 every version downloaded showing progress.</p>
 </td></tr>
+<tr><td><code id="clinicaltrials_gov_download_+3A_earliest">earliest</code></td>
+<td>
+<p>A boolean TRUE or FALSE. If TRUE, only the earliest
+version of the registry entry will be downloaded, if FALSE, all
+versions will be downloaded. FALSE by default. Can be combined
+with latest.</p>
+</td></tr>
 <tr><td><code id="clinicaltrials_gov_download_+3A_latest">latest</code></td>
 <td>
 <p>A boolean TRUE or FALSE. If TRUE, only the latest
 version of the registry entry will be downloaded, if FALSE, all
-versions will be downloaded. FALSE by default.</p>
+versions will be downloaded. FALSE by default. Can be combined
+with earliest.</p>
 </td></tr>
 </table>
 
@@ -355,10 +374,10 @@ date, primary completion date precision (month or day), primary
 completion date type, minimum age, maximum age, sex, accepts
 healthy volunteers, inclusion/exclusion criteria, outcome
 measures, overall contacts, central contacts, responsible
-party, lead sponsor, collaborators, reason why the trial
-stopped (if provided), whether results are posted, references
-data, organization indentifiers and other secondary trial
-identifiers.
+party, lead sponsor, collaborators, locations, reason why the
+trial stopped (if provided), whether results are posted,
+references data, organization indentifiers and other secondary
+trial identifiers.
 </p>
 
 
@@ -368,6 +387,66 @@ identifiers.
 
 version &lt;- clinicaltrials_gov_version("NCT00942747", 1)
 
+</code></pre>
+
+<hr>
+<h2 id='extract_publications'>Takes a data frame of the type provided by
+<code>clinicaltrials_gov_download()</code> and returns a new data frame
+containing one row per publication of the publication type
+specified indexed on ClinicalTrials.gov for every version of the
+clinical trial record provided.</h2><span id='topic+extract_publications'></span>
+
+<h3>Description</h3>
+
+<p>This function does not connect to ClinicalTrials.gov, and only
+interprets data that has already been downloaded by expanding the
+nested JSON-encoded data in the <code>references</code> column provided by
+<code>clinicaltrial_gov_version</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>extract_publications(df, types = c("RESULT", "BACKGROUND", "DERIVED"))
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="extract_publications_+3A_df">df</code></td>
+<td>
+<p>A data frame containing at least the following columns:
+<code>nctid</code>, <code>version_number</code>, <code>total_versions</code>, <code>version_date</code>,
+and <code>references</code>. The <code>references</code> column should contain a
+nested JSON-encoded table with three columns: <code>pmid</code>, <code>type</code>
+and <code>citation</code>. This data frame can be generated by the use of
+<code>clinicaltrials_gov_download</code>.</p>
+</td></tr>
+<tr><td><code id="extract_publications_+3A_types">types</code></td>
+<td>
+<p>A list of types to be returned or a character string
+if only one type specified, e.g. &quot;RESULT&quot; or c(&quot;RESULT&quot;,
+&quot;BACKGROUND&quot;). Allowed types: &quot;RESULT&quot;, &quot;BACKGROUND&quot;,
+&quot;DERIVED&quot;.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data frame with all the original columns, as well as an
+additional three columns: <code>pmid</code>, <code>type</code> and <code>citation</code>. The
+new data frame will have one row per publication.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+
+hv &lt;- clinicaltrials_gov_download("NCT00942747", latest=TRUE)
+extract_publications(hv)
 
 </code></pre>
 

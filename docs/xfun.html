@@ -26,6 +26,7 @@ function processMathHTML() {
 <li><a href='#bg_process'><p>Start a background process</p></a></li>
 <li><a href='#broken_packages'><p>Find out broken packages and reinstall them</p></a></li>
 <li><a href='#bump_version'><p>Bump version numbers</p></a></li>
+<li><a href='#cache_exec'><p>Cache the execution of an expression in memory or on disk</p></a></li>
 <li><a href='#cache_rds'><p>Cache the value of an R expression to an RDS file</p></a></li>
 <li><a href='#crandalf_check'><p>Submit check jobs to crandalf</p></a></li>
 <li><a href='#csv_options'><p>Parse comma-separated chunk options</p></a></li>
@@ -47,7 +48,7 @@ function processMathHTML() {
 <li><a href='#format_bytes'><p>Format numbers of bytes using a specified unit</p></a></li>
 <li><a href='#from_root'><p>Get the relative path of a path in a project relative to the current working</p>
 directory</a></li>
-<li><a href='#github_releases'><p>Get the tags of Github releases of a repository</p></a></li>
+<li><a href='#github_releases'><p>Get the tags of GitHub releases of a repository</p></a></li>
 <li><a href='#grep_sub'><p>Perform replacement with <code>gsub()</code> on elements matched from <code>grep()</code></p></a></li>
 <li><a href='#gsub_file'><p>Search and replace strings in files</p></a></li>
 <li><a href='#in_dir'><p>Evaluate an expression under a specified working directory</p></a></li>
@@ -63,8 +64,11 @@ directory</a></li>
 <li><a href='#isFALSE'><p>Test if an object is <code>FALSE</code></p></a></li>
 <li><a href='#magic_path'><p>Find a file or directory under a root directory</p></a></li>
 <li><a href='#mark_dirs'><p>Mark some paths as directories</p></a></li>
+<li><a href='#md_table'><p>Generate a simple Markdown pipe table</p></a></li>
+<li><a href='#md5'><p>Calculate the MD5 checksums of R objects</p></a></li>
 <li><a href='#msg_cat'><p>Generate a message with <code>cat()</code></p></a></li>
 <li><a href='#native_encode'><p>Try to use the system native encoding to represent a character vector</p></a></li>
+<li><a href='#new_app'><p>Create a local web application</p></a></li>
 <li><a href='#news2md'><p>Convert package news to the Markdown format</p></a></li>
 <li><a href='#normalize_path'><p>Normalize paths</p></a></li>
 <li><a href='#numbers_to_words'><p>Convert numbers to English words</p></a></li>
@@ -82,6 +86,7 @@ requested</a></li>
 <li><a href='#read_bin'><p>Read all records of a binary file as a raw vector by default</p></a></li>
 <li><a href='#read_utf8'><p>Read / write files encoded in UTF-8</p></a></li>
 <li><a href='#record'><p>Run R code and record the results</p></a></li>
+<li><a href='#record_print'><p>Print methods for <code>record()</code></p></a></li>
 <li><a href='#relative_path'><p>Get the relative path of a path relative to a directory</p></a></li>
 <li><a href='#rename_seq'><p>Rename files with a sequential numeric prefix</p></a></li>
 <li><a href='#rest_api'><p>Get data from a REST API</p></a></li>
@@ -128,7 +133,7 @@ requested</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.43</td>
+<td>0.45</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -140,9 +145,10 @@ requested</a></li>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>testit, parallel, codetools, rstudioapi, tinytex (&ge; 0.30),
-mime, markdown (&ge; 1.5), knitr (&ge; 1.42), htmltools, remotes,
-pak, rhub, renv, curl, xml2, jsonlite, magick, yaml, rmarkdown</td>
+<td>testit, parallel, codetools, methods, rstudioapi, tinytex (&ge;
+0.30), mime, markdown (&ge; 1.5), knitr (&ge; 1.47), htmltools,
+remotes, pak, rhub, renv, curl, xml2, jsonlite, magick, yaml,
+qs, rmarkdown</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -174,7 +180,7 @@ pak, rhub, renv, curl, xml2, jsonlite, magick, yaml, rmarkdown</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-25 16:26:43 UTC; yihui</td>
+<td>2024-06-16 22:23:47 UTC; yihui</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -198,7 +204,7 @@ pak, rhub, renv, curl, xml2, jsonlite, magick, yaml, rmarkdown</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-25 17:00:02 UTC</td>
+<td>2024-06-16 23:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -557,6 +563,138 @@ or values that can be coerced to version numbers via
 </code></pre>
 
 <hr>
+<h2 id='cache_exec'>Cache the execution of an expression in memory or on disk</h2><span id='topic+cache_exec'></span>
+
+<h3>Description</h3>
+
+<p>Caching is based on the assumption that if the input does not change, the
+output will not change. After an expression is executed for the first time,
+its result will be saved (either in memory or on disk). The next run will be
+skipped and the previously saved result will be loaded directly if all
+external inputs of the expression remain the same, otherwise the cache will
+be invalidated and the expression will be re-executed.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>cache_exec(expr, path = "cache/", id = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="cache_exec_+3A_expr">expr</code></td>
+<td>
+<p>An R expression to be cached.</p>
+</td></tr>
+<tr><td><code id="cache_exec_+3A_path">path</code></td>
+<td>
+<p>The path to save the cache. The special value <code>":memory:"</code> means
+in-memory caching. If it is intended to be a directory path, please make
+sure to add a trailing slash.</p>
+</td></tr>
+<tr><td><code id="cache_exec_+3A_id">id</code></td>
+<td>
+<p>A stable and unique string identifier for the expression to be used
+to identify a unique copy of cache for the current expression from all
+cache files (or in-memory elements). If not provided, an MD5 digest of the
+<a href="base.html#topic+deparse">deparse</a>d expression will be used, which means if the expression does not
+change (changes in comments or white spaces do not matter), the <code>id</code> will
+remain the same. This may not be a good default is two identical
+expressions are cached under the same <code>path</code>, because they could overwrite
+each other's cache when one expression's cache is invalidated, which may or
+may not be what you want. If you do not want that to happen, you need to
+manually provide an <code>id</code>.</p>
+</td></tr>
+<tr><td><code id="cache_exec_+3A_...">...</code></td>
+<td>
+<p>More arguments to control the behavior of caching (see
+&lsquo;Details&rsquo;).</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Arguments supported in <code>...</code> include:
+</p>
+
+<ul>
+<li> <p><code>vars</code>: Names of local variables (which are created inside the expression).
+By default, local variables are automatically detected from the expression
+via <code><a href="codetools.html#topic+codetools">codetools::findLocalsList()</a></code>. Locally created variables are cached along
+with the value of the expression.
+</p>
+</li>
+<li> <p><code>hash</code> and <code>extra</code>: R objects to be used to determine if cache should be
+loaded or invalidated. If (the MD5 hash of) the objects is not changed, the
+cache is loaded, otherwise the cache is invalidated and rebuilt. By default,
+<code>hash</code> is a list of values of global variables in the expression (i.e.,
+variables created outside the expression). Global variables are automatically
+detected by <code><a href="codetools.html#topic+findGlobals">codetools::findGlobals()</a></code>. You can provide a vector of names to
+override the automatic detection if you want some specific global variables
+to affect caching, or the automatic detection is not reliable. You can also
+provide additional information via the <code>extra</code> argument. For example, if the
+expression reads an external file <code>foo.csv</code>, and you want the cache to be
+invalidated after the file is modified, you may use <code>extra = file.mtime("foo.csv")</code>.
+</p>
+</li>
+<li> <p><code>keep</code>: By default, only one copy of the cache corresponding to an <code>id</code>
+under <code>path</code> is kept, and all other copies for this <code>id</code> is automaitcally
+purged. If <code>TRUE</code>, all copies of the cache are kept. If <code>FALSE</code>, all copies
+are removed, which means the cache is <em>always</em> invalidated, and can be useful
+to force re-executing the expression.
+</p>
+</li>
+<li> <p><code>rw</code>: A list of functions to read/write the cache files. The list is of the
+form <code>list(load = function(file) {}, save = function(x, file) {})</code>. By
+default, <code><a href="base.html#topic+readRDS">readRDS()</a></code> and <code><a href="base.html#topic+saveRDS">saveRDS()</a></code> are used. This argument can also take a
+character string to use some built-in read/write methods. Currently available
+methods include <code>rds</code> (the default), <code>raw</code> (using <code><a href="base.html#topic+serialize">serialize()</a></code> and
+<code><a href="base.html#topic+unserialize">unserialize()</a></code>), and <code>qs</code> (using <code><a href="qs.html#topic+qread">qs::qread()</a></code> and <code><a href="qs.html#topic+qsave">qs::qsave()</a></code>). The <code>rds</code>
+and <code>raw</code> methods only use base R functions (the <code>rds</code> method generates
+smaller files because it uses compression, but is often slower than the <code>raw</code>
+method, which does not use compression). The <code>qs</code> method requires the
+<span class="pkg">qs</span> package, which can be much faster than base R methods and also
+supports compression.
+</p>
+</li></ul>
+
+
+
+<h3>Value</h3>
+
+<p>If the cache is found, the cached value of the expression will be
+loaded and returned (other local variables will also be lazy-loaded into
+the current environment as a side-effect). If cache does not exist, the
+expression is executed and its value is returned.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># the first run takes about 1 second
+y1 = xfun::cache_exec({
+    x = rnorm(1e+05)
+    Sys.sleep(1)
+    x
+}, path = ":memory:", id = "sim-norm")
+
+# the second run takes almost no time
+y2 = xfun::cache_exec({
+    # comments won't affect caching
+    x = rnorm(1e+05)
+    Sys.sleep(1)
+    x
+}, path = ":memory:", id = "sim-norm")
+
+# y1, y2, and x should be identical
+stopifnot(identical(y1, y2), identical(y1, x))
+</code></pre>
+
+<hr>
 <h2 id='cache_rds'>Cache the value of an R expression to an RDS file</h2><span id='topic+cache_rds'></span>
 
 <h3>Description</h3>
@@ -697,6 +835,13 @@ cache only stores the last value of the expression in <code>expr</code>.
 </p>
 
 
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cache_exec">cache_exec()</a></code>, which is more flexible (e.g., it supports in-memory
+caching and different read/write methods for cache files).
+</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>f = tempfile()  # the cache file
@@ -712,7 +857,7 @@ compute()  # returns 1:10 immediately
 compute()  # fast again
 compute(rerun = TRUE)  # one second to rerun
 compute()
-file.remove(f)
+unlink(paste0(f, "_*.rds"))
 </code></pre>
 
 <hr>
@@ -749,7 +894,7 @@ checked.</p>
 </td></tr>
 <tr><td><code id="crandalf_check_+3A_jobs">jobs</code></td>
 <td>
-<p>The number of jobs to run in Github Actions (by default, all jobs
+<p>The number of jobs to run in GitHub Actions (by default, all jobs
 are submitted, but you can choose to submit the first few jobs).</p>
 </td></tr>
 <tr><td><code id="crandalf_check_+3A_which">which</code></td>
@@ -758,7 +903,7 @@ are submitted, but you can choose to submit the first few jobs).</p>
 </td></tr>
 <tr><td><code id="crandalf_check_+3A_repo">repo</code></td>
 <td>
-<p>The crandalf repo on Github (of the form <code>user/repo</code> such as
+<p>The crandalf repo on GitHub (of the form <code>user/repo</code> such as
 <code>"yihui/crandalf"</code>). Usually you do not need to specify it, unless you
 are not calling this function inside the crandalf project, because
 <code>gh</code> should be able to figure out the repo automatically.</p>
@@ -767,12 +912,12 @@ are not calling this function inside the crandalf project, because
 <td>
 <p>The maximum of records for <code>gh run list</code> to retrieve.
 You only need a larger number if the check results are very early in the
-Github Action history.</p>
+GitHub Action history.</p>
 </td></tr>
 <tr><td><code id="crandalf_check_+3A_wait">wait</code></td>
 <td>
 <p>Number of seconds to wait if not all jobs have been completed on
-Github. By default, this function checks the status every 5 minutes until
+GitHub. By default, this function checks the status every 5 minutes until
 all jobs are completed. Set <code>wait</code> to 0 to disable waiting (and throw
 an error immediately when any jobs are not completed).</p>
 </td></tr>
@@ -781,17 +926,17 @@ an error immediately when any jobs are not completed).</p>
 
 <h3>Details</h3>
 
-<p>Due to the time limit of a single job on Github Actions (6 hours), you will
+<p>Due to the time limit of a single job on GitHub Actions (6 hours), you will
 have to split the large number of reverse dependencies into batches and check
-them sequentially on Github (at most 5 jobs in parallel). The function
+them sequentially on GitHub (at most 5 jobs in parallel). The function
 <code>crandalf_check()</code> does this automatically when necessary. It requires
 the <code>git</code> command to be available.
 </p>
-<p>The function <code>crandalf_results()</code> fetches check results from Github
+<p>The function <code>crandalf_results()</code> fetches check results from GitHub
 after all checks are completed, merge the results, and show a full summary of
-check results. It requires <code>gh</code> (Github CLI:
+check results. It requires <code>gh</code> (GitHub CLI:
 <a href="https://cli.github.com/manual/">https://cli.github.com/manual/</a>) to be installed and you also need to
-authenticate with your Github account beforehand.
+authenticate with your GitHub account beforehand.
 </p>
 
 <hr>
@@ -1519,18 +1664,21 @@ g("An argument of g()!")
 </code></pre>
 
 <hr>
-<h2 id='fenced_block'>Create a fenced block in Markdown</h2><span id='topic+fenced_block'></span><span id='topic+make_fence'></span>
+<h2 id='fenced_block'>Create a fenced block in Markdown</h2><span id='topic+fenced_block'></span><span id='topic+fenced_div'></span><span id='topic+make_fence'></span>
 
 <h3>Description</h3>
 
 <p>Wrap content with fence delimiters such as backticks (code blocks) or colons
-(fenced Div). Optionally the fenced block can have attributes.
+(fenced Div). Optionally the fenced block can have attributes. The function
+<code>fenced_div()</code> is a shorthand of <code>fenced_block(char = ':')</code>.
 </p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>fenced_block(x, attrs = NULL, fence = make_fence(x, char), char = "`")
+
+fenced_div(...)
 
 make_fence(x, char = "`")
 </code></pre>
@@ -1556,6 +1704,10 @@ generated from the <code>char</code> argument by default.</p>
 <td>
 <p>The fence character to be used to generate the fence string by
 default.</p>
+</td></tr>
+<tr><td><code id="fenced_block_+3A_...">...</code></td>
+<td>
+<p>Arguments to be passed to <code>fenced_block()</code>.</p>
 </td></tr>
 </table>
 
@@ -1797,11 +1949,11 @@ xfun::from_root("data", "mtcars.csv")
 </code></pre>
 
 <hr>
-<h2 id='github_releases'>Get the tags of Github releases of a repository</h2><span id='topic+github_releases'></span>
+<h2 id='github_releases'>Get the tags of GitHub releases of a repository</h2><span id='topic+github_releases'></span>
 
 <h3>Description</h3>
 
-<p>Use the Github API (<code><a href="#topic+github_api">github_api()</a></code>) to obtain the tags of the
+<p>Use the GitHub API (<code><a href="#topic+github_api">github_api()</a></code>) to obtain the tags of the
 releases.
 </p>
 
@@ -2509,6 +2661,125 @@ paths.
 </code></pre>
 
 <hr>
+<h2 id='md_table'>Generate a simple Markdown pipe table</h2><span id='topic+md_table'></span>
+
+<h3>Description</h3>
+
+<p>A minimal Markdown table generator using the pipe <code>|</code> as column separators.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>md_table(x, digits = NULL, na = NULL, newline = NULL, limit = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="md_table_+3A_x">x</code></td>
+<td>
+<p>A 2-dimensional object (e.g., a matrix or data frame).</p>
+</td></tr>
+<tr><td><code id="md_table_+3A_digits">digits</code></td>
+<td>
+<p>The number of decimal places to be passed to <code><a href="base.html#topic+round">round()</a></code>. It can
+be a integer vector of the same length as the number of columns in <code>x</code> to
+round columns separately. The default is <code>3</code>.</p>
+</td></tr>
+<tr><td><code id="md_table_+3A_na">na</code></td>
+<td>
+<p>A character string to represent <code>NA</code> values. The default is an
+empty string.</p>
+</td></tr>
+<tr><td><code id="md_table_+3A_newline">newline</code></td>
+<td>
+<p>A character string to substitute <code style="white-space: pre;">&#8288;\n&#8288;</code> in <code>x</code> (because pipe
+tables do not support line breaks in cells). The default is a space.</p>
+</td></tr>
+<tr><td><code id="md_table_+3A_limit">limit</code></td>
+<td>
+<p>The maximum number of rows to show in the table. If it is
+smaller than the number of rows, the data in the middle will be omitted. If
+it is of length 2, the second number will be used to limit the number of
+columns. Zero and negative values are ignored.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The default argument values can be set via global options with the prefix
+<code>xfun.md_table.</code>, e.g., <code style="white-space: pre;">&#8288;options(xfun.md_table.digits 2, xfun.md_table.na = 'n/a')&#8288;</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A character vector.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="knitr.html#topic+kable">knitr::kable()</a></code> (which supports more features)
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>xfun::md_table(head(iris))
+xfun::md_table(mtcars, limit = c(10, 6))
+</code></pre>
+
+<hr>
+<h2 id='md5'>Calculate the MD5 checksums of R objects</h2><span id='topic+md5'></span>
+
+<h3>Description</h3>
+
+<p><a href="base.html#topic+serialize">Serialize</a> an object to a temporary file, calculate the
+checksum via <code><a href="tools.html#topic+md5sum">tools::md5sum()</a></code>, and delete the file.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>md5(...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="md5_+3A_...">...</code></td>
+<td>
+<p>Any number of R objects.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A character vector of the checksums of objects passed to <code>md5()</code>. If
+the arguments are named, the results will also be named.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x1 = 1
+x2 = 1:10
+x3 = seq(1, 10)
+x4 = iris
+x5 = paste
+(m = xfun::md5(x1, x2, x3, x4, x5))
+stopifnot(m[2] == m[3])  # x2 and x3 should be identical
+
+xfun::md5(x1 = x1, x2 = x2)  # named arguments
+</code></pre>
+
+<hr>
 <h2 id='msg_cat'>Generate a message with <code>cat()</code></h2><span id='topic+msg_cat'></span>
 
 <h3>Description</h3>
@@ -2612,6 +2883,61 @@ Encoding(s)
 s2 = native_encode(s)
 Encoding(s2)
 </code></pre>
+
+<hr>
+<h2 id='new_app'>Create a local web application</h2><span id='topic+new_app'></span>
+
+<h3>Description</h3>
+
+<p>An experimental function to create a local web application based on R's
+internal <code>httpd</code> server (which is primarily for running R's dynamic help
+system).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>new_app(name, handler, open = interactive(), ports = 4321 + 1:10)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="new_app_+3A_name">name</code></td>
+<td>
+<p>The app name (a character string, and each app should have a
+unique name).</p>
+</td></tr>
+<tr><td><code id="new_app_+3A_handler">handler</code></td>
+<td>
+<p>A function that takes the HTTP request information (the first
+argument is the requested path) and returns a response.</p>
+</td></tr>
+<tr><td><code id="new_app_+3A_open">open</code></td>
+<td>
+<p>Whether to open the app, or a function to open the app URL.</p>
+</td></tr>
+<tr><td><code id="new_app_+3A_ports">ports</code></td>
+<td>
+<p>A vector of ports to try for starting the server.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>The app URL of the form <code style="white-space: pre;">&#8288;http://127.0.0.1:port/custom/name/&#8288;</code>.
+</p>
+
+
+<h3>Note</h3>
+
+<p>This function is not based on base R's public API, and is possible to
+break in the future, which is also why the documentation here is terse.
+Please avoid creating public-facing web apps with it. You may consider
+packages like <span class="pkg">httpuv</span> and <span class="pkg">Rserve</span> for production web apps.
+</p>
 
 <hr>
 <h2 id='news2md'>Convert package news to the Markdown format</h2><span id='topic+news2md'></span>
@@ -3415,10 +3741,9 @@ unlink(f)
 
 <h3>Description</h3>
 
-<p>Read or write files, assuming they are encoded in UTF-8. <code>read_utf8()</code>
-is roughly <code>readLines(encoding = 'UTF-8')</code> (a warning will be issued if
-non-UTF8 lines are found), and <code>write_utf8()</code> calls
-<code>writeLines(enc2utf8(text), useBytes = TRUE)</code>.
+<p>Read or write files, assuming they are encoded in UTF-8. <code>read_utf8()</code> is
+roughly <code>readLines(encoding = 'UTF-8')</code> (a warning will be issued if non-UTF8
+lines are found), and <code>write_utf8()</code> calls <code>writeLines(enc2utf8(text), useBytes = TRUE)</code>.
 </p>
 
 
@@ -3448,13 +3773,12 @@ append_unique(text, con, sort = function(x) base::sort(unique(x)))
 </td></tr>
 <tr><td><code id="read_utf8_+3A_text">text</code></td>
 <td>
-<p>A character vector (will be converted to UTF-8 via
-<code><a href="base.html#topic+enc2utf8">enc2utf8()</a></code>).</p>
+<p>A character vector (will be converted to UTF-8 via <code><a href="base.html#topic+enc2utf8">enc2utf8()</a></code>).</p>
 </td></tr>
 <tr><td><code id="read_utf8_+3A_...">...</code></td>
 <td>
-<p>Other arguments passed to <code><a href="base.html#topic+writeLines">writeLines()</a></code> (except
-<code>useBytes</code>, which is <code>TRUE</code> in <code>write_utf8()</code>).</p>
+<p>Other arguments passed to <code><a href="base.html#topic+writeLines">writeLines()</a></code> (except <code>useBytes</code>, which
+is <code>TRUE</code> in <code>write_utf8()</code>).</p>
 </td></tr>
 <tr><td><code id="read_utf8_+3A_sort">sort</code></td>
 <td>
@@ -3467,10 +3791,16 @@ function to sort the content; <code>TRUE</code> is equivalent to
 
 <h3>Details</h3>
 
-<p>The function <code>append_utf8()</code> appends UTF-8 content to a file or
-connection based on <code>read_utf8()</code> and <code>write_utf8()</code>, and
-optionally sort the content. The function <code>append_unique()</code> appends
-unique lines to a file or connection.
+<p>The function <code>append_utf8()</code> appends UTF-8 content to a file or connection
+based on <code>read_utf8()</code> and <code>write_utf8()</code>, and optionally sort the content.
+The function <code>append_unique()</code> appends unique lines to a file or connection.
+</p>
+
+
+<h3>Value</h3>
+
+<p><code>read_utf8()</code> returns a character vector of the file content;
+<code>write_utf8()</code> returns the <code>con</code> argument (invisibly).
 </p>
 
 <hr>
@@ -3488,10 +3818,15 @@ messages, warnings, and errors.
 <pre><code class='language-R'>record(
   code = NULL,
   dev = "png",
-  dev.path = tempfile("record-", "."),
+  dev.path = "xfun-record",
   dev.ext = dev_ext(dev),
   dev.args = list(),
-  error = FALSE,
+  message = TRUE,
+  warning = TRUE,
+  error = NA,
+  cache = list(),
+  print = record_print,
+  print.args = list(),
   verbose = getOption("xfun.record.verbose", 0),
   envir = parent.frame()
 )
@@ -3525,11 +3860,9 @@ device.</p>
 </td></tr>
 <tr><td><code id="record_+3A_dev.path">dev.path</code></td>
 <td>
-<p>A base file path for plots (by default, a temporary path
-under the current working directory). Actual plot filenames will be this
-base path plus incremental suffixes. For example, if <code>dev.path = "foo"</code>,
-the plot files will be <code style="white-space: pre;">&#8288;foo-1.png&#8288;</code>, <code style="white-space: pre;">&#8288;foo-2.png&#8288;</code>, and so on. If <code>dev.path</code>
-is not character (e.g., <code>FALSE</code>), plots will not be recorded.</p>
+<p>A base file path for plots. Actual plot filenames will be
+this base path plus incremental suffixes. For example, if <code>dev.path = "foo"</code>, the plot files will be <code style="white-space: pre;">&#8288;foo-1.png&#8288;</code>, <code style="white-space: pre;">&#8288;foo-2.png&#8288;</code>, and so on. If
+<code>dev.path</code> is not character (e.g., <code>FALSE</code>), plots will not be recorded.</p>
 </td></tr>
 <tr><td><code id="record_+3A_dev.ext">dev.ext</code></td>
 <td>
@@ -3542,11 +3875,31 @@ inferred from the first argument of the device function if possible.</p>
 arguments are <code>list(units = 'in', onefile = FALSE, width = 7, height = 7, res = 96)</code>. If any of these arguments is not present in the device
 function, it will be dropped.</p>
 </td></tr>
-<tr><td><code id="record_+3A_error">error</code></td>
+<tr><td><code id="record_+3A_message">message</code>, <code id="record_+3A_warning">warning</code>, <code id="record_+3A_error">error</code></td>
 <td>
-<p>Whether to record errors. If <code>TRUE</code>, errors will not stop the
-execution and error messages will be recorded. If <code>FALSE</code>, errors will be
-thrown normally.</p>
+<p>If <code>TRUE</code>, record and store messages / warnings
+/ errors in the output. If <code>FALSE</code>, suppress them. If <code>NA</code>, do not process
+them (messages will be emitted to the console, and errors will halt the
+execution).</p>
+</td></tr>
+<tr><td><code id="record_+3A_cache">cache</code></td>
+<td>
+<p>A list of options for caching. See the <code>path</code>, <code>id</code>, and <code>...</code>
+arguments of <code><a href="#topic+cache_exec">cache_exec()</a></code>.</p>
+</td></tr>
+<tr><td><code id="record_+3A_print">print</code></td>
+<td>
+<p>A (typically S3) function that takes the value of an expression
+in the code as input and returns output. The default is <code><a href="#topic+record_print">record_print()</a></code>.</p>
+</td></tr>
+<tr><td><code id="record_+3A_print.args">print.args</code></td>
+<td>
+<p>A list of arguments for the <code>print</code> function. By default,
+the whole list is not passed directly to the function, but only an element
+in the list with a name identical to the first class name of the returned
+value of the expression, e.g., <code>list(data.frame = list(digits = 3), matrix = list())</code>. This makes it possible to apply different print arguments to
+objects of different classes. If the whole list is intended to be passed to
+the print function directly, wrap the list in <code><a href="base.html#topic+I">I()</a></code>.</p>
 </td></tr>
 <tr><td><code id="record_+3A_verbose">verbose</code></td>
 <td>
@@ -3608,7 +3961,7 @@ console or displays the HTML page.
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>code = c("# a message test", "1:2 + 1:3", "par(mar = c(4, 4, 1, .2))",
+<pre><code class='language-R'>code = c("# a warning test", "1:2 + 1:3", "par(mar = c(4, 4, 1, .2))",
     "barplot(5:1, col = 2:6, horiz = TRUE)", "head(iris)",
     "sunflowerplot(iris[, 3:4], seg.col = 'purple')",
     "if (TRUE) {\n  message('Hello, xfun::record()!')\n}",
@@ -3622,6 +3975,59 @@ plots = Filter(function(x) inherits(x, "record_plot"),
     res)
 file.remove(unlist(plots))
 </code></pre>
+
+<hr>
+<h2 id='record_print'>Print methods for <code>record()</code></h2><span id='topic+record_print'></span><span id='topic+record_print.default'></span><span id='topic+new_record'></span>
+
+<h3>Description</h3>
+
+<p>An S3 generic function to be called to print visible values in code when the
+code is recorded by <code><a href="#topic+record">record()</a></code>. It is similar to <code><a href="knitr.html#topic+knit_print">knitr::knit_print()</a></code>. By
+default, it captures the normal <code><a href="base.html#topic+print">print()</a></code> output and returns the result as a
+character vector. The <code>knitr_kable</code> method is for printing <code><a href="knitr.html#topic+kable">knitr::kable()</a></code>
+output. Users and package authors can define other S3 methods to extend this
+function.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>record_print(x, ...)
+
+## Default S3 method:
+record_print(x, ...)
+
+new_record(x, class)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="record_print_+3A_x">x</code></td>
+<td>
+<p>For <code>record_print()</code>, the value to be printed. For <code>new_record()</code>, a
+character vector to be included in the printed results.</p>
+</td></tr>
+<tr><td><code id="record_print_+3A_...">...</code></td>
+<td>
+<p>Other arguments to be passed to <code>record_print()</code> methods.</p>
+</td></tr>
+<tr><td><code id="record_print_+3A_class">class</code></td>
+<td>
+<p>A class name. Possible values are <code>xfun:::.record_cls</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A <code>record_print()</code> method should return a character vector or a list
+of character vectors. The original classes of the vector will be discarded,
+and the vector will be treated as console output by default (i.e.,
+<code>new_record(class = "output")</code>). If it should be another type of output,
+wrap the vector in <code><a href="#topic+new_record">new_record()</a></code> and specify a class name.
+</p>
 
 <hr>
 <h2 id='relative_path'>Get the relative path of a path relative to a directory</h2><span id='topic+relative_path'></span>
@@ -3829,7 +4235,7 @@ method. If you need to use other HTTP methods (such as &lsquo;<span class="samp"
 to use other packages such as <span class="pkg">curl</span> and <span class="pkg">httr</span>.
 </p>
 <p><code>github_api()</code> is a wrapper function based on
-<code>rest_api_raw()</code> to obtain data from the Github API:
+<code>rest_api_raw()</code> to obtain data from the GitHub API:
 <a href="https://docs.github.com/en/rest">https://docs.github.com/en/rest</a>. You can provide a personal access
 token (PAT) via the <code>token</code> argument, or via one of the environment
 variables <var>GITHUB_PAT</var>, <var>GITHUB_TOKEN</var>, <var>GH_TOKEN</var>. A PAT
@@ -3858,7 +4264,7 @@ xfun::rest_api("https://httpbin.org", "/headers", "OPEN SESAME!")
 # with query parameters
 xfun::rest_api("https://httpbin.org", "/response-headers", params = list(foo = "bar"))
 
-# get the rate limit info from Github
+# get the rate limit info from GitHub
 xfun::github_api("/rate_limit")
 
 </code></pre>
@@ -3911,7 +4317,7 @@ download might fail sometimes, you may want to retry it for a few more times.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-# read the Github releases info of the repo yihui/xfun
+# read the GitHub releases info of the repo yihui/xfun
 xfun::retry(xfun::github_releases, "yihui/xfun")
 
 </code></pre>
@@ -4144,8 +4550,8 @@ Rcmd(c("build", "--help"))
 <h3>Description</h3>
 
 <p>Save the argument values of a function in a temporary RDS file, open a new R
-session via <code><a href="#topic+Rscript">Rscript()</a></code>, read the argument values, call the
-function, and read the returned value back to the current R session.
+session via <code><a href="#topic+Rscript">Rscript()</a></code>, read the argument values, call the function, and
+read the returned value back to the current R session.
 </p>
 
 
@@ -4157,7 +4563,7 @@ function, and read the returned value back to the current R session.
   options = NULL,
   ...,
   wait = TRUE,
-  fail = sprintf("Failed to run '%s' in a new R session.", deparse(substitute(fun))[1])
+  fail = sprintf("Failed to run '%s' in a new R session", deparse(substitute(fun))[1])
 )
 </code></pre>
 
@@ -4176,8 +4582,8 @@ to a function.</p>
 </td></tr>
 <tr><td><code id="Rscript_call_+3A_options">options</code></td>
 <td>
-<p>A character vector of options to passed to
-<code><a href="#topic+Rscript">Rscript()</a></code>, e.g., <code>"--vanilla"</code>.</p>
+<p>A character vector of options to passed to <code><a href="#topic+Rscript">Rscript()</a></code>, e.g.,
+<code>"--vanilla"</code>.</p>
 </td></tr>
 <tr><td><code id="Rscript_call_+3A_...">...</code>, <code id="Rscript_call_+3A_wait">wait</code></td>
 <td>
@@ -4186,14 +4592,19 @@ to a function.</p>
 <tr><td><code id="Rscript_call_+3A_fail">fail</code></td>
 <td>
 <p>The desired error message when an error occurred in calling the
-function.</p>
+function. If the actual error message during running the function is
+available, it will be appended to this message.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>The returned value of the function in the new R session.
+<p>If <code>wait = TRUE</code>, the returned value of the function in the new R
+session. If <code>wait = FALSE</code>, three file paths will be returned: the first
+one stores <code>fun</code> and <code>args</code> (as a list), the second one is supposed to
+store the returned value of the function, and the third one stores the
+possible error message.
 </p>
 
 
@@ -4521,12 +4932,7 @@ and put them in a list.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>split_source(
-  x,
-  merge_comments = FALSE,
-  line_number = FALSE,
-  skip = getOption("xfun.split_source.skip")
-)
+<pre><code class='language-R'>split_source(x, merge_comments = FALSE, line_number = FALSE)
 </code></pre>
 
 
@@ -4545,13 +4951,8 @@ any).</p>
 </td></tr>
 <tr><td><code id="split_source_+3A_line_number">line_number</code></td>
 <td>
-<p>Whether to store the starting line number of each
-expression in the returned value.</p>
-</td></tr>
-<tr><td><code id="split_source_+3A_skip">skip</code></td>
-<td>
-<p>A token to skip the rest of code. When provided as a character
-string, the split will stop at the this token.</p>
+<p>Whether to store the line numbers of each expression in
+the returned value.</p>
 </td></tr>
 </table>
 
@@ -4559,15 +4960,16 @@ string, the split will stop at the this token.</p>
 <h3>Value</h3>
 
 <p>A list of character vectors, and each vector contains a complete R
-expression, with an attribute <code>line_start</code> indicating the starting line
-number of the expression if the argument <code>line_number = TRUE</code>.
+expression, with an attribute <code>lines</code> indicating the starting and ending
+line numbers of the expression if the argument <code>line_number = TRUE</code>.
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>xfun::split_source(c("if (TRUE) {", "1 + 1", "}", "print(1:5)"))
-xfun::split_source(c("print(1:5)", "#--#", "if (TRUE) {", "1 + 1", "}"), skip = "#--#")
+<pre><code class='language-R'>code = c("# comment 1", "# comment 2", "if (TRUE) {", "1 + 1", "}", "print(1:5)")
+xfun::split_source(code)
+xfun::split_source(code, merge_comments = TRUE)
 </code></pre>
 
 <hr>
@@ -5428,7 +5830,10 @@ beginning of the document) and the body. The YAML metadata will be parsed.
 
 <h3>Value</h3>
 
-<p>A list of components <code>yaml</code> and <code>body</code>.
+<p>A list of components <code>yaml</code> (the parsed YAML data), <code>lines</code> (starting
+and ending line numbers of YAML), and <code>body</code> (a character vector of the
+body text). If YAML metadata does not exist in the document, the components
+<code>yaml</code> and <code>lines</code> will be missing.
 </p>
 
 

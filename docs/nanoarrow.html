@@ -24,6 +24,7 @@ function processMathHTML() {
 <li><a href='#as_nanoarrow_array_stream'><p>Convert an object to a nanoarrow array_stream</p></a></li>
 <li><a href='#as_nanoarrow_buffer'><p>Convert an object to a nanoarrow buffer</p></a></li>
 <li><a href='#as_nanoarrow_schema'><p>Convert an object to a nanoarrow schema</p></a></li>
+<li><a href='#as_nanoarrow_vctr'><p>Experimental Arrow encoded arrays as R vectors</p></a></li>
 <li><a href='#basic_array_stream'><p>Create ArrayStreams from batches</p></a></li>
 <li><a href='#convert_array'><p>Convert an Array into an R vector</p></a></li>
 <li><a href='#convert_array_stream'><p>Convert an Array Stream into an R vector</p></a></li>
@@ -37,6 +38,7 @@ function processMathHTML() {
 <li><a href='#nanoarrow_extension_spec'><p>Register Arrow extension types</p></a></li>
 <li><a href='#nanoarrow_pointer_is_valid'><p>Danger zone: low-level pointer operations</p></a></li>
 <li><a href='#nanoarrow_version'><p>Underlying 'nanoarrow' C library build</p></a></li>
+<li><a href='#read_nanoarrow'><p>Read serialized streams of Arrow data</p></a></li>
 </ul>
 </div>
 <hr>
@@ -49,7 +51,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.4.0.1</td>
+<td>0.5.0.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -74,7 +76,8 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>URL:</td>
-<td><a href="https://github.com/apache/arrow-nanoarrow">https://github.com/apache/arrow-nanoarrow</a></td>
+<td><a href="https://arrow.apache.org/nanoarrow/latest/r/">https://arrow.apache.org/nanoarrow/latest/r/</a>,
+<a href="https://github.com/apache/arrow-nanoarrow">https://github.com/apache/arrow-nanoarrow</a></td>
 </tr>
 <tr>
 <td>BugReports:</td>
@@ -82,8 +85,8 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>arrow (&ge; 9.0.0), bit64, blob, hms, rlang, testthat (&ge;
-3.0.0), tibble, vctrs, withr</td>
+<td>arrow (&ge; 9.0.0), bit64, blob, jsonlite, hms, rlang, testthat
+(&ge; 3.0.0), tibble, vctrs, withr</td>
 </tr>
 <tr>
 <td>Config/testthat/edition:</td>
@@ -99,7 +102,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-12 13:51:24 UTC; dewey</td>
+<td>2024-05-30 20:12:34 UTC; deweydunnington</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -118,7 +121,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-23 09:50:06 UTC</td>
+<td>2024-05-31 13:30:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -158,6 +161,9 @@ function processMathHTML() {
 </p>
 
 <ul>
+<li> <p><a href="https://arrow.apache.org/nanoarrow/latest/r/">https://arrow.apache.org/nanoarrow/latest/r/</a>
+</p>
+</li>
 <li> <p><a href="https://github.com/apache/arrow-nanoarrow">https://github.com/apache/arrow-nanoarrow</a>
 </p>
 </li>
@@ -445,6 +451,93 @@ schemas.</p>
 
 <pre><code class='language-R'>infer_nanoarrow_schema(integer())
 infer_nanoarrow_schema(data.frame(x = integer()))
+
+</code></pre>
+
+<hr>
+<h2 id='as_nanoarrow_vctr'>Experimental Arrow encoded arrays as R vectors</h2><span id='topic+as_nanoarrow_vctr'></span><span id='topic+nanoarrow_vctr'></span>
+
+<h3>Description</h3>
+
+<p>This experimental vctr class allows zero or more Arrow arrays to
+present as an R vector without converting them. This is useful for arrays
+with types that do not have a non-lossy R equivalent, and helps provide an
+intermediary object type where the default conversion is prohibitively
+expensive (e.g., a nested list of data frames). These objects will not
+survive many vctr transformations; however, they can be sliced without
+copying the underlying arrays.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>as_nanoarrow_vctr(x, ..., schema = NULL, subclass = character())
+
+nanoarrow_vctr(schema = NULL, subclass = character())
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="as_nanoarrow_vctr_+3A_x">x</code></td>
+<td>
+<p>An object that works with <code><a href="#topic+as_nanoarrow_array_stream">as_nanoarrow_array_stream()</a></code>.</p>
+</td></tr>
+<tr><td><code id="as_nanoarrow_vctr_+3A_...">...</code></td>
+<td>
+<p>Passed to <code><a href="#topic+as_nanoarrow_array_stream">as_nanoarrow_array_stream()</a></code></p>
+</td></tr>
+<tr><td><code id="as_nanoarrow_vctr_+3A_schema">schema</code></td>
+<td>
+<p>An optional <code>schema</code></p>
+</td></tr>
+<tr><td><code id="as_nanoarrow_vctr_+3A_subclass">subclass</code></td>
+<td>
+<p>An optional subclass of nanoarrow_vctr to prepend to the
+final class name.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The nanoarrow_vctr is currently implemented similarly to <code>factor()</code>: its
+storage type is an <code>integer()</code> that is a sequence along the total length
+of the vctr and there are attributes that are required to resolve these
+indices to an array + offset. Sequences typically have a very compact
+representation in recent versions of R such that this has a cheap storage
+footprint even for large arrays. The attributes are currently:
+</p>
+
+<ul>
+<li> <p><code>schema</code>: The <a href="#topic+as_nanoarrow_schema">nanoarrow_schema</a> shared by each chunk.
+</p>
+</li>
+<li> <p><code>chunks</code>: A <code>list()</code> of <code>nanoarrow_array</code>.
+</p>
+</li>
+<li> <p><code>offsets</code>: An <code>integer()</code> vector beginning with <code>0</code> and followed by the
+cumulative length of each chunk. This allows the chunk index + offset
+to be resolved from a logical index with <code>log(n)</code> complexity.
+</p>
+</li></ul>
+
+<p>This implementation is preliminary and may change; however, the result of
+<code>as_nanoarrow_array_stream(some_vctr[begin:end])</code> should remain stable.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A vctr of class 'nanoarrow_vctr'
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>array &lt;- as_nanoarrow_array(1:5)
+as_nanoarrow_vctr(array)
 
 </code></pre>
 
@@ -1118,7 +1211,8 @@ is sufficient here.</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>vctr &lt;- as.POSIXlt("2000-01-02 03:45", tz = "UTC")
+<pre><code class='language-R'>
+vctr &lt;- as.POSIXlt("2000-01-02 03:45", tz = "UTC")
 array &lt;- as_nanoarrow_array(vctr, schema = na_vctrs(vctr))
 infer_nanoarrow_ptype(array)
 convert_array(array)
@@ -1575,6 +1669,75 @@ was compiled against.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>nanoarrow_version()
+
+</code></pre>
+
+<hr>
+<h2 id='read_nanoarrow'>Read serialized streams of Arrow data</h2><span id='topic+read_nanoarrow'></span><span id='topic+example_ipc_stream'></span>
+
+<h3>Description</h3>
+
+<p>Reads connections, file paths, URLs, or raw vectors of serialized Arrow
+data. Arrow documentation typically refers to this format as &quot;Arrow IPC&quot;,
+since its origin was as a means to transmit tables between processes
+(e.g., multiple R sessions). This format can also be written to and read
+from files or URLs and is essentially a high performance equivalent of
+a CSV file that does a better job maintaining types.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>read_nanoarrow(x, ..., lazy = FALSE)
+
+example_ipc_stream()
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="read_nanoarrow_+3A_x">x</code></td>
+<td>
+<p>A <code>raw()</code> vector, connection, or file path from which to read
+binary data. Common extensions indicating compression (.gz, .bz2, .zip)
+are automatically uncompressed.</p>
+</td></tr>
+<tr><td><code id="read_nanoarrow_+3A_...">...</code></td>
+<td>
+<p>Currently unused.</p>
+</td></tr>
+<tr><td><code id="read_nanoarrow_+3A_lazy">lazy</code></td>
+<td>
+<p>By default, <code>read_nanoarrow()</code> will read and discard a copy of
+the reader's schema to ensure that invalid streams are discovered as
+soon as possible. Use <code>lazy = TRUE</code> to defer this check until the reader
+is actually consumed.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The nanoarrow package does not currently have the ability to write serialized
+IPC data: use <code><a href="arrow.html#topic+write_ipc_stream">arrow::write_ipc_stream()</a></code> to write data from R, or use
+the equivalent writer from another Arrow implementation in Python, C++,
+Rust, JavaScript, Julia, C#, and beyond.
+</p>
+<p>The media type of an Arrow stream is <code>application/vnd.apache.arrow.stream</code>
+and the recommended file extension is <code>.arrows</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <a href="#topic+as_nanoarrow_array_stream">nanoarrow_array_stream</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>as.data.frame(read_nanoarrow(example_ipc_stream()))
 
 </code></pre>
 

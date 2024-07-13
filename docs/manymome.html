@@ -57,6 +57,10 @@ Object</a></li>
 Mediation</a></li>
 <li><a href='#data_med_complicated'><p>Sample Dataset: A Complicated</p>
 Mediation Model</a></li>
+<li><a href='#data_med_complicated_mg'><p>Sample Dataset: A Complicated</p>
+Mediation Model With Two Groups</a></li>
+<li><a href='#data_med_mg'><p>Sample Dataset: Simple</p>
+Mediation With Two Groups</a></li>
 <li><a href='#data_med_mod_a'><p>Sample Dataset: Simple</p>
 Mediation with a-Path Moderated</a></li>
 <li><a href='#data_med_mod_ab'><p>Sample Dataset: Simple</p>
@@ -144,6 +148,7 @@ Moderators</a></li>
 <li><a href='#mod_levels'><p>Create Levels of Moderators</p></a></li>
 <li><a href='#modmed_x1m3w4y1'><p>Sample Dataset: Moderated</p>
 Serial Mediation</a></li>
+<li><a href='#plot_effect_vs_w'><p>Plot an Effect Against a Moderator</p></a></li>
 <li><a href='#plot.cond_indirect_effects'><p>Plot Conditional Effects</p></a></li>
 <li><a href='#predict.lm_from_lavaan'><p>Predicted Values of a</p>
 'lm_from_lavaan'-Class Object</a></li>
@@ -169,6 +174,7 @@ Object</a></li>
 Object</a></li>
 <li><a href='#print.mc_out'><p>Print a <code>mc_out</code>-Class</p>
 Object</a></li>
+<li><a href='#pseudo_johnson_neyman'><p>Pseudo Johnson-Neyman Probing</p></a></li>
 <li><a href='#simple_mediation_latent'><p>Sample Dataset: A Simple</p>
 Latent Mediation Model</a></li>
 <li><a href='#subsetting_cond_indirect_effects'><p>Extraction Methods for</p>
@@ -194,7 +200,7 @@ Fitting</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.14</td>
+<td>0.2.2</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -229,7 +235,7 @@ Fitting</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.3.0</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -271,7 +277,7 @@ methods</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-16 18:24:30 UTC; sfcheung</td>
+<td>2024-06-05 10:31:42 UTC; shufa</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -290,7 +296,7 @@ methods</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-16 19:10:14 UTC</td>
+<td>2024-06-05 23:30:03 UTC</td>
 </tr>
 </table>
 <hr>
@@ -345,7 +351,13 @@ and <code>m</code>, to be used by <code>indirect_effect()</code>.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>all_indirect_paths(fit = NULL, exclude = NULL, x = NULL, y = NULL)
+<pre><code class='language-R'>all_indirect_paths(
+  fit = NULL,
+  exclude = NULL,
+  x = NULL,
+  y = NULL,
+  group = NULL
+)
 
 all_paths_to_df(all_paths)
 </code></pre>
@@ -388,6 +400,21 @@ the outcome variables in at least one regression
 equation will be
 included in the search.</p>
 </td></tr>
+<tr><td><code id="all_indirect_paths_+3A_group">group</code></td>
+<td>
+<p>Either the group number
+as appeared in the <code><a href="base.html#topic+summary">summary()</a></code>
+or <code><a href="lavaan.html#topic+parameterEstimates">lavaan::parameterEstimates()</a></code>
+output of a <a href="lavaan.html#topic+lavaan-class">lavaan::lavaan</a> object,
+or the group label as used in
+the <a href="lavaan.html#topic+lavaan-class">lavaan::lavaan</a> object.
+Used only when the number of
+groups is greater than one. Default
+is <code>NULL</code>. If not specified by the model
+has more than one group, than paths
+that appears in at least one group
+will be included in the output.</p>
+</td></tr>
 <tr><td><code id="all_indirect_paths_+3A_all_paths">all_paths</code></td>
 <td>
 <p>An <code>all_paths</code>-class object. For example,
@@ -401,6 +428,20 @@ the output of <code><a href="#topic+all_indirect_paths">all_indirect_paths()</a>
 <p>It makes use of <code><a href="igraph.html#topic+all_simple_paths">igraph::all_simple_paths()</a></code>
 to identify paths in a model.
 </p>
+
+
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>. If a model has more
+than one group and <code>group</code> is not
+specified, than paths in all groups
+will be returned. If <code>group</code> is
+specified, than only paths in the
+selected group will be returned.
+</p>
+
 
 
 <h3>Value</h3>
@@ -476,6 +517,32 @@ out3 &lt;- all_indirect_paths(fit, exclude = c("c1", "c2"),
                            y = "y")
 out3
 names(out3)
+
+# Multigroup models
+
+data(data_med_complicated_mg)
+mod &lt;-
+"
+m11 ~ x1 + x2 + c1 + c2
+m12 ~ m11 + c1 + c2
+m2 ~ x1 + x2 + c1 + c2
+y1 ~ m11 + m12 + x1 + x2 + c1 + c2
+y2 ~ m2 + x1 + x2 + c1 + c2
+"
+fit &lt;- sem(mod, data_med_complicated_mg, group = "group")
+summary(fit)
+
+all_indirect_paths(fit,
+                   x = "x1",
+                   y = "y1")
+all_indirect_paths(fit,
+                   x = "x1",
+                   y = "y1",
+                   group = 1)
+all_indirect_paths(fit,
+                   x = "x1",
+                   y = "y1",
+                   group = "Group B")
 
 </code></pre>
 
@@ -1246,7 +1313,9 @@ structural model fitted by <code><a href="stats.html#topic+lm">lm()</a></code>,
   ci_out = NULL,
   save_ci_full = FALSE,
   save_ci_out = TRUE,
-  ci_type = NULL
+  ci_type = NULL,
+  group = NULL,
+  boot_type = c("perc", "bc")
 )
 
 cond_indirect_effects(
@@ -1275,6 +1344,8 @@ cond_indirect_effects(
   mc_out = NULL,
   ci_out = NULL,
   ci_type = NULL,
+  boot_type = c("perc", "bc"),
+  groups = NULL,
   ...
 )
 
@@ -1297,6 +1368,7 @@ indirect_effect(
   make_cluster_args = list(),
   progress = TRUE,
   save_boot_full = FALSE,
+  save_boot_out = TRUE,
   mc_ci = FALSE,
   mc_out = NULL,
   save_mc_full = FALSE,
@@ -1304,7 +1376,9 @@ indirect_effect(
   ci_out = NULL,
   save_ci_full = FALSE,
   save_ci_out = TRUE,
-  ci_type = NULL
+  ci_type = NULL,
+  boot_type = c("perc", "bc"),
+  group = NULL
 )
 
 many_indirect_effects(paths, ...)
@@ -1379,13 +1453,19 @@ Default is <code>NULL</code>.</p>
 <td>
 <p>Logical.
 Whether <code>x</code> will be standardized.
-Default is <code>FALSE</code>.</p>
+Default is <code>FALSE</code>. For multigroup
+models, model implied standard
+deviation for the selected group
+will be used.</p>
 </td></tr>
 <tr><td><code id="cond_indirect_+3A_standardized_y">standardized_y</code></td>
 <td>
 <p>Logical.
 Whether <code>y</code> will be standardized.
-Default is <code>FALSE</code>.</p>
+Default is <code>FALSE</code>. For multigroup
+models, model implied standard
+deviation for the selected group
+will be used.</p>
 </td></tr>
 <tr><td><code id="cond_indirect_+3A_boot_ci">boot_ci</code></td>
 <td>
@@ -1424,7 +1504,7 @@ them from <code>fit</code>.</p>
 <code>TRUE</code>, <code>boot_out</code> is <code>NULL</code>, and
 bootstrap standard errors not
 requested if <code>fit</code> is a
-<a href="lavaan.html#topic+lavaan-class">lavaan</a> object, this function
+<a href="lavaan.html#topic+lavaan-class">lavaan::lavaan</a> object, this function
 will do bootstrapping on <code>fit</code>. <code>R</code>
 is the number of bootstrap samples.
 Default is 100. For Monte Carlo
@@ -1576,6 +1656,30 @@ other arguments
 supplied, will override <code>boot_ci</code>
 and <code>mc_ci</code>.</p>
 </td></tr>
+<tr><td><code id="cond_indirect_+3A_group">group</code></td>
+<td>
+<p>Either the group number
+as appeared in the <code><a href="base.html#topic+summary">summary()</a></code>
+or <code><a href="lavaan.html#topic+parameterEstimates">lavaan::parameterEstimates()</a></code>
+output of a <a href="lavaan.html#topic+lavaan-class">lavaan::lavaan</a> object,
+or the group label as used in
+the <a href="lavaan.html#topic+lavaan-class">lavaan::lavaan</a> object.
+Used only when the number of
+groups is greater than one. Default
+is <code>NULL</code>.</p>
+</td></tr>
+<tr><td><code id="cond_indirect_+3A_boot_type">boot_type</code></td>
+<td>
+<p>If bootstrap
+confidence interval is to be formed,
+the type of bootstrap confidence
+interval. The supported types
+are <code>"perc"</code> (percentile bootstrap
+confidence interval, the default and
+recommended type) and <code>"bc"</code>
+(bias-corrected, or BC, bootstrap
+confidence interval).</p>
+</td></tr>
 <tr><td><code id="cond_indirect_+3A_wlevels">wlevels</code></td>
 <td>
 <p>The output of
@@ -1668,6 +1772,19 @@ output is a list of the outputs from
 <code><a href="#topic+mod_levels_list">mod_levels_list()</a></code> if it is called
 for creating the levels of
 moderators. Default is <code>list()</code>.</p>
+</td></tr>
+<tr><td><code id="cond_indirect_+3A_groups">groups</code></td>
+<td>
+<p>Either a vector of
+group numbers
+as appeared in the <code><a href="base.html#topic+summary">summary()</a></code>
+or <code><a href="lavaan.html#topic+parameterEstimates">lavaan::parameterEstimates()</a></code>
+output of a <a href="lavaan.html#topic+lavaan-class">lavaan::lavaan</a> object,
+or a vector of group labels as used in
+the <a href="lavaan.html#topic+lavaan-class">lavaan::lavaan</a> object.
+Used only when the number of
+groups is greater than one. Default
+is <code>NULL</code>.</p>
 </td></tr>
 <tr><td><code id="cond_indirect_+3A_...">...</code></td>
 <td>
@@ -1787,6 +1904,67 @@ be ignored.
 </p>
 
 
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>. Both bootstrapping
+and Monte Carlo confidence intervals
+are supported. When used on
+a multigroup model:
+</p>
+
+<ul>
+<li><p> For <code><a href="#topic+cond_indirect">cond_indirect()</a></code> and
+<code><a href="#topic+indirect_effect">indirect_effect()</a></code>, users need to
+specify the <code>group</code> argument
+(by number or label). When using
+<code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>, if
+<code>group</code> is not set, all groups wil
+be used and the indirect effect
+in each group will be computed,
+kind of treating group as a moderator.
+</p>
+</li>
+<li><p> For <code><a href="#topic+many_indirect_effects">many_indirect_effects()</a></code>,
+the paths can be generated from a
+multigroup models.
+</p>
+</li>
+<li><p> Currently, <code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>
+does not support a multigroup model
+with moderators on the path selected.
+The function <code><a href="#topic+cond_indirect">cond_indirect()</a></code> does
+not have this limitation but users
+need to manually specify the desired
+value of the moderator(s).
+</p>
+</li></ul>
+
+
+
+
+<h4><code><a href="#topic+many_indirect_effects">many_indirect_effects()</a></code></h4>
+
+<p>If bootstrapping or Monte Carlo
+confidence intervals are requested,
+it is advised to use <code><a href="#topic+do_boot">do_boot()</a></code>
+first to simulate the estimates.
+Nevertheless, In Version 0.1.14.9
+and later versions, if <code>boot_ci</code>
+or <code>mc_ci</code> is <code>TRUE</code> when calling
+<code><a href="#topic+many_indirect_effects">many_indirect_effects()</a></code> but
+<code>boot_out</code> or <code>mc_out</code> is not set,
+bootstrapping or simulation will
+be done only once, and then the
+bootstrapping or simulated estimates
+will be used for all paths. This
+prevents accidentally repeating the
+process once for each direct path.
+</p>
+
+
+
 <h3>Value</h3>
 
 <p><code><a href="#topic+indirect_effect">indirect_effect()</a></code> and
@@ -1798,8 +1976,7 @@ be ignored.
 </p>
 <p>These two classes of objects have
 their own print methods for printing
-the results (see <code><a href="#topic+print.indirect">print.indirect()</a></code>
-and <code><a href="#topic+print.cond_indirect_effects">print.cond_indirect_effects()</a></code>).
+the results (see <code><a href="#topic+print.indirect">print.indirect()</a></code> and <code><a href="#topic+print.cond_indirect_effects">print.cond_indirect_effects()</a></code>).
 They also have a <code>coef</code> method for
 extracting the estimates
 (<code><a href="#topic+coef.indirect">coef.indirect()</a></code> and
@@ -1900,6 +2077,49 @@ cond_indirect_effects(x = "x", y = "m1",
 cond_indirect_effects(x = "x", y = "y", m = "m1",
                       wlevels = w1levels, fit = fit)
 
+# Multigroup models for cond_indirect_effects()
+
+dat &lt;- data_med_mg
+mod &lt;-
+"
+m ~ x + c1 + c2
+y ~ m + x + c1 + c2
+"
+fit &lt;- sem(mod, dat, meanstructure = TRUE, fixed.x = FALSE, se = "none", baseline = FALSE,
+           group = "group")
+
+# If a model has more than one group,
+# it will be used as a 'moderator'.
+cond_indirect_effects(x = "x", y = "y", m = "m",
+                      fit = fit)
+
+
+# Multigroup model for indirect_effect()
+
+dat &lt;- data_med_mg
+mod &lt;-
+"
+m ~ x + c1 + c2
+y ~ m + x + c1 + c2
+"
+fit &lt;- sem(mod, dat, meanstructure = TRUE, fixed.x = FALSE, se = "none", baseline = FALSE,
+           group = "group")
+
+# If a model has more than one group,
+# the argument 'group' must be set.
+ind1 &lt;- indirect_effect(x = "x",
+                        y = "y",
+                        m = "m",
+                        fit = fit,
+                        group = "Group A")
+ind1
+ind2 &lt;- indirect_effect(x = "x",
+                        y = "y",
+                        m = "m",
+                        fit = fit,
+                        group = 2)
+ind2
+
 
 # Examples for many_indirect_effects():
 
@@ -1914,18 +2134,38 @@ y ~ m12 + m2 + m11 + x + c1 + c2
 "
 fit &lt;- sem(mod, data_serial_parallel,
            fixed.x = FALSE)
-
 # All indirect paths from x to y
 paths &lt;- all_indirect_paths(fit,
                            x = "x",
                            y = "y")
 paths
-
 # Indirect effect estimates
 out &lt;- many_indirect_effects(paths,
                              fit = fit)
 out
 
+# Multigroup models for many_indirect_effects()
+
+data(data_med_complicated_mg)
+mod &lt;-
+"
+m11 ~ x1 + x2 + c1 + c2
+m12 ~ m11 + c1 + c2
+m2 ~ x1 + x2 + c1 + c2
+y1 ~ m11 + m12 + x1 + x2 + c1 + c2
+y2 ~ m2 + x1 + x2 + c1 + c2
+"
+fit &lt;- sem(mod, data_med_complicated_mg, group = "group")
+summary(fit)
+
+paths &lt;- all_indirect_paths(fit,
+                            x = "x1",
+                            y = "y1")
+paths
+# Indirect effect estimates for all paths in all groups
+out &lt;- many_indirect_effects(paths,
+                             fit = fit)
+out
 
 </code></pre>
 
@@ -2037,10 +2277,17 @@ or Monte Carlo confidence
 intervals are requested in calling
 <code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>,
 <code><a href="#topic+cond_indirect_diff">cond_indirect_diff()</a></code> will also form
-the percentile confidence
+the bootstrap confidence
 interval for the difference in
 conditional indirect effects
 using the stored estimates.
+</p>
+<p>If bootstrap confidence interval is
+to be formed and both effects used
+the same type of interval, then that
+type will be used. Otherwise,
+percentile confidence interval will
+be formed.
 </p>
 
 
@@ -2330,7 +2577,7 @@ output of <code><a href="#topic+delta_med">delta_med()</a></code>.
 <h3>Usage</h3>
 
 <pre><code class='language-R'>## S3 method for class 'delta_med'
-confint(object, parm, level = NULL, ...)
+confint(object, parm, level = NULL, boot_type, ...)
 </code></pre>
 
 
@@ -2354,6 +2601,19 @@ allowed.</p>
 default is <code>NULL</code> and the level used
 when the object was created will be
 used.</p>
+</td></tr>
+<tr><td><code id="confint.delta_med_+3A_boot_type">boot_type</code></td>
+<td>
+<p>If bootstrap
+confidence interval is to be formed,
+the type of bootstrap confidence
+interval. The supported types
+are <code>"perc"</code> (percentile bootstrap
+confidence interval, the recommended
+method) and <code>"bc"</code>
+(bias-corrected, or BC, bootstrap
+confidence interval). If not supplied,
+the stored <code>boot_type</code> will be used.</p>
 </td></tr>
 <tr><td><code id="confint.delta_med_+3A_...">...</code></td>
 <td>
@@ -2453,7 +2713,7 @@ stored in the output of
 <h3>Usage</h3>
 
 <pre><code class='language-R'>## S3 method for class 'indirect'
-confint(object, parm, level = 0.95, ...)
+confint(object, parm, level = 0.95, boot_type, ...)
 </code></pre>
 
 
@@ -2477,6 +2737,19 @@ parameter.</p>
 <p>The level of confidence,
 default is .95, returning the 95%
 confidence interval.</p>
+</td></tr>
+<tr><td><code id="confint.indirect_+3A_boot_type">boot_type</code></td>
+<td>
+<p>If bootstrap
+confidence interval is to be formed,
+the type of bootstrap confidence
+interval. The supported types
+are <code>"perc"</code> (percentile bootstrap
+confidence interval, the recommended
+method) and <code>"bc"</code>
+(bias-corrected, or BC, bootstrap
+confidence interval). If not supplied,
+the stored <code>boot_type</code> will be used.</p>
 </td></tr>
 <tr><td><code id="confint.indirect_+3A_...">...</code></td>
 <td>
@@ -2774,6 +3047,129 @@ summary(lm_m12 &lt;- lm(m12 ~ m11 + x1 + x2 + c1 + c2, dat))
 summary(lm_m2 &lt;- lm(m2 ~ x1 + x2 + c1 + c2, dat))
 summary(lm_y1 &lt;- lm(y1 ~ m11 + m12 + m2 + x1 + x2 + c1 + c2, dat))
 summary(lm_y2 &lt;- lm(y2 ~ m11 + m12 + m2 + x1 + x2 + c1 + c2, dat))
+</code></pre>
+
+<hr>
+<h2 id='data_med_complicated_mg'>Sample Dataset: A Complicated
+Mediation Model With Two Groups</h2><span id='topic+data_med_complicated_mg'></span>
+
+<h3>Description</h3>
+
+<p>A mediation model with
+two predictors, two pathways, and
+two groups.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data_med_complicated_mg
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 300 rows
+and 5 variables:
+</p>
+
+<dl>
+<dt>x1</dt><dd><p>Predictor 1. Numeric.</p>
+</dd>
+<dt>x2</dt><dd><p>Predictor 2. Numeric.</p>
+</dd>
+<dt>m11</dt><dd><p>Mediator 1 in Path 1. Numeric.</p>
+</dd>
+<dt>m12</dt><dd><p>Mediator 2 in Path 1. Numeric.</p>
+</dd>
+<dt>m2</dt><dd><p>Mediator in Path 2. Numeric.</p>
+</dd>
+<dt>y1</dt><dd><p>Outcome variable 1. Numeric.</p>
+</dd>
+<dt>y2</dt><dd><p>Outcome variable 2. Numeric.</p>
+</dd>
+<dt>c1</dt><dd><p>Control variable. Numeric.</p>
+</dd>
+<dt>c2</dt><dd><p>Control variable. Numeric.</p>
+</dd>
+<dt>group</dt><dd><p>Group variable. Character. 'Group A' or 'Group B'</p>
+</dd>
+</dl>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(lavaan)
+data(data_med_complicated_mg)
+dat &lt;- data_med_complicated_mg
+mod &lt;-
+"
+m11 ~ x1 + x2 + c1 + c2
+m12 ~ m11 + c1 + c2
+m2 ~ x1 + x2 + c1 + c2
+y1 ~ m11 + m12 + x1 + x2 + c1 + c2
+y2 ~ m2 + x1 + x2 + c1 + c2
+"
+fit &lt;- sem(mod, dat, group = "group")
+summary(fit)
+</code></pre>
+
+<hr>
+<h2 id='data_med_mg'>Sample Dataset: Simple
+Mediation With Two Groups</h2><span id='topic+data_med_mg'></span>
+
+<h3>Description</h3>
+
+<p>A simple mediation
+model with two groups.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data_med_mg
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 100 rows
+and 5 variables:
+</p>
+
+<dl>
+<dt>x</dt><dd><p>Predictor. Numeric.</p>
+</dd>
+<dt>m</dt><dd><p>Mediator. Numeric.</p>
+</dd>
+<dt>y</dt><dd><p>Outcome variable. Numeric.</p>
+</dd>
+<dt>c1</dt><dd><p>Control variable. Numeric.</p>
+</dd>
+<dt>c2</dt><dd><p>Control variable. Numeric.</p>
+</dd>
+<dt>group</dt><dd><p>Group variable. Character. &quot;Group A&quot; or &quot;Group B&quot;</p>
+</dd>
+</dl>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(lavaan)
+data(data_med_mg)
+mod &lt;-
+"
+m ~ c(a1, a2) * x + c1 + c2
+y ~ c(b1, b2) * m + x + c1 + c2
+a1b1 := a1 * b1
+a2b2 := a2 * b2
+abdiff := a2b2 - a1b1
+"
+fit &lt;- sem(mod, data_med_mg, fixed.x = FALSE,
+           group = "group")
+parameterEstimates(fit)
 </code></pre>
 
 <hr>
@@ -4155,7 +4551,8 @@ indirect effect.
   skip_check_single_x = FALSE,
   skip_check_m_between_x_y = FALSE,
   skip_check_x_to_y = FALSE,
-  skip_check_latent_variables = FALSE
+  skip_check_latent_variables = FALSE,
+  boot_type = c("perc", "bc")
 )
 </code></pre>
 
@@ -4246,6 +4643,18 @@ from <code>x</code> to <code>y</code>. Default is <code>TRUE</code>.</p>
 <p>Logical. Check whether the model
 has any latent variables. Default
 is <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="delta_med_+3A_boot_type">boot_type</code></td>
+<td>
+<p>If bootstrap
+confidence interval is to be formed,
+the type of bootstrap confidence
+interval. The supported types
+are <code>"perc"</code> (percentile bootstrap
+confidence interval, the default and
+recommended type) and <code>"bc"</code>
+(bias-corrected, or BC, bootstrap
+confidence interval).</p>
 </td></tr>
 </table>
 
@@ -4350,7 +4759,7 @@ the <code class="reqn">R^2_2</code>. Subtracting this
 
 <h3>Model Requirements</h3>
 
-<p>For now, by defaul, it only
+<p>For now, by default, it only
 computes Delta_Med
 for the types
 of models discussed in
@@ -4596,6 +5005,18 @@ object automatically and then calls
 </p>
 
 
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>. The implementation
+of bootstrapping is identical to
+that used by <code>lavaan</code>, with resampling
+done within each group.
+</p>
+
+
+
 <h3>Value</h3>
 
 <p>A <code>boot_out</code>-class object
@@ -4763,6 +5184,15 @@ that the same set of Monte Carlo
 estimates is used in all subsequent
 analysis.
 </p>
+
+
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>.
+</p>
+
 
 
 <h3>Value</h3>
@@ -5569,6 +5999,7 @@ proposed by Hayes (2015, 2018).
   mc_out = NULL,
   ci_type = NULL,
   ci_out = NULL,
+  boot_type = c("perc", "bc"),
   ...
 )
 
@@ -5589,6 +6020,7 @@ index_of_momome(
   mc_out = NULL,
   ci_type = NULL,
   ci_out = NULL,
+  boot_type = c("perc", "bc"),
   ...
 )
 </code></pre>
@@ -5739,6 +6171,18 @@ If <code>ci_type</code> is <code>"boot"</code>, this
 argument will be used as <code>boot_out</code>.
 If <code>ci_type</code> is <code>"mc"</code>, this
 argument will be used as <code>mc_out</code>.</p>
+</td></tr>
+<tr><td><code id="index_of_mome_+3A_boot_type">boot_type</code></td>
+<td>
+<p>If bootstrap
+confidence interval is to be formed,
+the type of bootstrap confidence
+interval. The supported types
+are <code>"perc"</code> (percentile bootstrap
+confidence interval, the default and
+recommended type) and <code>"bc"</code>
+(bias-corrected, or BC, bootstrap
+confidence interval).</p>
 </td></tr>
 <tr><td><code id="index_of_mome_+3A_...">...</code></td>
 <td>
@@ -6064,7 +6508,8 @@ value(s) of moderator(s) if present.
   data = NULL,
   expand = TRUE,
   warn = TRUE,
-  allow_mixing_lav_and_obs = TRUE
+  allow_mixing_lav_and_obs = TRUE,
+  group = NULL
 )
 </code></pre>
 
@@ -6201,6 +6646,18 @@ omitted intentionally.</p>
 <code>TRUE</code>, it accepts a path with both
 latent variables and observed
 variables. Default is <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="indirect_i_+3A_group">group</code></td>
+<td>
+<p>Either the group number
+as appeared in the <code><a href="base.html#topic+summary">summary()</a></code>
+or <code><a href="lavaan.html#topic+parameterEstimates">lavaan::parameterEstimates()</a></code>
+output of an <code>lavaan</code>-class object,
+or the group label as used in
+the <code>lavaan</code>-class object.
+Used only when the number of
+groups is greater than one. Default
+is NULL.</p>
 </td></tr>
 </table>
 
@@ -6866,8 +7323,7 @@ e1 - e2
 and <code>-</code> operator are supported. These
 operators can be used to estimate and
 test a function of effects between
-the same pair of variables but along
-different paths.
+the same pair of variables.
 </p>
 <p>For example, they can be used to
 compute and test the total effects
@@ -6887,8 +7343,7 @@ the same variable,
 </p>
 </li>
 <li><p> the two paths do not end at the
-same variable, (c) a path appears in
-both objects,
+same variable,
 </p>
 </li>
 <li><p> moderators are involved but they
@@ -6905,6 +7360,39 @@ estimates stored in
 <code>mc_out</code>, if any, are not identical.
 </p>
 </li></ol>
+
+<p>If bootstrap estimates are stored and
+both objects used the same type of
+bootstrap confidence interval, that
+type will be used.
+Otherwise, percentile bootstrap
+confidence interval, the recommended
+method, will be used.
+</p>
+
+
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>. Both bootstrapping
+and Monte Carlo confidence intervals
+are supported. These operators can
+be used to compute and test the
+difference of an indirect effect
+between two groups. This can also
+be used to compute and test the
+difference between a function of
+effects between groups, for example,
+the total indirect effects between
+two groups.
+</p>
+<p>The operators are flexible and allow
+users to do many possible computations.
+Therefore, users need to make sure
+that the function of effects is
+meaningful.
+</p>
 
 
 
@@ -6955,6 +7443,35 @@ out12
 out123 &lt;- out1 + out2 + out3
 out123
 coef(out1) + coef(out2) + coef(out3)
+
+# Multigroup model with indirect effects
+
+dat &lt;- data_med_mg
+mod &lt;-
+"
+m ~ x + c1 + c2
+y ~ m + x + c1 + c2
+"
+fit &lt;- sem(mod, dat, meanstructure = TRUE, fixed.x = FALSE, se = "none", baseline = FALSE,
+           group = "group")
+
+# If a model has more than one group,
+# the argument 'group' must be set.
+ind1 &lt;- indirect_effect(x = "x",
+                        y = "y",
+                        m = "m",
+                        fit = fit,
+                        group = "Group A")
+ind1
+ind2 &lt;- indirect_effect(x = "x",
+                        y = "y",
+                        m = "m",
+                        fit = fit,
+                        group = 2)
+ind2
+
+# Compute the difference in indirect effects between groups
+ind2 - ind1
 
 </code></pre>
 
@@ -7418,6 +7935,323 @@ and 11 variables:
 
 
 <hr>
+<h2 id='plot_effect_vs_w'>Plot an Effect Against a Moderator</h2><span id='topic+plot_effect_vs_w'></span>
+
+<h3>Description</h3>
+
+<p>It plots an effect, direct
+or indirect,
+against a moderator, with confidence
+band if available.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>plot_effect_vs_w(
+  object,
+  w = NULL,
+  w_label = NULL,
+  effect_label = NULL,
+  add_zero_line = TRUE,
+  always_draw_zero_line = FALSE,
+  line_linewidth = 1,
+  line_color = "blue",
+  shade_the_band = TRUE,
+  draw_the_intervals = TRUE,
+  band_fill_color = "lightgrey",
+  band_alpha = 0.5,
+  intervals_color = "black",
+  intervals_linetype = "longdash",
+  intervals_linewidth = 1,
+  zero_line_color = "grey",
+  zero_line_linewidth = 1,
+  zero_line_linetype = "solid",
+  line_args = list(),
+  band_args = list(),
+  intervals_args = list(),
+  zero_line_args = list()
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="plot_effect_vs_w_+3A_object">object</code></td>
+<td>
+<p>The output of
+<code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_w">w</code></td>
+<td>
+<p>The name of the moderator.
+Must be present in <code>object</code>. If <code>NULL</code>,
+the default,
+and <code>object</code> has only one moderator,
+then it will be set to that moderator.
+Because this function currently only
+supports a path with only one moderator,
+this argument can be left as <code>NULL</code> for now.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_w_label">w_label</code></td>
+<td>
+<p>The label of the
+horizontal axis. If <code>NULL</code>,
+the default, it will be
+<code>paste0("Moderator: ", w)</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_effect_label">effect_label</code></td>
+<td>
+<p>The label of the
+vertical axis. If <code>NULL</code>, the default,
+it will be generated from the path.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_add_zero_line">add_zero_line</code></td>
+<td>
+<p>Whether a
+horizontal line at zero will be drawn.
+Default is <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_always_draw_zero_line">always_draw_zero_line</code></td>
+<td>
+<p>If <code>FALSE</code>,
+the default,
+then the line at zero, if requested
+will be drawn
+only if zero is within the range of
+the plot. If <code>TRUE</code>, then the line
+at zero will always be drawn.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_line_linewidth">line_linewidth</code></td>
+<td>
+<p>The width of
+the line of the effect for each
+level of the moderator, to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>. Default is 1.
+Always overrides the value of
+<code>line_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_line_color">line_color</code></td>
+<td>
+<p>The color of the line
+of the effect for each level of the
+moderator, to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>.
+Default is &quot;blue&quot;.
+Always overrides the value of
+<code>line_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_shade_the_band">shade_the_band</code></td>
+<td>
+<p>If <code>TRUE</code>,
+the default, a confidence band will
+be drawn as a region along the line
+if confidence intervals can be retrieved
+from <code>object</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_draw_the_intervals">draw_the_intervals</code></td>
+<td>
+<p>If <code>TRUE</code>,
+the default, two lines will be drawn
+for the confidence intervals along
+the line if they can be retrieved
+from <code>object</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_band_fill_color">band_fill_color</code></td>
+<td>
+<p>The color of
+of the confidence band, to be used
+by <code><a href="ggplot2.html#topic+geom_ribbon">ggplot2::geom_ribbon()</a></code>.
+Default is &quot;lightgrey&quot;.
+Always overrides the value of
+<code>band_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_band_alpha">band_alpha</code></td>
+<td>
+<p>A number from
+0 to 1 for the level
+of transparency
+of the confidence band, to be used
+by <code><a href="ggplot2.html#topic+geom_ribbon">ggplot2::geom_ribbon()</a></code>.
+Default is <code>.50</code>.
+Always overrides the value of
+<code>band_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_intervals_color">intervals_color</code></td>
+<td>
+<p>The color of
+the lines of the confidence intervals,
+to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>. Default is
+<code>"black"</code>.
+Always overrides the value of
+<code>intervals_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_intervals_linetype">intervals_linetype</code></td>
+<td>
+<p>The line
+type of
+the lines of the confidence intervals,
+to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>. Default is
+<code>"longdash"</code>.
+Always overrides the value of
+<code>intervals_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_intervals_linewidth">intervals_linewidth</code></td>
+<td>
+<p>The line
+width of
+the lines of the confidence intervals,
+to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>. Default is
+1.
+Always overrides the value of
+<code>intervals_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_zero_line_color">zero_line_color</code></td>
+<td>
+<p>The color of
+the line at zero,
+to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>. Default is
+<code>"grey"</code>.
+Always overrides the value of
+<code>zero_line_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_zero_line_linewidth">zero_line_linewidth</code></td>
+<td>
+<p>The line
+width of
+the line at zero,
+to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>. Default is
+1.
+Always overrides the value of
+<code>zero_line_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_zero_line_linetype">zero_line_linetype</code></td>
+<td>
+<p>The line
+type of
+the line at zero,
+to be used
+by <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code>. Default is
+<code>"solid"</code>.
+Always overrides the value of
+<code>zero_line_args</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_line_args">line_args</code></td>
+<td>
+<p>A named list of
+additional arguments to be passed
+to <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code> for the line
+of the effect against moderator.
+Default is <code>list()</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_band_args">band_args</code></td>
+<td>
+<p>A named list of
+additional arguments to be passed
+to <code><a href="ggplot2.html#topic+geom_ribbon">ggplot2::geom_ribbon()</a></code> for the
+confidence band.
+Default is <code>list()</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_intervals_args">intervals_args</code></td>
+<td>
+<p>A named list of
+additional arguments to be passed
+to <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code> for the lines
+of confidence intervals.
+Default is <code>list()</code>.</p>
+</td></tr>
+<tr><td><code id="plot_effect_vs_w_+3A_zero_line_args">zero_line_args</code></td>
+<td>
+<p>A named list of
+additional arguments to be passed
+to <code><a href="ggplot2.html#topic+geom_path">ggplot2::geom_line()</a></code> for the line
+at zero.
+Default is <code>list()</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>It receives an output
+of <code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code> and
+plot the effect against the
+moderator. The effect can be an
+indirect effect or a direct effect.
+</p>
+<p>It uses the levels of the moderator
+stored in the output of
+<code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>. Therefore,
+the desired levels of the moderator
+to be plotted needs to be specified
+when calling <code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>,
+as illustrated in the example.
+</p>
+<p>Currently, this function only supports
+a path with exactly one moderator,
+and the moderator is a numeric variable.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <a href="ggplot2.html#topic+ggplot2">ggplot2</a> graph. Plotted if
+not assigned to a name. It can be
+further modified like a usual
+<a href="ggplot2.html#topic+ggplot2">ggplot2</a> graph.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+dat &lt;- data_med_mod_a
+lm_m &lt;- lm(m ~ x*w + c1 + c2, dat)
+lm_y &lt;- lm(y ~ m + x + c1 + c2, dat)
+fit_lm &lt;- lm2list(lm_m, lm_y)
+# Set R to a large value in real research.
+boot_out_lm &lt;- do_boot(fit_lm,
+                       R = 50,
+                       seed = 54532,
+                       parallel = FALSE,
+                       progress = FALSE)
+
+# Compute the conditional indirect effects
+# from 2 SD below mean to 2 SD above mean of the moderator,
+# by setting sd_from_mean of cond_indirect_effects().
+# Set length.out to a larger number for a smooth graph.
+out_lm &lt;- cond_indirect_effects(wlevels = "w",
+                                x = "x",
+                                y = "y",
+                                m = "m",
+                                fit = fit_lm,
+                                sd_from_mean = seq(-2, 2, length.out = 10),
+                                boot_ci = TRUE,
+                                boot_out = boot_out_lm)
+p &lt;- plot_effect_vs_w(out_lm)
+p
+# The output is a ggplot2 graph and so can be further customized
+library(ggplot2)
+# Add the line for the mean of w, the moderator
+p2 &lt;- p + geom_vline(xintercept = mean(dat$w),
+                     color = "red")
+p2
+
+</code></pre>
+
+<hr>
 <h2 id='plot.cond_indirect_effects'>Plot Conditional Effects</h2><span id='topic+plot.cond_indirect_effects'></span>
 
 <h3>Description</h3>
@@ -7446,6 +8280,7 @@ plot(
   line_width = 1,
   point_size = 5,
   graph_type = c("default", "tumble"),
+  use_implied_stats = TRUE,
   ...
 )
 </code></pre>
@@ -7508,7 +8343,9 @@ standard deviation of the focal
 variable, <code>"sd"</code>. If equal to
 <code>"percentile"</code>, then the percentiles
 of the focal variable in the dataset
-is used.</p>
+is used. If the focal variable is
+a latent variable, only
+<code>"sd"</code> can be used.</p>
 </td></tr>
 <tr><td><code id="plot.cond_indirect_effects_+3A_x_percentiles">x_percentiles</code></td>
 <td>
@@ -7574,9 +8411,26 @@ points as used in
 <p>If <code>"default"</code>, the
 typical line-graph with equal
 end-points will be plotted. If
-<code>"tubmle"</code>, then the tumble graph
+<code>"tumble"</code>, then the tumble graph
 proposed by Bodner (2016) will be
-plotted. Default is <code>"default"</code>.</p>
+plotted. Default is <code>"default"</code>
+for single-group models, and
+<code>"tumble"</code> for multigroup models.</p>
+</td></tr>
+<tr><td><code id="plot.cond_indirect_effects_+3A_use_implied_stats">use_implied_stats</code></td>
+<td>
+<p>For a
+multigroup model, if <code>TRUE</code>,
+the default,
+model implied statistics will be
+used in computing the means and SDs,
+which take into equality constraints,
+if any.
+If <code>FALSE</code>, then the raw
+data is
+used to compute the means and SDs.
+For latent variables, model implied
+statistics are always used.</p>
 </td></tr>
 <tr><td><code id="plot.cond_indirect_effects_+3A_...">...</code></td>
 <td>
@@ -7596,13 +8450,54 @@ output.
 </p>
 <p>It plots the conditional effect from
 <code>x</code> to <code>y</code> in a model for different
-levels of the moderators.
+levels of the moderators. For
+multigroup models, the group will
+be the 'moderator' and one line is
+drawn for each group.
 </p>
 <p>It does not support conditional
 indirect effects. If there is one or
 more mediators in <code>x</code>, it will raise
 an error.
 </p>
+
+
+<h4>Multigroup Models</h4>
+
+<p>Since Version 0.1.14.2, support for
+multigroup models has been added for models
+fitted by <code>lavaan</code>. If the effect
+for each group is drawn, the
+<code>graph_type</code> is automatically switched
+to <code>"tumble"</code> and the means and SDs
+in each group will be used to determine
+the locations of the points.
+</p>
+<p>If the multigroup model has any equality
+constraints, the implied means and/or
+SDs may be different from those of
+the raw data. For example, the mean
+of the <code>x</code>-variable may be constrained
+to be equal in this model. To plot
+the tumble graph using the model implied
+means and SDs, set <code>use_implied_stats</code>
+to <code>TRUE</code>.
+</p>
+
+
+
+<h4>Latent Variables</h4>
+
+<p>A path that involves a latent <code>x</code>-variable
+and/or a latent <code>y</code>-variable can be
+plotted. Because the latent variables
+have no observed data, the model
+implied statistics will always be used
+to get the means and SDs to compute
+values such as the low and high points
+of the <code>x</code>-variable.
+</p>
+
 
 
 <h3>Value</h3>
@@ -7670,6 +8565,26 @@ out_mm_2
 out_2 &lt;- cond_indirect_effects(wlevels = out_mm_2, x = "x", y = "m3", fit = fit2)
 plot(out_2)
 plot(out_2, graph_type = "tumble")
+
+# Multigroup models
+
+dat &lt;- data_med_mg
+mod &lt;-
+"
+m ~ x + c1 + c2
+y ~ m + x + c1 + c2
+"
+fit &lt;- sem(mod, dat, meanstructure = TRUE, fixed.x = FALSE, se = "none", baseline = FALSE,
+           group = "group")
+
+# For a multigroup model, group will be used as
+# a moderator
+out &lt;- cond_indirect_effects(x = "m",
+                             y = "y",
+                             fit = fit)
+out
+plot(out)
+
 
 
 </code></pre>
@@ -8423,7 +9338,7 @@ a <code>delta_med</code>-class object.
 <h3>Usage</h3>
 
 <pre><code class='language-R'>## S3 method for class 'delta_med'
-print(x, digits = 3, level = NULL, full = FALSE, ...)
+print(x, digits = 3, level = NULL, full = FALSE, boot_type, ...)
 </code></pre>
 
 
@@ -8454,6 +9369,19 @@ used.</p>
 <p>Logical. Whether
 additional information will be printed.
 Default is <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="print.delta_med_+3A_boot_type">boot_type</code></td>
+<td>
+<p>If bootstrap
+confidence interval is to be formed,
+the type of bootstrap confidence
+interval. The supported types
+are <code>"perc"</code> (percentile bootstrap
+confidence interval, the recommended
+method) and <code>"bc"</code>
+(bias-corrected, or BC, bootstrap
+confidence interval). If not supplied,
+the stored <code>boot_type</code> will be used.</p>
 </td></tr>
 <tr><td><code id="print.delta_med_+3A_...">...</code></td>
 <td>
@@ -9064,6 +9992,323 @@ mc_out &lt;- do_mc(fit, R = 100, seed = 1234)
 
 # Print the output of do_boot()
 mc_out
+
+</code></pre>
+
+<hr>
+<h2 id='pseudo_johnson_neyman'>Pseudo Johnson-Neyman Probing</h2><span id='topic+pseudo_johnson_neyman'></span><span id='topic+print.pseudo_johnson_neyman'></span>
+
+<h3>Description</h3>
+
+<p>Use the pseudo
+Johnson-Neyman approach (Hayes, 2022)
+to find the range of values of a
+moderator in which the conditional
+effect is not significant.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>pseudo_johnson_neyman(
+  object = NULL,
+  w_lower = NULL,
+  w_upper = NULL,
+  optimize_method = c("uniroot", "optimize"),
+  extendInt = c("no", "yes", "downX", "upX"),
+  tol = .Machine$double.eps^0.25
+)
+
+## S3 method for class 'pseudo_johnson_neyman'
+print(x, digits = 3, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="pseudo_johnson_neyman_+3A_object">object</code></td>
+<td>
+<p>A
+<code>cond_indirect_effects</code>-class object,
+which is the output of <code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_w_lower">w_lower</code></td>
+<td>
+<p>The smallest value of
+the moderator when doing the search.
+If set to <code style="white-space: pre;">&#8288;NULL,&#8288;</code> the default, it
+will be 10 standard deviations
+below mean, which should be small
+enough.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_w_upper">w_upper</code></td>
+<td>
+<p>The largest value of
+the moderator when doing the search.
+If set to <code style="white-space: pre;">&#8288;NULL,&#8288;</code> the default, it
+will be 10 standard deviations
+above mean, which should be large
+enough.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_optimize_method">optimize_method</code></td>
+<td>
+<p>The optimization
+method to be used. Either
+<code>"uniroot"</code> (the default) or
+<code>"optimize"</code>, corresponding to
+<code><a href="stats.html#topic+uniroot">stats::uniroot()</a></code> and
+<code><a href="stats.html#topic+optimize">stats::optimize()</a></code>, respectively.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_extendint">extendInt</code></td>
+<td>
+<p>Used by
+<code><a href="stats.html#topic+uniroot">stats::uniroot()</a></code>. If <code>"no"</code>, then
+search will be conducted strictly
+within <code>c(w_lower, w_upper)</code>. Otherwise,
+the range is extended based on this
+argument if the solution is not found.
+Please refer to <code><a href="stats.html#topic+uniroot">stats::uniroot()</a></code>
+for details.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_tol">tol</code></td>
+<td>
+<p>The tolerance level used
+by both <code><a href="stats.html#topic+uniroot">stats::uniroot()</a></code> and
+<code><a href="stats.html#topic+optimize">stats::optimize()</a></code>.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_x">x</code></td>
+<td>
+<p>The output of
+<code><a href="#topic+pseudo_johnson_neyman">pseudo_johnson_neyman()</a></code>.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_digits">digits</code></td>
+<td>
+<p>Number of digits to
+display. Default is 3.</p>
+</td></tr>
+<tr><td><code id="pseudo_johnson_neyman_+3A_...">...</code></td>
+<td>
+<p>Other arguments. Not used.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function uses the
+pseudo Johnson-Neyman approach
+proposed by Hayes (2022) to find the
+values of a moderator at which a
+conditional effect is
+&quot;nearly just significant&quot; based on
+confidence interval. If an effect is
+moderated, there will be two such
+points (though one can be very large
+or small) forming a range.
+The conditional effect
+is not significant within this range,
+and significant outside this range,
+based on the confidence interval.
+</p>
+<p>This function receives the output
+of <code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>
+and search for, within
+a specific range, the two values of
+the moderator at which
+the conditional effect is &quot;nearly just significant&quot;,
+that is, the confidence interval
+&quot;nearly touches&quot; zero.
+</p>
+<p>Note that numerical method is used
+to find the points. Therefore,
+strictly speaking, the effects at
+the end points are still either
+significant or not significant, even
+if the confidence limit is very close
+to zero.
+</p>
+
+
+<h4>Supported Methods</h4>
+
+<p>This function supports models fitted
+by <code><a href="stats.html#topic+lm">lm()</a></code>, <code><a href="lavaan.html#topic+sem">lavaan::sem()</a></code>,
+and <code><a href="semTools.html#topic+runMI">semTools::sem.mi()</a></code>. This function
+also supports both bootstrapping
+and Monte Carlo confidence intervals.
+It also supports conditional
+direct paths (no mediator) and
+conditional indirect paths (with one
+or more mediator), with <code>x</code> and/or
+<code>y</code> standardized.
+</p>
+
+
+
+<h4>Requirements</h4>
+
+<p>To be eligible for using this function,
+one form of confidence intervals
+(e.g, bootstrapping or Monte Carlo)
+must has been requested (e.g.,
+setting <code>boot_ci = TRUE</code> or
+<code>mc_ci = TRUE</code>) when calling
+<code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>.
+</p>
+<p>The confidence level of the confidence
+intervals adopted when calling
+<code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code> will be used
+by this function.
+</p>
+
+
+
+<h4>Possible failures</h4>
+
+<p>Even if a path has only one moderator,
+it is possible that no solution, or
+more than one solution, is/are found
+if the relation between this moderator
+and the conditional effect is not linear.
+</p>
+<p>Solution may also be not found if
+the conditional effect is significant
+over a wide range of value of the
+moderator.
+</p>
+<p>It is advised to use <code><a href="#topic+plot_effect_vs_w">plot_effect_vs_w()</a></code>
+to examine the relation between the
+effect and the moderator first before
+calling this function.
+</p>
+
+
+
+<h4>Speed</h4>
+
+<p>Note that, for conditional indirect
+effects, the search can be slow
+because the confidence interval needs
+to be recomputed for each new value
+of the moderator.
+</p>
+
+
+
+<h4>Limitations</h4>
+
+
+<ul>
+<li><p> This function currently only supports
+a path with only one moderator,
+</p>
+</li>
+<li><p> This function does not yet support
+multigroup models.
+</p>
+</li></ul>
+
+
+
+
+<h3>Value</h3>
+
+<p>A list of the class <code>pseudo_johnson_neyman</code>
+(with a print method, <code><a href="#topic+print.pseudo_johnson_neyman">print.pseudo_johnson_neyman()</a></code>).
+It has these major elements:
+</p>
+
+<ul>
+<li> <p><code>cond_effects</code>: An output of
+<code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code> for the
+two levels of the moderator found.
+</p>
+</li>
+<li> <p><code>w_min_valid</code>: Logical. If <code>TRUE</code>,
+the conditional effect is just
+significant at the lower level of
+the moderator found,
+and so is significant below this point.
+If <code>FALSE</code>, then the lower level of
+the moderator found is just the
+lower bound of the range searched,
+that is, <code>w_lower</code>.
+</p>
+</li>
+<li> <p><code>w_max_valid</code>: Logical. If <code>TRUE</code>,
+the conditional effect is just
+significant at the higher level of
+the moderator found,
+and so is significant above this point.
+If <code>FALSE</code>, then the higher level of
+the moderator found is just the
+upper bound of the range searched,
+that is, <code>w_upper</code>.
+</p>
+</li></ul>
+
+
+
+<h3>Methods (by generic)</h3>
+
+
+<ul>
+<li> <p><code>print(pseudo_johnson_neyman)</code>: Print
+method for output of <code><a href="#topic+pseudo_johnson_neyman">pseudo_johnson_neyman()</a></code>.
+</p>
+</li></ul>
+
+
+<h3>References</h3>
+
+<p>Hayes, A. F. (2022). <em>Introduction to mediation, moderation, and conditional process analysis: A regression-based approach</em> (Third edition). The Guilford Press.
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+cond_indirect_effects">cond_indirect_effects()</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+library(lavaan)
+
+dat &lt;- data_med_mod_a
+dat$wx &lt;- dat$x * dat$w
+mod &lt;-
+"
+m ~ x + w + wx
+y ~ m + x
+"
+fit &lt;- sem(mod, dat)
+
+# In real research, R should be 2000 or even 5000
+# In real research, no need to set parallel and progress to FALSE
+# Parallel processing is enabled by default and
+# progress is displayed by default.
+boot_out &lt;- do_boot(fit,
+                    R = 50,
+                    seed = 4314,
+                    parallel = FALSE,
+                    progress = FALSE)
+out &lt;- cond_indirect_effects(x = "x", y = "y", m = "m",
+                             wlevels = "w",
+                             fit = fit,
+                             boot_ci = TRUE,
+                             boot_out = boot_out)
+
+# Visualize the relation first
+plot_effect_vs_w(out)
+
+out_jn &lt;- pseudo_johnson_neyman(out)
+out_jn
+
+# Plot the range
+plot_effect_vs_w(out_jn$cond_effects)
 
 </code></pre>
 

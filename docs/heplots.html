@@ -19,7 +19,7 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#heplots-package'><p>Visualizing Hypothesis Tests in Multivariate Linear Models</p></a></li>
-<li><a href='#AddHealth'><p>Adolescent Health Data</p></a></li>
+<li><a href='#AddHealth'><p>Adolescent Mental Health Data</p></a></li>
 <li><a href='#Adopted'><p>Adopted Children</p></a></li>
 <li><a href='#arrow3d'><p>Draw a 3D Arrow in an RGL Scene</p></a></li>
 <li><a href='#bartlettTests'><p>Bartlett Tests of Homogeneity of Variances</p></a></li>
@@ -59,9 +59,10 @@ function processMathHTML() {
 <li><a href='#NeuroCog'><p>Neurocognitive Measures in Psychiatric Groups</p></a></li>
 <li><a href='#NLSY'><p>National Longitudinal Survey of Youth Data</p></a></li>
 <li><a href='#Oslo'><p>Oslo Transect Subset Data</p></a></li>
+<li><a href='#Overdose'><p>Overdose of Amitriptyline</p></a></li>
 <li><a href='#pairs.mlm'><p>Pairwise HE Plots</p></a></li>
 <li><a href='#Parenting'><p>Father Parenting Competence</p></a></li>
-<li><a href='#peng'><p>Size measurements for adult foraging penguins near Palmer Station, Antarctica</p></a></li>
+<li><a href='#peng'><p>Size measurements for penguins near Palmer Station, Antarctica</p></a></li>
 <li><a href='#Plastic'><p>Plastic Film Data</p></a></li>
 <li><a href='#plot.boxM'><p>Plot for Box's M test and generalizations</p></a></li>
 <li><a href='#plot.robmlm'><p>Plot observation weights from a robust multivariate linear models</p></a></li>
@@ -99,11 +100,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.6.2</td>
+<td>1.7.0</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2024-02-14</td>
+<td>2024-05-01</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -135,7 +136,8 @@ tibble</td>
 <td>Suggests:</td>
 <td>candisc, carData, effects, reshape, gplots, nlme, lattice,
 reshape2, corrgram, animation, mvinfluence, knitr, rmarkdown,
-dplyr, tidyr, ggplot2, bookdown</td>
+dplyr, tidyr, ggplot2, bookdown, patchwork, tinytable, glue,
+here, Sleuth2, rrcov, archdata, qqtest</td>
 </tr>
 <tr>
 <td>LazyLoad:</td>
@@ -175,7 +177,7 @@ dplyr, tidyr, ggplot2, bookdown</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-15 15:59:57 UTC; friendly</td>
+<td>2024-05-02 21:01:07 UTC; friendly</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -194,7 +196,7 @@ dplyr, tidyr, ggplot2, bookdown</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-15 17:10:03 UTC</td>
+<td>2024-05-02 21:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -333,7 +335,7 @@ Models in Psychological Research: An R Tutorial. Submitted for publication.
 </p>
 
 <hr>
-<h2 id='AddHealth'>Adolescent Health Data</h2><span id='topic+AddHealth'></span>
+<h2 id='AddHealth'>Adolescent Mental Health Data</h2><span id='topic+AddHealth'></span>
 
 <h3>Description</h3>
 
@@ -387,13 +389,44 @@ did you have trouble relaxing?&quot;
 
 <pre><code class='language-R'>
 data(AddHealth)
+
+if(require(dplyr) &amp; require(ggplot2)) {
+# find means &amp; std.errors by grade
+means &lt;- AddHealth |&gt;
+group_by(grade) |&gt;
+  summarise(
+    n = n(),
+    dep_se = sd(depression, na.rm = TRUE) / sqrt(n),
+    anx_se = sd(anxiety, na.rm = TRUE) / sqrt(n),
+    depression = mean(depression),
+    anxiety = mean(anxiety) ) |&gt; 
+  relocate(depression, anxiety, .after = grade) |&gt;
+  print()
+  
+# plot means with std.error bars
+ggplot(data = means, aes(x = anxiety, y = depression, 
+color = grade)) +
+  geom_point(size = 3) +
+  geom_errorbarh(aes(xmin = anxiety - anx_se, 
+                     xmax = anxiety + anx_se)) +
+  geom_errorbar(aes(ymin = depression - dep_se, 
+                    ymax = depression + dep_se)) +
+  geom_line(aes(group = 1), linewidth = 1.5) +
+  geom_label(aes(label = grade), 
+             nudge_x = -0.015, nudge_y = 0.02) +
+  scale_color_discrete(guide = "none") +
+  theme_bw(base_size = 15)
+}
+
 # fit mlm
-AH.mod &lt;- lm(cbind(depression, anxiety) ~ grade, data=AddHealth)
+AH.mod &lt;- lm(cbind(anxiety, depression) ~ grade, data=AddHealth)
 
 car::Anova(AH.mod)
 summary(car::Anova(AH.mod))
 
-heplot(AH.mod, hypotheses="grade.L", fill=c(TRUE, FALSE))
+heplot(AH.mod, hypotheses="grade.L", 
+       fill=c(TRUE, FALSE),
+       level = 0.4)
 
 </code></pre>
 
@@ -1793,12 +1826,14 @@ vs. <code class="reqn">\chi^2</code>. if <code>TRUE</code>, the ordinate shows v
 </td></tr>
 <tr><td><code id="cqplot_+3A_pch">pch</code></td>
 <td>
-<p>plot symbol for points Can be a vector of length equal to the
+<p>plot symbol for points. Can be a vector of length equal to the
 number of rows in <code>x</code>.</p>
 </td></tr>
 <tr><td><code id="cqplot_+3A_col">col</code></td>
 <td>
-<p>color for points; the default is the <em>first</em> entry in the
+<p>color for points. Can be a vector of length equal to the
+number of rows in <code>x</code>.
+The default is the <em>first</em> entry in the
 current color palette (see <code><a href="grDevices.html#topic+palette">palette</a></code> and
 <code><a href="graphics.html#topic+par">par</a></code>.</p>
 </td></tr>
@@ -1913,9 +1948,9 @@ Chambers et al. (1983), Section 6.8.
 </p>
 <p>The essential formula is 
 </p>
-<p style="text-align: center;"><code class="reqn"> SE ( z_{(i)} ) = \frac{\hat{\delta}}{g ( q_i)) \times \sqrt{ frac{ p_i (1-p_i} }{n}} </code>
+<p style="text-align: center;"><code class="reqn"> SE ( z_{(i)} ) = \hat{\delta} /g ( q_i)) \times \sqrt{  p_i (1-p_i) / n } </code>
 </p>
- 
+
 <p>where <code class="reqn">z_{(i)}</code> is the i-th
 order value of <code class="reqn">D^2</code>, <code class="reqn">\hat{\delta}</code> is an estimate of the slope of
 the reference line obtained from the corresponding quartiles and
@@ -1933,7 +1968,7 @@ for QQ plots.
 <h3>Value</h3>
 
 <p>Returns invisibly the vector of squared Mahalanobis distances
-corresponding to the rows of <code>x</code> or the residuals of the model.
+corresponding to the rows of <code>x</code> or the residuals of the model for the identified points, else <code>NULL</code>
 </p>
 
 
@@ -2741,7 +2776,7 @@ classical eta^2.</p>
 <code class="reqn">\eta^2</code> = SSH / (SSH + SSE).  These are identical in one-way designs.
 </p>
 <p>Partial eta-squared describes the proportion of total variation attributable
-to a given factor, partialing out (excluding) other factors from the total
+to a given factor, partialling out (excluding) other factors from the total
 nonerror variation. These are commonly used as measures of effect size or
 measures of (non-linear) strength of association in ANOVA models.
 </p>
@@ -2784,12 +2819,12 @@ containing the eta-squared values and the test statistics produced by
 
 <p>Muller, K. E. and Peterson, B. L. (1984). Practical methods for
 computing power in testing the Multivariate General Linear Hypothesis
-<em>Computational Statistics and Data Analysis</em>, 2, 143-158.
+<em>Computational Statistics and Data Analysis</em>, <b>2</b>, 143-158.
 </p>
 <p>Muller, K. E. and LaVange, L. M. and Ramey, S. L. and Ramey, C. T. (1992).
 Power Calculations for General Linear Multivariate Models Including Repeated
 Measures Applications. <em>Journal of the American Statistical
-Association</em>, 87, 1209-1226.
+Association</em>, <b>87</b>, 1209-1226.
 </p>
 
 
@@ -4996,30 +5031,46 @@ professional manual</em>.  Psychological Assessment Resources.
 
 <pre><code class='language-R'>
 data(Iwasaki_Big_Five)
+# use Helmert contrasts for groups
+contrasts(Iwasaki_Big_Five$Group) &lt;- 
+   matrix(c(2, -1, -1,
+            0, -1,  1), ncol=2)
+
 str(Iwasaki_Big_Five)
 
-mod &lt;- lm(cbind(N, E, O, A, C) ~ Group, data=Iwasaki_Big_Five)
+Big5.mod &lt;- lm(cbind(N, E, O, A, C) ~ Group, data=Iwasaki_Big_Five)
+coef(Big5.mod)
 
-car::Anova(mod)
+car::Anova(Big5.mod)
+
+# test contrasts
+car::linearHypothesis(Big5.mod, "Group1", title = "Eur vs Asian")
+car::linearHypothesis(Big5.mod, "Group2", title = "Asian: Amer vs Inter")
 
 # heplots
-labs &lt;- c("Neuroticism", "Extraversion", "Openness", "Agreeableness", "Consientiousness" )
+labs &lt;- c("Neuroticism", "Extraversion", "Openness", "Agreeableness", "Conscientiousness" )
 
-heplot(mod,
+heplot(Big5.mod,
        fill = TRUE, fill.alpha = 0.2, 
        cex.lab = 1.5,
        xlab = labs[1], ylab = labs[2])
 
-heplot(mod, variables = c(2,5),
+heplot(Big5.mod, variables = c(2,5),
        fill = TRUE, fill.alpha = 0.2,
        cex.lab = 1.5,
        xlab = labs[2], ylab = labs[5])
 
-pairs(mod, 
+pairs(Big5.mod, 
       fill = TRUE, fill.alpha = 0.2, var.labels = labs)
 
 
-
+# canonical discriminant analysis
+if (require(candisc)) { 
+library(candisc)
+Big5.can &lt;- candisc(Big5.mod)
+Big5.can
+heplot(Big5.can, fill = TRUE, fill.alpha = 0.1)
+}
 </code></pre>
 
 <hr>
@@ -5691,8 +5742,8 @@ the crime?
 
 <h3>Source</h3>
 
-<p>From Dr. Wuensch's StatData Page,
-<a href="http://core.ecu.edu/psyc/wuenschk/StatData/PLASTER.dat">http://core.ecu.edu/psyc/wuenschk/StatData/PLASTER.dat</a>
+<p>Originally obtained from Dr. Wuensch's StatData page,
+<a href="https://core.ecu.edu/wuenschk/StatData/PLASTER.dat">https://core.ecu.edu/wuenschk/StatData/PLASTER.dat</a>
 </p>
 
 
@@ -6071,6 +6122,101 @@ if(require(candisc)) {
 </code></pre>
 
 <hr>
+<h2 id='Overdose'>Overdose of Amitriptyline</h2><span id='topic+Overdose'></span>
+
+<h3>Description</h3>
+
+<p>Data on overdoses of the drug amitriptyline.
+Amitriptyline is a drug prescribed by physicians as an antidepressant. However, there are also 
+conjectured side effects that seem to be related to the use of the drug: irregular heart beat,
+abnormal blood pressure and irregular waves on the electrocardiogram (ECG).
+This dataset (originally from Rudorfer, 1982) gives data on 17 patients admitted to hospital after an overdose 
+of amitriptyline.
+The two response variables are: <code>TCAD</code> and <code>AMI</code>. The other variables are predictors.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>data("Overdose")
+</code></pre>
+
+
+<h3>Format</h3>
+
+<p>A data frame with 17 observations on the following 7 variables.
+</p>
+
+<dl>
+<dt><code>TCAD</code></dt><dd><p>total TCAD plasma level, a numeric vector</p>
+</dd>
+<dt><code>AMI</code></dt><dd><p>amount of amitriptyline present in the TCAD plasma level, a numeric vector</p>
+</dd>
+<dt><code>Gender</code></dt><dd><p>a factor with levels <code>Male</code> <code>Female</code></p>
+</dd>
+<dt><code>amount</code></dt><dd><p>amount of drug taken at time of overdose, a numeric vector</p>
+</dd>
+<dt><code>BP</code></dt><dd><p>diastolic blood pressure, a numeric vector</p>
+</dd>
+<dt><code>ECG_PR</code></dt><dd><p>ECG PR wave measurement, a numeric vector</p>
+</dd>
+<dt><code>ECG_QRS</code></dt><dd><p>ECG QRS wave measurement, a numeric vector</p>
+</dd>
+</dl>
+
+
+
+<h3>Source</h3>
+
+<p>Johnson &amp; Wichern (2005), <em>Applied Multivariate Statistical Analysis</em>,
+Exercise 7.25, p. 426.
+</p>
+
+
+<h3>References</h3>
+
+<p>Rudorfer,  M. V. Cardiovascular changes and plasma drug levels after amitriptyline overdose. (1982).
+<em>J. Toxicology - Clinical Toxicology</em>. <b>19</b>(1),67-78. 
+<a href="https://doi.org/10.3109/15563658208990367">doi:10.3109/15563658208990367</a>, PMID: 7154142.
+</p>
+<p>Clay Ford, &quot;Getting started with Multivariate Multiple Regression&quot;,
+<a href="https://library.virginia.edu/data/articles/getting-started-with-multivariate-multiple-regression">https://library.virginia.edu/data/articles/getting-started-with-multivariate-multiple-regression</a>.
+</p>
+<p>ECG measurements:
+</p>
+
+<dl>
+<dt>PR</dt><dd><p><a href="https://en.wikipedia.org/wiki/PR_interval">https://en.wikipedia.org/wiki/PR_interval</a></p>
+</dd>
+<dt>QRS</dt><dd><p><a href="https://en.wikipedia.org/wiki/QRS_complex">https://en.wikipedia.org/wiki/QRS_complex</a></p>
+</dd>
+</dl>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(Overdose)
+str(Overdose)
+pairs(Overdose) 
+
+over.mlm &lt;- lm(cbind(TCAD, AMI) ~ Gender + amount + BP + ECG_PR + ECG_QRS, data = Overdose)
+coef(over.mlm)
+
+# check for outliers
+cqplot(over.mlm)
+
+# HE plot shows that relations of responses to predictors are essentially one-dimensional
+heplot(over.mlm)
+
+# canonical correlation analysis 
+if(require(candisc)) {
+cancor(cbind(TCAD, AMI) ~ as.numeric(Gender) + amount + BP + ECG_PR + ECG_QRS, data = Overdose)
+}
+
+</code></pre>
+
+<hr>
 <h2 id='pairs.mlm'>Pairwise HE Plots</h2><span id='topic+pairs.mlm'></span>
 
 <h3>Description</h3>
@@ -6332,7 +6478,7 @@ heplot3d(parenting.mod, wire=FALSE)
 </code></pre>
 
 <hr>
-<h2 id='peng'>Size measurements for adult foraging penguins near Palmer Station, Antarctica</h2><span id='topic+peng'></span>
+<h2 id='peng'>Size measurements for penguins near Palmer Station, Antarctica</h2><span id='topic+peng'></span>
 
 <h3>Description</h3>
 
@@ -6401,7 +6547,7 @@ among adult male and female Chinstrap penguin (Pygoscelis antarcticus)
 nesting along the Palmer Archipelago near Palmer Station, 2007-2009 ver 6. 
 Environmental Data Initiative <a href="https://doi.org/10.6073/pasta/c14dfcfada8ea13a17536e73eb6fbe9e">doi:10.6073/pasta/c14dfcfada8ea13a17536e73eb6fbe9e</a>
 </p>
-<p>Originally published in: Gorman KB, Williams TD, Fraser WR (2014) 
+<p>Originally published in: Gorman K.B., Williams T.D., Fraser W.R. (2014) 
 Ecological Sexual Dimorphism and Environmental Variability within a 
 Community of Antarctic Penguins (Genus Pygoscelis). PLoS ONE 9(3): e90081. 
 <a href="https://doi.org/10.1371/journal.pone.0090081">doi:10.1371/journal.pone.0090081</a>
@@ -7623,6 +7769,7 @@ heplot(rohwer.ses2, add=TRUE, col=c("blue", "black"), grand.mean=TRUE, error.ell
 
 <p>In a classic experiment carried out from 1918 to 1934, growth of apple trees
 of six different rootstocks were compared on four measures of size.
+How do the measures of size vary with the type of rootstock?
 </p>
 
 
@@ -7673,14 +7820,16 @@ New York: Wiley, Table 6.2
 <pre><code class='language-R'>
 library(car)
 data(RootStock)
-## maybe str(RootStock) ; plot(RootStock) ...
+str(RootStock)
+
 root.mod &lt;- lm(cbind(girth4, ext4, girth15, weight15) ~ rootstock, data=RootStock)
 car::Anova(root.mod)
 
 pairs(root.mod)
 
 # test two orthogonal contrasts among the rootstocks
-hyp &lt;- matrix(c(2,-1,-1,-1,-1,2,  1, 0,0,0,0,-1), 2, 6, byrow=TRUE)
+hyp &lt;- matrix(c(2,-1,-1,-1,-1,2,  
+                1, 0,0,0,0,-1), 2, 6, byrow=TRUE)
 car::linearHypothesis(root.mod, hyp)
 heplot(root.mod, hypotheses=list(Contrasts=hyp, C1=hyp[1,], C2=hyp[2,]))
 

@@ -65,6 +65,8 @@ Series under Short Memory</a></li>
 <li><a href='#runDecomposition'><p>Shiny App for Decomposing Seasonal Time Series</p></a></li>
 <li><a href='#s_semiarma'><p>Fitting of a Seasonal Semiparametric ARMA Model</p></a></li>
 <li><a href='#SAVINGS'><p>Quarterly Savings of Private Households in Germany</p></a></li>
+<li><a href='#seasonplot'><p>Creation of Seasonal Plots</p></a></li>
+<li><a href='#seasonplot_gg'><p>Creation of Seasonal Plots in the Style of ggplot2</p></a></li>
 <li><a href='#select_bwidth'><p>Optimal Bandwidth Estimation for Locally Weighted Regression in Equidistant</p>
 Time Series under Short Memory</a></li>
 <li><a href='#set_options'><p>Specification of Smoothing Options</p></a></li>
@@ -93,11 +95,11 @@ Seasonality in TS</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.0</td>
+<td>1.1.0</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-11-08</td>
+<td>2024-07-10</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
@@ -122,7 +124,7 @@ Seasonality in TS</td>
 <td>Imports:</td>
 <td>Rcpp (&ge; 1.0.6), ggplot2, stats, graphics, animation, utils,
 shiny, tools, zoo, future, furrr, future.apply, progressr,
-purrr, rlang</td>
+purrr, rlang, tidyr</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -163,7 +165,8 @@ purrr, rlang</td>
 'fitting_functions.R' 'runDecomposition.R' 'class-deseats_fc.R'
 'forecasting_functions.R' 'bwidth_bootstrap.R'
 'gain_function.R' 'linear_filters.R' 'ts_conversion.R'
-'hA_calc.R' 'arima_no_warn.R' 'deseats-package.R'</td>
+'hA_calc.R' 'arima_no_warn.R' 'deseats-package.R'
+'seasonplot.R'</td>
 </tr>
 <tr>
 <td>Config/testthat/edition:</td>
@@ -175,7 +178,7 @@ purrr, rlang</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-11-08 12:37:14 UTC; Dominik Schulz</td>
+<td>2024-07-10 11:16:49 UTC; Dominik Schulz</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -188,7 +191,7 @@ purrr, rlang</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-11-08 19:50:02 UTC</td>
+<td>2024-07-12 10:50:15 UTC</td>
 </tr>
 </table>
 <hr>
@@ -557,7 +560,7 @@ coefficients is not being checked.
 </p>
 <p>This function implements C++ code by means
 of the <code><a href="Rcpp.html#topic+Rcpp-package">Rcpp</a></code> and
-<code><a href="RcppArmadillo.html#topic+RcppArmadillo-package">RcppArmadillo</a></code> packages for
+<code>RcppArmadillo</code> packages for
 better performance.
 </p>
 
@@ -644,7 +647,7 @@ coefficients is not being checked.
 </p>
 <p>This function implements C++ code by means
 of the <code><a href="Rcpp.html#topic+Rcpp-package">Rcpp</a></code> and
-<code><a href="RcppArmadillo.html#topic+RcppArmadillo-package">RcppArmadillo</a></code> packages for
+<code>RcppArmadillo</code> packages for
 better performance.
 </p>
 
@@ -1522,10 +1525,13 @@ for identifying the asymptotically globally optimal bandwidth for smoothing.
   smoothing_options = set_options(),
   bwidth_start = NULL,
   inflation_rate = c("optimal", "naive"),
-  correction_factor = TRUE,
+  correction_factor = FALSE,
   autocor = TRUE,
   drop = NULL,
-  error_model = c("free", "ARMA")
+  error_model = c("free", "ARMA"),
+  nar_lim = c(0, 3),
+  nma_lim = c(0, 3),
+  arma_mean = FALSE
 )
 </code></pre>
 
@@ -1572,7 +1578,9 @@ larger bandwidth to estimate the sum of autocovariances from residuals of
 pilot trend and seasonality estimates is advisable than for estimating trend
 and seasonality; for <code>correction_factor = TRUE</code>, this is implemented;
 for <code>error_model = "ARMA"</code>, <code>correction_factor = FALSE</code> is 
-enforced.</p>
+enforced; the default is <code>correction_factor = FALSE</code>, because it was
+found that setting this argument to <code>TRUE</code> often overestimates the 
+bandwidth.</p>
 </td></tr>
 <tr><td><code id="deseats_+3A_autocor">autocor</code></td>
 <td>
@@ -1595,6 +1603,23 @@ for <code>autocor = TRUE</code> the sum of autocovariances of the errors is
 obtained purely nonparametrically (<code>"free"</code>) or whether an
 autoregressive moving-average (ARMA) model is assumed <code>"ARMA"</code>; the
 default is <code>error_model = "free"</code>.</p>
+</td></tr>
+<tr><td><code id="deseats_+3A_nar_lim">nar_lim</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; set the minimum and 
+maximum AR order to check via the BIC in each iteration of the algorithm via 
+a two-element vector.</p>
+</td></tr>
+<tr><td><code id="deseats_+3A_nma_lim">nma_lim</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; set the minimum and
+maximum MA order to check via the BIC in each iteration of the algorithm via
+a two-element vector.</p>
+</td></tr>
+<tr><td><code id="deseats_+3A_arma_mean">arma_mean</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; decide whether to 
+include an estimate of the mean in the ARMA fitting for the detrended series.</p>
 </td></tr>
 </table>
 
@@ -1690,8 +1715,8 @@ residuals (see <code><a href="stats.html#topic+arima">arima</a></code>).
 </p>
 <p>Usually, a local cubic trend (<code>smoothing_options = set_options(order_poly = 3)</code>)
 gives more suitable results. Moreover, if the resulting bandwidth is too large, 
-adjustments to the arguments <code>inflation_rate</code>, <code>drop</code> and 
-<code>correction_factor</code> should be tried first in that order before any other changes 
+adjustments to the arguments <code>inflation_rate</code> and <code>drop</code> should be
+tried first in that order before any other changes 
 to the input arguments.
 </p>
 <p>The default print method for this function delivers key numbers such as the 
@@ -1701,7 +1726,7 @@ bandwidth considered for smoothing.
 </p>
 <p>This function implements C++ code by means
 of the <code><a href="Rcpp.html#topic+Rcpp-package">Rcpp</a></code> and
-<code><a href="RcppArmadillo.html#topic+RcppArmadillo-package">RcppArmadillo</a></code> packages for
+<code>RcppArmadillo</code> packages for
 better performance.
 </p>
 
@@ -3633,7 +3658,7 @@ df &lt;- data.frame(
  b = b
 )
 
-file &lt;- paste0(tempdir(), "\\ExampleFile.csv")
+file &lt;- file.path(tempdir(), "ExampleFile.csv")
 
 write.table(df, file = file, quote = FALSE, sep = ",",
  row.names = FALSE, col.names = TRUE)
@@ -3744,9 +3769,12 @@ residuals using <code><a href="stats.html#topic+arima">arima</a></code>.
   arma_options = list(ar_order = NULL, ma_order = NULL),
   bwidth_start = 0.2,
   inflation_rate = c("optimal", "naive"),
-  correction_factor = TRUE,
-  drop = 0.1,
-  error_model = c("free", "ARMA")
+  correction_factor = FALSE,
+  drop = NULL,
+  error_model = c("free", "ARMA"),
+  nar_lim = c(0, 3),
+  nma_lim = c(0, 3),
+  arma_mean = FALSE
 )
 </code></pre>
 
@@ -3799,7 +3827,9 @@ larger bandwidth to estimate the sum of autocovariances from residuals of
 pilot trend and seasonality estimates is advisable than for estimating trend
 and seasonality; for <code>correction_factor = TRUE</code>, this is implemented;
 for <code>error_model = "ARMA"</code>, <code>correction_factor = FALSE</code> is 
-enforced.</p>
+enforced; the default is <code>correction_factor = FALSE</code>, because it was
+found that setting this argument to <code>TRUE</code> often overestimates the 
+bandwidth.</p>
 </td></tr>
 <tr><td><code id="s_semiarma_+3A_drop">drop</code></td>
 <td>
@@ -3816,6 +3846,23 @@ obtained purely nonparametrically (<code>"free"</code>) or whether an
 autoregressive moving-average (ARMA) model is assumed <code>"ARMA"</code>; the
 default is <code>error_model = "free"</code>.</p>
 </td></tr>
+<tr><td><code id="s_semiarma_+3A_nar_lim">nar_lim</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; set the minimum and 
+maximum AR order to check via the BIC in each iteration of the algorithm via 
+a two-element vector.</p>
+</td></tr>
+<tr><td><code id="s_semiarma_+3A_nma_lim">nma_lim</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; set the minimum and
+maximum MA order to check via the BIC in each iteration of the algorithm via
+a two-element vector.</p>
+</td></tr>
+<tr><td><code id="s_semiarma_+3A_arma_mean">arma_mean</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; decide whether to 
+include an estimate of the mean in the ARMA fitting for the detrended series.</p>
+</td></tr>
 </table>
 
 
@@ -3831,7 +3878,8 @@ model is fitted using <code><a href="stats.html#topic+arima">arima</a></code>.
 <p>All function arguments except for <code>arma_options</code> are identical to 
 those in <code><a href="#topic+deseats">deseats</a></code>. If all elements in 
 <code>arma_options</code> are set to <code>NULL</code>, the ARMA model orders are 
-selected from <code class="reqn">p, q = 0, 1, 2, 3</code> according to the BIC.
+selected for <code class="reqn">p, q</code> from <code>nar_lim[[1]]</code> and <code>nma_lim[[1]]</code> up
+until <code>nar_lim[[2]]</code> and <code>nma_lim[[2]]</code> according to the BIC.
 </p>
 
 
@@ -3917,6 +3965,136 @@ a time series object using R.
 </p>
 
 <hr>
+<h2 id='seasonplot'>Creation of Seasonal Plots</h2><span id='topic+seasonplot'></span>
+
+<h3>Description</h3>
+
+<p>Simplified seasonal plot creation of time series in order to identify 
+seasonal patterns more easily.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>seasonplot(
+  x,
+  xlab = NULL,
+  ylab = NULL,
+  main = NULL,
+  labels = TRUE,
+  colorpalette = NULL,
+  rm_xticks = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="seasonplot_+3A_x">x</code></td>
+<td>
+<p>a time series object of class <code>"ts"</code>.</p>
+</td></tr>
+<tr><td><code id="seasonplot_+3A_xlab">xlab</code></td>
+<td>
+<p>a label for the plot's x-axis.</p>
+</td></tr>
+<tr><td><code id="seasonplot_+3A_ylab">ylab</code></td>
+<td>
+<p>a label for the plot's y-axis.</p>
+</td></tr>
+<tr><td><code id="seasonplot_+3A_main">main</code></td>
+<td>
+<p>a title for the plot.</p>
+</td></tr>
+<tr><td><code id="seasonplot_+3A_labels">labels</code></td>
+<td>
+<p>whether or not to show tick labels.</p>
+</td></tr>
+<tr><td><code id="seasonplot_+3A_colorpalette">colorpalette</code></td>
+<td>
+<p>a color palette (either a numeric or character vector) that 
+gives an alternative color palette to use for the subseries.</p>
+</td></tr>
+<tr><td><code id="seasonplot_+3A_rm_xticks">rm_xticks</code></td>
+<td>
+<p>whether to remove x-axis ticks and tick labels; the default is
+<code>FALSE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function creates a seasonal plot of the provided time series object. The
+series is split into different subseries, each reflecting one season, and then 
+these subseries are plotted together. This helps identifying possible seasonal
+patterns in the data.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function does not return anything, however a plot is created in the plot 
+window.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>seasonplot(TEMPERATURE, xlab = "Degrees Celsius", 
+ main = "Seasonal plot of German temperature data")
+
+</code></pre>
+
+<hr>
+<h2 id='seasonplot_gg'>Creation of Seasonal Plots in the Style of ggplot2</h2><span id='topic+seasonplot_gg'></span>
+
+<h3>Description</h3>
+
+<p>Simplified seasonal plot creation of time series objects in order to
+identify seasonal patterns.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>seasonplot_gg(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="seasonplot_gg_+3A_x">x</code></td>
+<td>
+<p>a time series object of class <code>"ts"</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function returns an plot object in the style of <code>ggplot2</code>. The plot
+can therefore be adjusted easily using common <code>ggplot2</code> syntax.
+</p>
+
+
+<h3>Value</h3>
+
+<p>The function returns a <code>ggplot2</code> plot object.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>seasonplot_gg(TEMPERATURE) +
+ ggplot2::ylab("Degrees Celsius") +
+ ggplot2::ggtitle("Seasonal plot of German temperature data")
+
+</code></pre>
+
+<hr>
 <h2 id='select_bwidth'>Optimal Bandwidth Estimation for Locally Weighted Regression in Equidistant 
 Time Series under Short Memory</h2><span id='topic+select_bwidth'></span>
 
@@ -3934,10 +4112,13 @@ Time Series under Short Memory
   smoothing_options = set_options(),
   bwidth_start = NULL,
   inflation_rate = c("optimal", "naive"),
-  correction_factor = TRUE,
+  correction_factor = FALSE,
   autocor = TRUE,
   drop = NULL,
-  error_model = c("free", "ARMA")
+  error_model = c("free", "ARMA"),
+  nar_lim = c(0, 3),
+  nma_lim = c(0, 3),
+  arma_mean = FALSE
 )
 </code></pre>
 
@@ -3982,7 +4163,10 @@ of 5/7 and 9/13, respectively.</p>
 <p>A logical vector of length one; theoretically, a 
 larger bandwidth to estimate the sum of autocovariances from residuals of 
 pilot trend and seasonality estimates is advisable than for estimating trend
-and seasonality; for <code>correction_factor = TRUE</code>, this is implemented.</p>
+and seasonality; for <code>correction_factor = TRUE</code>, this is implemented; 
+the default is <code>correction_factor = FALSE</code>, because it was found 
+that setting this argument to <code>TRUE</code> often overestimates the 
+bandwidth.</p>
 </td></tr>
 <tr><td><code id="select_bwidth_+3A_autocor">autocor</code></td>
 <td>
@@ -4005,6 +4189,23 @@ for <code>autocor = TRUE</code> the sum of autocovariances of the errors is
 obtained purely nonparametrically (<code>"free"</code>) or whether an
 autoregressive moving-average (ARMA) model is assumed <code>"ARMA"</code>; the
 default is <code>error_model = "free"</code>.</p>
+</td></tr>
+<tr><td><code id="select_bwidth_+3A_nar_lim">nar_lim</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; set the minimum and 
+maximum AR order to check via the BIC in each iteration of the algorithm via 
+a two-element vector.</p>
+</td></tr>
+<tr><td><code id="select_bwidth_+3A_nma_lim">nma_lim</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; set the minimum and
+maximum MA order to check via the BIC in each iteration of the algorithm via
+a two-element vector.</p>
+</td></tr>
+<tr><td><code id="select_bwidth_+3A_arma_mean">arma_mean</code></td>
+<td>
+<p>only valid for <code>error_model = "ARMA"</code>; decide whether to 
+include an estimate of the mean in the ARMA fitting for the detrended series.</p>
 </td></tr>
 </table>
 

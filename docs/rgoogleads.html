@@ -59,7 +59,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.10.0</td>
+<td>0.11.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -90,11 +90,11 @@ function processMathHTML() {
 <td>gargle (&ge; 1.2.0), httr, stringr, rlang, dplyr (&ge; 1.0.0),
 tidyr (&ge; 1.0.0), jsonlite, snakecase, cli (&ge; 3.0.0), pbapply,
 purrr, withr, rlist, rvest (&ge; 1.0.0), memoise, cachem,
-rappdirs, utils</td>
+rappdirs, utils, lifecycle</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.1</td>
+<td>7.2.3</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -110,7 +110,7 @@ rappdirs, utils</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-17 09:38:57 UTC; SAMSUNG</td>
+<td>2024-05-14 10:36:47 UTC; SAMSUNG</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -128,7 +128,7 @@ rappdirs, utils</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-17 10:10:02 UTC</td>
+<td>2024-05-14 11:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -248,13 +248,6 @@ they can be automatically refreshed, as necessary. Storage at the user
 level means the same token can be used across multiple projects and
 tokens are less likely to be synced to the cloud by accident.
 </p>
-<p>If you are interacting with R within a browser (applies to RStudio Server,
-RStudio Workbench, and RStudio Cloud), you need a variant of this flow,
-known as out-of-band auth (&quot;oob&quot;). If this does not happen
-automatically, you can request it yourself with <code>use_oob = TRUE</code> or,
-more persistently, by setting an option via
-<code>options(gargle_oob_default = TRUE)</code>.
-</p>
 
 
 <h3>Usage</h3>
@@ -305,39 +298,54 @@ more persistently, by setting an option via
 <p>Most users, most of the time, do not need to call <code>gads_auth()</code>
 explicitly &ndash; it is triggered by the first action that requires
 authorization. Even when called, the default arguments often suffice.
-However, when necessary, this function allows the user to explicitly:
+</p>
+<p>However, when necessary, <code>gads_auth()</code> allows the user to explicitly:
 </p>
 
 <ul>
-<li><p> Declare which Google identity to use, via an email address. If there
-are multiple cached tokens, this can clarify which one to use. It can
-also force rgoogleads to switch from one identity to another. If
-there's no cached token for the email, this triggers a return to the
-browser to choose the identity and give consent. You can specify just
-the domain by using a glob pattern. This means that a script
-containing <code>email = "*@example.com"</code> can be run without further
-tweaks on the machine of either <code>alice@example.com</code> or
-<code>bob@example.com</code>.
+<li><p> Declare which Google identity to use, via an <code>email</code> specification.
 </p>
 </li>
-<li><p> Use a service account token or workload identity federation.
+<li><p> Use a service account token or workload identity federation via
+<code>path</code>.
 </p>
 </li>
-<li><p> Bring their own <a href="httr.html#topic+Token-class">Token2.0</a>.
+<li><p> Bring your own <code>token</code>.
 </p>
 </li>
-<li><p> Specify non-default behavior re: token caching and out-of-bound
-authentication.
+<li><p> Customize <code>scopes</code>.
 </p>
 </li>
-<li><p> Customize scopes.
+<li><p> Use a non-default <code>cache</code> folder or turn caching off.
+</p>
+</li>
+<li><p> Explicitly request out-of-band (OOB) auth via <code>use_oob</code>.
 </p>
 </li></ul>
 
+<p>If you are interacting with R within a browser (applies to RStudio
+Server, Posit Workbench, Posit Cloud, and Google Colaboratory), you need
+OOB auth or the pseudo-OOB variant. If this does not happen
+automatically, you can request it explicitly with <code>use_oob = TRUE</code> or,
+more persistently, by setting an option via
+<code>options(gargle_oob_default = TRUE)</code>.
+</p>
+<p>The choice between conventional OOB or pseudo-OOB auth is determined
+by the type of OAuth client. If the client is of the &quot;installed&quot; type,
+<code>use_oob = TRUE</code> results in conventional OOB auth. If the client is of
+the &quot;web&quot; type, <code>use_oob = TRUE</code> results in pseudo-OOB auth. Packages
+that provide a built-in OAuth client can usually detect which type of
+client to use. But if you need to set this explicitly, use the
+<code>"gargle_oauth_client_type"</code> option:
+</p>
+<div class="sourceCode r"><pre>options(gargle_oauth_client_type = "web")       # pseudo-OOB
+# or, alternatively
+options(gargle_oauth_client_type = "installed") # conventional OOB
+</pre></div>
 <p>For details on the many ways to find a token, see
 <code><a href="gargle.html#topic+token_fetch">gargle::token_fetch()</a></code>. For deeper control over auth, use
-<code><a href="#topic+gads_auth_configure">gads_auth_configure()</a></code> to bring your own OAuth app or API key.
-Read more about gargle options, see <a href="gargle.html#topic+gargle_options">gargle::gargle_options</a>.
+<code><a href="#topic+gads_auth_configure">gads_auth_configure()</a></code> to bring your own OAuth client or API key.
+To learn more about gargle options, see <a href="gargle.html#topic+gargle_options">gargle::gargle_options</a>.
 </p>
 
 
@@ -398,26 +406,33 @@ lets the user specify their own:
 </p>
 
 <ul>
-<li><p> OAuth app, which is used when obtaining a user token.
+<li><p> OAuth client, which is used when obtaining a user token.
 </p>
 </li>
 <li><p> API key. If rgoogleads is de-authorized via <code><a href="#topic+gads_deauth">gads_deauth()</a></code>, all
 requests are sent with an API key in lieu of a token.
-See the vignette
-<a href="https://gargle.r-lib.org/articles/get-api-credentials.html">How to get your own API credentials</a>
-for more.
-If the user does not configure these settings, internal defaults
-are used.
-<code>gads_oauth_app()</code> and <code>gads_api_key()</code> retrieve the
-currently configured OAuth app and API key, respectively.
 </p>
 </li></ul>
 
+<p>See the <code>vignette("get-api-credentials", package = "gargle")</code>
+for more.
+If the user does not configure these settings, internal defaults
+are used.
+</p>
+<p><code>gads_oauth_client()</code> and <code>gads_api_key()</code> retrieve the
+currently configured OAuth client and API key, respectively.
+</p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>gads_auth_configure(app, path, api_key, developer_token)
+<pre><code class='language-R'>gads_auth_configure(
+  client,
+  path,
+  api_key,
+  developer_token,
+  app = lifecycle::deprecated()
+)
 
 gads_auth_cache_path()
 
@@ -434,15 +449,17 @@ gads_oauth_app()
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="gads_auth_configure_+3A_app">app</code></td>
+<tr><td><code id="gads_auth_configure_+3A_client">client</code></td>
 <td>
-<p>OAuth app, in the sense of <code><a href="httr.html#topic+oauth_app">httr::oauth_app()</a></code>.</p>
+<p>A Google OAuth client, presumably constructed via
+<code><a href="gargle.html#topic+gargle_oauth_client_from_json">gargle::gargle_oauth_client_from_json()</a></code>. Note, however, that it is
+preferred to specify the client with JSON, using the <code>path</code> argument.</p>
 </td></tr>
 <tr><td><code id="gads_auth_configure_+3A_path">path</code></td>
 <td>
-<p>JSON downloaded from Google Cloud Platform Console, containing a
-client id (aka key) and secret, in one of the forms supported for the <code>txt</code>
-argument of <code><a href="jsonlite.html#topic+fromJSON">jsonlite::fromJSON()</a></code> (typically, a file path or JSON string).</p>
+<p>JSON downloaded from <a href="https://console.cloud.google.com">Google Cloud Console</a>, containing a client id and
+secret, in one of the forms supported for the <code>txt</code> argument of
+<code><a href="jsonlite.html#topic+fromJSON">jsonlite::fromJSON()</a></code> (typically, a file path or JSON string).</p>
 </td></tr>
 <tr><td><code id="gads_auth_configure_+3A_api_key">api_key</code></td>
 <td>
@@ -451,6 +468,11 @@ argument of <code><a href="jsonlite.html#topic+fromJSON">jsonlite::fromJSON()</a
 <tr><td><code id="gads_auth_configure_+3A_developer_token">developer_token</code></td>
 <td>
 <p>Your Google Ads Developer Token.</p>
+</td></tr>
+<tr><td><code id="gads_auth_configure_+3A_app">app</code></td>
+<td>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#deprecated"><img src="../help/figures/lifecycle-deprecated.svg" alt='[Deprecated]' /></a> Replaced by the <code>client</code>
+argument.</p>
 </td></tr>
 </table>
 
@@ -463,8 +485,7 @@ argument of <code><a href="jsonlite.html#topic+fromJSON">jsonlite::fromJSON()</a
 <a href="gargle.html#topic+AuthState-class">gargle::AuthState</a>, invisibly.
 </p>
 </li>
-<li> <p><code>gads_oauth_app()</code>: the current user-configured
-<code><a href="httr.html#topic+oauth_app">httr::oauth_app()</a></code>.
+<li> <p><code>gads_oauth_client()</code>: the current user-configured OAuth client.
 </p>
 </li>
 <li> <p><code>gads_api_key()</code>: the current user-configured API key.
@@ -743,7 +764,7 @@ In the absence of a user-configured key, a built-in default key is used.
 
 <h3>See Also</h3>
 
-<p><a href="https://developers.google.com/google-ads/api/rest/reference/rest/v13/customers/listAccessibleCustomers">Method: customers.listAccessibleCustomers documentation</a>
+<p><a href="https://developers.google.com/google-ads/api/rest/reference/rest/v16/customers/listAccessibleCustomers">Method: customers.listAccessibleCustomers documentation</a>
 </p>
 
 
@@ -857,43 +878,43 @@ acc_hier &lt;- gads_get_account_hierarchy(
     "ad_group_criterion.listing_group.case_value.hotel_id.value", 
     
     "ad_group_criterion.listing_group.case_value.hotel_state.state_criterion",
-    "ad_group_criterion.listing_group.case_value.product_bidding_category.id",
-    "ad_group_criterion.listing_group.case_value.product_bidding_category.level",
     "ad_group_criterion.listing_group.case_value.product_brand.value",
     "ad_group_criterion.listing_group.case_value.product_channel.channel",
     "ad_group_criterion.listing_group.case_value.product_condition.condition",
-    "ad_group_criterion.listing_group.case_value.product_custom_attribute.index", 
-    
+    "ad_group_criterion.listing_group.case_value.product_custom_attribute.index",
     "ad_group_criterion.listing_group.case_value.product_custom_attribute.value",
-    "ad_group_criterion.listing_group.case_value.product_type.level",
+    "ad_group_criterion.listing_group.case_value.product_type.level", 
+    
     "ad_group_criterion.listing_group.case_value.product_item_id.value",
     "ad_group_criterion.listing_group.case_value.product_type.value",
     "ad_group_criterion.listing_group.parent_ad_group_criterion",
     "ad_group_criterion.listing_group.type",
     "ad_group_criterion.mobile_app_category.mobile_app_category_constant",
-    "ad_group_criterion.mobile_application.app_id", 
-    
+    "ad_group_criterion.mobile_application.app_id",
     "ad_group_criterion.mobile_application.name", "ad_group_criterion.negative",
     "ad_group_criterion.parental_status.type",
-    "ad_group_criterion.percent_cpc_bid_micros", "ad_group_criterion.placement.url",
+    "ad_group_criterion.percent_cpc_bid_micros", 
+    
+    "ad_group_criterion.placement.url",
     "ad_group_criterion.position_estimates.estimated_add_cost_at_first_position_cpc",
     "ad_group_criterion.position_estimates.estimated_add_clicks_at_first_position_cpc",
     "ad_group_criterion.position_estimates.first_page_cpc_micros",
-    "ad_group_criterion.position_estimates.first_position_cpc_micros", 
-    
+    "ad_group_criterion.position_estimates.first_position_cpc_micros",
     "ad_group_criterion.position_estimates.top_of_page_cpc_micros",
     "ad_group_criterion.quality_info.creative_quality_score",
-    "ad_group_criterion.quality_info.post_click_quality_score",
+    "ad_group_criterion.quality_info.post_click_quality_score", 
+    
     "ad_group_criterion.quality_info.quality_score",
     "ad_group_criterion.quality_info.search_predicted_ctr",
     "ad_group_criterion.resource_name", "ad_group_criterion.status",
     "ad_group_criterion.system_serving_status", "ad_group_criterion.topic.path",
     "ad_group_criterion.topic.topic_constant",
-    "ad_group_criterion.tracking_url_template", 
-     "ad_group_criterion.type",
+    "ad_group_criterion.tracking_url_template", "ad_group_criterion.type",
     "ad_group_criterion.url_custom_parameters",
     "ad_group_criterion.user_interest.user_interest_category",
-    "ad_group_criterion.user_list.user_list", "ad_group_criterion.webpage.conditions",
+    "ad_group_criterion.user_list.user_list", 
+    
+    "ad_group_criterion.webpage.conditions",
     "ad_group_criterion.webpage.coverage_percentage",
     "ad_group_criterion.webpage.criterion_name",
     "ad_group_criterion.webpage.sample.sample_urls",
@@ -1134,55 +1155,43 @@ adgroups &lt;- gads_get_ad_groups(
     "ad_group_ad.ad.expanded_text_ad.path1", "ad_group_ad.ad.expanded_text_ad.path2",
     "ad_group_ad.ad.final_url_suffix", 
      "ad_group_ad.ad.final_urls",
-    "ad_group_ad.ad.final_mobile_urls", "ad_group_ad.ad.gmail_ad.header_image",
-    "ad_group_ad.ad.gmail_ad.marketing_image",
-    "ad_group_ad.ad.gmail_ad.marketing_image_description",
-    "ad_group_ad.ad.gmail_ad.marketing_image_display_call_to_action.text",
-    "ad_group_ad.ad.gmail_ad.marketing_image_display_call_to_action.text_color",
-    "ad_group_ad.ad.gmail_ad.marketing_image_display_call_to_action.url_collection_id",
-    "ad_group_ad.ad.gmail_ad.marketing_image_headline",
-    "ad_group_ad.ad.gmail_ad.product_images", 
-    
-    "ad_group_ad.ad.gmail_ad.teaser.business_name",
-    "ad_group_ad.ad.gmail_ad.teaser.description",
-    "ad_group_ad.ad.gmail_ad.teaser.headline",
-    "ad_group_ad.ad.gmail_ad.teaser.logo_image", "ad_group_ad.ad.hotel_ad",
+    "ad_group_ad.ad.final_mobile_urls", "ad_group_ad.ad.hotel_ad",
     "ad_group_ad.ad.image_ad.image_url", "ad_group_ad.ad.image_ad.mime_type",
     "ad_group_ad.ad.image_ad.name", "ad_group_ad.ad.image_ad.pixel_height",
     "ad_group_ad.ad.image_ad.pixel_width", "ad_group_ad.ad.image_ad.preview_image_url",
     "ad_group_ad.ad.image_ad.preview_pixel_height",
-    "ad_group_ad.ad.image_ad.preview_pixel_width", 
-    
+    "ad_group_ad.ad.image_ad.preview_pixel_width",
     "ad_group_ad.ad.legacy_app_install_ad",
-    "ad_group_ad.ad.legacy_responsive_display_ad.accent_color",
+    "ad_group_ad.ad.legacy_responsive_display_ad.accent_color", 
+    
     "ad_group_ad.ad.legacy_responsive_display_ad.allow_flexible_color",
     "ad_group_ad.ad.legacy_responsive_display_ad.business_name",
     "ad_group_ad.ad.legacy_responsive_display_ad.description",
     "ad_group_ad.ad.legacy_responsive_display_ad.call_to_action_text",
     "ad_group_ad.ad.legacy_responsive_display_ad.format_setting",
     "ad_group_ad.ad.legacy_responsive_display_ad.logo_image",
-    "ad_group_ad.ad.legacy_responsive_display_ad.long_headline", 
-    
+    "ad_group_ad.ad.legacy_responsive_display_ad.long_headline",
     "ad_group_ad.ad.legacy_responsive_display_ad.main_color",
-    "ad_group_ad.ad.legacy_responsive_display_ad.marketing_image",
+    "ad_group_ad.ad.legacy_responsive_display_ad.marketing_image", 
+    
     "ad_group_ad.ad.legacy_responsive_display_ad.price_prefix",
     "ad_group_ad.ad.legacy_responsive_display_ad.promo_text",
     "ad_group_ad.ad.legacy_responsive_display_ad.short_headline",
     "ad_group_ad.ad.legacy_responsive_display_ad.square_logo_image",
     "ad_group_ad.ad.legacy_responsive_display_ad.square_marketing_image",
-    "ad_group_ad.ad.local_ad.call_to_actions", "ad_group_ad.ad.local_ad.descriptions", 
- 
-       "ad_group_ad.ad.local_ad.headlines", "ad_group_ad.ad.local_ad.logo_images",
-    "ad_group_ad.ad.local_ad.marketing_images", "ad_group_ad.ad.local_ad.path1",
+    "ad_group_ad.ad.local_ad.call_to_actions", "ad_group_ad.ad.local_ad.descriptions",
+    "ad_group_ad.ad.local_ad.headlines", "ad_group_ad.ad.local_ad.logo_images",
+    "ad_group_ad.ad.local_ad.marketing_images", 
+     "ad_group_ad.ad.local_ad.path1",
     "ad_group_ad.ad.local_ad.path2", "ad_group_ad.ad.resource_name",
     "ad_group_ad.ad.responsive_display_ad.accent_color",
     "ad_group_ad.ad.responsive_display_ad.allow_flexible_color",
     "ad_group_ad.ad.responsive_display_ad.business_name",
     "ad_group_ad.ad.responsive_display_ad.call_to_action_text",
-    "ad_group_ad.ad.responsive_display_ad.control_spec.enable_asset_enhancements", 
-    
+    "ad_group_ad.ad.responsive_display_ad.control_spec.enable_asset_enhancements",
     "ad_group_ad.ad.responsive_display_ad.control_spec.enable_autogen_video",
-    "ad_group_ad.ad.responsive_display_ad.format_setting",
+    "ad_group_ad.ad.responsive_display_ad.format_setting", 
+    
     "ad_group_ad.ad.responsive_display_ad.headlines",
     "ad_group_ad.ad.responsive_display_ad.long_headline",
     "ad_group_ad.ad.responsive_display_ad.main_color",
@@ -1315,8 +1324,8 @@ myads &lt;- gads_get_ads(
     "campaign.optimization_score", 
      "campaign.payment_mode",
     "campaign.serving_status", "campaign.shopping_setting.campaign_priority",
-    "campaign.shopping_setting.sales_country", "campaign.target_roas.target_roas",
-    "campaign.tracking_url_template", "customer.descriptive_name", "customer.id"),
+    "campaign.target_roas.target_roas", "campaign.tracking_url_template",
+    "customer.descriptive_name", "customer.id"),
   where = NULL,
   order_by = NULL,
   limit = NULL,

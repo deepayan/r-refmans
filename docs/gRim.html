@@ -28,12 +28,19 @@ distribution</a></li>
 <li><a href='#citest-ordinal'><p>A function to compute Monte Carlo and asymptotic tests of conditional</p>
 independence for ordinal and/or nominal variables.</a></li>
 <li><a href='#cmod'><p>Graphical Gaussian model</p></a></li>
+<li><a href='#coerce_models'><p>Coerce models to different representations</p></a></li>
+<li><a href='#emat_operations'><p>Edge matrix operations</p></a></li>
+<li><a href='#fast_cov'><p>Fast computation of covariance / correlation matrix</p></a></li>
+<li><a href='#fit_ggm_grips'><p>Fit Gaussian graphical models</p></a></li>
+<li><a href='#generate_models'><p>Generate various grapical models</p></a></li>
+<li><a href='#generate_n01'><p>Genrate matrix of N(0, 1) variables</p></a></li>
 <li><a href='#getEdges'><p>Find edges in a graph or edges not in an undirected graph.</p></a></li>
 <li><a href='#ggmfit'><p>Iterative proportional fitting of graphical Gaussian model</p></a></li>
 <li><a href='#imodel-dmod'><p>Discrete interaction model (log-linear model)</p></a></li>
 <li><a href='#imodel-general'><p>General functions related to iModels</p></a></li>
 <li><a href='#imodel-info'><p>Get information about mixed interaction model objects</p></a></li>
 <li><a href='#imodel-mmod'><p>Mixed interaction model.</p></a></li>
+<li><a href='#impose_zero'><p>Impose zeros in matrix entries which do not correspond to an edge.</p></a></li>
 <li><a href='#internal'><p>Internal functions for the gRim package</p></a></li>
 <li><a href='#loglin-dim'><p>Return the dimension of a log-linear model</p></a></li>
 <li><a href='#loglin-effloglin'><p>Fitting Log-Linear Models by Message Passing</p></a></li>
@@ -44,6 +51,7 @@ independence for ordinal and/or nominal variables.</a></li>
 <li><a href='#test-edges'><p>Test edges in graphical models with p-value/AIC value</p></a></li>
 <li><a href='#testadd'><p>Test addition of edge to graphical model</p></a></li>
 <li><a href='#testdelete'><p>Test deletion of edge from an interaction model</p></a></li>
+<li><a href='#utilities_grips'><p>Utilities for gRips</p></a></li>
 </ul>
 </div>
 <hr>
@@ -52,7 +60,7 @@ independence for ordinal and/or nominal variables.</a></li>
 <table>
 <tr>
 <td>Version:</td>
-<td>0.3.0</td>
+<td>0.3.2</td>
 </tr>
 <tr>
 <td>Title:</td>
@@ -89,7 +97,7 @@ independence for ordinal and/or nominal variables.</a></li>
 </tr>
 <tr>
 <td>Depends:</td>
-<td>R (&ge; 3.6.0), methods, gRbase (&ge; 2.0.0)</td>
+<td>R (&ge; 4.2.0), methods, gRbase (&ge; 2.0.2)</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -97,7 +105,8 @@ independence for ordinal and/or nominal variables.</a></li>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>igraph, stats4, gRain (&ge; 1.3.10), magrittr, Rcpp (&ge; 0.11.1)</td>
+<td>doBy, igraph, stats4, glue, Matrix, MASS, gRain (&ge; 1.3.10),
+Rcpp (&ge; 0.11.1)</td>
 </tr>
 <tr>
 <td>ByteCompile:</td>
@@ -106,11 +115,11 @@ independence for ordinal and/or nominal variables.</a></li>
 <tr>
 <td>LinkingTo:</td>
 <td>Rcpp (&ge; 0.11.1), RcppArmadillo, RcppEigen, gRbase (&ge;
-2.0.0)</td>
+2.0.2)</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -118,7 +127,7 @@ independence for ordinal and/or nominal variables.</a></li>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-10-02 02:24:30 UTC; sorenh</td>
+<td>2024-06-10 10:12:51 UTC; sorenh</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -126,7 +135,7 @@ independence for ordinal and/or nominal variables.</a></li>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-10-02 03:50:02 UTC</td>
+<td>2024-06-10 12:30:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -787,7 +796,14 @@ for 'c'ontinuous variables
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>cmod(formula, data, marginal = NULL, fit = TRUE, details = 0)
+<pre><code class='language-R'>cmod(
+  formula,
+  data,
+  marginal = NULL,
+  fit = TRUE,
+  maximal_only = FALSE,
+  details = 0
+)
 </code></pre>
 
 
@@ -815,6 +831,10 @@ connection with the model specification shortcuts.</p>
 <tr><td><code id="cmod_+3A_fit">fit</code></td>
 <td>
 <p>Should the model be fitted.</p>
+</td></tr>
+<tr><td><code id="cmod_+3A_maximal_only">maximal_only</code></td>
+<td>
+<p>Should only maximal generators be retained.</p>
 </td></tr>
 <tr><td><code id="cmod_+3A_details">details</code></td>
 <td>
@@ -869,6 +889,413 @@ cm3 &lt;- backward(cm1, k=log(nrow(carcass)),
                  ncol=2))
 
 </code></pre>
+
+<hr>
+<h2 id='coerce_models'>Coerce models to different representations</h2><span id='topic+coerce_models'></span><span id='topic+as_emat2cq'></span><span id='topic+as_emat_complement'></span><span id='topic+as_emat2amat'></span><span id='topic+as_emat2elist'></span><span id='topic+as_elist2emat'></span><span id='topic+as_glist2emat'></span><span id='topic+as_glist2cq'></span><span id='topic+as_glist2graph'></span><span id='topic+as_glist2igraph'></span><span id='topic+as_emat2graph'></span><span id='topic+as_emat2igraph'></span><span id='topic+as_amat2emat'></span><span id='topic+as_emat2glist'></span><span id='topic+as_glist2out_edges'></span><span id='topic+as_K2amat'></span><span id='topic+as_K2graph'></span><span id='topic+as_sparse'></span>
+
+<h3>Description</h3>
+
+<p>Coerce models to different representations
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>as_emat2cq(emat, nvar = NULL)
+
+as_emat_complement(emat, nvar)
+
+as_emat2amat(emat, d)
+
+as_emat2elist(emat)
+
+as_elist2emat(elist)
+
+as_glist2emat(glist)
+
+as_glist2cq(glist)
+
+as_glist2graph(glist, d)
+
+as_glist2igraph(glist, d)
+
+as_emat2graph(emat, d)
+
+as_emat2igraph(emat, d)
+
+as_amat2emat(amat, eps = 1e-04)
+
+as_emat2glist(emat)
+
+as_glist2out_edges(glist)
+
+as_K2amat(K, eps = 1e-04)
+
+as_K2graph(K)
+
+as_sparse(K)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="coerce_models_+3A_emat">emat</code></td>
+<td>
+<p>Edge matrix (2 x p)</p>
+</td></tr>
+<tr><td><code id="coerce_models_+3A_nvar">nvar</code></td>
+<td>
+<p>Number of variables</p>
+</td></tr>
+<tr><td><code id="coerce_models_+3A_d">d</code></td>
+<td>
+<p>Number of columns in output.</p>
+</td></tr>
+<tr><td><code id="coerce_models_+3A_elist">elist</code></td>
+<td>
+<p>Edge list (list of pairs)</p>
+</td></tr>
+<tr><td><code id="coerce_models_+3A_glist">glist</code></td>
+<td>
+<p>Generator list</p>
+</td></tr>
+<tr><td><code id="coerce_models_+3A_amat">amat</code></td>
+<td>
+<p>Adjacency matrix</p>
+</td></tr>
+<tr><td><code id="coerce_models_+3A_eps">eps</code></td>
+<td>
+<p>Small number
+</p>
+<p>glist &lt;- list(c(1,2,3),c(2,3,4),c(5,6))
+em &lt;- as_glist2emat(glist)
+am &lt;- as_emat2amat(em, d=6)
+ig &lt;- as_emat2igraph(em)
+el &lt;- as_emat2elist(em)
+igraph::max_cliques(ig)
+as_emat2cq(em, 6)
+as_emat_complement(em, 6)</p>
+</td></tr>
+<tr><td><code id="coerce_models_+3A_k">K</code></td>
+<td>
+<p>Concentration matrix</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='emat_operations'>Edge matrix operations</h2><span id='topic+emat_operations'></span><span id='topic+emat_compare'></span><span id='topic+emat_complement'></span><span id='topic+emat_sort'></span><span id='topic+order_rows'></span>
+
+<h3>Description</h3>
+
+<p>Edge matrix operations needed for ips algorithms
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>emat_compare(emat1, emat2)
+
+emat_complement(emat1, emat2)
+
+emat_sort(emat1)
+
+order_rows(emat)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="emat_operations_+3A_emat">emat</code>, <code id="emat_operations_+3A_emat1">emat1</code>, <code id="emat_operations_+3A_emat2">emat2</code></td>
+<td>
+<p>Edge matrix (a 2 x p matrix)</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>An emat with p edges is represented by a 2 x p matrix.
+</p>
+
+
+<h3>Note</h3>
+
+<p>These functions may well be removed from the package in future relases
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Søren Højsgaard, <a href="mailto:sorenh@math.aau.dk">sorenh@math.aau.dk</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>emat1 &lt;- model_saturated(3:4, type="emat")
+emat2 &lt;- model_saturated(1:4, type="emat")
+emat_complement(emat1, emat2)
+emat3 &lt;- model_saturated(2:4, type="emat")
+emat_compare(emat1, emat3)
+</code></pre>
+
+<hr>
+<h2 id='fast_cov'>Fast computation of covariance / correlation matrix</h2><span id='topic+fast_cov'></span>
+
+<h3>Description</h3>
+
+<p>Fast computation of covariance / correlation matrix
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fast_cov(x, center = TRUE, scale = TRUE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fast_cov_+3A_x">x</code></td>
+<td>
+<p>a numeric matrix(like object).</p>
+</td></tr>
+<tr><td><code id="fast_cov_+3A_center">center</code>, <code id="fast_cov_+3A_scale">scale</code></td>
+<td>
+<p>Should columns in x be centered and/or scaled</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='fit_ggm_grips'>Fit Gaussian graphical models</h2><span id='topic+fit_ggm_grips'></span>
+
+<h3>Description</h3>
+
+<p>Fit Gaussian graphical models using various algorithms.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fit_ggm_grips(
+  S,
+  formula = NULL,
+  nobs,
+  K = NULL,
+  maxit = 10000L,
+  eps = 0.01,
+  convcrit = 1,
+  aux = list(),
+  method = "ncd",
+  print = 0
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="fit_ggm_grips_+3A_s">S</code></td>
+<td>
+<p>Sample covariance matrix.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_formula">formula</code></td>
+<td>
+<p>Generators of model; a list of integer vectors or a 2
+x p matrix of integers.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_nobs">nobs</code></td>
+<td>
+<p>Number of observations</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_k">K</code></td>
+<td>
+<p>Initial value of concentration matrix.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_maxit">maxit</code></td>
+<td>
+<p>Maximum number of iterations.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_eps">eps</code></td>
+<td>
+<p>Convergence criterion.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_convcrit">convcrit</code></td>
+<td>
+<p>Convergence criterions. See section <code>details</code>.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_aux">aux</code></td>
+<td>
+<p>A list of form name=value.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_method">method</code></td>
+<td>
+<p>Either <code>"ncd"</code> (default), <code>"covips"</code> or <code>"conips"</code>.</p>
+</td></tr>
+<tr><td><code id="fit_ggm_grips_+3A_print">print</code></td>
+<td>
+<p>Should output from fitting be printed?</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Convergence criterion:
+</p>
+
+<ul>
+<li><p> 1: max absolute difference between S and Sigmahat on edges.
+</p>
+</li>
+<li><p> 2: difference in log likelihood divided by number of parameters in the
+model (number of edges + number of nodes) between successive
+iterations.
+</p>
+</li>
+<li><p> 3: computed duality gap may turn negative due to rounding error, so its absolute value is returned.
+This still provides upper bound on error of likelihood function.
+</p>
+</li></ul>
+
+<p>Methods:
+</p>
+
+<ul>
+<li><p> &quot;ncd&quot;: Neighbour coordinate descent.
+</p>
+</li>
+<li><p> &quot;covips&quot;: IPS based on working with the covariance matrix.
+</p>
+</li>
+<li><p> &quot;conips&quot;: IPS based on working with the concentration matrix.
+</p>
+</li></ul>
+
+<p>ncd is very fast but may fail to converge in rare cases. Both
+covips and conips are guaranteed to converge provided the maximum
+likelihood estimate exists, and covips are considerably faster than
+conips.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Søren Højsgaard, <a href="mailto:sorenh@math.aau.dk">sorenh@math.aau.dk</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>options("digits"=3)
+data(math, package="gRbase")
+
+S &lt;- cov(math)
+nobs &lt;- nrow(math)
+gl &lt;- list(1:3, 3:5)
+em &lt;- matrix(c(1,2, 2,3, 1,3, 3,4, 3,5, 4,5), nrow=2)
+
+EPS = 1e-2
+
+fit_cov = fit_ggm_grips(S, gl, nobs=nobs, eps=EPS, method="cov")
+fit_con = fit_ggm_grips(S, gl, nobs=nobs, eps=EPS, method="con")
+fit_ncd = fit_ggm_grips(S, gl, nobs=nobs, eps=EPS, method="ncd")
+
+K &lt;- solve(S)
+(fit_con$K - K)  |&gt; abs() |&gt; max()
+(fit_cov$K - K)  |&gt; abs() |&gt; max()
+(fit_ncd$K - K)  |&gt; abs() |&gt; max()
+
+</code></pre>
+
+<hr>
+<h2 id='generate_models'>Generate various grapical models</h2><span id='topic+generate_models'></span><span id='topic+emat_saturated_model'></span><span id='topic+model_saturated'></span><span id='topic+model_random_tree'></span><span id='topic+model_rectangular_grid'></span><span id='topic+model_line'></span><span id='topic+model_star'></span><span id='topic+model_loop'></span><span id='topic+model_random'></span>
+
+<h3>Description</h3>
+
+<p>Models are represented in various forms
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>emat_saturated_model(index)
+
+model_saturated(index, type = "emat", nms = NULL)
+
+model_random_tree(index, prob = 0, type = "emat", nms = NULL)
+
+model_rectangular_grid(dim, type = "emat", nms = NULL)
+
+model_line(index, type = "emat", nms = NULL)
+
+model_star(index, type = "emat", nms = NULL)
+
+model_loop(index, prob = 0, type = "emat", nms = NULL)
+
+model_random(index, prob = 0.1, type = "emat", nms = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="generate_models_+3A_index">index</code></td>
+<td>
+<p>A vector of integers</p>
+</td></tr>
+<tr><td><code id="generate_models_+3A_type">type</code></td>
+<td>
+<p>Output type.</p>
+</td></tr>
+<tr><td><code id="generate_models_+3A_nms">nms</code></td>
+<td>
+<p>Names of variables.</p>
+</td></tr>
+<tr><td><code id="generate_models_+3A_prob">prob</code></td>
+<td>
+<p>Probability of any edge being present.</p>
+</td></tr>
+<tr><td><code id="generate_models_+3A_dim">dim</code></td>
+<td>
+<p>A vector with dimensions</p>
+</td></tr>
+</table>
+
+<hr>
+<h2 id='generate_n01'>Genrate matrix of N(0, 1) variables</h2><span id='topic+generate_n01'></span>
+
+<h3>Description</h3>
+
+<p>Genrate matrix of N(0, 1) variables
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>generate_n01(n.obs, nvar, seed = 2022)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="generate_n01_+3A_n.obs">n.obs</code></td>
+<td>
+<p>Number of rows</p>
+</td></tr>
+<tr><td><code id="generate_n01_+3A_nvar">nvar</code></td>
+<td>
+<p>Number of columns</p>
+</td></tr>
+<tr><td><code id="generate_n01_+3A_seed">seed</code></td>
+<td>
+<p>Seed for random number generator</p>
+</td></tr>
+</table>
 
 <hr>
 <h2 id='getEdges'>Find edges in a graph or edges not in an undirected graph.</h2><span id='topic+getEdges'></span><span id='topic+getEdges.list'></span><span id='topic+getEdges.graphNEL'></span><span id='topic+getEdges.matrix'></span><span id='topic+getInEdges'></span><span id='topic+getOutEdges'></span><span id='topic+getEdgesMAT'></span><span id='topic+getInEdgesMAT'></span><span id='topic+getOutEdgesMAT'></span>
@@ -1128,15 +1555,14 @@ C-version).
 ## Notice that the output from the two fitting functions is not
 ## entirely identical.
 data(math)
-ddd &lt;- cov.wt(math, method="ML")
 glist &lt;- list(c("al", "st", "an"), c("me", "ve", "al"))
-ggmfit (ddd$cov, ddd$n.obs, glist)
-ggmfitr(ddd$cov, ddd$n.obs, glist)
+d &lt;- cov.wt(math, method="ML")
+ggmfit (d$cov, d$n.obs, glist)
 
 </code></pre>
 
 <hr>
-<h2 id='imodel-dmod'>Discrete interaction model (log-linear model)</h2><span id='topic+imodel-dmod'></span><span id='topic+dmod'></span><span id='topic+print.dModel'></span><span id='topic+fitted.dModel'></span><span id='topic+residuals.dModel'></span><span id='topic+triangulate.dModel'></span>
+<h2 id='imodel-dmod'>Discrete interaction model (log-linear model)</h2><span id='topic+imodel-dmod'></span><span id='topic+dmod'></span><span id='topic+print.dModel'></span><span id='topic+fitted.dModel'></span><span id='topic+residuals.dModel'></span>
 
 <h3>Description</h3>
 
@@ -1417,6 +1843,34 @@ variables.
 <pre><code class='language-R'>
 ### FIXME: To be written
 </code></pre>
+
+<hr>
+<h2 id='impose_zero'>Impose zeros in matrix entries which do not correspond to an edge.</h2><span id='topic+impose_zero'></span>
+
+<h3>Description</h3>
+
+<p>Impose zeros in matrix entries which do not correspond to an edge.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>impose_zero(emat, K)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="impose_zero_+3A_emat">emat</code></td>
+<td>
+<p>Edge matrix (2 x p matrix)</p>
+</td></tr>
+<tr><td><code id="impose_zero_+3A_k">K</code></td>
+<td>
+<p>Matrix; typically a concentration matrix.</p>
+</td></tr>
+</table>
 
 <hr>
 <h2 id='internal'>Internal functions for the gRim package</h2><span id='topic+internal'></span><span id='topic++25+3E+25'></span>
@@ -1798,7 +2252,8 @@ parm_moment2pms(SS)
   formula,
   varnames = NULL,
   marginal = NULL,
-  interactions = NULL
+  interactions = NULL,
+  maximal_only = FALSE
 )
 </code></pre>
 
@@ -1824,6 +2279,10 @@ shortcuts.</p>
 <td>
 <p>The maximum order of interactions allowed;
 useful in connection with model specification shortcuts.</p>
+</td></tr>
+<tr><td><code id="parse_gm_formula_+3A_maximal_only">maximal_only</code></td>
+<td>
+<p>Should only maximal generators be retained.</p>
 </td></tr>
 </table>
 
@@ -2202,7 +2661,7 @@ functions for testing.</p>
 
 <h3>Details</h3>
 
-<p>Let M0 be the model and e=u,v be an edge and let M1 be
+<p>Let M0 be the model and e=(u,v) be an edge and let M1 be
 the model obtained by adding e to M0. If M1 is decomposable AND
 e is contained in one clique C only of M1 then the test is
 carried out in the C-marginal model. In this case, and if the
@@ -2367,6 +2826,65 @@ mf &lt;- ~me:ve + ve:al + al:an + an:me
 object &lt;- cmod(mf, data=math)
 testdelete(object, c("me", "ve"))
 </code></pre>
+
+<hr>
+<h2 id='utilities_grips'>Utilities for gRips</h2><span id='topic+utilities_grips'></span><span id='topic+logLik.gips_fit_class'></span><span id='topic+AIC.gips_fit_class'></span><span id='topic+BIC.gips_fit_class'></span><span id='topic+sigma.gips_fit_class'></span><span id='topic+concentration'></span><span id='topic+concentration.gips_fit_class'></span><span id='topic+print.gips_fit_class'></span><span id='topic+summary.gips_fit_class'></span><span id='topic+glance.gips_fit_class'></span>
+
+<h3>Description</h3>
+
+<p>Utilities for gRips
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'gips_fit_class'
+logLik(object, ...)
+
+## S3 method for class 'gips_fit_class'
+AIC(object, ..., k = 2)
+
+## S3 method for class 'gips_fit_class'
+BIC(object, ...)
+
+## S3 method for class 'gips_fit_class'
+sigma(object, ...)
+
+concentration(object, ...)
+
+## S3 method for class 'gips_fit_class'
+concentration(object, ...)
+
+## S3 method for class 'gips_fit_class'
+print(x, ...)
+
+## S3 method for class 'gips_fit_class'
+summary(object, ...)
+
+glance.gips_fit_class(x, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="utilities_grips_+3A_object">object</code></td>
+<td>
+<p>Model object.</p>
+</td></tr>
+<tr><td><code id="utilities_grips_+3A_...">...</code></td>
+<td>
+<p>Additional arguments; currently not used.</p>
+</td></tr>
+<tr><td><code id="utilities_grips_+3A_k">k</code></td>
+<td>
+<p>Penalty parameter for calculating AIC; only k=2 gives genuine AIC.</p>
+</td></tr>
+<tr><td><code id="utilities_grips_+3A_x">x</code></td>
+<td>
+<p>Object to be printed.</p>
+</td></tr>
+</table>
 
 </main>
 

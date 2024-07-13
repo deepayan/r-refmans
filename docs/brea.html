@@ -19,6 +19,7 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#brea_mcmc'><p>Bayesian Discrete Survival Inference</p></a></li>
+<li><a href='#brea_mcmc_ms'><p>Bayesian Discrete Multistate Inference</p></a></li>
 </ul>
 </div>
 <hr>
@@ -27,19 +28,19 @@ function processMathHTML() {
 <table>
 <tr>
 <td>Version:</td>
-<td>0.2.0</td>
+<td>0.3.0</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2017-10-08</td>
+<td>2024-07-01</td>
 </tr>
 <tr>
 <td>Title:</td>
-<td>Bayesian Recurrent Event Analysis</td>
+<td>Bayesian Recurrent Events Analysis</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>A function to produce MCMC samples for posterior inference in semiparametric Bayesian discrete time competing risks recurrent events models.</td>
+<td>Functions to produce MCMC samples for posterior inference in semiparametric Bayesian discrete time competing risks recurrent events models and multistate models.</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -59,7 +60,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2017-10-09 03:39:39 UTC; adam</td>
+<td>2024-07-02 05:44:30 UTC; adam</td>
 </tr>
 <tr>
 <td>Repository:</td>
@@ -67,7 +68,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2017-10-09 03:49:15 UTC</td>
+<td>2024-07-02 07:30:05 UTC</td>
 </tr>
 </table>
 <hr>
@@ -229,6 +230,177 @@ str(fit)
 # posterior samples of the treatment and control group parameters:
 b_treatment &lt;- fit$b_m_s[[2]][1,1,]
 b_control &lt;- fit$b_m_s[[2]][1,2,]
+
+# posterior sample of treatment effect on linear predictor scale:
+d &lt;- b_control - b_treatment
+
+# posterior mean, median, and sd of treatment effect on linear predictor scale:
+mean(d); median(d); sd(d)
+
+# posterior mean and median hazard ratios:
+mean(exp(d)); median(exp(d))
+
+</code></pre>
+
+<hr>
+<h2 id='brea_mcmc_ms'>Bayesian Discrete Multistate Inference</h2><span id='topic+brea_mcmc_ms'></span>
+
+<h3>Description</h3>
+
+<p>This function performs Metropolis-Hastings exploration of the posterior distribution for Bayesian discrete time multistate models. The models may have multiple states, competing risks, semiparametric covariate effects (like arbitrary baseline hazards), and random effects shared across repeated events and correlated across states and competing risks.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>brea_mcmc_ms(x, y, priors = NULL, S = 1000, B = 100, n = NULL, K = NULL, store_re = FALSE)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="brea_mcmc_ms_+3A_x">x</code></td>
+<td>
+<p>a list with one element for each state in the multistate model; each list element is a matrix of positive whole numbers or a dataframe with positive whole or factor columns specifying the values of the (discretized) predictors at each person-time point; the (i,j) entry of <code>x[[st]]</code> is the value of predictor j at discrete person-time observation i of state st</p>
+</td></tr>
+<tr><td><code id="brea_mcmc_ms_+3A_y">y</code></td>
+<td>
+<p>a list with one element for each state in the multistate model; each list element is a nonnegative whole number vector or matrix indicating event occurrence at each person-time point; with only one event type, the i^th entry of the vector <code>y[[st]]</code> is 0 for no event occurrence at observation i and 1 for event occurrence (or potentially greater than 1 if that observation represents replicated observations; see entry for <code>n</code>); with more than one event type, the (i,j) entry of the matrix <code>y[[st]]</code> counts the number of events of type j occurring at discrete person-time observation i</p>
+</td></tr>
+<tr><td><code id="brea_mcmc_ms_+3A_priors">priors</code></td>
+<td>
+<p>a list with one element for each state in the multistate model; each element of <code>priors</code> is a list with one element for each predictor variable (column of <code>x[[st]]</code>) specifying the prior type to use for that predictor; see Details for more information</p>
+</td></tr>
+<tr><td><code id="brea_mcmc_ms_+3A_s">S</code></td>
+<td>
+<p>the number of MCMC iterations to perform post-burn-in (post-burn-in iterations are stored in the object returned by the <code>brea_mcmc</code> function)</p>
+</td></tr>
+<tr><td><code id="brea_mcmc_ms_+3A_b">B</code></td>
+<td>
+<p>the number of burn-in MCMC iterations to perform (burn-in iterations are not stored)</p>
+</td></tr>
+<tr><td><code id="brea_mcmc_ms_+3A_n">n</code></td>
+<td>
+<p>a list with one element for each state in the multistate model; each list element is a vector of positive whole numbers with length equal to the number of person-time observations for the corresponding state; the i^th entry of <code>n[[st]]</code> is the number of replicated observations that observation i represents (defaults to 1 for each observation if <code>NULL</code> is supplied)</p>
+</td></tr>
+<tr><td><code id="brea_mcmc_ms_+3A_k">K</code></td>
+<td>
+<p>a list with one element for each state in the multistate model; each list element is a positive whole number vector whose m^th entry is the number of distinct values that the m^th discretized predictor for that state may assume; if <code>NULL</code> is supplied, this vector will be automatically determined from <code>x</code></p>
+</td></tr>
+<tr><td><code id="brea_mcmc_ms_+3A_store_re">store_re</code></td>
+<td>
+<p>if <code>TRUE</code>, the random effects are stored from each post-burn-in MCMC iteration, and if <code>FALSE</code> they are not stored</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The data provided to the <code>brea_mcmc</code> function is specified at the person-time level: for each state st, there is one row in <code>x[[st]]</code> and <code>y[[st]]</code> for each discrete time point each person or thing was at risk for event occurrence in that state. All predictors in <code>x</code> must be encoded as factors or their corresponding integer codes. The underlying type of predictor is specified in the <code>priors</code> argument, where <code>priors[[st]]</code> is a list with one element for each predictor variable which specifies both the type of that predictor and the prior distribution to use. The allowed predictor types are:
+</p>
+
+<ul>
+<li> <p><code>"cat"</code> for categorical variables. The first element of the prior specification list is the string <code>"cat"</code>, and the second element is a positive conditional prior standard deviation parameter.
+</p>
+</li></ul>
+
+
+<ul>
+<li> <p><code>"gmrf"</code> for underlying continuous predictors; continuous predictors should be discretized with <code>cut()</code> before being included into <code>x</code>; Gaussian Markov random field (GMRF) priors are then used to smooth the effects of adjacent categories of the discretized continuous predictor. The first element of the prior specification list is the string <code>"gmrf"</code>, the second element is a prior degrees of freedom for the scaled inverse chi-squared prior for the random walk increment variance, and the third element is a prior scale for the scaled inverse chi-squared.
+</p>
+</li></ul>
+
+
+<ul>
+<li> <p><code>"re"</code> for variables (like subject id numbers) that represent random effects. The first element of the prior specification list is the string <code>"re"</code>, the second element is a prior degrees of freedom for an inverse Wishart prior for the random effects covariance, and the third element is a prior scale matrix for the random effects covariance.
+</p>
+</li></ul>
+
+
+<ul>
+<li> <p><code>"zero"</code> for predictors that are not used in the current MCMC run. This is provided as a convenient way to exclude predictors from certain runs. The first and only element of the prior specification list is the string <code>"zero"</code>.
+</p>
+</li></ul>
+
+
+
+<h3>Value</h3>
+
+<p>A list providing the values from each of the <code>S</code> post-burn-in MCMC iterations for the intercepts, the other linear predictor parameters, standard deviations of the GMRF random walk increments, and covariances of the random effects:
+</p>
+<table>
+<tr><td><code>b_0_s</code></td>
+<td>
+<p>a list with one element for each state st where <code>b_0_s[[st]]</code> is an <code>R[st]</code> by <code>S</code> matrix (where <code>R[st]</code> is the number of competing risks) whose (r,s) entry is the intercept for risk r at MCMC iteration s</p>
+</td></tr>
+<tr><td><code>b_m_s</code></td>
+<td>
+<p>a list with one element for each state st where <code>b_m_s[[st]]</code> is a list whose m^th element is the <code>R[st]</code> by <code>K[[st]][m]</code> by <code>S</code> array whose (r,k,s) entry is the value of the linear predictor contribution of value k for predictor m on risk r at MCMC iteration s</p>
+</td></tr>
+<tr><td><code>s_m_s</code></td>
+<td>
+<p>a list with one element for each state st where <code>s_m_s[[st]]</code> is a list whose m^th element is, in the case of a GMRF prior, the <code>R[st]</code> by <code>S</code> matrix whose (r,s) entry is the random walk standard deviation for predictor m and competing risk r at MCMC iteration s, or, in the case of a random effects priors, the <code>sum(R)</code> by <code>sum(R)</code> by <code>S</code> array whose (,,s) entry is the random effects covariance matrix for predictor m at MCMC iteration s</p>
+</td></tr>
+<tr><td><code>b_m_a</code></td>
+<td>
+<p>a list with one element for each state st where <code>b_m_a[[st]]</code> is a list whose m^th element is the length <code>K[[st]][m]</code> vector giving the number of accepted Metropolis proposals for each value of predictor m across all <code>S</code> post-burn-in MCMC iterations</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>Adam King</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# leukemia remission times data from Table 1 of "Regression Models and
+# Life-Tables" (Cox, 1972)
+
+# times of event occurrence or right censoring:
+time &lt;- c(6,6,6,6,7,9,10,10,11,13,16,17,19,20,22,23,25,32,32,34,35,
+          1,1,2,2,3,4,4,5,5,8,8,8,8,11,11,12,12,15,17,22,23)
+
+# event/censoring indicator (1 for event occurrence, 0 for right censoring):
+event &lt;- c(0,1,1,1,1,0,0,1,0,1,1,0,0,0,1,1,0,0,0,0,0,
+           1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
+
+# treatment group indicator (1 for treatment, 2 for control):
+treat &lt;- c(rep(1,21),rep(2,21))
+
+# total number of person-time observations among all subjects:
+N &lt;- sum(time)
+
+# create and fill in person-time predictor and event variables:
+x &lt;- matrix(0,N,2)  # first column is time, second column is treatment
+y &lt;- numeric(N)
+next_row &lt;- 1  # next available row in the person-time variables
+for (i in seq_along(time)) {
+  rows &lt;- next_row:(next_row + time[i] - 1)  # observations for subject i
+  x[rows,1] &lt;- seq_len(time[i])  # time is integers 1,2,...,time[i]
+  x[rows,2] &lt;- rep(treat[i],time[i])  # treatment group is constant
+  y[rows] &lt;- c(rep(0,time[i] - 1),event[i])  # outcome is 0's until event
+  next_row &lt;- next_row + time[i]  # increment the next available row pointer
+}
+
+# group the time-at-risk variable into 3-week intervals:
+x[,1] &lt;- cut(x[,1],seq(0,36,3),labels=FALSE)
+
+# use GMRF prior for time, and categorical prior for treatment group:
+priors &lt;- list(list("gmrf",3,.01),list("cat",4))
+
+# run the default of 100 burn-in iterations followed by 1,000 stored iterations:
+fit &lt;- brea_mcmc_ms(list(x),list(y),list(priors))
+
+# examine the structure of the returned posterior samples and acceptance counts:
+str(fit)
+
+# posterior samples of the treatment and control group parameters:
+b_treatment &lt;- fit$b_m_s[[1]][[2]][1,1,]
+b_control &lt;- fit$b_m_s[[1]][[2]][1,2,]
 
 # posterior sample of treatment effect on linear predictor scale:
 d &lt;- b_control - b_treatment

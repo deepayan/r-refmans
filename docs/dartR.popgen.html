@@ -36,7 +36,9 @@ NewHybrids is installed</a></li>
 method of Whitlock and Lotterhos (2015)</a></li>
 <li><a href='#gl.plot.faststructure'><p>Plots fastStructure analysis results (Q-matrix)</p></a></li>
 <li><a href='#gl.plot.structure'><p>Plots STRUCTURE analysis results (Q-matrix)</p></a></li>
+<li><a href='#gl.run.epos'><p>Run EPOS for Inference of Historical Population-Size Changes</p></a></li>
 <li><a href='#gl.run.faststructure'><p>Runs a faststructure analysis using a genlight object</p></a></li>
+<li><a href='#gl.run.stairway2'><p>Run Stairway Plot 2 for Demographic History Inference</p></a></li>
 <li><a href='#gl.run.structure'><p>Runs a STRUCTURE analysis using a genlight object</p></a></li>
 <li><a href='#gl.sfs'><p>Creates a site frequency spectrum based on a dartR or genlight object</p></a></li>
 <li><a href='#utils.outflank'><p>OutFLANK:  An Fst outlier approach by Mike Whitlock and Katie Lotterhos,</p>
@@ -64,11 +66,11 @@ Restriction Fragment Analysis</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.32</td>
+<td>1.0.0</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-11-21</td>
+<td>2024-06-28</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -94,7 +96,7 @@ Restriction Fragment Analysis</td>
 <tr>
 <td>Imports:</td>
 <td>methods, utils, MASS, dplyr, patchwork, crayon, ggplot2,
-data.table, stringr</td>
+data.table, stringr, furrr, future, ggdendro</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -108,7 +110,7 @@ reshape2, scales, snpStats, tidyr, viridis, zoo, gsubfn, sp</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -116,7 +118,7 @@ reshape2, scales, snpStats, tidyr, viridis, zoo, gsubfn, sp</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-11-20 23:51:05 UTC; s425824</td>
+<td>2024-06-27 23:04:33 UTC; s425824</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -148,7 +150,7 @@ reshape2, scales, snpStats, tidyr, viridis, zoo, gsubfn, sp</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-11-21 18:10:02 UTC</td>
+<td>2024-06-27 23:20:04 UTC</td>
 </tr>
 </table>
 <hr>
@@ -626,10 +628,11 @@ al., 2013; Li et al., 2014).
 <h3>Usage</h3>
 
 <pre><code class='language-R'>gl.ld.distance(
-  ld_report,
-  ld_resolution = 1e+05,
-  pop_colors = NULL,
-  plot_theme = NULL,
+  ld.report,
+  ld.resolution = 1e+05,
+  pop.colors = NULL,
+  plot.title = " ",
+  plot.theme = NULL,
   plot.out = TRUE,
   plot.file = NULL,
   plot.dir = NULL,
@@ -641,23 +644,27 @@ al., 2013; Li et al., 2014).
 <h3>Arguments</h3>
 
 <table>
-<tr><td><code id="gl.ld.distance_+3A_ld_report">ld_report</code></td>
+<tr><td><code id="gl.ld.distance_+3A_ld.report">ld.report</code></td>
 <td>
 <p>Output from function <code><a href="dartR.base.html#topic+gl.report.ld.map">gl.report.ld.map</a></code>
 [required].</p>
 </td></tr>
-<tr><td><code id="gl.ld.distance_+3A_ld_resolution">ld_resolution</code></td>
+<tr><td><code id="gl.ld.distance_+3A_ld.resolution">ld.resolution</code></td>
 <td>
 <p>Resolution at which LD should be reported in number of
 base pairs [default NULL].</p>
 </td></tr>
-<tr><td><code id="gl.ld.distance_+3A_pop_colors">pop_colors</code></td>
+<tr><td><code id="gl.ld.distance_+3A_pop.colors">pop.colors</code></td>
 <td>
 <p>A color palette for box plots by population or a list
 with as many colors as there are populations in the dataset
 [default NULL].</p>
 </td></tr>
-<tr><td><code id="gl.ld.distance_+3A_plot_theme">plot_theme</code></td>
+<tr><td><code id="gl.ld.distance_+3A_plot.title">plot.title</code></td>
+<td>
+<p>Title of tyh plot [default &quot; &quot;].</p>
+</td></tr>
+<tr><td><code id="gl.ld.distance_+3A_plot.theme">plot.theme</code></td>
 <td>
 <p>User specified theme [default NULL].</p>
 </td></tr>
@@ -731,7 +738,7 @@ One, 9(1), e84329.
   x$position &lt;- x$other$loc.metrics$ChromPos_Platypus_Chrom_NCBIv1
   x$chromosome &lt;- as.factor(x$other$loc.metrics$Chrom_Platypus_Chrom_NCBIv1)
   ld_res &lt;- gl.report.ld.map(x, ld.max.pairwise = 10000000)
-  ld_res_2 &lt;- gl.ld.distance(ld_res, ld_resolution = 1000000)
+  ld_res_2 &lt;- gl.ld.distance(ld_res, ld.resolution = 1000000)
 }
 </code></pre>
 
@@ -765,13 +772,15 @@ containing more than <code>min_snps</code> SNPs.
   maf = 0.05,
   ld_stat = "R.squared",
   ind.limit = 10,
+  haplo_id = FALSE,
   min_snps = 10,
   ld_threshold_haplo = 0.5,
+  target_snp = NULL,
   coordinates = NULL,
   color_haplo = "viridis",
   color_het = "deeppink",
   plot.out = TRUE,
-  plot.file = NULL,
+  plot.save = FALSE,
   plot.dir = NULL,
   verbose = NULL
 )
@@ -817,6 +826,10 @@ minimum number of times an allele needs to be observed) [default 0.05].</p>
 <p>Minimum number of individuals that a population should
 contain to take it in account to report loci in LD [default 10].</p>
 </td></tr>
+<tr><td><code id="gl.ld.haplotype_+3A_haplo_id">haplo_id</code></td>
+<td>
+<p>Whether to identify haplotypes [default FALSE].</p>
+</td></tr>
 <tr><td><code id="gl.ld.haplotype_+3A_min_snps">min_snps</code></td>
 <td>
 <p>Minimum number of SNPs that should have a haplotype to call
@@ -826,6 +839,10 @@ it [default 10].</p>
 <td>
 <p>Minimum LD between adjacent SNPs to call a
 haplotype [default 0.5].</p>
+</td></tr>
+<tr><td><code id="gl.ld.haplotype_+3A_target_snp">target_snp</code></td>
+<td>
+<p>Position of target SNP [default NULL].</p>
 </td></tr>
 <tr><td><code id="gl.ld.haplotype_+3A_coordinates">coordinates</code></td>
 <td>
@@ -846,10 +863,9 @@ analysis e.g. c(1,1000000) [default NULL].</p>
 <td>
 <p>Specify if heatmap plot is to be produced [default TRUE].</p>
 </td></tr>
-<tr><td><code id="gl.ld.haplotype_+3A_plot.file">plot.file</code></td>
+<tr><td><code id="gl.ld.haplotype_+3A_plot.save">plot.save</code></td>
 <td>
-<p>Name for the RDS binary file to save (base name only, exclude extension) [default NULL]
-temporary directory (tempdir) [default FALSE].</p>
+<p>Whethwr to save the plot in pdf format [default FALSE].</p>
 </td></tr>
 <tr><td><code id="gl.ld.haplotype_+3A_plot.dir">plot.dir</code></td>
 <td>
@@ -905,8 +921,8 @@ Other color palettes options are &quot;magma&quot;, &quot;inferno&quot;, &quot;p
 <pre><code class='language-R'>require("dartR.data")
 x &lt;- platypus.gl
 x &lt;- gl.filter.callrate(x, threshold = 1)
-# only the first 20 individuals because of speed during tests
-x &lt;- gl.keep.pop(x, pop.list = "TENTERFIELD")[1:20, ]
+# only the first 15 individuals because of speed during tests
+x &lt;- gl.keep.pop(x, pop.list = "TENTERFIELD")[1:15, ]
 x$chromosome &lt;- as.factor(x$other$loc.metrics$Chrom_Platypus_Chrom_NCBIv1)
 x$position &lt;- x$other$loc.metrics$ChromPos_Platypus_Chrom_NCBIv1
 ld_res &lt;- gl.ld.haplotype(x,
@@ -942,6 +958,10 @@ executable Ne2-1 has to be copied into the path as specified in the function
   critical = 0,
   singleton.rm = TRUE,
   mating = "random",
+  pairing = "all",
+  Waples.correction = NULL,
+  Waples.correction.value = NULL,
+  naive = FALSE,
   plot.out = TRUE,
   plot_theme = theme_dartR(),
   plot_colors_pop = gl.select.colors(x, verbose = 0),
@@ -995,6 +1015,29 @@ c(0,0.05) [default 0].</p>
 <p>Formula for Random mating='random' or monogamy= 'monogamy'
 [default 'random'].</p>
 </td></tr>
+<tr><td><code id="gl.LDNe_+3A_pairing">pairing</code></td>
+<td>
+<p>'all' [default] if all possible loci should be paired, or 'separate'
+if only loci on different chromosomes should be used.</p>
+</td></tr>
+<tr><td><code id="gl.LDNe_+3A_waples.correction">Waples.correction</code></td>
+<td>
+<p>The type of Waples et al 2016 correction to apply. 
+This is ignored if <code>pairing</code> is set to 'separate'.
+Options are 'nChromosomes', for eq 1a, or 'genomeLength' for eq 1b. 
+NULL if none should be applied [default NULL].</p>
+</td></tr>
+<tr><td><code id="gl.LDNe_+3A_waples.correction.value">Waples.correction.value</code></td>
+<td>
+<p>The number of chromosomes or the genome length 
+in cM. See Waples et al 2016 for details.</p>
+</td></tr>
+<tr><td><code id="gl.LDNe_+3A_naive">naive</code></td>
+<td>
+<p>Whether the naive (uncorrected for samples size - see 
+eq 7 and eq 8 in Waples 2006) should also be reported. This is mostly 
+to diagnose the source of Inf estimate.</p>
+</td></tr>
 <tr><td><code id="gl.LDNe_+3A_plot.out">plot.out</code></td>
 <td>
 <p>Specify if plot is to be produced [default TRUE].</p>
@@ -1039,6 +1082,23 @@ progress log; 3, progress and results summary; 5, full report
 </p>
 
 
+<h3>References</h3>
+
+
+<ul>
+<li><p> Waples, R. S. (2006). &quot;A bias correction for estimates of effective 
+population size based on linkage disequilibrium at unlinked gene loci*.&quot; 
+Conservation Genetics 7(2): 167-184.
+</p>
+</li>
+<li><p> Waples, R. K., et al. (2016). &quot;Estimating contemporary effective 
+population size in non-model species using linkage disequilibrium across 
+thousands of loci.&quot; Heredity 117(4): 233-240.
+</p>
+</li></ul>
+
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>## Not run: 
@@ -1050,6 +1110,15 @@ nes &lt;- gl.LDNe(pops,
   critical = c(0, 0.05), singleton.rm = TRUE, mating = "random"
 )
 nes
+
+# Using only pairs of loci on different chromosomes
+# make up some chromosome location
+pops@chromosome &lt;- as.factor(sample(1:10, size = nLoc(pops), replace = TRUE))
+nessep &lt;- gl.LDNe(pops,
+              outfile = "popsLD.txt", outpath = "./TestNe", pairing="separate",
+              neest.path = "./path_to Ne-21",
+              critical = c(0, 0.05), singleton.rm = TRUE, mating = "random"
+nessep
 
 ## End(Not run)
 </code></pre>
@@ -1556,7 +1625,9 @@ plot that visualize the q matrix of a fastStructure run.
   plot_theme = NULL,
   colors_clusters = NULL,
   ind_name = TRUE,
-  border_ind = 0.15
+  border_ind = 0.15,
+  den = FALSE,
+  x = NULL
 )
 </code></pre>
 
@@ -1607,6 +1678,17 @@ as many colors as there are clusters (K) [default NULL].</p>
 <td>
 <p>The width of the border line between individuals
 [default 0.25].</p>
+</td></tr>
+<tr><td><code id="gl.plot.faststructure_+3A_den">den</code></td>
+<td>
+<p>Whether to include a dendrogram. It is necessary to include the 
+original genlight object used in gl.run.structure in the parameter x 
+[default FALSE].</p>
+</td></tr>
+<tr><td><code id="gl.plot.faststructure_+3A_x">x</code></td>
+<td>
+<p>The original genlight object used in gl.run.structure description
+[default NULL].</p>
 </td></tr>
 </table>
 
@@ -1724,7 +1806,11 @@ plot that visualize the q matrix of a structure run.
   plot_theme = NULL,
   color_clusters = NULL,
   ind_name = TRUE,
+  k_name = NULL,
   border_ind = 0.15,
+  den = FALSE,
+  dis.mat = NULL,
+  x = NULL,
   plot.out = TRUE,
   plot.file = NULL,
   plot.dir = NULL,
@@ -1774,10 +1860,31 @@ as many colors as there are clusters (K) [default NULL].</p>
 <td>
 <p>Whether to plot individual names [default TRUE].</p>
 </td></tr>
+<tr><td><code id="gl.plot.structure_+3A_k_name">k_name</code></td>
+<td>
+<p>Name of the structure plot to plot. It should be character
+[default NULL].</p>
+</td></tr>
 <tr><td><code id="gl.plot.structure_+3A_border_ind">border_ind</code></td>
 <td>
 <p>The width of the border line between individuals
 [default 0.25].</p>
+</td></tr>
+<tr><td><code id="gl.plot.structure_+3A_den">den</code></td>
+<td>
+<p>Whether to include a dendrogram. It is necessary to include the 
+original genlight object used in gl.run.structure in the parameter x 
+[default FALSE].</p>
+</td></tr>
+<tr><td><code id="gl.plot.structure_+3A_dis.mat">dis.mat</code></td>
+<td>
+<p>A dis object (distance matrix) to be used to order structure 
+plot which is plotted together with structure plot [default NULL].</p>
+</td></tr>
+<tr><td><code id="gl.plot.structure_+3A_x">x</code></td>
+<td>
+<p>The original genlight object used in gl.run.structure description
+[default NULL].</p>
 </td></tr>
 <tr><td><code id="gl.plot.structure_+3A_plot.out">plot.out</code></td>
 <td>
@@ -1892,6 +1999,205 @@ gl.map.structure(qmat, K=3, bc, scalex=1, scaley=0.5)
 </code></pre>
 
 <hr>
+<h2 id='gl.run.epos'>Run EPOS for Inference of Historical Population-Size Changes</h2><span id='topic+gl.run.epos'></span>
+
+<h3>Description</h3>
+
+<p>This function runs EPOS (based on Lynch et al. 2019) to estimate historical population-size
+<a href="https://github.com/EvolBioInf/epos">https://github.com/EvolBioInf/epos</a>. It relies on a compiled version of the software
+epos, epos2plot and if a bootstrap output is required bootSfs. For more information on the 
+approach check the publication (Lynch at al. 2019), the github repository 
+<a href="https://github.com/EvolBioInf/epos">https://github.com/EvolBioInf/epos</a> and look out for the manual epos.pdf 
+(<a href="https://github.com/EvolBioInf/epos/blob/master/doc/epos.pdf">https://github.com/EvolBioInf/epos/blob/master/doc/epos.pdf</a>. 
+The binaries need to be provided in a single folder and can be downloaded via the 
+<code>gl.download.binary</code> function (including the necessary dlls for windows; under Linux gls, blas need to be installed on your system). Please note: if you use this method, make sure you cite the original publication in your work.
+EPOS (Estimation of Population Size changes) is a software tool developed based on the theoretical framework outlined by Lynch et al. (2019). It is designed to infer historical changes in population size using allele-frequency data obtained from population-genomic surveys. Below is a brief summary of the main concepts of EPOS:<br /><br />
+EPOS (Estimation of Population Size changes) is a software tool that infers historical 
+changes in population size using allele-frequency data from population-genomic surveys. 
+The method relies on the site-frequency spectrum (SFS) of nearly neutral polymorphisms.
+The underlying theory uses coalescence models, which describe how gene sequences have
+originated from a common ancestor. By analyzing the probability distributions of the
+starting and ending points of branch segments over all possible coalescence trees, 
+EPOS can estimate historic population sizes.<br />
+The function uses a model-flexible approach, meaning it estimates historic population 
+sizes, without the necessity to provide a candidate scenario. An efficient statistical
+procedure is employed, to estimate historic effective population sizes.<br />
+For all the possible settings, please refer to the manual of EPOS. <br />
+The main parameters that are necessary to run the function are a genlight/dartR object,
+L (length of sequences), u (mutation rate), and the path to the epos binaries.
+For details check the example below.<br />
+Please note: There is currently not really a good way to estimate L, the length 
+of all sequences. Often users of dart data use the number of loci multiplied 
+by 69, but this is definitely an underestimate as monomorphic loci need to be 
+included (also the length of the restriction site should be added for each loci).
+For mutation rate u, the default value is set to 5e-9, but should be adapted 
+to the species of interest. The good news is, that settings of L and mu affects 
+only the axis of the inferred history, but not the shape of the history. 
+So users can infer the shape, but need to be careful with a temporal interpretation 
+as both x and y axis are affected by the mutation rate and L.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>gl.run.epos(
+  x,
+  epos.path,
+  sfs = NULL,
+  minbinsize = 1,
+  folded = TRUE,
+  L = NULL,
+  u = NULL,
+  boot = 0,
+  upper = 0.975,
+  lower = 0.025,
+  method = "greedy",
+  depth = 2,
+  other.options = "",
+  cleanup = TRUE,
+  plot.display = TRUE,
+  plot.theme = theme_dartR(),
+  plot.dir = NULL,
+  plot.file = NULL,
+  verbose = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gl.run.epos_+3A_x">x</code></td>
+<td>
+<p>dartR/genlight object</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_epos.path">epos.path</code></td>
+<td>
+<p>path to epos and other required programs (epos, epos2plot are always required and bootSfs in case a bootstrap and confidence estimate is required )</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_sfs">sfs</code></td>
+<td>
+<p>if no sfs is provided function gl.sfs(x, minbinsize=1, singlepop=TRUE) is used to calculate the sfs that is provided to epos</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_minbinsize">minbinsize</code></td>
+<td>
+<p>remove bins from the left of the sfs. if you run epos from a genlight object the sfs is calculated by the function (using gl.sfs) and as default minbinsize is set to 1 (the monomorphic loci of the sfs are removed). This parameter is ignored if sfs is provide via the sfs parameter (see below). Be aware even if you genlight object has more than one population the sfs is calculated with singlepop set to true (one sfs for all individuals) as epos does not work with multidimensional sfs)</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_folded">folded</code></td>
+<td>
+<p>if set to TRUE (default) a folded sfs (minor allele frequency sfs) is returned. If set to FALSE then an unfolded (derived allele frequency sfs) is returned. It is assumed that 0 is homozygote for the reference and 2 is homozygote for the derived allele. So you need to make sure your coding is correct. option -U in epos.</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_l">L</code></td>
+<td>
+<p>length of sequences (including monomorphic and polymorphic sites). If the sfs is provided with minbinsize=1 (default) then L needs to be specified. 
+option -l in epos</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_u">u</code></td>
+<td>
+<p>mutation rate. If not provided the default value of epos is used (5e-9).
+option -u in epos</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_boot">boot</code></td>
+<td>
+<p>if set to a value &gt;0 the programm bootSfs is used to provide multiple
+bootstrapped sfs, which allows to calculate confidence intervals of the historic Ne
+sizes. Be aware the runtime can be extended. default:0 no bootstrapped simulations are
+run, otherwise boot number of bootstraps are run (option -i in bootSfs)</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_upper">upper</code></td>
+<td>
+<p>upper quantile of the bootstrap (only used if boot&gt;0). default 0.975.
+(option -u in epos2plot)</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_lower">lower</code></td>
+<td>
+<p>lower quantile of the bootstrap (only used if boot&gt;0). default 0.025.
+(option -l in epos2plot)</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_method">method</code></td>
+<td>
+<p>either &quot;exhaustive&quot; or &quot;greedy&quot;. check the epos manual for details. If method=&quot;exhaustive&quot; then the paramter depth is used. default: &quot;greedy&quot;.</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_depth">depth</code></td>
+<td>
+<p>if method=&quot;exhaustive&quot; then this parameter is used to set the search depth, default is 2. If method is set to greedy this is setting is ignored.</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_other.options">other.options</code></td>
+<td>
+<p>additional options for epos (e.g -m, -x etc.)</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_cleanup">cleanup</code></td>
+<td>
+<p>if set to true intermediate tempfiles are deleted after the run</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_plot.display">plot.display</code></td>
+<td>
+<p>Specify if plot is to be produced [default TRUE].</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_plot.theme">plot.theme</code></td>
+<td>
+<p>User specified theme [default theme_dartR()].</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_plot.dir">plot.dir</code></td>
+<td>
+<p>Directory to save the plot RDS files [default as specified 
+by the global working directory or tempdir()]</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_plot.file">plot.file</code></td>
+<td>
+<p>Filename (minus extension) for the RDS plot file [Required for plot save]</p>
+</td></tr>
+<tr><td><code id="gl.run.epos_+3A_verbose">verbose</code></td>
+<td>
+<p>Verbosity: 0, silent or fatal errors; 1, begin and end; 2,
+progress log; 3, progress and results summary; 5, full report
+[default 2, unless specified using gl.set.verbosity].</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>returns a list with two components: 
+</p>
+
+<ul>
+<li><p>history: Ne estimates of over generations (generation, median, low and high) 
+</p>
+</li>
+<li><p>plot: a ggplot of history 
+</p>
+</li></ul>
+
+
+
+<h3>Author(s)</h3>
+
+<p>Custodian: Bernd Gruber &ndash; Post to 
+<a href="https://groups.google.com/d/forum/dartr">https://groups.google.com/d/forum/dartr</a>
+</p>
+
+
+<h3>References</h3>
+
+<p>Lynch, Michael, Bernhard Haubold, Peter Pfaffelhuber, and Takahiro Maruki. 2019. Inference of Historical Population-Size Changes with Allele-Frequency Data. G3: Genes|Genomes|Genetics 10, no. 1: 211–23. <a href="https://doi.org/10.1534/g3.119.400854">doi:10.1534/g3.119.400854</a>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+#gl.download.binary("epos",os="windows")
+require(dartR.data)
+epos &lt;- gl.run.epos(possums.gl, epos.path = file.path(tempdir(),"epos"), L=1e5, u = 1e-8)
+epos$history
+
+## End(Not run)
+
+
+</code></pre>
+
+<hr>
 <h2 id='gl.run.faststructure'>Runs a faststructure analysis using a genlight object</h2><span id='topic+gl.run.faststructure'></span>
 
 <h3>Description</h3>
@@ -1905,8 +2211,9 @@ gl.map.structure(qmat, K=3, bc, scalex=1, scaley=0.5)
 <pre><code class='language-R'>gl.run.faststructure(
   x,
   k.range,
-  num.k.rep,
+  num.k.rep = 1,
   exec = "./fastStructure",
+  exec.plink = getwd(),
   output = getwd(),
   tol = 1e-05,
   prior = "simple",
@@ -1929,12 +2236,16 @@ gl.map.structure(qmat, K=3, bc, scalex=1, scaley=0.5)
 </td></tr>
 <tr><td><code id="gl.run.faststructure_+3A_num.k.rep">num.k.rep</code></td>
 <td>
-<p>Number of replicates [required].</p>
+<p>Number of replicates [default 1].</p>
 </td></tr>
 <tr><td><code id="gl.run.faststructure_+3A_exec">exec</code></td>
 <td>
 <p>Full path and name+extension where the fastStructure executable
 is located [default working directory &quot;./fastStructure&quot;].</p>
+</td></tr>
+<tr><td><code id="gl.run.faststructure_+3A_exec.plink">exec.plink</code></td>
+<td>
+<p>path to plink executable [default working directory].</p>
 </td></tr>
 <tr><td><code id="gl.run.faststructure_+3A_output">output</code></td>
 <td>
@@ -2039,6 +2350,256 @@ gl.map.structure(qmat, K = 2, t1, scalex = 1, scaley = 0.5)
 </code></pre>
 
 <hr>
+<h2 id='gl.run.stairway2'>Run Stairway Plot 2 for Demographic History Inference</h2><span id='topic+gl.run.stairway2'></span>
+
+<h3>Description</h3>
+
+<p>This function runs Stairway Plot 2 to infer demographic history using folded SNP frequency spectra.
+Stairway Plot 2 is a method for inferring demographic history using folded SNP frequency spectra. The key features and methodology of Stairway Plot 2 include:
+</p>
+
+<ul>
+<li> <p><strong>Folded SNP Frequency Spectra</strong>: The method uses folded SNP frequency spectra, which are less sensitive to errors in ancestral state inference compared to unfolded spectra.
+</p>
+</li>
+<li> <p><strong>Demographic Inference</strong>: By analyzing the SNP frequency spectra, Stairway Plot 2 can infer changes in population size over time, providing insights into historical demographic events.
+</p>
+</li>
+<li> <p><strong>Bootstrap Replicates</strong>: The method employs bootstrap replicates to estimate confidence intervals for the inferred demographic history, ensuring robust and reliable results.
+</p>
+</li>
+<li> <p><strong>Flexible Modeling</strong>: Stairway Plot 2 allows for flexible modeling of demographic history without assuming a specific parametric form for population size changes.
+</p>
+</li></ul>
+
+<p>To be able to run Stairway Plot 2, the binaries need to be provided in a single folder and can be downloaded via the <code>gl.download.binary</code> function. In this case your system need to have Java installed as well. for more details on the method and how to install on your system refer to the githubh repository: <a href="https://github.com/xiaoming-liu/stairway-plot-v2">https://github.com/xiaoming-liu/stairway-plot-v2</a>. Please also refer to the original publication for more details on the method: <a href="https://doi.org/10.1186/s13059-020-02196-9">doi:10.1186/s13059-020-02196-9</a>. **Also if you use this method, make sure you cite the original publication in your work.**
+This function implements the theoretical and computational procedures described by Liu and Fu (2020), making it suitable for a wide range of population-genomic datasets to uncover historical demographic patterns.
+Please note: There is currently not really a good way to estimate L, the length 
+of all sequences. Often users of dart data use the number of loci multiplied 
+by 69, but this is definitely an underestimate as monomorphic loci need to be 
+included (also the length of the restriction site should be added for each loci).
+For mutation rate u, the default value is set to 5e-9, but should be adapted 
+to the species of interest. The good news is, that settings of L and mu affects 
+only the axis of the inferred history, but not the shape of the history. 
+So users can infer the shape, but need to be careful with a temporal interpretation 
+as both x and y axis are affected by the mutation rate and L.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>gl.run.stairway2(
+  x,
+  L = NULL,
+  mu = NULL,
+  stairway2.path,
+  minbinsize = 1,
+  maxbinsize = NULL,
+  gentime = 1,
+  sfs = NULL,
+  parallel = 1,
+  run = TRUE,
+  blueprint = "blueprint",
+  filename = "sample",
+  pct_training = 0.67,
+  nrand = NULL,
+  stairway_plot_dir = "stairway_plot_es",
+  nreps = 200,
+  seed = NULL,
+  plot_title = "Ne",
+  xmin = 0,
+  xmax = 0,
+  ymin = 0,
+  ymax = 0,
+  xspacing = 2,
+  yspacing = 2,
+  fontsize = 12,
+  cleanup = TRUE,
+  plot.display = TRUE,
+  plot.theme = theme_dartR(),
+  plot.dir = NULL,
+  plot.file = NULL,
+  verbose = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="gl.run.stairway2_+3A_x">x</code></td>
+<td>
+<p>A genlight/dartR object containing SNP data.</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_l">L</code></td>
+<td>
+<p>the length of the sequence in base pairs. (see notes below)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_mu">mu</code></td>
+<td>
+<p>the mutation rate per base pair per generation. (see notes below)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_stairway2.path">stairway2.path</code></td>
+<td>
+<p>the path to the Stairway Plot 2 executable. (check the example)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_minbinsize">minbinsize</code></td>
+<td>
+<p>the minumum bin size for the SFS that should be used. (default=1)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_maxbinsize">maxbinsize</code></td>
+<td>
+<p>the maximum bin size for the SFS that should be used. (default=NULL, 
+so the maximum bin size is set to the number of samples in the dataset)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_gentime">gentime</code></td>
+<td>
+<p>the generation time in years. (default=1)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_sfs">sfs</code></td>
+<td>
+<p>the folded site frequency spectrum (SFS) to be used for the analysis. 
+If not provided the SFS is created from the genlight/dartR object (default=NULL)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_parallel">parallel</code></td>
+<td>
+<p>the number of parallel processes to use for the analysis. (default=1)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_run">run</code></td>
+<td>
+<p>logical. If TRUE, the analysis is run immediately. Otherwise only the
+blueprint files are created [might be useful to run on a cluster]. (default=FALSE)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_blueprint">blueprint</code></td>
+<td>
+<p>the name of the blueprint file. (default=&quot;blueprint&quot;)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_filename">filename</code></td>
+<td>
+<p>the name of the filename. Also used for the plot. (default=&quot;sample&quot;)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_pct_training">pct_training</code></td>
+<td>
+<p>the percentage of the data to use for training. (default=0.67)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_nrand">nrand</code></td>
+<td>
+<p>the number of breakpoint to use for the analysis. (default=NULL)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_stairway_plot_dir">stairway_plot_dir</code></td>
+<td>
+<p>the name of the directory where the stairway plot is saved. 
+(default=&quot;stairway_plot_es&quot;)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_nreps">nreps</code></td>
+<td>
+<p>the number of bootstrap replicates to use for the analysis. (default=200)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_seed">seed</code></td>
+<td>
+<p>the random seed to use for the analysis. (default=NULL)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_plot_title">plot_title</code></td>
+<td>
+<p>the title of the plot. (default=&quot;Ne&quot;+filename)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_xmin">xmin</code></td>
+<td>
+<p>minimum x value for the plot. (default=0)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_xmax">xmax</code></td>
+<td>
+<p>maximum x value for the plot. (default=0)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_ymin">ymin</code></td>
+<td>
+<p>minimum y value for the plot. (default=0)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_ymax">ymax</code></td>
+<td>
+<p>maximum y value for the plot. (default=0)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_xspacing">xspacing</code></td>
+<td>
+<p>spacing between x values for the plot. (default=2)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_yspacing">yspacing</code></td>
+<td>
+<p>spacing between y values for the plot. (default=2)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_fontsize">fontsize</code></td>
+<td>
+<p>the font size for the plot. (default=12)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_cleanup">cleanup</code></td>
+<td>
+<p>logical. If TRUE, the stairway 2 plot output files are removed. 
+(default=TRUE)</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_plot.display">plot.display</code></td>
+<td>
+<p>Specify if plot is to be produced [default TRUE].</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_plot.theme">plot.theme</code></td>
+<td>
+<p>User specified theme [default theme_dartR()].</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_plot.dir">plot.dir</code></td>
+<td>
+<p>Directory to save the plot RDS files [default as specified 
+by the global working directory or tempdir()]</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_plot.file">plot.file</code></td>
+<td>
+<p>Filename (minus extension) for the RDS plot file [Required for plot save]</p>
+</td></tr>
+<tr><td><code id="gl.run.stairway2_+3A_verbose">verbose</code></td>
+<td>
+<p>Verbosity: 0, silent or fatal errors; 1, begin and end; 2,
+progress log; 3, progress and results summary; 5, full report
+[default 2, unless specified using gl.set.verbosity].</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>returns a list with two components: 
+</p>
+
+<ul>
+<li><p>history: Ne estimates of over generations (generation, median, low and high) 
+</p>
+</li>
+<li><p>plot: a ggplot of history 
+</p>
+</li></ul>
+
+
+
+<h3>References</h3>
+
+<p>Liu, X., &amp; Fu, Y. X. (2020). Stairway Plot 2: demographic history inference with folded SNP frequency spectra. Genome Biology, 21(1), 280.
+</p>
+<p>Liu, X., Fu, YX. Stairway Plot 2: demographic history inference with folded SNP frequency spectra. Genome Biol 21, 280 (2020). <a href="https://doi.org/10.1186/s13059-020-02196-9">doi:10.1186/s13059-020-02196-9</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+#download binary, if not already installed, to tempdir()
+gl.download.binary(software="stairway2",os="windows")
+require(dartR.data)
+sw&lt;- gl.run.stairway2(possums.gl[1:50,1:100], L=1e5, mu = 1e-9, 
+           stairway2.path = file.path(tempdir(),"stairway2"), 
+           parallel=5, nreps = 10)
+head(sw$history)
+
+## End(Not run)
+</code></pre>
+
+<hr>
 <h2 id='gl.run.structure'>Runs a STRUCTURE analysis using a genlight object</h2><span id='topic+gl.run.structure'></span>
 
 <h3>Description</h3>
@@ -2052,11 +2613,31 @@ functions from <code>strataG</code>
 
 <pre><code class='language-R'>gl.run.structure(
   x,
-  ...,
-  exec = ".",
+  exec = "./structure",
+  k.range = NULL,
+  num.k.rep = 1,
+  burnin = 1000,
+  numreps = 1000,
+  noadmix = TRUE,
+  freqscorr = FALSE,
+  randomize = TRUE,
+  seed = 0,
+  pop.prior = NULL,
+  locpriorinit = 1,
+  maxlocprior = 20,
+  gensback = 2,
+  migrprior = 0.05,
+  pfrompopflagonly = TRUE,
+  popflag = NULL,
+  inferalpha = FALSE,
+  alpha = 1,
+  unifprioralpha = TRUE,
+  alphamax = 20,
+  alphapriora = 0.05,
+  alphapriorb = 0.001,
   plot.out = TRUE,
   plot_theme = theme_dartR(),
-  plot.dir = NULL,
+  plot.dir = tempdir(),
   plot.file = NULL,
   verbose = NULL
 )
@@ -2070,16 +2651,6 @@ functions from <code>strataG</code>
 <td>
 <p>Name of the genlight object containing the SNP data [required].</p>
 </td></tr>
-<tr><td><code id="gl.run.structure_+3A_...">...</code></td>
-<td>
-<p>Parameters to specify the STRUCTURE run (check <code>structureRun</code>
-within strataG.
-for more details). Parameters are passed to the <code>structureRun</code> function.
-For example you need to set the k.range and the type of model you would like
-to run (noadmix, locprior) etc. If those parameter names do not tell you
-anything, please make sure you familiarize with the STRUCTURE program
-(Pritchard 2000).</p>
-</td></tr>
 <tr><td><code id="gl.run.structure_+3A_exec">exec</code></td>
 <td>
 <p>Full path and name+extension where the structure executable is
@@ -2087,6 +2658,110 @@ located. E.g. <code>'c:/structure/structure.exe'</code> under Windows. For Mac a
 Linux it might be something like <code>'./structure/structure'</code> if the
 executable is in a subfolder 'structure' in your home directory
 [default working directory &quot;.&quot;].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_k.range">k.range</code></td>
+<td>
+<p>Range of the number of populations [required].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_num.k.rep">num.k.rep</code></td>
+<td>
+<p>Number of replicates [default 1].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_burnin">burnin</code></td>
+<td>
+<p>Number of iterations for MCMC burnin [default 1000].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_numreps">numreps</code></td>
+<td>
+<p>Number of MCMC replicates [default 1000].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_noadmix">noadmix</code></td>
+<td>
+<p>Logical. No admixture? [default TRUE].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_freqscorr">freqscorr</code></td>
+<td>
+<p>Logical. Correlated frequencies? [default FALSE].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_randomize">randomize</code></td>
+<td>
+<p>Randomize [default TRUE].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_seed">seed</code></td>
+<td>
+<p>Set random seed [default 0].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_pop.prior">pop.prior</code></td>
+<td>
+<p>A character specifying which population prior model to use:
+&quot;locprior&quot; or &quot;usepopinfo&quot; [default NULL].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_locpriorinit">locpriorinit</code></td>
+<td>
+<p>Parameterizes locprior parameter r - how informative the
+populations are. Only used when pop.prior = &quot;locprior&quot; [default 1].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_maxlocprior">maxlocprior</code></td>
+<td>
+<p>Specifies range of locprior parameter r. Only used when 
+pop.prior = &quot;locprior&quot; [default 20].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_gensback">gensback</code></td>
+<td>
+<p>Integer defining the number of generations back to test for 
+immigrant ancestry. Only used when pop.prior = &quot;usepopinfo&quot; [default 2].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_migrprior">migrprior</code></td>
+<td>
+<p>Numeric between 0 and 1 listing migration prior. Only used 
+when pop.prior = &quot;usepopinfo&quot; [default 0.05].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_pfrompopflagonly">pfrompopflagonly</code></td>
+<td>
+<p>Logical. update allele frequencies from individuals 
+specified by popflag. Only used when pop.prior = &quot;usepopinfo&quot; [default TRUE].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_popflag">popflag</code></td>
+<td>
+<p>A vector of integers (0, 1) or logicals identifiying whether 
+or not to use strata information. Only used when pop.prior = &quot;usepopinfo&quot;
+[default NULL].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_inferalpha">inferalpha</code></td>
+<td>
+<p>Logical. Infer the value of the model parameter # from the 
+data; otherwise is fixed at the value alpha which is chosen by the user. 
+This option is ignored under the NOADMIX model. Small alpha implies that 
+most individuals are essentially from one population or another, while 
+alpha &gt; 1 implies that most individuals are admixed [default FALSE].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_alpha">alpha</code></td>
+<td>
+<p>Dirichlet parameter for degree of admixture. This is the 
+initial value if inferalpha = TRUE [default 1].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_unifprioralpha">unifprioralpha</code></td>
+<td>
+<p>Logical. Assume a uniform prior for alpha which runs 
+between 0 and alphamax. This model seems to work fine; the alternative model
+(when unfprioralpha = 0) is to take alpha as having a Gamma prior, with 
+mean alphapriora × alphapriorb, and variance alphapriora × alphapriorb^2 
+[default TRUE].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_alphamax">alphamax</code></td>
+<td>
+<p>Maximum for uniform prior on alpha when 
+unifprioralpha = TRUE [default 20].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_alphapriora">alphapriora</code></td>
+<td>
+<p>Parameters of Gamma prior on alpha when 
+unifprioralpha = FALSE [default 0.05].</p>
+</td></tr>
+<tr><td><code id="gl.run.structure_+3A_alphapriorb">alphapriorb</code></td>
+<td>
+<p>Parameters of Gamma prior on alpha when 
+unifprioralpha = FALSE [default 0.001].</p>
 </td></tr>
 <tr><td><code id="gl.run.structure_+3A_plot.out">plot.out</code></td>
 <td>
@@ -2105,12 +2780,13 @@ by the global working directory or tempdir()]</p>
 </td></tr>
 <tr><td><code id="gl.run.structure_+3A_plot.file">plot.file</code></td>
 <td>
-<p>Name for the RDS binary file to save (base name only, exclude extension) [default NULL]</p>
+<p>Name for the RDS binary file to save (base name only, 
+exclude extension) [default NULL]</p>
 </td></tr>
 <tr><td><code id="gl.run.structure_+3A_verbose">verbose</code></td>
 <td>
 <p>Set verbosity for this function (though structure output
-cannot be switched off currently) [default NULL]</p>
+cannot be switched off currently) [default NULL].</p>
 </td></tr>
 </table>
 
@@ -2120,6 +2796,11 @@ cannot be switched off currently) [default NULL]</p>
 <p>The function is basically a convenient wrapper around the beautiful
 strataG function <code>structureRun</code> (Archer et al. 2016). For a detailed
 description please refer to this package (see references below).
+</p>
+<p>Before running STRUCTURE, we suggest reading its manual (see link below) and 
+the literature in mentioned in the references section. 
+</p>
+<p>https://web.stanford.edu/group/pritchardlab/structure_software/release_versions/v2.3.4/structure_doc.pdf
 To make use of this function you need to download STRUCTURE for you system
 (<b>non GUI version</b>) from here
 <a href="https://web.stanford.edu/group/pritchardlab/structure_software/release_versions/v2.3.4/html/structure.html">STRUCTURE</a>.
@@ -2176,6 +2857,21 @@ population structure using multilocus genotype data. Genetics 155, 945-959.
 <li><p> Archer, F. I., Adams, P. E. and Schneiders, B. B. (2016) strataG: An R
 package for manipulating, summarizing and analysing population genetic data.
 Mol Ecol Resour. doi:10.1111/1755-0998.12559
+</p>
+</li>
+<li><p> Wang, Jinliang. &quot;The computer program structure for assigning 
+individuals to populations: easy to use but easier to misuse.&quot; Molecular
+ecology resources 17.5 (2017): 981-990.
+</p>
+</li>
+<li><p> Lawson, Daniel J., Lucy Van Dorp, and Daniel Falush. &quot;A tutorial on 
+how not to over-interpret STRUCTURE and ADMIXTURE bar plots.&quot; Nature
+communications 9.1 (2018): 3258.
+</p>
+</li>
+<li><p> Porras-Hurtado, Liliana, et al. &quot;An overview of STRUCTURE: 
+applications, parameter settings, and supporting software.&quot; Frontiers in
+genetics 4 (2013): 98.
 </p>
 </li></ul>
 
@@ -2710,12 +3406,30 @@ Eric Archer <a href="https://github.com/EricArcher/strataG">https://github.com/E
 
 <pre><code class='language-R'>utils.structure.run(
   g,
-  k.range = NULL,
-  num.k.rep = 1,
-  label = NULL,
+  k.range,
+  num.k.rep,
+  label,
   delete.files = TRUE,
-  exec = "structure",
-  ...
+  exec,
+  burnin,
+  numreps,
+  noadmix,
+  freqscorr,
+  randomize,
+  seed,
+  pop.prior,
+  locpriorinit,
+  maxlocprior,
+  gensback,
+  migrprior,
+  pfrompopflagonly,
+  popflag,
+  inferalpha,
+  alpha,
+  unifprioralpha,
+  alphamax,
+  alphapriora,
+  alphapriorb
 )
 </code></pre>
 
@@ -2749,9 +3463,101 @@ groups. If specified, do not also specify <code>maxpops</code>.</p>
 <td>
 <p>name of executable for STRUCTURE. Defaults to &quot;structure&quot;.</p>
 </td></tr>
-<tr><td><code id="utils.structure.run_+3A_...">...</code></td>
+<tr><td><code id="utils.structure.run_+3A_burnin">burnin</code></td>
 <td>
-<p>arguments to be passed to <code>structureWrite</code>.</p>
+<p>Number of burnin reps [default 10000].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_numreps">numreps</code></td>
+<td>
+<p>Number of MCMC replicates [default 1000].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_noadmix">noadmix</code></td>
+<td>
+<p>Logical. No admixture? [default TRUE].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_freqscorr">freqscorr</code></td>
+<td>
+<p>Logical. Correlated frequencies? [default FALSE].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_randomize">randomize</code></td>
+<td>
+<p>Randomize [default TRUE].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_seed">seed</code></td>
+<td>
+<p>Set random seed [default 0].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_pop.prior">pop.prior</code></td>
+<td>
+<p>A character specifying which population prior model to use:
+&quot;locprior&quot; or &quot;usepopinfo&quot; [default NULL].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_locpriorinit">locpriorinit</code></td>
+<td>
+<p>Parameterizes locprior parameter r - how informative the
+populations are. Only used when pop.prior = &quot;locprior&quot; [default 1].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_maxlocprior">maxlocprior</code></td>
+<td>
+<p>Specifies range of locprior parameter r. Only used when 
+pop.prior = &quot;locprior&quot; [default 20].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_gensback">gensback</code></td>
+<td>
+<p>Integer defining the number of generations back to test for 
+immigrant ancestry. Only used when pop.prior = &quot;usepopinfo&quot; [default 2].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_migrprior">migrprior</code></td>
+<td>
+<p>Numeric between 0 and 1 listing migration prior. Only used 
+when pop.prior = &quot;usepopinfo&quot; [default 0.05].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_pfrompopflagonly">pfrompopflagonly</code></td>
+<td>
+<p>Logical. update allele frequencies from individuals 
+specified by popflag. Only used when pop.prior = &quot;usepopinfo&quot; [default TRUE].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_popflag">popflag</code></td>
+<td>
+<p>A vector of integers (0, 1) or logicals identifiying whether 
+or not to use strata information. Only used when pop.prior = &quot;usepopinfo&quot;
+[default NULL].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_inferalpha">inferalpha</code></td>
+<td>
+<p>Logical. Infer the value of the model parameter # from the 
+data; otherwise is fixed at the value alpha which is chosen by the user. 
+This option is ignored under the NOADMIX model. Small alpha implies that 
+most individuals are essentially from one population or another, while 
+alpha &gt; 1 implies that most individuals are admixed [default FALSE].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_alpha">alpha</code></td>
+<td>
+<p>Dirichlet parameter for degree of admixture. This is the 
+initial value if inferalpha = TRUE [default 1].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_unifprioralpha">unifprioralpha</code></td>
+<td>
+<p>Logical. Assume a uniform prior for alpha which runs 
+between 0 and alphamax. This model seems to work fine; the alternative model
+(when unfprioralpha = 0) is to take alpha as having a Gamma prior, with 
+mean alphapriora × alphapriorb, and variance alphapriora × alphapriorb^2 
+[default TRUE].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_alphamax">alphamax</code></td>
+<td>
+<p>Maximum for uniform prior on alpha when 
+unifprioralpha = TRUE [default 20].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_alphapriora">alphapriora</code></td>
+<td>
+<p>Parameters of Gamma prior on alpha when 
+unifprioralpha = FALSE [default 0.05].</p>
+</td></tr>
+<tr><td><code id="utils.structure.run_+3A_alphapriorb">alphapriorb</code></td>
+<td>
+<p>Parameters of Gamma prior on alpha when 
+unifprioralpha = FALSE [default 0.001].</p>
 </td></tr>
 </table>
 

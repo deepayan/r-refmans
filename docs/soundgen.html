@@ -190,6 +190,7 @@ vocalizations</a></li>
 <li><a href='#naiveBayes_dynamicPrior'><p>Naive Bayes dynamic prior</p></a></li>
 <li><a href='#naiveBayes_likelihood'><p>Naive Bayes likelihood</p></a></li>
 <li><a href='#naiveBayes_train'><p>Train a naive Bayes classifier</p></a></li>
+<li><a href='#noiseRemoval'><p>Noise removal</p></a></li>
 <li><a href='#nonLinearPrediction_mod'><p>Nonlinear prediction modified</p></a></li>
 <li><a href='#nonlinPred'><p>Nonlinear prediction</p></a></li>
 <li><a href='#nonlinStats'><p>Nonlinear statistics</p></a></li>
@@ -285,15 +286,15 @@ vocalizations</a></li>
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.6.2</td>
+<td>2.6.3</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-12-03</td>
+<td>2024-05-27</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
-<td>Andrey Anikin &lt;rty_anik@yahoo.com&gt;</td>
+<td>Andrey Anikin &lt;andrey.anikin@cogsci.se&gt;</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -333,7 +334,7 @@ doParallel, nonlinearTseries, data.table</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.1</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -341,7 +342,7 @@ doParallel, nonlinearTseries, data.table</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-12-03 15:02:24 UTC; allgoodguys</td>
+<td>2024-05-27 14:16:33 UTC; allgoodguys</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -353,7 +354,7 @@ doParallel, nonlinearTseries, data.table</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-12-03 17:00:02 UTC</td>
+<td>2024-05-28 05:40:06 UTC</td>
 </tr>
 </table>
 <hr>
@@ -436,8 +437,10 @@ range in <code>permittedValues</code>: 'adjust' = reset to default value, 'abort
   audio,
   formants,
   spectralEnvelope = NULL,
-  zFun = NULL,
   action = c("add", "remove")[1],
+  dB = NULL,
+  specificity = 1,
+  zFun = NULL,
   vocalTract = NA,
   formantDep = 1,
   formantDepStoch = 1,
@@ -453,6 +456,7 @@ range in <code>permittedValues</code>: 'adjust' = reset to default value, 'abort
   smoothing = list(),
   windowLength_points = 800,
   overlap = 75,
+  dynamicRange = 120,
   normalize = c("max", "orig", "none")[1],
   play = FALSE,
   ...
@@ -486,16 +490,26 @@ specifying the filter for each STFT step is also accepted. The easiest way
 to create this matrix is to call soundgen:::getSpectralEnvelope or to use
 the spectrum of a recorded sound</p>
 </td></tr>
+<tr><td><code id=".addFormants_+3A_action">action</code></td>
+<td>
+<p>'add' = add formants to the sound, 'remove' = remove formants
+(inverse filtering)</p>
+</td></tr>
+<tr><td><code id=".addFormants_+3A_db">dB</code></td>
+<td>
+<p>if NULL (default), the spectral envelope is applied on the original
+scale; otherwise, it is set to range from 1 to 10 ^ (dB / 20)</p>
+</td></tr>
+<tr><td><code id=".addFormants_+3A_specificity">specificity</code></td>
+<td>
+<p>a way to sharpen or blur the spectral envelope (spectrum ^
+specificity) : 1 = no change, &gt;1 = sharper, &lt;1 = blurred</p>
+</td></tr>
 <tr><td><code id=".addFormants_+3A_zfun">zFun</code></td>
 <td>
 <p>(optional) an arbitrary function to apply to the spectrogram
 prior to iSTFT, where &quot;z&quot; is the spectrogram - a matrix of complex values
 (see examples)</p>
-</td></tr>
-<tr><td><code id=".addFormants_+3A_action">action</code></td>
-<td>
-<p>'add' = add formants to the sound, 'remove' = remove formants
-(inverse filtering)</p>
 </td></tr>
 <tr><td><code id=".addFormants_+3A_vocaltract">vocalTract</code></td>
 <td>
@@ -605,7 +619,7 @@ setting another default player for <code><a href="tuneR.html#topic+play">play</a
   dynamicRange = 80,
   silence = 0.04,
   windowLength = 50,
-  step = 25,
+  step = windowLength/2,
   overlap = 50,
   specType = c("spectrum", "reassign", "spectralDerivative")[1],
   wn = "gaussian",
@@ -2945,8 +2959,8 @@ mel-transformed spectrogram (see tuneR::melfcc)</p>
 <tr><td><code id=".segment_+3A_propnoise">propNoise</code></td>
 <td>
 <p>the proportion of non-zero sound assumed to represent
-background noise (note that complete silence is not considered, so padding
-with silence won't affect the algorithm)</p>
+background noise, 0 to 1 (note that complete silence is not considered, so
+padding with silence won't affect the algorithm)</p>
 </td></tr>
 <tr><td><code id=".segment_+3A_snr">SNR</code></td>
 <td>
@@ -3463,7 +3477,7 @@ sharpness</p>
 <td>
 <p>apply a Gaussian filter to blur or sharpen the image, two
 numbers: frequency (Hz), time (ms). A single number is interpreted as
-frequency, and a square filter is applied. NA / NULL / 0 means to blurring
+frequency, and a square filter is applied. NA / NULL / 0 means no blurring
 in that dimension. Negative numbers mean un-blurring (sharpening) the image
 by dividing instead of multiplying by the filter during convolution</p>
 </td></tr>
@@ -3880,8 +3894,10 @@ argument (eg for a low/high/bandpass filter).
   samplingRate = NULL,
   formants = NULL,
   spectralEnvelope = NULL,
-  zFun = NULL,
   action = c("add", "remove")[1],
+  dB = NULL,
+  specificity = 1,
+  zFun = NULL,
   vocalTract = NA,
   formantDep = 1,
   formantDepStoch = 1,
@@ -3939,16 +3955,26 @@ specifying the filter for each STFT step is also accepted. The easiest way
 to create this matrix is to call soundgen:::getSpectralEnvelope or to use
 the spectrum of a recorded sound</p>
 </td></tr>
+<tr><td><code id="addFormants_+3A_action">action</code></td>
+<td>
+<p>'add' = add formants to the sound, 'remove' = remove formants
+(inverse filtering)</p>
+</td></tr>
+<tr><td><code id="addFormants_+3A_db">dB</code></td>
+<td>
+<p>if NULL (default), the spectral envelope is applied on the original
+scale; otherwise, it is set to range from 1 to 10 ^ (dB / 20)</p>
+</td></tr>
+<tr><td><code id="addFormants_+3A_specificity">specificity</code></td>
+<td>
+<p>a way to sharpen or blur the spectral envelope (spectrum ^
+specificity) : 1 = no change, &gt;1 = sharper, &lt;1 = blurred</p>
+</td></tr>
 <tr><td><code id="addFormants_+3A_zfun">zFun</code></td>
 <td>
 <p>(optional) an arbitrary function to apply to the spectrogram
 prior to iSTFT, where &quot;z&quot; is the spectrogram - a matrix of complex values
 (see examples)</p>
-</td></tr>
-<tr><td><code id="addFormants_+3A_action">action</code></td>
-<td>
-<p>'add' = add formants to the sound, 'remove' = remove formants
-(inverse filtering)</p>
 </td></tr>
 <tr><td><code id="addFormants_+3A_vocaltract">vocalTract</code></td>
 <td>
@@ -4361,7 +4387,7 @@ contours.
   dynamicRange = 80,
   silence = 0.04,
   windowLength = 50,
-  step = 25,
+  step = windowLength/2,
   overlap = 50,
   specType = c("spectrum", "reassign", "spectralDerivative")[1],
   wn = "gaussian",
@@ -5076,10 +5102,16 @@ s = soundgen(sylLen = 100, addSilence = 10,
   pitchSamplingRate = 350000, samplingRate = 350000, windowLength = 5,
   pitchCeiling = 45000, invalidArgAction = 'ignore')
 # s is a bat-like ultrasound inaudible to humans
-a = analyze(s, 350000, plot = TRUE,
-            pitchCeiling = 45000, priorMean = NA,
-            windowLength = 2, overlap = 0,
-            nFormants = 0, loudness = NULL)
+a = analyze(
+  s, 350000, plot = TRUE,
+  pitchFloor = 10000, pitchCeiling = 90000, priorMean = NA,
+  pitchMethods = c('autocor', 'spec'),
+  # probably shouldn't use pitchMethod = "dom" b/c of likely low-freq noise
+  windowLength = 5, step = 2.5,
+  shortestSyl = 10, shortestPause = 10,  # again, very short sounds
+  interpol = list(win = 10),  # again, very short sounds
+  smooth = 0.1,  # might need less smoothing if very rapid f0 changes
+  nFormants = 0, loudness = NULL, roughness = NULL, novelty = NULL)
 # NB: ignore formants and loudness estimates for such non-human sounds
 
 # download 260 sounds from Anikin &amp; Persson (2017)
@@ -7852,6 +7884,14 @@ axis()</p>
 plot a legend and accepts some additional graphical parameters like tick
 marks.
 </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>data(sheep, package = 'seewave')
+spec = spectrogram(sheep, from = 0.3, to = 0.6, plot = FALSE)
+soundgen:::filled.contour.mod(z = t(spec))
+</code></pre>
 
 <hr>
 <h2 id='filterMS'>Filter modulation spectrum</h2><span id='topic+filterMS'></span>
@@ -17416,6 +17456,196 @@ dataset.
 </table>
 
 <hr>
+<h2 id='noiseRemoval'>Noise removal</h2><span id='topic+noiseRemoval'></span>
+
+<h3>Description</h3>
+
+<p>Removes noise by spectral substraction. If a recording is affected by a
+steady noise with a relatively stable amplitude and spectrum (e.g.,
+microphone hiss, crickets, MRI buzz, etc.), its spectrum can be simply
+subtracted from the signal. Algorithm: STFT to produce a spectrogram, divide
+by normalized noise spectrum, inverse STFT to reconstitute the signal. Most
+of the work is done by <code><a href="#topic+addFormants">addFormants</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>noiseRemoval(
+  x,
+  samplingRate = NULL,
+  scale = NULL,
+  noise,
+  dB = 6,
+  specificity = 1,
+  windowLength = 50,
+  step = windowLength/2,
+  dynamicRange = 120,
+  normalize = c("max", "orig", "none")[2],
+  reportEvery = NULL,
+  cores = 1,
+  play = FALSE,
+  saveAudio = NULL,
+  plot = FALSE,
+  savePlots = NULL,
+  width = 900,
+  height = 500,
+  units = "px",
+  res = NA,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="noiseRemoval_+3A_x">x</code></td>
+<td>
+<p>path to a folder, one or more wav or mp3 files c('file1.wav',
+'file2.mp3'), Wave object, numeric vector, or a list of Wave objects or
+numeric vectors</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_samplingrate">samplingRate</code></td>
+<td>
+<p>sampling rate of <code>x</code> (only needed if <code>x</code> is a
+numeric vector)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_scale">scale</code></td>
+<td>
+<p>maximum possible amplitude of input used for normalization of
+input vector (only needed if <code>x</code> is a numeric vector)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_noise">noise</code></td>
+<td>
+<p>a numeric vector of length two specifying the location of pure
+noise in input audio (in s); a matrix representing pure noise as a spectrum
+with frequency bins in rows; any input accepted by
+<code><a href="#topic+spectrogram">spectrogram</a></code> if pure noise is found in a separate recording
+(eg path to file, numeric vector, etc.)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_db">dB</code></td>
+<td>
+<p>if NULL (default), the spectral envelope is applied on the original
+scale; otherwise, it is set to range from 1 to 10 ^ (dB / 20)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_specificity">specificity</code></td>
+<td>
+<p>a way to sharpen or blur the noise spectrum (we take noise
+spectrum ^ specificity) : 1 = no change, &gt;1 = sharper (the loudest noise
+frequencies are preferentially removed), &lt;1 = blurred (even quiet noise
+frequencies are removed)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_windowlength">windowLength</code></td>
+<td>
+<p>length of FFT window, ms</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_step">step</code></td>
+<td>
+<p>you can override <code>overlap</code> by specifying FFT step, ms (NB:
+because digital audio is sampled at discrete time intervals of
+1/samplingRate, the actual step and thus the time stamps of STFT frames
+may be slightly different, eg 24.98866 instead of 25.0 ms)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_dynamicrange">dynamicRange</code></td>
+<td>
+<p>dynamic range, dB. All values more than one dynamicRange
+under maximum are treated as zero</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_normalize">normalize</code></td>
+<td>
+<p>if TRUE, scales input prior to FFT</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_reportevery">reportEvery</code></td>
+<td>
+<p>when processing multiple inputs, report estimated time
+left every ... iterations (NULL = default, NA = don't report)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_cores">cores</code></td>
+<td>
+<p>number of cores for parallel processing</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_play">play</code></td>
+<td>
+<p>if TRUE, plays the synthesized sound using the default player on
+your system. If character, passed to <code><a href="tuneR.html#topic+play">play</a></code> as the name
+of player to use, eg &quot;aplay&quot;, &quot;play&quot;, &quot;vlc&quot;, etc. In case of errors, try
+setting another default player for <code><a href="tuneR.html#topic+play">play</a></code></p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_saveaudio">saveAudio</code></td>
+<td>
+<p>path + filename for saving the output, e.g.
+'~/Downloads/temp.wav'. If NULL = doesn't save</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_plot">plot</code></td>
+<td>
+<p>should a spectrogram be plotted? TRUE / FALSE</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_saveplots">savePlots</code></td>
+<td>
+<p>full path to the folder in which to save the plots (NULL =
+don't save, &rdquo; = same folder as audio)</p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_width">width</code>, <code id="noiseRemoval_+3A_height">height</code>, <code id="noiseRemoval_+3A_units">units</code>, <code id="noiseRemoval_+3A_res">res</code></td>
+<td>
+<p>graphical parameters for saving plots passed to
+<code><a href="grDevices.html#topic+png">png</a></code></p>
+</td></tr>
+<tr><td><code id="noiseRemoval_+3A_...">...</code></td>
+<td>
+<p>other graphical parameters</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>Returns the denoised audio
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+addFormants">addFormants</a></code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>s = soundgen(noise = list(time = c(-100, 400), value = -20),
+  formantsNoise = list(f1 = list(freq = 3000, width = 25)),
+  addSilence = 50, temperature = .001, plot = TRUE)
+# Option 1: use part of the recording as noise profile
+s1 = noiseRemoval(s, samplingRate = 16000, noise = c(0.05, 0.15),
+  dB = 40, plot = TRUE)
+
+# Option 2: use a separate recording as noise profile
+noise = soundgen(pitch = NA, noise = 0,
+  formantsNoise = list(f1 = list(freq = 3000, width = 25)))
+spectrogram(noise, 16000)
+s2 = noiseRemoval(s, samplingRate = 16000, noise = noise,
+  dB = 40, plot = TRUE)
+
+# Option 3: provide noise spectrum as a matrix
+spec_noise = spectrogram(
+      noise, samplingRate = 16000,
+      output = 'original', plot = FALSE)
+s3 = noiseRemoval(s, samplingRate = 16000, noise = spec_noise,
+  dB = 40, plot = TRUE)
+
+## Not run: 
+# play with gain and sensitivity
+noiseRemoval(s, samplingRate = 16000, noise = c(0.05, 0.15),
+  dB = 60, specificity = 2, plot = TRUE)
+
+# remove noise only from a section of the audio
+noiseRemoval(s, samplingRate = 16000, from = .3, to = .4,
+  noise = c(0.05, 0.15), dB = 60, plot = TRUE, play = TRUE)
+
+## End(Not run)
+</code></pre>
+
+<hr>
 <h2 id='nonLinearPrediction_mod'>Nonlinear prediction modified</h2><span id='topic+nonLinearPrediction_mod'></span>
 
 <h3>Description</h3>
@@ -21367,8 +21597,8 @@ mel-transformed spectrogram (see tuneR::melfcc)</p>
 <tr><td><code id="segment_+3A_propnoise">propNoise</code></td>
 <td>
 <p>the proportion of non-zero sound assumed to represent
-background noise (note that complete silence is not considered, so padding
-with silence won't affect the algorithm)</p>
+background noise, 0 to 1 (note that complete silence is not considered, so
+padding with silence won't affect the algorithm)</p>
 </td></tr>
 <tr><td><code id="segment_+3A_snr">SNR</code></td>
 <td>
@@ -22829,6 +23059,24 @@ sound = soundgen(repeatBout = 2, sylLen = 160, pauseLen = 100,
   vocalTract = 5, formants = NULL,
   play = playback, plot = TRUE)
 
+# Ultrasound - need to adjust some defaults:
+ soundgen(
+   sylLen = 10,  # just 10 ms
+   attackLen = 1,  # should be very short for short vocalizations
+   addSilence = 2,
+   pitch = c(45000, 35000, 65000, 60000),  # 35-60 kHz
+   rolloff = -12,
+   rolloffKHz = 0,  # NB: the default is -3 dB/kHz, which we do NOT want here!
+   formants = NA,  # no formants (or set vocal tract length)
+   samplingRate = 350000,  # at least ~10 times the max f0
+   pitchSamplingRate = 350000,  # the same as samplingRate
+   windowLength = .25,  # need very short window lengths for USV
+   pitchCeiling = 90000, # max allowed pitch
+   invalidArgAction = 'ignore', # override the ranges allowed by default
+   temperature = 1e-4,
+   plot = TRUE
+ )
+
 # See the vignette on sound generation for more examples and in-depth
 # explanation of the arguments to soundgen()
 # Examples of code for creating human and animal vocalizations are available
@@ -23132,7 +23380,7 @@ sharpness</p>
 <td>
 <p>apply a Gaussian filter to blur or sharpen the image, two
 numbers: frequency (Hz), time (ms). A single number is interpreted as
-frequency, and a square filter is applied. NA / NULL / 0 means to blurring
+frequency, and a square filter is applied. NA / NULL / 0 means no blurring
 in that dimension. Negative numbers mean un-blurring (sharpening) the image
 by dividing instead of multiplying by the filter during convolution</p>
 </td></tr>
@@ -24229,12 +24477,13 @@ transplantEnv(donor, samplingRateD = 200,
 &quot;transplants&quot; it onto another sound (<code>recipient</code>). For biological sounds
 like speech or animal vocalizations, this has the effect of replacing the
 formants in the recipient sound while preserving the original intonation and
-(to some extent) voice quality. Note that <code>freqWindow</code> is a crucial
-parameter: too narrow, and noise between harmonics will be amplified,
-creasing artifacts; too wide, and formants may be missed. The default is to
-set <code>freqWindow</code> to the estimated median pitch, but this is
-time-consuming and error-prone, so set it to a reasonable value manually if
-possible. Also ensure that both sounds have the same sampling rate.
+(to some extent) voice quality. Note that the amount of spectral smoothing
+(specified with <code>freqWindow</code> or <code>blur</code>) is a crucial parameter: too
+little smoothing, and noise between harmonics will be amplified, creasing
+artifacts; too much, and formants may be missed. The default is to set
+<code>freqWindow</code> to the estimated median pitch, but this is time-consuming
+and error-prone, so set it to a reasonable value manually if possible. Also
+ensure that both sounds have the same sampling rate.
 </p>
 
 
@@ -24245,6 +24494,7 @@ possible. Also ensure that both sounds have the same sampling rate.
   recipient,
   samplingRate = NULL,
   freqWindow = NULL,
+  blur = NULL,
   dynamicRange = 80,
   windowLength = 50,
   step = NULL,
@@ -24275,8 +24525,19 @@ numeric vector)</p>
 </td></tr>
 <tr><td><code id="transplantFormants_+3A_freqwindow">freqWindow</code></td>
 <td>
-<p>the width of smoothing window. Defaults to median pitch of
-the donor (or of the recipient if donor is a filter matrix)</p>
+<p>the width of smoothing window used to flatten the
+recipient's spectrum per frame. Defaults to median pitch of the donor (or
+of the recipient if donor is a filter matrix). If <code>blur</code> is NULL,
+<code>freqWindow</code> also controls the amount of smoothing applied to the
+donor's spectrogram</p>
+</td></tr>
+<tr><td><code id="transplantFormants_+3A_blur">blur</code></td>
+<td>
+<p>the amount of Gaussian blur applied to the donor's spectrogram as
+a faster and more flexible alternative to smoothing it per bin with
+<code>freqWindow</code>. Provide two numbers: frequency (Hz, normally
+approximately equal to freqWindow), time (ms) (NA / NULL / 0 means no
+blurring in that dimension). See examples and <code><a href="#topic+spectrogram">spectrogram</a></code></p>
 </td></tr>
 <tr><td><code id="transplantFormants_+3A_dynamicrange">dynamicRange</code></td>
 <td>
@@ -24312,16 +24573,16 @@ gaussian, hanning, hamming, bartlett, rectangular, blackman, flattop</p>
 
 <h3>Details</h3>
 
-<p>Algorithm: makes spectrograms of both sounds, interpolates and smoothes the
-donor spectrogram, flattens the recipient spectrogram, multiplies the
-spectrograms, and transforms back into time domain with inverse STFT.
+<p>Algorithm: makes spectrograms of both sounds, interpolates and smooths or
+blurs the donor spectrogram, flattens the recipient spectrogram, multiplies
+the spectrograms, and transforms back into time domain with inverse STFT.
 </p>
 
 
 <h3>See Also</h3>
 
 <p><code><a href="#topic+transplantEnv">transplantEnv</a></code> <code><a href="#topic+getSpectralEnvelope">getSpectralEnvelope</a></code>
-<code><a href="#topic+addFormants">addFormants</a></code> <code><a href="#topic+soundgen">soundgen</a></code>
+<code><a href="#topic+addFormants">addFormants</a></code> <code><a href="#topic+spectrogram">spectrogram</a></code> <code><a href="#topic+soundgen">soundgen</a></code>
 </p>
 
 
@@ -24364,6 +24625,20 @@ s2 = transplantEnv(donor = sheep, samplingRateD = sheep@samp.rate,
                    recipient = s1, windowLength = 10)
 playme(s2, sheep@samp.rate)
 spectrogram(s2, sheep@samp.rate, osc = TRUE)
+
+# using "blur" to apply Gaussian blur to the donor's spectrogram instead of
+# smoothing per frame with "freqWindow" (~2.5 times faster)
+spectrogram(sheep, blur = c(150, 0))  # preview to select the amount of blur
+s1b = transplantFormants(
+  donor = sheep,
+  recipient = recipient,
+  samplingRate = sheep@samp.rate,
+  freqWindow = 150,
+  blur = c(150, 0))
+  # blur: 150 = SD of 150 Hz along the frequency axis,
+  #      0 = no smoothing along the time axis
+playme(s1b, sheep@samp.rate)
+spectrogram(s1b, sheep@samp.rate, osc = TRUE)
 
 # Now we use human formants on sheep source: the sheep asks "why?"
 s3 = transplantFormants(
@@ -24924,7 +25199,7 @@ or rescale the input.
 </td></tr>
 <tr><td><code id="zeroOne_+3A_na.rm">na.rm</code></td>
 <td>
-<p>if TRUE, removed NA's when calculating min/max for normalization</p>
+<p>if TRUE, remove NA's when calculating min/max for normalization</p>
 </td></tr>
 <tr><td><code id="zeroOne_+3A_xmin">xmin</code>, <code id="zeroOne_+3A_xmax">xmax</code></td>
 <td>

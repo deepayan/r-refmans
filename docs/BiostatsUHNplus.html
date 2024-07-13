@@ -39,6 +39,9 @@ such as MCMCglmm::MCMCglmm() object, that have binary outcome.</a></li>
 <li><a href='#nice_mcmcglmm'><p>Nice table of model output from MCMCglmm::MCMCglmm()</p></a></li>
 <li><a href='#nice_mcmcglmm_icc'><p>Nice table of intraclass correlation coefficients from MCMCglmm::MCMCglmm()</p>
 model output</a></li>
+<li><a href='#redcap_data_out'><p>Combines exported REDCap raw and label .csv files together with data dictionary.</p>
+Tranforms the exported data into Excel sheets by survey instrument with one
+row per participant</a></li>
 <li><a href='#rm_covsum_nested'><p>Outputs a nested version of reportRmd::rm_covsum()</p></a></li>
 </ul>
 </div>
@@ -48,17 +51,16 @@ model output</a></li>
 <table>
 <tr>
 <td>Title:</td>
-<td>Nested Data Summary and Adverse Events</td>
+<td>Nested Data Summary, Adverse Events and REDCap</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.0.9</td>
+<td>0.0.10</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Miscellaneous code snippets and functions with pipes and
-    multiple package dependencies used for summarizing nested data and 
-    adverse events.</td>
+<td>Tools and code snippets for summarizing nested data, adverse events 
+  and REDCap study information.</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -70,9 +72,9 @@ model output</a></li>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>afex, coda, cowplot, dplyr, forcats, ggh4x, ggplot2, ggstance,
+<td>afex, coda, cowplot, dplyr, forcats, ggh4x, ggplot2,
 lifecycle, MCMCglmm, modeest, openxlsx, plyr, purrr, reportRmd,
-rlang, rstatix, stats, stringr, tibble, utils</td>
+rlang, rstatix, stats, stringi, stringr, tibble, utils</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -98,7 +100,7 @@ rlang, rstatix, stats, stringr, tibble, utils</td>
 <td>Collate:</td>
 <td>'data.R' 'globals.R' 'as_numeric_parse.R' 'covsum_nested.R'
 'dsmb_ccru.R' 'nice_mcmcglmm.R' 'nice_mcmcglmm_icc.R'
-'ae_timeline_plot.R' 'caterpillar_plot.R'</td>
+'ae_timeline_plot.R' 'caterpillar_plot.R' 'redcap_data_out.R'</td>
 </tr>
 <tr>
 <td>NeedsCompilation:</td>
@@ -106,7 +108,7 @@ rlang, rstatix, stats, stringr, tibble, utils</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-12-04 14:01:06 UTC; t109810uhn</td>
+<td>2024-05-24 15:14:15 UTC; t109810uhn</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -134,7 +136,7 @@ rlang, rstatix, stats, stringr, tibble, utils</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-12-04 14:50:02 UTC</td>
+<td>2024-05-24 21:10:30 UTC</td>
 </tr>
 </table>
 <hr>
@@ -411,6 +413,7 @@ such as MCMCglmm::MCMCglmm() object, that have binary outcome.
 
 <pre><code class='language-R'>caterpillar_plot(
   subjID,
+  subjLabel = NULL,
   remove.text.subjID = FALSE,
   mcmcglmm_object,
   orig_dataset,
@@ -433,6 +436,11 @@ such as MCMCglmm::MCMCglmm() object, that have binary outcome.
 <tr><td><code id="caterpillar_plot_+3A_subjid">subjID</code></td>
 <td>
 <p>key identifier field for participant ID in data sets</p>
+</td></tr>
+<tr><td><code id="caterpillar_plot_+3A_subjlabel">subjLabel</code></td>
+<td>
+<p>text label field in dataset to replace key identifier field for
+participant ID with in plot (if provided)</p>
 </td></tr>
 <tr><td><code id="caterpillar_plot_+3A_remove.text.subjid">remove.text.subjID</code></td>
 <td>
@@ -823,7 +831,7 @@ be included in statistical tests</p>
   subjID_ineligText = NULL,
   baseline_datasets,
   ae_dataset,
-  ineligVar,
+  ineligVar = NULL,
   ineligVarText = NULL,
   genderVar,
   enrolDtVar,
@@ -895,7 +903,7 @@ for example, list(enrollment_DF,demography_DF,ineligibility_DF)</p>
 </td></tr>
 <tr><td><code id="dsmb_ccru_+3A_ineligvar">ineligVar</code></td>
 <td>
-<p>field that denotes participant ineligibility</p>
+<p>field that denotes participant ineligibility (if provided)</p>
 </td></tr>
 <tr><td><code id="dsmb_ccru_+3A_ineligvartext">ineligVarText</code></td>
 <td>
@@ -1153,6 +1161,106 @@ model1 &lt;- MCMCglmm::MCMCglmm(Drug_1_Attribution ~ AE_SEV_GD + Drug_2_Attribut
 mcmcglmm_icc &lt;- nice_mcmcglmm_icc(model1);
 
 ## End(Not run)
+</code></pre>
+
+<hr>
+<h2 id='redcap_data_out'>Combines exported REDCap raw and label .csv files together with data dictionary.
+Tranforms the exported data into Excel sheets by survey instrument with one
+row per participant</h2><span id='topic+redcap_data_out'></span>
+
+<h3>Description</h3>
+
+<p>Combines exported REDCap raw and label .csv files together with data dictionary.
+Tranforms the exported data into Excel sheets by survey instrument with one
+row per participant
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>redcap_data_out(
+  protocol,
+  pullDate = NULL,
+  subjID,
+  subjID_ineligText = NULL,
+  subjID_eligPattern = NULL,
+  varFilter = NULL,
+  varFilter_eligPattern = NULL,
+  setWD_files,
+  setWD_dataDict = NULL,
+  outDir
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="redcap_data_out_+3A_protocol">protocol</code></td>
+<td>
+<p>study protocol name (i.e. Example_Study)</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_pulldate">pullDate</code></td>
+<td>
+<p>date of data pull, for example, 2024_01_02 (if provided)</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_subjid">subjID</code></td>
+<td>
+<p>key identifier field(s) for participant ID in data sets</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_subjid_ineligtext">subjID_ineligText</code></td>
+<td>
+<p>character text that denotes participant IDs to exclude
+using first key identifier field. For example, c(&quot;New Subject&quot;) (if provided)</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_subjid_eligpattern">subjID_eligPattern</code></td>
+<td>
+<p>character text that denotes pattern for participant
+IDs to include using first key identifier field. For example, c(&quot;^Site_A&quot;)
+(if provided)</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_varfilter">varFilter</code></td>
+<td>
+<p>field to use for filtering data (if provided)</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_varfilter_eligpattern">varFilter_eligPattern</code></td>
+<td>
+<p>character text that denotes pattern for filter
+variable to include, for example, c(&quot;^Arm_A&quot;) (if provided)</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_setwd_files">setWD_files</code></td>
+<td>
+<p>directory where the both raw and label REDCap export .csv
+files are stored, following the convention for file names of
+1_DATA.csv, 1_DATA_LABELs.csv, 2_DATA.csv, 2_DATA_LABELs.csv, etc</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_setwd_datadict">setWD_dataDict</code></td>
+<td>
+<p>directory where the REDCap .csv data dictionary is stored.
+Make sure that file is saved as basic .csv file in Excel, and not UTF-8.
+Must contain &quot;DataDictionary&quot; in file name (if provided)</p>
+</td></tr>
+<tr><td><code id="redcap_data_out_+3A_outdir">outDir</code></td>
+<td>
+<p>output directory where the Excel files are saved</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>two Excel files, one containing variable names and labels and the
+other containing REDCap survey instrument data by sheet
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+redcap_data_out(protocol="Example_Study",pullDate="2024_01_03",
+
+## End(Not run)
+
 </code></pre>
 
 <hr>

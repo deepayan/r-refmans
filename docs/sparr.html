@@ -50,6 +50,8 @@ function processMathHTML() {
 <p>Spatiotemporal relative risk/density ratio</p></a></li>
 <li><a href='#spattemp.slice'><p>Slicing a spatiotemporal object</p></a></li>
 <li><a href='#summary.bivden'><p>Summarising sparr objects</p></a></li>
+<li><a href='#tol.classify'><p>Classification by <em>p</em>-value surfaces</p></a></li>
+<li><a href='#tol.classplot'><p>Plot tolerance contour classification scheme</p></a></li>
 <li><a href='#tol.contour'><p>Plot tolerance contours</p></a></li>
 <li><a href='#tolerance'><p>Tolerance by <em>p</em>-value surfaces</p></a></li>
 </ul>
@@ -68,11 +70,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.3-10</td>
+<td>2.3-15</td>
 </tr>
 <tr>
 <td>Date:</td>
-<td>2023-03-08</td>
+<td>2024-07-06</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -85,7 +87,8 @@ function processMathHTML() {
 <tr>
 <td>Imports:</td>
 <td>spatstat.utils, spatstat.geom, spatstat.explore,
-spatstat.random, doParallel, parallel, foreach, misc3d</td>
+spatstat.random, spatstat.univar, doParallel, parallel,
+foreach, misc3d</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -105,7 +108,7 @@ spatstat.random, doParallel, parallel, foreach, misc3d</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.3</td>
+<td>7.3.2</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -117,8 +120,12 @@ spatstat.random, doParallel, parallel, foreach, misc3d</td>
 <td><a href="https://github.com/tilmandavies/sparr/issues/">https://github.com/tilmandavies/sparr/issues/</a></td>
 </tr>
 <tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
 <td>Packaged:</td>
-<td>2023-03-08 22:53:06 UTC; tilmandavies</td>
+<td>2024-07-06 09:24:19 UTC; davti75p</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -135,7 +142,7 @@ spatstat.random, doParallel, parallel, foreach, misc3d</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-03-08 23:30:02 UTC</td>
+<td>2024-07-07 10:40:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -158,11 +165,11 @@ Package: </td><td style="text-align: left;"> sparr</td>
 </tr>
 <tr>
  <td style="text-align: left;">
-Date:</td><td style="text-align: left;"> 2023-03-08</td>
+Date:</td><td style="text-align: left;"> 2024-07-06</td>
 </tr>
 <tr>
  <td style="text-align: left;">
-Version:</td><td style="text-align: left;"> 2.3-10</td>
+Version:</td><td style="text-align: left;"> 2.3-15</td>
 </tr>
 <tr>
  <td style="text-align: left;">
@@ -274,6 +281,9 @@ pre-existing bivariate density estimates; fixed (Kelsall and Diggle, 1995a); fix
 <p><code><a href="#topic+tolerance">tolerance</a></code>
 calculation of asymptotic or Monte-Carlo <em>p</em>-value surfaces.
 </p>
+<p><code><a href="#topic+tol.classify">tol.classify</a></code> classification of individual points based on a 
+<em>p</em>-value surface from which tolerance contours are produced.
+</p>
 <p><em>Visualisation</em>
 </p>
 <p><code>S3</code> methods of the <code>plot</code> function; see
@@ -286,6 +296,10 @@ multi-scale density estimates from <code><a href="#topic+multiscale.density">mul
 <p><code><a href="#topic+tol.contour">tol.contour</a></code> provides more flexibility for plotting and
 superimposing tolerance contours upon an existing plot of spatial relative risk (i.e. given output from
 <code><a href="#topic+tolerance">tolerance</a></code>).
+</p>
+<p><code><a href="#topic+tol.classplot">tol.classplot</a></code> is a utility to view the classification scheme
+with respect to unique tolerance contours/significance regions as 
+identified by <code><a href="#topic+tol.classify">tol.classify</a></code>.
 </p>
 <p><em>Printing and summarising</em>
 </p>
@@ -474,6 +488,24 @@ of spatial clustering and cluster detection techniques for childhood
 leukemia incidence in Ohio, 1996-2003, <em>International Journal of Health
 Geographics</em>, <b>6</b>(13).
 </p>
+
+
+<h3>See Also</h3>
+
+<p>Useful links:
+</p>
+
+<ul>
+<li> <p><a href="https://tilmandavies.github.io/sparr/">https://tilmandavies.github.io/sparr/</a>
+</p>
+</li>
+<li> <p><a href="https://github.com/tilmandavies/sparr/">https://github.com/tilmandavies/sparr/</a>
+</p>
+</li>
+<li><p> Report bugs at <a href="https://github.com/tilmandavies/sparr/issues/">https://github.com/tilmandavies/sparr/issues/</a>
+</p>
+</li></ul>
+
 
 <hr>
 <h2 id='available.h0'>Available global bandwidth range</h2><span id='topic+available.h0'></span>
@@ -902,8 +934,9 @@ chden3 &lt;- bivariate.density(chorley,h0=1.5,hp=1,adapt=TRUE)
 # Adaptive smoothing; uniform edge correction; partitioning approximation
 chden4 &lt;- bivariate.density(chorley,h0=1.5,hp=1,adapt=TRUE,davies.baddeley=0.025)
  
-par(mfrow=c(2,2))
-plot(chden1);plot(chden2);plot(chden3);plot(chden4)  
+oldpar &lt;- par(mfrow=c(2,2))
+plot(chden1);plot(chden2);plot(chden3);plot(chden4)
+par(oldpar)
 
 
 </code></pre>
@@ -1343,10 +1376,11 @@ package version 2.01-40; <a href="https://CRAN.R-project.org/package=splancs">ht
 <pre><code class='language-R'>data(burk)
 summary(burk$cases)
 
-par(mfrow=c(1,3))
+oldpar &lt;- par(mfrow=c(1,3))
 plot(burk$cases)
 plot(burk$controls)
 plot(density(marks(burk$cases)),xlim=range(marks(burk$cases)))
+par(oldpar)
 </code></pre>
 
 <hr>
@@ -1478,10 +1512,11 @@ reference to the UK foot and mouth disease (FMD) epidemic of 2001,
 data(fmd)
 summary(fmd$cases)
 summary(fmd$controls)
- 
-par(mfrow=c(1,2))
+
+oldpar &lt;- par(mfrow=c(1,2))
 plot(fmd$cases)
 plot(fmd$controls)
+par(oldpar)
 
 </code></pre>
 
@@ -1667,7 +1702,7 @@ C.M., 1995. <em>Kernel Smoothing</em>, Chapman &amp; Hall, London.
 <h3>See Also</h3>
 
 <p><code><a href="#topic+SLIK.adapt">SLIK.adapt</a></code> and functions for bandwidth selection in package
-<code><a href="spatstat.html#topic+spatstat">spatstat</a></code>: <code><a href="spatstat.explore.html#topic+bw.diggle">bw.diggle</a></code>;
+<code>spatstat</code>: <code><a href="spatstat.explore.html#topic+bw.diggle">bw.diggle</a></code>;
 <code><a href="spatstat.explore.html#topic+bw.ppl">bw.ppl</a></code>; <code><a href="spatstat.explore.html#topic+bw.scott">bw.scott</a></code>;
 <code><a href="spatstat.explore.html#topic+bw.frac">bw.frac</a></code>.
 </p>
@@ -3225,10 +3260,11 @@ npoints(B)
 C &lt;- rimpoly(500,Y$z,Window(Y$pp))
 npoints(C)
 
-par(mfrow=c(1,3))
+oldpar &lt;- par(mfrow=c(1,3))
 plot(A,main="rpoint")
 plot(B,main="rimpoly (no polygon supplied)")
 plot(C,main="rimpoly (original polygon supplied)")
+par(oldpar)
 
 </code></pre>
 
@@ -3521,11 +3557,12 @@ g &lt;- bivariate.density(pbccon,h0=h0,hp=2,adapt=TRUE,pilot.density=pbccas,
                        edge="diggle",davies.baddeley=0.05,verbose=FALSE)
 pbcrr5 &lt;- risk(f,g,tolerate=TRUE,verbose=FALSE)
 
-par(mfrow=c(2,2))
+oldpar &lt;- par(mfrow=c(2,2))
 plot(pbcrr1,override.par=FALSE,main="Fixed")
 plot(pbcrr2,override.par=FALSE,main="Fixed shrinkage")
 plot(pbcrr3,override.par=FALSE,main="Asymmetric adaptive")
 plot(pbcrr4,override.par=FALSE,main="Symmetric (pooled) adaptive") 
+par(oldpar)
 
 </code></pre>
 
@@ -3670,7 +3707,7 @@ C.M., 1995. <em>Kernel Smoothing</em>, Chapman &amp; Hall, London.
 <h3>See Also</h3>
 
 <p>Functions for bandwidth selection in package
-<code><a href="spatstat.html#topic+spatstat">spatstat</a></code>: <code><a href="spatstat.explore.html#topic+bw.diggle">bw.diggle</a></code>;
+<code>spatstat</code>: <code><a href="spatstat.explore.html#topic+bw.diggle">bw.diggle</a></code>;
 <code><a href="spatstat.explore.html#topic+bw.ppl">bw.ppl</a></code>; <code><a href="spatstat.explore.html#topic+bw.scott">bw.scott</a></code>;
 <code><a href="spatstat.explore.html#topic+bw.frac">bw.frac</a></code>.
 </p>
@@ -4131,7 +4168,7 @@ g &lt;- bivariate.density(fmdcon,h0=6) # bivden object as time-static control de
 rho &lt;- spattemp.risk(f,g,tolerate=TRUE) 
 print(rho)
 
-par(mfrow=c(2,3))
+oldpar &lt;- par(mfrow=c(2,3))
 plot(rho$f$spatial.z,main="Spatial margin (cases)") # spatial margin of cases
 plot(rho$f$temporal.z,main="Temporal margin (cases)") # temporal margin of cases
 plot(rho$g$z,main="Spatial margin (controls)") # spatial margin of controls
@@ -4141,6 +4178,7 @@ plot(rho,tselect=100,type="conditional",tol.args=list(levels=c(0.05,0.0001),
      lty=2:1,lwd=1:2),override.par=FALSE)
 plot(rho,tselect=200,type="conditional",tol.args=list(levels=c(0.05,0.0001),
      lty=2:1,lwd=1:2),override.par=FALSE)
+par(oldpar)
 
 </code></pre>
 
@@ -4284,19 +4322,21 @@ f$tlim # requested slices must be in this range
 # slicing 'stden' object
 f.slice1 &lt;- spattemp.slice(f,tt=50) # evaluation timestamp
 f.slice2 &lt;- spattemp.slice(f,tt=150.5) # interpolated timestamp
-par(mfrow=c(2,2))
+oldpar &lt;- par(mfrow=c(2,2))
 plot(f.slice1$z$'50')
 plot(f.slice1$z.cond$'50')
 plot(f.slice2$z$'150.5')
 plot(f.slice2$z.cond$'150.5')
+par(oldpar)
 
 # slicing 'rrst' object
 rho.slices &lt;- spattemp.slice(rho,tt=c(50,150.5))
-par(mfrow=c(2,2))
+oldpar &lt;- par(mfrow=c(2,2))
 plot(rho.slices$rr$'50');tol.contour(rho.slices$P$'50',levels=0.05,add=TRUE)
 plot(rho.slices$rr$'150.5');tol.contour(rho.slices$P$'150.5',levels=0.05,add=TRUE)
 plot(rho.slices$rr.cond$'50');tol.contour(rho.slices$P.cond$'50',levels=0.05,add=TRUE)
 plot(rho.slices$rr.cond$'150.5');tol.contour(rho.slices$P.cond$'150.5',levels=0.05,add=TRUE)
+par(oldpar)
 
 
 </code></pre>
@@ -4349,6 +4389,310 @@ summary(object, ...)
 
 <p>T.M. Davies
 </p>
+
+<hr>
+<h2 id='tol.classify'>Classification by <em>p</em>-value surfaces</h2><span id='topic+tol.classify'></span>
+
+<h3>Description</h3>
+
+<p>Classifies observed case/control points according to an estimated 
+<em>p</em>-value surface.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>tol.classify(rs, cutoff = 0.05, pim = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="tol.classify_+3A_rs">rs</code></td>
+<td>
+<p>An object of class <code><a href="#topic+rrs">rrs</a></code> giving the estimated relative
+risk function of the case-control points to be classified.</p>
+</td></tr>
+<tr><td><code id="tol.classify_+3A_cutoff">cutoff</code></td>
+<td>
+<p>A numeric value between 0 and 1, defining the cutoff p-value
+used to classify points; defaults to 0.05.</p>
+</td></tr>
+<tr><td><code id="tol.classify_+3A_pim">pim</code></td>
+<td>
+<p>A pixel <code><a href="spatstat.geom.html#topic+im">im</a></code>age defining the p-value 
+surface with respect to which the observations are to be classified. 
+Typically the result of a call to <code><a href="#topic+tolerance">tolerance</a></code>. Ignored if 
+<code>rs</code> possesses a non-<code>NULL</code> <code>P</code> component (which takes
+precedence).</p>
+</td></tr>
+<tr><td><code id="tol.classify_+3A_...">...</code></td>
+<td>
+<p>Arguments to be passed to <code><a href="#topic+tolerance">tolerance</a></code> in order to
+compute the desired p-value surface in the event neither <code>rs$P</code> nor
+<code>pim</code> exist. Ignored otherwise.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>This function takes in a relative risk surface computed with
+<code><a href="#topic+risk">risk</a></code> and corresponding p-value surface (the latter used for
+drawing tolerance contours), and attempts to classify both the case and 
+control points as either falling within or without contours drawn at a level
+of <code>cutoff</code>. Points that fall 'inside' the contours are deemed to be
+associated with p-values less than or equal to <code>cutoff</code> and hence are
+usually interpreted as being in spatial areas of significant risk. This is
+useful for identifying characteristics of points that fall inside
+'pockets of significance' as delineated by tolerance contours.
+</p>
+<p>Upon execution, the function first inspects the <code>rs</code> object to
+determine whether it possesses a <code>P</code> component (i.e. an internally
+computed p-value surface provided when <code><a href="#topic+risk">risk</a></code> is called with 
+optional argument <code>tolerate=TRUE</code>). If it exists, this is used. If not,
+the function then looks to see if the <code>pim</code> argument has been supplied.
+If it has, it must be a pixel <code><a href="spatstat.geom.html#topic+im">im</a></code>age compatible
+with the risk surface in <code>rs$rr</code>. If neither <code>rs$P</code> nor <code>pim</code>
+is present, the function internally calls <code><a href="#topic+tolerance">tolerance</a></code> with 
+arguments supplied to <code>...</code> to produce the desired surface.
+</p>
+<p>The return object is a list that splits each of the case and control <code><a href="spatstat.geom.html#topic+ppp">ppp</a></code>
+data objects (these are stored as <code>rs$f$pp</code> and <code>rs$g$pp</code>) in the
+originally supplied risk surface object) into two constituent <code><a href="spatstat.geom.html#topic+ppp">ppp</a></code>
+objects &ndash; one comprising the points inside the <code>cutoff</code> contours (<code>fin</code> and <code>gin</code>), the 
+other for those points outside the <code>cutoff</code> contours (<code>fout</code> and <code>gout</code>).
+In addition, the index values of the original data objects <code>rs$f$pp</code> and 
+<code>rs$g$pp</code> that correspond to the points in <code>fin</code> and <code>gin</code> are
+provided as numeric vectors (<code>findex</code> and <code>gindex</code>). These objects
+are useful if you need to cross-reference data-specific characteristics from 
+some other (corresponding) data set.
+</p>
+<p>Further supplied in the returned list are quantities describing the overall classification
+structure (<code>pcmask</code>), as well as contour-specific identification and classification
+(<code>finsplit</code>, <code>ginsplit</code>, <code>pcpolys</code>). The <code>pcpolys</code> object can be plotted
+to illustrate the unique contour IDs with <code><a href="#topic+tol.classplot">tol.classplot</a></code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list of ten components:
+</p>
+<table>
+<tr><td><code>fin</code></td>
+<td>
+<p>Point pattern of 'case' observations classified as being inside
+the <code>cutoff</code> contours of the p-value surface. An object of class
+<code><a href="spatstat.geom.html#topic+ppp">ppp</a></code>.</p>
+</td></tr>
+<tr><td><code>fout</code></td>
+<td>
+<p>Point pattern of 'case' observations falling outside the
+<code>cutoff</code> contours of the p-value surface. An object of class
+<code><a href="spatstat.geom.html#topic+ppp">ppp</a></code>.</p>
+</td></tr>
+<tr><td><code>gin</code></td>
+<td>
+<p>As <code>fin</code>, for the control points.</p>
+</td></tr>
+<tr><td><code>gout</code></td>
+<td>
+<p>As <code>fout</code>, for the control points.</p>
+</td></tr>
+<tr><td><code>findex</code></td>
+<td>
+<p>Numeric vector giving the raw index values of the original 
+pattern of cases which provide <code>fin</code>.</p>
+</td></tr>
+<tr><td><code>gindex</code></td>
+<td>
+<p>As <code>findex</code>, for the controls.</p>
+</td></tr>
+<tr><td><code>finsplit</code></td>
+<td>
+<p>A list of the indexes in <code>findex</code>, with separate members
+splitting up the indexes of case observations as falling inside each unique
+tolerance contour.</p>
+</td></tr>
+<tr><td><code>ginsplit</code></td>
+<td>
+<p>As <code>ginsplit</code>, for the controls.</p>
+</td></tr>
+<tr><td><code>pcmask</code></td>
+<td>
+<p>The classification object of class <code><a href="spatstat.geom.html#topic+owin">owin</a></code>. This is
+a pixel image mask derived from <code>pim</code> and <code>cutoff</code>.</p>
+</td></tr>
+<tr><td><code>pcpolys</code></td>
+<td>
+<p>A list of the same length as <code>finsplit</code> and <code>ginsplit</code>, 
+identifying each unique contour as a polygonal <code><a href="spatstat.geom.html#topic+owin">owin</a></code>. The order of these
+objects in the list correspond to the membership of <code>finsplit</code> and <code>ginsplit</code>. Use
+<code><a href="#topic+tol.classplot">tol.classplot</a></code> on this component to plot the classification indexes.</p>
+</td></tr>
+</table>
+
+
+<h3>Author(s)</h3>
+
+<p>T. M. Davies
+</p>
+
+
+<h3>References</h3>
+
+<p>Davies, T.M. and Hazelton, M.L. (2010), Adaptive kernel estimation of spatial relative
+risk, <em>Statistics in Medicine</em>, <b>29</b>(23) 2423-2437.
+</p>
+<p>Hazelton, M.L. and Davies, T.M. (2009), Inference based on kernel estimates
+of the relative risk function in geographical epidemiology,
+<em>Biometrical Journal</em>, <b>51</b>(1), 98-109.
+</p>
+<p>Kelsall, J.E. and Diggle, P.J. (1995), Kernel estimation of relative risk, <em>Bernoulli</em>,
+<b>1</b>, 3-16.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+data(pbc)
+pbccas &lt;- split(pbc)$case
+pbccon &lt;- split(pbc)$control
+h0 &lt;- OS(pbc,nstar="geometric")
+
+pbcrr &lt;- risk(pbccas,pbccon,h0=h0,tolerate=TRUE)
+pbcclass &lt;- tol.classify(pbcrr)
+
+## Not run: 
+plot(pbcrr)
+points(pbcclass$fin,col="red",pch=3,cex=0.5)
+points(pbcclass$fout,col="seagreen4",cex=0.5)
+
+chrr &lt;- risk(chorley,h0=0.7,tolerate=TRUE)
+chclass &lt;- tol.classify(chrr,cutoff=0.4)
+plot(chrr,tol.args=list(levels=0.4))
+for(i in 1:length(chclass$finsplit)){
+   points(chrr$f$pp[chclass$finsplit[[i]]],col=i,pch=19)
+}
+
+## End(Not run)
+
+
+
+
+
+</code></pre>
+
+<hr>
+<h2 id='tol.classplot'>Plot tolerance contour classification scheme</h2><span id='topic+tol.classplot'></span>
+
+<h3>Description</h3>
+
+<p>Permits illustration of the uniquely identified tolerance contour regions
+arising from a call to <code><a href="#topic+tol.classify">tol.classify</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>tol.classplot(pcpolys, add = FALSE, annotate = TRUE, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="tol.classplot_+3A_pcpolys">pcpolys</code></td>
+<td>
+<p>A list of polygonal windows, each of class <code><a href="spatstat.geom.html#topic+owin">owin</a></code>.
+This will almost always be the <code>pcpolys</code> component of the object
+returned by a call to <code><a href="#topic+tol.classify">tol.classify</a></code>.</p>
+</td></tr>
+<tr><td><code id="tol.classplot_+3A_add">add</code></td>
+<td>
+<p>A logical value indicating whether to add the unique regions to an
+existing plot (see 'Examples').</p>
+</td></tr>
+<tr><td><code id="tol.classplot_+3A_annotate">annotate</code></td>
+<td>
+<p>A logical value indicating whether to annotate each unique
+region with its identifying number (which will correspond to the uniquely 
+split/classified points in a corresponding call to <code><a href="#topic+tol.classify">tol.classify</a></code>).</p>
+</td></tr>
+<tr><td><code id="tol.classplot_+3A_...">...</code></td>
+<td>
+<p>Additional arguments to be passed to <code><a href="graphics.html#topic+text">text</a></code> 
+to control the appearance of the annotations when <code>annotate=TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The <code><a href="#topic+tol.classify">tol.classify</a></code> function permits identification of 
+individual significance regions (that is, the tolerance contours). In
+turn, <code>tol.classplot</code> may be used to visualise these regions
+optionally annotated by their unique identification number to better
+understand the region-specific classifications of the case and control points.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Plots to the relevant graphics device.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>T. M. Davies
+</p>
+
+
+<h3>References</h3>
+
+<p>Davies, T.M. and Hazelton, M.L. (2010), Adaptive kernel estimation of spatial relative
+risk, <em>Statistics in Medicine</em>, <b>29</b>(23) 2423-2437.
+</p>
+<p>Hazelton, M.L. and Davies, T.M. (2009), Inference based on kernel estimates
+of the relative risk function in geographical epidemiology,
+<em>Biometrical Journal</em>, <b>51</b>(1), 98-109.
+</p>
+<p>Kelsall, J.E. and Diggle, P.J. (1995), Kernel estimation of relative risk, <em>Bernoulli</em>,
+<b>1</b>, 3-16.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## Not run: 
+chrr &lt;- risk(chorley,h0=0.7,tolerate=TRUE)
+chclass &lt;- tol.classify(chrr,cutoff=0.4)
+
+oldpar &lt;- par(mfrow=c(1,3))
+#
+plot(chrr,tol.args=list(levels=0.4))
+tol.classplot(chclass$pcpolys)
+plot(Window(chorley))
+axis(1)
+axis(2)
+box(bty="l")
+tol.classplot(chclass$pcpolys,add=TRUE,col=2,font=2,cex=1.5)
+#
+par(oldpar)
+
+
+## End(Not run)
+
+
+
+
+
+</code></pre>
 
 <hr>
 <h2 id='tol.contour'>Plot tolerance contours</h2><span id='topic+tol.contour'></span>
@@ -4610,21 +4954,23 @@ fixtol1 &lt;- tolerance(riskfix,ref.density=density(pbc,OS(pbc)))
 riskada &lt;- risk(pbc,h0=h0,adapt=TRUE,hp=NS(pbc),pilot.symmetry="pooled",davies.baddeley=0.025)
 adatol1 &lt;- tolerance(riskada)
 
-par(mfrow=c(1,2))
+oldpar &lt;- par(mfrow=c(1,2))
 plot(riskfix)
 tol.contour(fixtol1,levels=c(0.1,0.05,0.01),lty=3:1,add=TRUE)
 plot(riskada)
 tol.contour(adatol1,levels=c(0.1,0.05,0.01),lty=3:1,add=TRUE)
-
+par(oldpar)
 
 # MC
 fixtol2 &lt;- tolerance(riskfix,method="MC",ITER=200) 
 adatol2 &lt;- tolerance(riskada,method="MC",ITER=200,parallelise=2) # ~90secs with parallelisation
-par(mfrow=c(1,2))
+
+oldpar &lt;- par(mfrow=c(1,2))
 plot(riskfix)
 tol.contour(fixtol2,levels=c(0.1,0.05,0.01),lty=3:1,add=TRUE)
 plot(riskada)
 tol.contour(adatol2,levels=c(0.1,0.05,0.01),lty=3:1,add=TRUE)
+par(oldpar)
 
 
 

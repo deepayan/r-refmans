@@ -19,8 +19,8 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#vcfppR-package'><p>vcfppR: Rapid Manipulation of the Variant Call Format (VCF)</p></a></li>
-<li><a href='#heterozygosity'><p>calculate the number of heterozygous SNPs for each sample</p></a></li>
 <li><a href='#vcfcomp'><p>Compare two VCF/BCF files reporting various statistics</p></a></li>
+<li><a href='#vcfplot'><p>Make sensible and beautiful plots based on various objects in vcfppR</p></a></li>
 <li><a href='#vcfpopgen'><p>count the heterozygous sites per sample in the VCF/BCF</p></a></li>
 <li><a href='#vcfreader'><p>API for manipulating the VCF/BCF.</p></a></li>
 <li><a href='#vcfsummary'><p>summarize the various variant types at both variant level and sample level.</p></a></li>
@@ -38,7 +38,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.4.5</td>
+<td>0.4.6</td>
 </tr>
 <tr>
 <td>Copyright:</td>
@@ -62,7 +62,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>testthat (&ge; 3.0.0)</td>
+<td>knitr, rmarkdown, testthat (&ge; 3.0.0)</td>
 </tr>
 <tr>
 <td>Config/testthat/edition:</td>
@@ -94,12 +94,16 @@ libcurl4-openssl-dev (deb), GNU make.</td>
 <td><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file LICENSE</td>
 </tr>
 <tr>
+<td>VignetteBuilder:</td>
+<td>knitr</td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>yes</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-04-08 05:32:15 UTC; rlk420</td>
+<td>2024-05-24 08:44:58 UTC; zilong</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -119,7 +123,7 @@ libcurl4-openssl-dev (deb), GNU make.</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-04-08 07:30:03 UTC</td>
+<td>2024-05-24 09:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -160,52 +164,6 @@ libcurl4-openssl-dev (deb), GNU make.</td>
 
 
 <hr>
-<h2 id='heterozygosity'>calculate the number of heterozygous SNPs for each sample</h2><span id='topic+heterozygosity'></span>
-
-<h3>Description</h3>
-
-<p>calculate the number of heterozygous SNPs for each sample
-</p>
-
-
-<h3>Usage</h3>
-
-<pre><code class='language-R'>heterozygosity(vcffile, region = "", samples = "-", pass = FALSE, qual = 0)
-</code></pre>
-
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="heterozygosity_+3A_vcffile">vcffile</code></td>
-<td>
-<p>path to the VCF file with index</p>
-</td></tr>
-<tr><td><code id="heterozygosity_+3A_region">region</code></td>
-<td>
-<p>region to extract, default &quot;&quot; for all</p>
-</td></tr>
-<tr><td><code id="heterozygosity_+3A_samples">samples</code></td>
-<td>
-<p>samples to extract, default &quot;-&quot; for all</p>
-</td></tr>
-<tr><td><code id="heterozygosity_+3A_pass">pass</code></td>
-<td>
-<p>restrict to variants with FILTER==PASS</p>
-</td></tr>
-<tr><td><code id="heterozygosity_+3A_qual">qual</code></td>
-<td>
-<p>restrict to variants with QUAL &gt; qual.</p>
-</td></tr>
-</table>
-
-
-<h3>Value</h3>
-
-<p>A list of heterozygosity couts for each sample along with its id in the vcf header
-</p>
-
-<hr>
 <h2 id='vcfcomp'>Compare two VCF/BCF files reporting various statistics</h2><span id='topic+vcfcomp'></span>
 
 <h3>Description</h3>
@@ -219,8 +177,8 @@ libcurl4-openssl-dev (deb), GNU make.</td>
 <pre><code class='language-R'>vcfcomp(
   test,
   truth,
-  stats = "all",
   formats = c("DS", "GT"),
+  stats = "r2",
   by.sample = FALSE,
   by.variant = FALSE,
   flip = FALSE,
@@ -228,6 +186,8 @@ libcurl4-openssl-dev (deb), GNU make.</td>
   bins = NULL,
   af = NULL,
   out = NULL,
+  choose_random_start = FALSE,
+  return_pse_sites = FALSE,
   ...
 )
 </code></pre>
@@ -238,23 +198,24 @@ libcurl4-openssl-dev (deb), GNU make.</td>
 <table>
 <tr><td><code id="vcfcomp_+3A_test">test</code></td>
 <td>
-<p>path to the first VCF/BCF file referred as test.</p>
+<p>path to the first VCF/BCF file referred as test, or saved RDS file.</p>
 </td></tr>
 <tr><td><code id="vcfcomp_+3A_truth">truth</code></td>
 <td>
 <p>path to the second VCF/BCF file referred as truth, or saved RDS file.</p>
+</td></tr>
+<tr><td><code id="vcfcomp_+3A_formats">formats</code></td>
+<td>
+<p>character vector. the FORMAT tags to extract for the test and truth respectively.
+default c(&quot;DS&quot;, &quot;GT&quot;) extracts 'DS' of the target and 'GT' of the truth.</p>
 </td></tr>
 <tr><td><code id="vcfcomp_+3A_stats">stats</code></td>
 <td>
 <p>the statistics to be calculated. supports the following.
 &quot;r2&quot;: pearson correlation coefficient ** 2.
 &quot;f1&quot;: F1-score, good balance between sensitivity and precision.
-&quot;nrc&quot;: Non-Reference Concordance rate</p>
-</td></tr>
-<tr><td><code id="vcfcomp_+3A_formats">formats</code></td>
-<td>
-<p>character vector. the FORMAT tags to extract for the test and truth respectively.
-default c(&quot;DS&quot;, &quot;GT&quot;) extracts 'DS' of the target and 'GT' of the truth.</p>
+&quot;nrc&quot;: Non-Reference Concordance rate
+&quot;pse&quot;: Phasing Switch Error rate</p>
 </td></tr>
 <tr><td><code id="vcfcomp_+3A_by.sample">by.sample</code></td>
 <td>
@@ -285,6 +246,14 @@ if both bysample and by variant are FALSE, then do average on all samples and va
 <tr><td><code id="vcfcomp_+3A_out">out</code></td>
 <td>
 <p>output prefix for saving objects into RDS file</p>
+</td></tr>
+<tr><td><code id="vcfcomp_+3A_choose_random_start">choose_random_start</code></td>
+<td>
+<p>choose random start for stats=&quot;pse&quot;</p>
+</td></tr>
+<tr><td><code id="vcfcomp_+3A_return_pse_sites">return_pse_sites</code></td>
+<td>
+<p>boolean. return phasing switch error sites</p>
 </td></tr>
 <tr><td><code id="vcfcomp_+3A_...">...</code></td>
 <td>
@@ -321,6 +290,46 @@ samples &lt;- "HG00133,HG00143,HG00262"
 res &lt;- vcfcomp(test, truth, stats="f1", format=c('GT','GT'), samples=samples)
 str(res)
 </code></pre>
+
+<hr>
+<h2 id='vcfplot'>Make sensible and beautiful plots based on various objects in vcfppR</h2><span id='topic+vcfplot'></span>
+
+<h3>Description</h3>
+
+<p>Make sensible and beautiful plots based on various objects in vcfppR
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>vcfplot(obj, which.sample = NULL, variant = c("SNP", "INDEL"), pop = NULL, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="vcfplot_+3A_obj">obj</code></td>
+<td>
+<p>object returned by vcftable, vcfcomp, vcfsummary</p>
+</td></tr>
+<tr><td><code id="vcfplot_+3A_which.sample">which.sample</code></td>
+<td>
+<p>which sample to be plotted. NULL will aggregate all samples.</p>
+</td></tr>
+<tr><td><code id="vcfplot_+3A_variant">variant</code></td>
+<td>
+<p>which types of variant are desired</p>
+</td></tr>
+<tr><td><code id="vcfplot_+3A_pop">pop</code></td>
+<td>
+<p>file contains population information</p>
+</td></tr>
+<tr><td><code id="vcfplot_+3A_...">...</code></td>
+<td>
+<p>parameters passed to graphics</p>
+</td></tr>
+</table>
 
 <hr>
 <h2 id='vcfpopgen'>count the heterozygous sites per sample in the VCF/BCF</h2><span id='topic+vcfpopgen'></span>
@@ -836,7 +845,8 @@ str(res)
   pass = FALSE,
   info = TRUE,
   collapse = TRUE,
-  setid = FALSE
+  setid = FALSE,
+  mac = 0
 )
 </code></pre>
 
@@ -893,6 +903,10 @@ However, this raises issues when one variant is mutliallelic resulting in more v
 <tr><td><code id="vcftable_+3A_setid">setid</code></td>
 <td>
 <p>logical. reset ID column as CHR_POS_REF_ALT.</p>
+</td></tr>
+<tr><td><code id="vcftable_+3A_mac">mac</code></td>
+<td>
+<p>integer. restrict to variants with minor allele count higher than the value.</p>
 </td></tr>
 </table>
 

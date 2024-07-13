@@ -22,6 +22,10 @@ function processMathHTML() {
 <li><a href='#atime_grid'>
 <p>Asymptotic timing grid</p></a></li>
 <li><a href='#atime_pkg'><p>Asymptotic timing package tests</p></a></li>
+<li><a href='#atime_test'>
+<p>Define an atime performance test.</p></a></li>
+<li><a href='#atime_test_list'>
+<p>Define an atime performance test list.</p></a></li>
 <li><a href='#atime_versions'><p>Asymptotic timing of git versions</p></a></li>
 <li><a href='#atime_versions_exprs'><p>Create expressions for different git versions</p></a></li>
 <li><a href='#atime_versions_remove'><p>Remove packages installed by atime</p></a></li>
@@ -43,7 +47,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2024.3.5</td>
+<td>2024.4.23</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -87,7 +91,7 @@ PeakSegDisk, callr, readr, dplyr, tidyr, nc, RColorBrewer</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-03-05 21:24:06 UTC; th798</td>
+<td>2024-04-29 18:02:53 UTC; th798</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -103,7 +107,7 @@ PeakSegDisk, callr, readr, dplyr, tidyr, nc, RColorBrewer</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-03-08 09:10:11 UTC</td>
+<td>2024-04-29 18:40:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -152,7 +156,9 @@ this many seconds, then no timings for larger N are computed.</p>
 </td></tr>
 <tr><td><code id="atime_+3A_result">result</code></td>
 <td>
-<p>logical, save each result?</p>
+<p>logical, save each result? If <code>TRUE</code>, and result is
+a data frame with one row, then the numeric column names will be
+saved as more units to analyze (in addition to kilobytes and seconds).</p>
 </td></tr>
 <tr><td><code id="atime_+3A_...">...</code></td>
 <td>
@@ -171,7 +177,8 @@ data (<code>expr.list</code> arg).</p>
 
 <h3>Value</h3>
 
-<p>list of class atime with elements <code>seconds.limit</code> (numeric
+<p>list of class atime with elements <code>unit.col.vec</code> (character
+vector of column names to analyze), <code>seconds.limit</code> (numeric
 input param), <code>measurements</code> (data table of results).</p>
 
 
@@ -352,7 +359,7 @@ versions (base, HEAD, CRAN, merge-base, others specified by user).</p>
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>atime_pkg(pkg.path)</code></pre>
+<pre><code class='language-R'>atime_pkg(pkg.path=".", tests.dir="inst")</code></pre>
 
 
 <h3>Arguments</h3>
@@ -362,12 +369,17 @@ versions (base, HEAD, CRAN, merge-base, others specified by user).</p>
 <td>
 <p>path to git repository containing R package.</p>
 </td></tr>
+<tr><td><code id="atime_pkg_+3A_tests.dir">tests.dir</code></td>
+<td>
+<p>path to directory which contains atime/tests.R,
+relative to <code>pkg.path</code> (default <code>"inst"</code>).</p>
+</td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>There should be a file named pkg.path/inst/atime/tests.R which
+<p>There should be a <code>tests.R</code> code file which
 defines <code>test.list</code>, a list with names corresponding to different
 tests.
 Each element should be a list with at least three named elements: <code>N</code>,
@@ -380,8 +392,10 @@ HEAD ref is the branch that you want to merge into base,
 CRAN is current published version (sha value <code>""</code>),
 merge-base is most recent common ancestor commit between base and
 HEAD.
-The tests.R file can define <code>version.colors</code> which should be
-a character vector (names for versions, values for colors).
+The <code>tests.R</code> code file can define <code>version.colors</code> which should be
+a character vector (names for versions, values for colors; names/versions are
+HEAD, base, CRAN, merge-base, and any others you may define such as
+Before, Regression, Slow, Fixed, Fast).
 </p>
 
 
@@ -389,12 +403,24 @@ a character vector (names for versions, values for colors).
 
 <p>Named list, names come from names of <code>test.list</code>, and values
 come from results of <code>atime_versions</code>. Side effect is that
-data/plot files are saved to the inst/atime directory.</p>
+data/plot files are saved in <code>atime</code> directory, including
+tests.RData (test results which can be read into R if you want to make
+your own alternative plots/analyses), and tests_all_facet.png (plot
+summarizing all test results).
+</p>
 
 
 <h3>Author(s)</h3>
 
 <p>Toby Dylan Hocking</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+atime_test">atime_test</a></code> for defining each test,
+<code><a href="#topic+atime_test_list">atime_test_list</a></code> for defining common arguments in each
+element of the test list.
+</p>
 
 
 <h3>Examples</h3>
@@ -416,6 +442,201 @@ if(FALSE){
   atime::atime_versions_remove("binsegRcpp")
 
 }
+
+## https://github.com/tdhock/binsegRcpp/blob/atime-test-funs/.ci/atime/tests.R
+## has another real example, see how to run it in tests/testthat/test-versions.R
+
+</code></pre>
+
+<hr>
+<h2 id='atime_test'>
+Define an atime performance test.
+</h2><span id='topic+atime_test'></span>
+
+<h3>Description</h3>
+
+<p>Use this to define an element of your <code>test.list</code> in
+atime/tests.R, prior to running <code><a href="#topic+atime_pkg">atime_pkg</a></code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>atime_test(...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="atime_test_+3A_...">...</code></td>
+<td>
+
+<p>Any arguments for <code><a href="#topic+atime_versions">atime_versions</a></code>, will be quoted (not evaluated).
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>List of expressions.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Toby Dylan Hocking
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+atime_test_list">atime_test_list</a></code> for defining common arguments in each
+element of the test list,
+<code><a href="#topic+atime_pkg">atime_pkg</a></code> for running tests.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+atime::atime_test(
+  setup=data.vec &lt;- rnorm(N),
+  expr=binsegRcpp::binseg("mean_norm",data.vec))
+
+## https://github.com/tdhock/binsegRcpp/blob/atime-test-funs/.ci/atime/tests.R
+## has a real example, see how to run it in tests/testthat/test-versions.R
+
+</code></pre>
+
+<hr>
+<h2 id='atime_test_list'>
+Define an atime performance test list.
+</h2><span id='topic+atime_test_list'></span>
+
+<h3>Description</h3>
+
+<p>Use this to define <code>test.list</code> in your atime/tests.R
+file, prior to running <code><a href="#topic+atime_pkg">atime_pkg</a></code>.
+Arguments in ... and <code>tests</code> are combined to form the test
+list, and other arguments are copied to each element of the test list.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>atime_test_list(
+  ...,
+  N, setup, expr, times, seconds.limit,
+  verbose, pkg.edit.fun, result,
+  tests = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table>
+<tr><td><code id="atime_test_list_+3A_...">...</code></td>
+<td>
+
+<p>names for tests, values are lists of arguments to pass to
+<code><a href="#topic+atime_versions">atime_versions</a></code> (combined with <code>tests</code>).
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_tests">tests</code></td>
+<td>
+
+<p>list of tests, with names for tests, values are lists of arguments to pass to
+<code><a href="#topic+atime_versions">atime_versions</a></code> (combined with ...).
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_n">N</code></td>
+<td>
+
+<p>integer vector of data sizes.
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_setup">setup</code></td>
+<td>
+
+<p>expression that depends on <code>N</code>, to run before timings.
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_expr">expr</code></td>
+<td>
+
+<p>expression to time.
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_times">times</code></td>
+<td>
+
+<p>number of times to run <code>expr</code>.
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_seconds.limit">seconds.limit</code></td>
+<td>
+
+<p>number of seconds after which we stop trying larger <code>N</code>.
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_verbose">verbose</code></td>
+<td>
+
+<p>logical: print output?
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_pkg.edit.fun">pkg.edit.fun</code></td>
+<td>
+
+<p>function for editing package prior to testing.
+</p>
+</td></tr>
+<tr><td><code id="atime_test_list_+3A_result">result</code></td>
+<td>
+
+<p>logical: save results?
+</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>List representing performance tests, each element is a list of
+arguments to pass to <code><a href="#topic+atime_versions">atime_versions</a></code>.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Toby Dylan Hocking
+</p>
+
+
+<h3>See Also</h3>
+
+<p><code><a href="#topic+atime_test">atime_test</a></code> for defining each test,
+<code><a href="#topic+atime_pkg">atime_pkg</a></code> for running tests.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+(test.list &lt;- atime::atime_test_list(
+  N=as.integer(10^seq(1,3,by=0.5)),
+  setup={
+    set.seed(1)
+    data.vec &lt;- rnorm(N)
+  },
+  mean_norm=atime::atime_test(expr=binsegRcpp::binseg("mean_norm",data.vec)),
+  poisson=atime::atime_test(expr=binsegRcpp::binseg("poisson",data.vec)),
+  NULL))
+
+## https://github.com/tdhock/binsegRcpp/blob/atime-test-funs/.ci/atime/tests.R
+## has a real example, see how to run it in tests/testthat/test-versions.R
 
 </code></pre>
 
@@ -781,12 +1002,16 @@ of a package, and this function removes them.</p>
 
 <h3>Description</h3>
 
-<p>Compute best asymptotic references.</p>
+<p>Compute best asymptotic references,
+for all empirical measurements which are
+present (not missing) and increasing with data size.
+</p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>references_best(L, unit.col.vec=NULL, more.units=NULL, fun.list=NULL)</code></pre>
+<pre><code class='language-R'>references_best(L, fun.list=NULL)
+</code></pre>
 
 
 <h3>Arguments</h3>
@@ -795,16 +1020,6 @@ of a package, and this function removes them.</p>
 <tr><td><code id="references_best_+3A_l">L</code></td>
 <td>
 <p>List output from atime.</p>
-</td></tr>
-<tr><td><code id="references_best_+3A_unit.col.vec">unit.col.vec</code></td>
-<td>
-<p>Named character vector of units, default NULL
-means standard units (kilobytes and seconds).</p>
-</td></tr>
-<tr><td><code id="references_best_+3A_more.units">more.units</code></td>
-<td>
-<p>Named character vector of units to add to
-<code>unit.col.vec</code>, default NULL means nothing.</p>
 </td></tr>
 <tr><td><code id="references_best_+3A_fun.list">fun.list</code></td>
 <td>
