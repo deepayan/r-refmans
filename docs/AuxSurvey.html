@@ -1,0 +1,880 @@
+<!DOCTYPE html><html lang="en"><head><title>Help for package AuxSurvey</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.css">
+<script type="text/javascript">
+const macros = { "\\R": "\\textsf{R}", "\\code": "\\texttt"};
+function processMathHTML() {
+    var l = document.getElementsByClassName('reqn');
+    for (let e of l) { katex.render(e.textContent, e, { throwOnError: false, macros }); }
+    return;
+}</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.3/dist/katex.min.js"
+    onload="processMathHTML();"></script>
+<link rel="stylesheet" type="text/css" href="R-nav.css" />
+</head><body><div class="container"><nav class="package" aria-label="Topic Navigation">
+<div class="dropdown-menu">
+<h1>Package {AuxSurvey}</h1>
+<h2>Contents</h2>
+<ul class="menu">
+<li><a href='#auxsurvey'><p>Auxiliary Variables in Survey Analysis</p></a></li>
+<li><a href='#postStr_wt'><p>Weighted or Unweighted Post-Stratification Estimator</p></a></li>
+<li><a href='#rake_wt'><p>Weighted or Unweighted Raking Estimator</p></a></li>
+<li><a href='#simulate'><p>Simulate Survey Data with Discretized Auxiliary Variables</p></a></li>
+<li><a href='#svyBayesmod'><p>Bayesian Survey Model Estimation</p></a></li>
+<li><a href='#uwt'><p>Weighted or Unweighted Sample Mean</p></a></li>
+</ul>
+</div>
+<hr>
+</nav>
+<main>
+<table role='presentation'>
+<tr>
+<td>Title:</td>
+<td>Survey Analysis with Auxiliary Discretized Variables</td>
+</tr>
+<tr>
+<td>Version:</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Author:</td>
+<td>Jungang Zou [aut, cre],
+  Yutao Liu [aut],
+  Sharifa Williams [aut],
+  Qixuan Chen [aut]</td>
+</tr>
+<tr>
+<td>Maintainer:</td>
+<td>Jungang Zou &lt;jungang.zou@gmail.com&gt;</td>
+</tr>
+<tr>
+<td>Description:</td>
+<td>Probability surveys often use auxiliary continuous data from administrative records, but the utility of this data is diminished when it is discretized for confidentiality. We provide a set of survey estimators to make full use of information from the discretized variables. See Williams, S.Z., Zou, J., Liu, Y., Si, Y., Galea, S. and Chen, Q. (2024), Improving Survey Inference Using Administrative Records Without Releasing Individual-Level Continuous Data. Statistics in Medicine, 43: 5803-5813. &lt;<a href="https://doi.org/10.1002%2Fsim.10270">doi:10.1002/sim.10270</a>&gt; for details.</td>
+</tr>
+<tr>
+<td>Encoding:</td>
+<td>UTF-8</td>
+</tr>
+<tr>
+<td>RoxygenNote:</td>
+<td>7.3.2</td>
+</tr>
+<tr>
+<td>Depends:</td>
+<td>mgcv, rstanarm, stats</td>
+</tr>
+<tr>
+<td>Imports:</td>
+<td>survey, gtools, coda, BART, dplyr, stringr, gridExtra, rlang</td>
+</tr>
+<tr>
+<td>License:</td>
+<td><a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License (&ge; 2)</a></td>
+</tr>
+<tr>
+<td>Suggests:</td>
+<td>knitr, rmarkdown</td>
+</tr>
+<tr>
+<td>VignetteBuilder:</td>
+<td>knitr</td>
+</tr>
+<tr>
+<td>NeedsCompilation:</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Packaged:</td>
+<td>2024-12-20 20:26:59 UTC; zoujungang</td>
+</tr>
+<tr>
+<td>Repository:</td>
+<td>CRAN</td>
+</tr>
+<tr>
+<td>Date/Publication:</td>
+<td>2024-12-20 20:50:07 UTC</td>
+</tr>
+</table>
+<hr>
+<h2 id='auxsurvey'>Auxiliary Variables in Survey Analysis</h2><span id='topic+auxsurvey'></span>
+
+<h3>Description</h3>
+
+<p>This function provides a user-friendly interface for various estimators in survey analysis
+when working with discretized auxiliary variables. Probability surveys often use continuous
+data from administrative records as auxiliary variables, but the utility of this data is
+diminished when discretized for confidentiality purposes. This package offers different estimators
+that handle discretized auxiliary variables effectively.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>auxsurvey(
+  formula,
+  auxiliary = NULL,
+  samples,
+  population = NULL,
+  subset = NULL,
+  family = gaussian(),
+  method = c("sample_mean", "rake", "postStratify", "MRP", "GAMP", "linear", "BART"),
+  weights = NULL,
+  levels = c(0.95, 0.8, 0.5),
+  stan_verbose = TRUE,
+  show_plot = TRUE,
+  nskip = 1000,
+  npost = 1000,
+  nchain = 4,
+  HPD_interval = FALSE,
+  seed = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="auxsurvey_+3A_formula">formula</code></td>
+<td>
+<p>A string or formula specifying the outcome model. For non-model-based methods
+(e.g., sample mean, raking, post-stratification), only include the outcome variable (e.g., &quot;~Y&quot;).
+For model-based methods (e.g., MRP, GAMP, linear regression), additional fixed effect predictors can
+be specified, such as &quot;Y ~ X1 + X2 + I(X^2)&quot;. For GAMP, smooth functions can be specified as
+&quot;Y ~ X1 + s(X2, 10) + s(X3, by = X1)&quot;. Categorical variables are automatically treated as dummy variables
+in model-based methods.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_auxiliary">auxiliary</code></td>
+<td>
+<p>A string specifying the formula for the auxiliary variables. For sample mean and
+BART, this should be <code>NULL</code>. For raking, post-stratification, and GAMP, this should be an additive model
+(e.g., &quot;Z1 + Z2 + Z3&quot;). For MRP, specify random effects for terms in this parameter, such as &quot;Z1 + Z2 + Z3&quot;
+or &quot;Z1 + Z2:Z3&quot;.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_samples">samples</code></td>
+<td>
+<p>A dataframe or tibble containing all variables specified in <code>formula</code> and <code>auxiliary</code>.
+This is typically a subset of the population.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_population">population</code></td>
+<td>
+<p>A dataframe or tibble containing all variables specified in <code>formula</code> and <code>auxiliary</code>.
+This is the entire population used for estimation.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_subset">subset</code></td>
+<td>
+<p>A character vector representing filtering conditions to select subsets of <code>samples</code> and <code>population</code>.
+Default is <code>NULL</code>, in which case the analysis is performed on the entire dataset. If subsets are specified,
+estimates for both the whole data and the subsets will be calculated.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_family">family</code></td>
+<td>
+<p>The distribution family of the outcome variable. Supported options are:
+<code><a href="stats.html#topic+gaussian">gaussian</a></code> for continuous outcomes and <code><a href="stats.html#topic+binomial">binomial</a></code> for binary outcomes.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_method">method</code></td>
+<td>
+<p>A string specifying the model to use. Options include &quot;sample_mean&quot;, &quot;rake&quot;, &quot;postStratify&quot;,
+&quot;MRP&quot;, &quot;GAMP&quot;, &quot;linear&quot;, and &quot;BART&quot;.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_weights">weights</code></td>
+<td>
+<p>A numeric vector of case weights. The length should match the number of cases in <code>samples</code>.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_levels">levels</code></td>
+<td>
+<p>A numeric vector specifying the confidence levels for the confidence intervals (CIs).
+Multiple values can be specified to calculate multiple CIs.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_stan_verbose">stan_verbose</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, prints all messages when running Stan models. Default is <code>FALSE</code>.
+This parameter only applies to Bayesian models.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_show_plot">show_plot</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, shows diagnostic plots for Stan models. Default is <code>FALSE</code>.
+This parameter only applies to Bayesian models.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_nskip">nskip</code></td>
+<td>
+<p>An integer specifying the number of burn-in iterations for each chain in MCMC for Stan models.
+Default is <code>1000</code>. This parameter only applies to Bayesian models.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_npost">npost</code></td>
+<td>
+<p>An integer specifying the number of posterior sampling iterations for each chain in MCMC for Stan models.
+Default is <code>1000</code>. This parameter only applies to Bayesian models.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_nchain">nchain</code></td>
+<td>
+<p>An integer specifying the number of MCMC chains for Stan models. Default is <code>4</code>. This parameter
+only applies to Bayesian models.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_hpd_interval">HPD_interval</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, calculates the highest posterior density (HPD) intervals for the
+CIs of Stan models. Default is <code>FALSE</code>, in which case symmetric intervals are calculated. This parameter only applies
+to Bayesian models.</p>
+</td></tr>
+<tr><td><code id="auxsurvey_+3A_seed">seed</code></td>
+<td>
+<p>An integer specifying the random seed for reproducibility. Default is <code>NULL</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The available estimators include:
+</p>
+
+<ul>
+<li><p> Weighted or unweighted sample mean
+</p>
+</li>
+<li><p> Weighted or unweighted raking
+</p>
+</li>
+<li><p> Weighted or unweighted post-stratification
+</p>
+</li>
+<li><p> Bayesian methods:
+</p>
+
+<ul>
+<li><p> BART (Bayesian Additive Regression Trees)
+</p>
+</li>
+<li><p> MRP (Multilevel Regression with Poststratification)
+</p>
+</li>
+<li><p> GAMP (Generalized Additive Model of Response Propensity)
+</p>
+</li>
+<li><p> Weighted linear regression
+</p>
+</li></ul>
+
+</li></ul>
+
+<p>These Bayesian models are implemented using the <strong>rstan</strong> and <strong>rstanarm</strong> packages.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing the sample mean estimates and CIs for the subset and/or the whole dataset.
+Each element in the list includes:
+- <code>estimate</code>: The point estimate of the sample mean.
+- <code>CI</code>: Confidence intervals for the sample mean.
+- Other elements for each confidence level specified in <code>levels</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## Simulate data with nonlinear association (setting 3).
+data = simulate(N = 3000, discretize = 10, setting = 3, seed = 123)
+population = data$population
+samples = data$samples
+ipw = 1 / samples$true_pi
+true_mean = mean(population$Y1)
+
+## IPW Sample Mean
+IPW_sample_mean = auxsurvey("~Y1", auxiliary = NULL, weights = ipw,
+                            samples = samples, population = population,
+                            subset = c("Z1 == 1 &amp; Z2 == 1"), method = "sample_mean",
+                            levels = 0.95)
+
+## Raking
+rake = auxsurvey("~Y1", auxiliary = "Z1 + Z2 + Z3 + auX_10", samples = samples,
+                 population = population, subset = c("Z1 == 1", "Z1 == 1 &amp; Z2 == 1"),
+                 method = "rake", levels = 0.95)
+
+## MRP
+MRP = auxsurvey("Y1 ~ 1 + Z1", auxiliary = "Z2 + Z3:auX_10", samples = samples,
+                population = population, subset = c("Z1 == 1", "Z1 == 1 &amp; Z2 == 1"),
+                method = "MRP", levels = 0.95, nskip = 4000, npost = 4000,
+                nchain = 1, stan_verbose = FALSE, HPD_interval = TRUE)
+
+## GAMP
+GAMP = auxsurvey("Y1 ~ 1 + Z1 + Z2 + Z3", auxiliary = "s(auX_10) + s(logit_true_pi, by = Z1)",
+                 samples = samples, population = population, method = "GAMP",
+                 levels = 0.95, nskip = 4000, npost = 4000, nchain = 1,
+                 stan_verbose = FALSE, HPD_interval = TRUE)
+
+## BART
+BART = auxsurvey("Y1 ~ Z1 + Z2 + Z3 + auX_10", auxiliary = NULL, samples = samples,
+                 population = population, method = "BART", levels = 0.95,
+                 nskip = 4000, npost = 4000, nchain = 1, HPD_interval = TRUE)
+
+
+
+</code></pre>
+
+<hr>
+<h2 id='postStr_wt'>Weighted or Unweighted Post-Stratification Estimator</h2><span id='topic+postStr_wt'></span>
+
+<h3>Description</h3>
+
+<p>This function performs post-stratification adjustment for survey data, which adjusts the sample
+weights to match the marginal distributions of auxiliary variables in the population. It supports
+both weighted and unweighted estimations for various outcome variables, including Gaussian (continuous)
+and Binomial (binary) outcomes. The function computes estimates and confidence intervals (CIs) for
+the outcome variable using post-stratification based on the specified auxiliary variables.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>postStr_wt(
+  svysmpl,
+  svypopu,
+  auxVars,
+  svyVar,
+  subset = NULL,
+  family = gaussian(),
+  invlvls,
+  weights = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="postStr_wt_+3A_svysmpl">svysmpl</code></td>
+<td>
+<p>A dataframe or tibble representing the sample data (<code>samples</code>). This should contain
+the outcome variable and any auxiliary variables.</p>
+</td></tr>
+<tr><td><code id="postStr_wt_+3A_svypopu">svypopu</code></td>
+<td>
+<p>A dataframe or tibble representing the population data (<code>population</code>). This is used to compute the
+finite population correction (FPC) for post-stratification.</p>
+</td></tr>
+<tr><td><code id="postStr_wt_+3A_auxvars">auxVars</code></td>
+<td>
+<p>A character vector containing the names of auxiliary variables to be used for post-stratification.
+These variables will be used to adjust the weights.</p>
+</td></tr>
+<tr><td><code id="postStr_wt_+3A_svyvar">svyVar</code></td>
+<td>
+<p>The outcome variable for which the post-stratification estimate is calculated.</p>
+</td></tr>
+<tr><td><code id="postStr_wt_+3A_subset">subset</code></td>
+<td>
+<p>A character vector representing filtering conditions to select subsets of the sample and population.
+Default is <code>NULL</code>, in which case the analysis is performed on the entire dataset. If subsets are specified,
+estimates for both the whole data and the subsets will also be calculated.</p>
+</td></tr>
+<tr><td><code id="postStr_wt_+3A_family">family</code></td>
+<td>
+<p>The distribution family of the outcome variable. Supported options are:
+<code><a href="stats.html#topic+gaussian">gaussian</a></code> for continuous outcomes and <code><a href="stats.html#topic+binomial">binomial</a></code> for binary outcomes.</p>
+</td></tr>
+<tr><td><code id="postStr_wt_+3A_invlvls">invlvls</code></td>
+<td>
+<p>A numeric vector specifying the confidence levels for the post-stratification estimators.
+If more than one value is provided, multiple CIs will be calculated.</p>
+</td></tr>
+<tr><td><code id="postStr_wt_+3A_weights">weights</code></td>
+<td>
+<p>A numeric vector of case weights. The length should match the number of cases in <code>svysmpl</code>.
+These weights are used in the weighted post-stratification adjustment.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list where each element contains the post-stratification estimate and confidence intervals (CIs) for a subset or the entire
+dataset. The list includes:
+- <code>est</code>: The post-stratification estimate for the outcome variable.
+- <code>se</code>: The standard error of the estimate.
+- <code>tCI</code>: The confidence intervals for the estimate.
+- <code>sample_size</code>: The sample size for the subset or entire dataset.
+- <code>population_size</code>: The population size, if provided, including the finite population correction (FPC).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Simulate data with nonlinear association (setting 3).
+data = simulate(N = 3000, discretize = 3, setting = 3, seed = 123)
+population = data$population  # Population data (3000 cases)
+samples = data$samples        # Sample data (600 cases)
+ipw = 1 / samples$true_pi    # Compute inverse probability weights
+
+## Perform weighted post-stratification with auxiliary variables
+auxVars = c("Z1", "Z2", "Z3")
+Weighted_postStratify = postStr_wt(svysmpl = samples, svypopu = population, auxVars = auxVars,
+                                   svyVar = "Y1", subset = NULL, family = gaussian(),
+                                   invlvls = c(0.95), weights = ipw)
+Weighted_postStratify
+
+## Perform unweighted post-stratification
+Unweighted_postStratify = postStr_wt(svysmpl = samples, svypopu = population, auxVars = auxVars,
+                                     svyVar = "Y1", subset = NULL, family = gaussian(),
+                                     invlvls = c(0.95), weights = NULL)
+Unweighted_postStratify
+
+</code></pre>
+
+<hr>
+<h2 id='rake_wt'>Weighted or Unweighted Raking Estimator</h2><span id='topic+rake_wt'></span>
+
+<h3>Description</h3>
+
+<p>This function estimates the weighted or unweighted raking adjustment for survey data. Raking adjusts the sample
+weights to match the marginal distributions of auxiliary variables in the population. It supports both weighted
+and unweighted estimations for a variety of outcome variables, including Gaussian (continuous) and Binomial (binary) outcomes.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>rake_wt(
+  svysmpl,
+  svypopu,
+  auxVars,
+  svyVar,
+  subset = NULL,
+  family = gaussian(),
+  invlvls,
+  weights = NULL,
+  maxiter = 50
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="rake_wt_+3A_svysmpl">svysmpl</code></td>
+<td>
+<p>A dataframe or tibble representing the sample data (<code>samples</code>). This should contain the outcome variable
+and any auxiliary variables.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_svypopu">svypopu</code></td>
+<td>
+<p>A dataframe or tibble representing the population data (<code>population</code>). This is used to compute the
+finite population correction (FPC) for raking.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_auxvars">auxVars</code></td>
+<td>
+<p>A character vector containing the names of auxiliary variables to be used for raking. These variables will
+be used to adjust the weights.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_svyvar">svyVar</code></td>
+<td>
+<p>The outcome variable for which the raking estimate is calculated.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_subset">subset</code></td>
+<td>
+<p>A character vector representing filtering conditions to select subsets of the sample and population.
+Default is <code>NULL</code>, in which case the analysis is performed on the entire dataset. If subsets are specified,
+estimates for both the whole data and the subsets will be calculated.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_family">family</code></td>
+<td>
+<p>The distribution family of the outcome variable. Supported options are:
+<code><a href="stats.html#topic+gaussian">gaussian</a></code> for continuous outcomes and <code><a href="stats.html#topic+binomial">binomial</a></code> for binary outcomes.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_invlvls">invlvls</code></td>
+<td>
+<p>A numeric vector specifying the confidence levels for the raking estimators. If more than one value is
+provided, multiple CIs will be calculated.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_weights">weights</code></td>
+<td>
+<p>A numeric vector of case weights. The length should match the number of cases in <code>svysmpl</code>.
+These weights are used in the weighted raking adjustment.</p>
+</td></tr>
+<tr><td><code id="rake_wt_+3A_maxiter">maxiter</code></td>
+<td>
+<p>An integer specifying the maximum number of iterations for the raking algorithm. Default is 50.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list where each element contains the raking estimate and confidence intervals (CIs) for a subset or the entire
+dataset. The list includes:
+- <code>est</code>: The raking estimate for the outcome variable.
+- <code>se</code>: The standard error of the estimate.
+- <code>tCI</code>: Confidence intervals for the estimate.
+- <code>sample_size</code>: The sample size for the subset or entire dataset.
+- <code>population_size</code>: The population size, if provided, including the finite population correction (FPC).
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Simulate data with nonlinear association (setting 3).
+data = simulate(N = 3000, discretize = 3, setting = 3, seed = 123)
+population = data$population  # Population data (3000 cases)
+samples = data$samples        # Sample data (600 cases)
+ipw = 1 / samples$true_pi    # Compute inverse probability weights
+
+## Perform weighted raking with auxiliary variables
+auxVars = c("Z1", "Z2", "Z3")
+Weighted_rake = rake_wt(svysmpl = samples, svypopu = population, auxVars = auxVars,
+                        svyVar = "Y1", subset = NULL, family = gaussian(),
+                        invlvls = c(0.95), weights = ipw, maxiter = 50)
+Weighted_rake
+
+## Perform unweighted raking
+Unweighted_rake = rake_wt(svysmpl = samples, svypopu = population, auxVars = auxVars,
+                          svyVar = "Y1", subset = NULL, family = gaussian(),
+                          invlvls = c(0.95), weights = NULL, maxiter = 50)
+Unweighted_rake
+
+</code></pre>
+
+<hr>
+<h2 id='simulate'>Simulate Survey Data with Discretized Auxiliary Variables</h2><span id='topic+simulate'></span>
+
+<h3>Description</h3>
+
+<p>This function simulates survey data with discretized auxiliary variables. It generates a population
+dataset with continuous and binary outcomes, and includes auxiliary variables that are discretized
+into multiple categories. The function also generates a subset of the population as a sample, based on
+the propensity scores.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>simulate(N = 3000, discretize = c(3, 5, 10), setting = c(1, 2, 3), seed = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="simulate_+3A_n">N</code></td>
+<td>
+<p>Number of population units to simulate. Default is 3000.</p>
+</td></tr>
+<tr><td><code id="simulate_+3A_discretize">discretize</code></td>
+<td>
+<p>A scale specifying the number of categories for discretizing continuous variables.
+The function discretizes both <code>X</code> and <code>W</code> into the specified categories. Default is a number among <code style="white-space: pre;">&#8288;(3, 5, 10)&#8288;</code>.</p>
+</td></tr>
+<tr><td><code id="simulate_+3A_setting">setting</code></td>
+<td>
+<p>A numeric value to specify the simulation setting. The settings define different relationships
+between the outcome variables and the covariates. Possible values are 1, 2, 3, and 4.
+Default is a number among <code>c(1, 2, 3)</code>.</p>
+</td></tr>
+<tr><td><code id="simulate_+3A_seed">seed</code></td>
+<td>
+<p>An optional random seed for reproducibility. Default is <code>NULL</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function supports multiple simulation settings, where each setting modifies the relationships
+between the outcome variables and the covariates.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A list containing two elements:
+</p>
+
+<ul>
+<li> <p><code>population</code>: A tibble with the simulated population data, including both continuous and binary outcomes,
+as well as auxiliary variables (both raw and discretized).
+</p>
+</li>
+<li> <p><code>samples</code>: A tibble with the simulated sample data, where individuals are included based on their estimated
+propensity scores.
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># Simulate survey data with setting 1 and discretizing variables 3 categories
+data = simulate(N = 3000, discretize = 3, setting = 1, seed = 123)
+
+# Extract population and sample datasets
+population = data$population
+samples = data$samples
+
+# Examine the simulated population data
+head(population)
+
+</code></pre>
+
+<hr>
+<h2 id='svyBayesmod'>Bayesian Survey Model Estimation</h2><span id='topic+svyBayesmod'></span>
+
+<h3>Description</h3>
+
+<p>This function fits a Bayesian model using Stan for survey data. It allows you to specify
+the outcome formula, the function for Stan, and apply different types of survey analysis, including
+weighted or unweighted models, for both sample and population data. The function supports
+posterior estimation, confidence intervals (CIs), and MCMC diagnostics.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>svyBayesmod(
+  svysmpl,
+  svypopu,
+  outcome_formula,
+  BayesFun,
+  subset = NULL,
+  family = gaussian(),
+  invlvls,
+  weights = NULL,
+  nskip = 1000,
+  npost = 1000,
+  nchain = 4,
+  printmod = TRUE,
+  doFigure = FALSE,
+  useTrueSample = FALSE,
+  stan_verbose = FALSE,
+  HPD_CI = FALSE,
+  seed = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="svyBayesmod_+3A_svysmpl">svysmpl</code></td>
+<td>
+<p>A dataframe or tibble representing the sample data (<code>samples</code>). This should contain
+the outcome variable and any additional covariates.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_svypopu">svypopu</code></td>
+<td>
+<p>A dataframe or tibble representing the population data (<code>population</code>).
+This should contain all variables in the model.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_outcome_formula">outcome_formula</code></td>
+<td>
+<p>A formula for Stan, specifying the outcome and predictors in the model.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_bayesfun">BayesFun</code></td>
+<td>
+<p>The name of the Stan function to be used for fitting the Bayesian model.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_subset">subset</code></td>
+<td>
+<p>A character vector representing filtering conditions to select subsets of the sample and population.
+Default is <code>NULL</code>, in which case the analysis is performed on the entire dataset. If specified,
+estimates for both the whole data and the subsets will be calculated.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_family">family</code></td>
+<td>
+<p>The distribution family for the outcome variable. Currently, the following options are supported:
+<code><a href="stats.html#topic+gaussian">gaussian</a></code> for continuous outcomes and <code><a href="stats.html#topic+binomial">binomial</a></code> for binary outcomes.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_invlvls">invlvls</code></td>
+<td>
+<p>A numeric vector specifying the confidence levels for the credible intervals (CIs). If more than
+one value is specified, multiple CIs will be calculated.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_weights">weights</code></td>
+<td>
+<p>A numeric vector of case weights. The length of this vector should match the number of cases in <code>svysmpl</code>.
+These weights will be used in the Bayesian model for weighted estimation.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_nskip">nskip</code></td>
+<td>
+<p>An integer specifying the number of burn-in iterations for each chain in the MCMC for Stan models.
+Default is 1000.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_npost">npost</code></td>
+<td>
+<p>An integer specifying the number of posterior sampling iterations for each chain in the MCMC for Stan models.
+Default is 1000.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_nchain">nchain</code></td>
+<td>
+<p>An integer specifying the number of MCMC chains for Stan models. Default is 4.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_printmod">printmod</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, posterior estimates will be printed.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_dofigure">doFigure</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, MCMC diagnostic plots will be generated.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_usetruesample">useTrueSample</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, the estimator will use true sample information.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_stan_verbose">stan_verbose</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, MCMC information will be printed during Stan model fitting.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_hpd_ci">HPD_CI</code></td>
+<td>
+<p>A logical scalar; if <code>TRUE</code>, the calculated credible intervals will be highest posterior density intervals (HPD).
+Otherwise, symmetric intervals will be used. Default is <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="svyBayesmod_+3A_seed">seed</code></td>
+<td>
+<p>An integer specifying the random seed for reproducibility. Default is <code>NULL</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list containing the Bayesian estimates and confidence intervals (CIs) for each subset or the entire dataset.
+Each element in the list includes:
+- <code>estimate</code>: The Bayesian point estimate for the outcome.
+- <code>CI</code>: The credible intervals for the outcome estimate.
+- Other elements based on the specified confidence levels in <code>invlvls</code>.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+## Example usage with survey data:
+## Simulate sample and population data
+data = simulate(N = 3000, discretize = 3, setting = 3, seed = 123)
+population = data$population  # Get population data
+samples = data$samples        # Get sample data
+ipw = 1 / samples$true_pi    # Compute inverse probability weights
+
+## Define outcome formula and Stan function
+outcome_formula = "Y1 ~ Z1 + Z2 + Z3 + (1|auX_3)"
+BayesFun = "stan_glmer"
+
+## Fit Bayesian model using weighted survey data
+bayes_model = svyBayesmod(svysmpl = samples, svypopu = population,
+                          outcome_formula = outcome_formula,
+                          BayesFun = BayesFun, weights = ipw,
+                          family = gaussian(), nskip = 2000, npost = 2000,
+                          nchain = 2, printmod = TRUE, invlvls = 0.95, stan_verbose = TRUE)
+
+
+</code></pre>
+
+<hr>
+<h2 id='uwt'>Weighted or Unweighted Sample Mean</h2><span id='topic+uwt'></span>
+
+<h3>Description</h3>
+
+<p>This function estimates the sample mean of an outcome variable using either weighted or unweighted
+methods. It supports calculating the sample mean with finite population correction (FPC) when a
+population dataset is provided. The method can also compute confidence intervals (CIs) for the sample mean
+using the specified distribution family (Gaussian or Binomial).
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>uwt(
+  svysmpl,
+  svyVar,
+  svypopu = NULL,
+  subset = NULL,
+  family = gaussian(),
+  invlvls,
+  weights = NULL
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="uwt_+3A_svysmpl">svysmpl</code></td>
+<td>
+<p>A dataframe or tibble representing the sample data (<code>samples</code>). This should contain
+the outcome variable and any additional covariates.</p>
+</td></tr>
+<tr><td><code id="uwt_+3A_svyvar">svyVar</code></td>
+<td>
+<p>The outcome variable to estimate the sample mean for (e.g., <code>Y1</code>).</p>
+</td></tr>
+<tr><td><code id="uwt_+3A_svypopu">svypopu</code></td>
+<td>
+<p>A dataframe or tibble representing the population data (<code>population</code>). This is used to compute
+the finite population correction (FPC) when calculating the sample mean. Default is <code>NULL</code>.</p>
+</td></tr>
+<tr><td><code id="uwt_+3A_subset">subset</code></td>
+<td>
+<p>A character vector representing filtering conditions to select subsets of the sample and population.
+Default is <code>NULL</code>, in which case the analysis is performed on the entire dataset. If subsets are specified,
+estimates for both the whole data and the subsets will be calculated.</p>
+</td></tr>
+<tr><td><code id="uwt_+3A_family">family</code></td>
+<td>
+<p>The distribution family of the outcome variable. Supported options are:
+<code><a href="stats.html#topic+gaussian">gaussian</a></code> for continuous outcomes and <code><a href="stats.html#topic+binomial">binomial</a></code> for binary outcomes.</p>
+</td></tr>
+<tr><td><code id="uwt_+3A_invlvls">invlvls</code></td>
+<td>
+<p>A numeric vector specifying the confidence levels (CIs) for the estimators. If more than
+one value is provided, multiple CIs will be calculated.</p>
+</td></tr>
+<tr><td><code id="uwt_+3A_weights">weights</code></td>
+<td>
+<p>A numeric vector of case weights. The length should match the number of cases in <code>svysmpl</code>.
+These weights are used for calculating the weighted sample mean.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A list, where each element contains the sample mean estimate and CIs for a subset or the entire data. The list includes:
+- <code>est</code>: The sample mean estimate.
+- <code>se</code>: The standard error of the sample mean estimate.
+- <code>tCI</code>: The confidence intervals for the sample mean.
+- <code>sample_size</code>: The sample size for the subset or entire dataset.
+- <code>population_size</code>: The population size, if a population dataset is provided (applicable to finite population correction).
+The list is returned for each subset specified.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Simulate data with nonlinear association (setting 3).
+data = simulate(N = 3000, discretize = 3, setting = 3, seed = 123)
+population = data$population  # Population data (3000 cases)
+samples = data$samples        # Sample data (600 cases)
+ipw = 1 / samples$true_pi    # Compute inverse probability weights
+
+## Estimate the weighted sample mean with IPW
+IPW_sample_mean = uwt(svysmpl = samples, svyVar = "Y1", svypopu = population,
+                      subset = c("Z1 == 1 &amp; Z2 == 1"), family = gaussian(),
+                      invlvls = c(0.95), weights = ipw)
+IPW_sample_mean
+
+## Estimate the unweighted sample mean
+unweighted_sample_mean = uwt(svysmpl = samples, svyVar = "Y1", svypopu = population,
+                              subset = NULL, family = gaussian(), invlvls = c(0.95), weights = NULL)
+unweighted_sample_mean
+
+</code></pre>
+
+</main>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-r.min.js"></script>
+</body></html>
