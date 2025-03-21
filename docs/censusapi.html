@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package censusapi</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package censusapi</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -19,20 +19,22 @@ function processMathHTML() {
 <h2>Contents</h2>
 <ul class="menu">
 <li><a href='#fips'><p>List of state fips codes - 50 states plus DC</p></a></li>
+<li><a href='#get_api_key'><p>Retrieve a Census API key stored the .Renivron file</p></a></li>
 <li><a href='#getCensus'><p>Retrieve Census data from a given API</p></a></li>
 <li><a href='#getFunction'><p>Internal function: Get the API response, return a data frame</p></a></li>
-<li><a href='#listCensusApis'><p>Get useful dataset metadata on all available APIs as a data frame</p></a></li>
-<li><a href='#listCensusMetadata'><p>Get information about a specific API as a data frame</p></a></li>
-<li><a href='#makeVarlist'><p>Use variable metadata to find variables containing a given string.</p></a></li>
+<li><a href='#has_api_key'><p>Is there a saved Census API key in the .Renivron file?</p></a></li>
+<li><a href='#listCensusApis'><p>Get general information about available datasets</p></a></li>
+<li><a href='#listCensusMetadata'><p>Get metadata about a specified API endpoint</p></a></li>
+<li><a href='#makeVarlist'><p>Use variable metadata to find variables containing a given string</p></a></li>
 </ul>
 </div>
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Version:</td>
-<td>0.8.0</td>
+<td>0.9.0</td>
 </tr>
 <tr>
 <td>Title:</td>
@@ -56,7 +58,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Depends:</td>
-<td>R (&ge; 3.0.0)</td>
+<td>R (&ge; 3.5)</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -68,11 +70,11 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.2.1</td>
+<td>7.3.2</td>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>httr, jsonlite, utils</td>
+<td>httr, jsonlite, rlang</td>
 </tr>
 <tr>
 <td>Suggests:</td>
@@ -83,12 +85,16 @@ function processMathHTML() {
 <td>UTF-8</td>
 </tr>
 <tr>
+<td>VignetteBuilder:</td>
+<td>knitr</td>
+</tr>
+<tr>
 <td>NeedsCompilation:</td>
 <td>no</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2022-08-08 17:13:24 UTC; hrecht</td>
+<td>2025-03-05 20:42:58 UTC; hrecht</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -104,7 +110,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2022-08-09 15:30:16 UTC</td>
+<td>2025-03-05 21:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -125,13 +131,51 @@ This is a list of fips codes that may be looped over to retrieve data for all st
 
 <h3>Format</h3>
 
-<p>A list of fips codes for 50 states and the District of Columbia
+<p>A list of fips codes for 50 states and the District of Columbia.
 </p>
 
 
 <h3>Examples</h3>
 
 <pre><code class='language-R'>fips
+</code></pre>
+
+<hr>
+<h2 id='get_api_key'>Retrieve a Census API key stored the .Renivron file</h2><span id='topic+get_api_key'></span>
+
+<h3>Description</h3>
+
+<p>Retrieve a Census API key stored the .Renivron file
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_api_key()
+</code></pre>
+
+
+<h3>Value</h3>
+
+<p>A CENSUS_KEY or CENSUS_API_KEY string stored in the user's .Renviron.
+file, or a warning message printed once per R session if none is found.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other helpers: 
+<code><a href="#topic+has_api_key">has_api_key</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+get_api_key()
+
+## End(Not run)
+
 </code></pre>
 
 <hr>
@@ -148,17 +192,17 @@ This is a list of fips codes that may be looped over to retrieve data for all st
 <pre><code class='language-R'>getCensus(
   name,
   vintage = NULL,
-  key = Sys.getenv("CENSUS_KEY"),
+  key = NULL,
   vars,
   region = NULL,
   regionin = NULL,
   time = NULL,
+  show_call = FALSE,
+  convert_variables = TRUE,
   year = NULL,
   date = NULL,
   period = NULL,
   monthly = NULL,
-  show_call = FALSE,
-  convert_variables = TRUE,
   category_code = NULL,
   data_type_code = NULL,
   naics = NULL,
@@ -175,20 +219,24 @@ This is a list of fips codes that may be looped over to retrieve data for all st
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="getCensus_+3A_name">name</code></td>
 <td>
-<p>The programmatic name of your dataset, e.g. 'timeseries/poverty/saipe'
-or 'acs/acs5'. See 'listCensusApis()' for options.</p>
+<p>The programmatic name of your dataset, e.g.
+&quot;timeseries/poverty/saipe&quot; or &quot;acs/acs5&quot;. Use listCensusApis() to see valid
+dataset names. Required.</p>
 </td></tr>
 <tr><td><code id="getCensus_+3A_vintage">vintage</code></td>
 <td>
-<p>Vintage (year) of dataset, e.g. 2014. Not required for timeseries APIs.</p>
+<p>Vintage (year) of dataset, e.g. 2014. Not required for
+timeseries APIs.</p>
 </td></tr>
 <tr><td><code id="getCensus_+3A_key">key</code></td>
 <td>
-<p>Your Census API key, obtained at https://api.census.gov/data/key_signup.html.
-This function will default to a 'CENSUS_KEY' stored in your .Renviron if available.</p>
+<p>A Census API key, obtained at
+<a href="https://api.census.gov/data/key_signup.html">https://api.census.gov/data/key_signup.html</a>. If you have a <code>CENSUS_KEY</code> or
+<code>CENSUS_API_KEY</code> stored in your .Renviron file, getCensus() will
+automatically use that key. Using a key is recommended but not required.</p>
 </td></tr>
 <tr><td><code id="getCensus_+3A_vars">vars</code></td>
 <td>
@@ -202,83 +250,90 @@ This function will default to a 'CENSUS_KEY' stored in your .Renviron if availab
 <td>
 <p>Optional hierarchical geography to limit region.</p>
 </td></tr>
-<tr><td><code id="getCensus_+3A_time">time</code>, <code id="getCensus_+3A_year">year</code>, <code id="getCensus_+3A_date">date</code>, <code id="getCensus_+3A_period">period</code>, <code id="getCensus_+3A_monthly">monthly</code></td>
+<tr><td><code id="getCensus_+3A_time">time</code></td>
 <td>
-<p>Optional arguments used for some time series APIs.</p>
+<p>Time period of data to get. Required for most timeseries APIs.</p>
 </td></tr>
 <tr><td><code id="getCensus_+3A_show_call">show_call</code></td>
 <td>
-<p>List the underlying API call that was sent to the Census Bureau.</p>
+<p>Display the underlying API call that was sent to the Census
+Bureau. Default is FALSE.</p>
 </td></tr>
 <tr><td><code id="getCensus_+3A_convert_variables">convert_variables</code></td>
 <td>
-<p>Convert likely numeric variables into numeric data.
-Default is true. If false, results will be characters, which is the type returned by
-the Census Bureau.</p>
+<p>Convert columns that are likely numbers into numeric
+data. Default is TRUE. If false, all columns will be characters, which is
+the type returned by the Census Bureau.</p>
 </td></tr>
-<tr><td><code id="getCensus_+3A_category_code">category_code</code>, <code id="getCensus_+3A_data_type_code">data_type_code</code>, <code id="getCensus_+3A_naics">naics</code>, <code id="getCensus_+3A_pscode">pscode</code>, <code id="getCensus_+3A_naics2012">naics2012</code>, <code id="getCensus_+3A_naics2007">naics2007</code>, <code id="getCensus_+3A_naics2002">naics2002</code>, <code id="getCensus_+3A_naics1997">naics1997</code>, <code id="getCensus_+3A_sic">sic</code></td>
+<tr><td><code id="getCensus_+3A_year">year</code>, <code id="getCensus_+3A_date">date</code>, <code id="getCensus_+3A_period">period</code>, <code id="getCensus_+3A_monthly">monthly</code>, <code id="getCensus_+3A_category_code">category_code</code>, <code id="getCensus_+3A_data_type_code">data_type_code</code>, <code id="getCensus_+3A_naics">naics</code>, <code id="getCensus_+3A_pscode">pscode</code>, <code id="getCensus_+3A_naics2012">naics2012</code>, <code id="getCensus_+3A_naics2007">naics2007</code>, <code id="getCensus_+3A_naics2002">naics2002</code>, <code id="getCensus_+3A_naics1997">naics1997</code>, <code id="getCensus_+3A_sic">sic</code></td>
 <td>
-<p>Optional arguments used in economic data APIs.</p>
+<p>Optional arguments used in some timeseries data APIs.</p>
 </td></tr>
 <tr><td><code id="getCensus_+3A_...">...</code></td>
 <td>
-<p>Other valid arguments to pass to the Census API. Note: the APIs are case sensitive.</p>
+<p>Other valid arguments to pass to the Census API. Note: the APIs
+are case sensitive.</p>
 </td></tr>
 </table>
 
 
+<h3>Value</h3>
+
+<p>A data frame with results from the specified U.S. Census Bureau dataset.
+</p>
+
+
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## Not run: 
-# Get total population and median household income for places (cities, towns, villages)
-# in one state from the 5-year ACS.
+<pre><code class='language-R'>
+# Get total population and median household income for Census places
+# (cities, towns, villages) in a single state from the 5-year American Community Survey.
 acs_simple &lt;- getCensus(
   name = "acs/acs5",
-  vintage = 2020,
+  vintage = 2022,
   vars = c("NAME", "B01001_001E", "B19013_001E"),
   region = "place:*",
   regionin = "state:01")
 head(acs_simple)
 
-# Get all data from the B19013 variable group.
+# Get all data from the B08301 variable group, "Means of Transportation to Work."
 # This returns estimates as well as margins of error and annotation flags.
 acs_group &lt;- getCensus(
   name = "acs/acs5",
-  vintage = 2020,
-  vars = c("B01001_001E", "group(B19013)"),
-  region = "place:*",
-  regionin = "state:01")
+  vintage = 2022,
+  vars = "group(B08301)",
+  region = "state:*")
 head(acs_group)
 
-# Retreive 2010 Decennial Census block-level data within a specific tract,
-# using the regionin argument to precisely specify the Census tract.
-decennial_2010 &lt;- getCensus(
-  name = "dec/sf1",
-  vintage = 2010,
-  vars = c("NAME","P001001"),
-  region = "block:*",
-  regionin = "state:36+county:027+tract:010000")
-head(decennial_2010)
+# Retreive 2020 Decennial Census block group data within a specific Census tract,
+# using the regionin argument to precisely specify the Census tract, county,
+# and state.
+decennial_block_group &lt;- getCensus(
+	name = "dec/dhc",
+	vintage = 2020,
+	vars = c("NAME", "P1_001N"),
+	region = "block group:*",
+	regionin = "state:36+county:027+tract:220300")
+head(decennial_block_group)
 
-# Get poverty rates for children and for people of all ages over time using the
+# Get poverty rates for children and for people of all ages beginning in 2000 using the
 # Small Area Income and Poverty Estimates API
 saipe &lt;- getCensus(
   name = "timeseries/poverty/saipe",
   vars = c("NAME", "SAEPOVRT0_17_PT", "SAEPOVRTALL_PT"),
   region = "state:01",
-  year = "2000:2019")
+  time = "from 2000")
 head(saipe)
 
-# Get County Business Patterns data for a specific NAICS sector.
-cbp_2016 &lt;- getCensus(
- name = "cbp",
-  vintage = "2016",
-  vars = c("EMP", "ESTAB", "NAICS2012_TTL", "GEO_TTL"),
-  region = "state:*",
-  naics2012 = "23")
-head(cbp_2016)
-
-## End(Not run)
+# Get the number of employees and number of establishments in the construction sector,
+# NAICS2017 code 23, using the County Business Patterns API
+cbp &lt;- getCensus(
+	name = "cbp",
+	vintage = 2021,
+	vars = c("EMP", "ESTAB", "NAICS2017_LABEL"),
+	region = "county:*",
+	NAICS2017 = 23)
+head(cbp)
 
 </code></pre>
 
@@ -301,12 +356,12 @@ head(cbp_2016)
   region,
   regionin,
   time,
+  show_call,
+  convert_variables,
   year,
   date,
   period,
   monthly,
-  show_call,
-  convert_variables,
   category_code,
   data_type_code,
   naics,
@@ -320,47 +375,153 @@ head(cbp_2016)
 )
 </code></pre>
 
-
-<h3>Arguments</h3>
-
-<table>
-<tr><td><code id="getFunction_+3A_apiurl">apiurl</code></td>
-<td>
-<p>key, get, region, time, etc</p>
-</td></tr>
-</table>
-
 <hr>
-<h2 id='listCensusApis'>Get useful dataset metadata on all available APIs as a data frame</h2><span id='topic+listCensusApis'></span>
+<h2 id='has_api_key'>Is there a saved Census API key in the .Renivron file?</h2><span id='topic+has_api_key'></span>
 
 <h3>Description</h3>
 
-<p>Scrapes https://api.census.gov/data.json and returns a dataframe
-that includes: title, description, name, vintage, url, dataset type, and other useful fields.
+<p>Is there a saved Census API key in the .Renivron file?
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>listCensusApis()
+<pre><code class='language-R'>has_api_key()
 </code></pre>
+
+
+<h3>Value</h3>
+
+<p>TRUE or FALSE.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other helpers: 
+<code><a href="#topic+get_api_key">get_api_key</a>()</code>
+</p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## Not run: 
-apis &lt;- listCensusApis()
-head(apis)
+<pre><code class='language-R'>has_api_key()
 
-## End(Not run)
 </code></pre>
 
 <hr>
-<h2 id='listCensusMetadata'>Get information about a specific API as a data frame</h2><span id='topic+listCensusMetadata'></span>
+<h2 id='listCensusApis'>Get general information about available datasets</h2><span id='topic+listCensusApis'></span>
 
 <h3>Description</h3>
 
-<p>Get information about a specific API as a data frame
+<p>Scrapes <a href="https://api.census.gov/data.json">https://api.census.gov/data.json</a> and returns a dataframe that
+includes columns for dataset title, description, name, vintage, url, dataset
+type, and other useful fields.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>listCensusApis(name = NULL, vintage = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="listCensusApis_+3A_name">name</code></td>
+<td>
+<p>Optional complete or partial API dataset programmatic name. For
+example, &quot;acs&quot;, &quot;acs/acs5&quot;, &quot;acs/acs5/subject&quot;. If using a partial name,
+this needs to be the left-most part of the dataset name before <code>/</code>, e.g.
+&quot;timeseries/eits&quot; or &quot;dec&quot; or &quot;acs/acs5&quot;.</p>
+</td></tr>
+<tr><td><code id="listCensusApis_+3A_vintage">vintage</code></td>
+<td>
+<p>Optional vintage (year) of dataset.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>A data frame with the following columns:
+</p>
+
+<ul>
+<li><p> title: Short written description of the dataset.
+</p>
+</li>
+<li><p> name: Programmatic name of the dataset.
+</p>
+</li>
+<li><p> vintage: Year of the survey, for use with microdata and aggregate datasets.
+</p>
+</li>
+<li><p> type: Dataset type, which is either &quot;Aggregate&quot;, &quot;Microdata&quot;, or &quot;Timeseries&quot;.
+</p>
+</li>
+<li><p> temporal: Time period of the dataset. Warning: not always documented.
+</p>
+</li>
+<li><p> spatial: Spatial region of the dataset. Warning: not always documented.
+</p>
+</li>
+<li><p> url: Base URL of the dataset endpoint.
+</p>
+</li>
+<li><p> modified: Date last modified. Warning: sometimes out of date.
+</p>
+</li>
+<li><p> description: Long written description of the dataset.
+</p>
+</li>
+<li><p> contact: Email address for specific questions about the Census Bureau survey.
+</p>
+</li></ul>
+
+
+
+<h3>See Also</h3>
+
+<p>Other metadata: 
+<code><a href="#topic+listCensusMetadata">listCensusMetadata</a>()</code>,
+<code><a href="#topic+makeVarlist">makeVarlist</a>()</code>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+# Get information about every dataset available in the APIs
+apis &lt;- listCensusApis()
+head(apis)
+
+# Get information about all vintage 2022 datasets
+apis_2022 &lt;- listCensusApis(vintage = 2022)
+head(apis_2022)
+
+# Get information about all timeseries datasets
+apis_timeseries &lt;- listCensusApis(name = "timeseries")
+head(apis_timeseries)
+
+# Get information about 2020 Decennial Census datasets
+apis_decennial_2020 &lt;- listCensusApis(name = "dec", vintage = 2020)
+head(apis_decennial_2020)
+
+# Get information about one particular dataset
+api_sahie &lt;- listCensusApis(name = "timeseries/healthins/sahie")
+head(api_sahie)
+
+</code></pre>
+
+<hr>
+<h2 id='listCensusMetadata'>Get metadata about a specified API endpoint</h2><span id='topic+listCensusMetadata'></span>
+
+<h3>Description</h3>
+
+<p>Get information about a Census Bureau API dataset, including its available
+variables, geographies, variable groups, and value labels
 </p>
 
 
@@ -379,103 +540,136 @@ head(apis)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="listCensusMetadata_+3A_name">name</code></td>
 <td>
-<p>API programmatic name - e.g. acs/acs5. See list of names with listCensusApis().</p>
+<p>API programmatic name - e.g. acs/acs5. Use <code>listCensusApis()</code> to
+see valid dataset names.</p>
 </td></tr>
 <tr><td><code id="listCensusMetadata_+3A_vintage">vintage</code></td>
 <td>
-<p>Vintage (year) of dataset. Not required for timeseries APIs</p>
+<p>Vintage (year) of dataset. Not required for timeseries APIs.</p>
 </td></tr>
 <tr><td><code id="listCensusMetadata_+3A_type">type</code></td>
 <td>
 <p>Type of metadata to return. Options are:
-* 'variables' (default) - list of variable names and descriptions for the dataset.
-* 'geographies' - available geographies.
-* 'groups' - available variable groups. Not used for all datasets.
-* 'values' - encoded value labels for a given variable. Pair with
-'variable_name'. Not used for all datasets.</p>
+</p>
+
+<ul>
+<li><p> &quot;variables&quot; (default) - list of variable names and descriptions
+for the dataset.
+</p>
+</li>
+<li><p> &quot;geographies&quot; - available geographies.
+</p>
+</li>
+<li><p> &quot;groups&quot; - available variable groups. Only available
+for some datasets.
+</p>
+</li>
+<li><p> &quot;values&quot; - encoded value labels for a given variable. Pair with
+&quot;variable_name&quot;. Only available for some datasets.
+</p>
+</li></ul>
 </td></tr>
 <tr><td><code id="listCensusMetadata_+3A_group">group</code></td>
 <td>
-<p>An optional variable group code, used to return metadata for a specific group
-of variables only. Variable groups are not used for all APIs.</p>
+<p>An optional variable group code, used to return metadata for a
+specific group of variables only. Variable groups are not used for all
+APIs.</p>
 </td></tr>
 <tr><td><code id="listCensusMetadata_+3A_variable_name">variable_name</code></td>
 <td>
-<p>A name of a specific variable used to return value labels for that
-variable. Value labels are not published for all APIs.</p>
+<p>A name of a specific variable used to return value
+labels for that variable. Value labels are not used for all APIs.</p>
 </td></tr>
 <tr><td><code id="listCensusMetadata_+3A_include_values">include_values</code></td>
 <td>
-<p>Use with 'type = &quot;variables&quot;'. Include value metadata
-for all variables in a dataset if value metadata exists. Default is &quot;FALSE&quot;.</p>
+<p>Use with <code>type = "variables"</code>. Include value metadata
+for all variables in a dataset if value metadata exists. Default is
+&quot;FALSE&quot;.</p>
 </td></tr>
 </table>
 
 
+<h3>Value</h3>
+
+<p>A data frame with metadata about the specified API endpoint.
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other metadata: 
+<code><a href="#topic+listCensusApis">listCensusApis</a>()</code>,
+<code><a href="#topic+makeVarlist">makeVarlist</a>()</code>
+</p>
+
+
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## Not run: 
+<pre><code class='language-R'>
+# type: variables # List the variables available in the Small Area
+# Health Insurance Estimates.
+variables &lt;- listCensusMetadata(
+  name = "timeseries/healthins/sahie", type = "variables")
+head(variables)
 
-# List the variables available in the Small Area Health Insurance Estimates.
-sahie_variables &lt;- listCensusMetadata(
-  name = "timeseries/healthins/sahie",
-  type = "variables")
- head(sahie_variables)
+# type: variables for a single variable group
+# List the variables that are included in the B17020 group in the
+# 5-year American Community Survey.
+variable_group &lt;- listCensusMetadata(
+  name = "acs/acs5", vintage = 2022,
+  type = "variables", group = "B17020")
+head(variable_group)
 
-# List the geographies available in the 5-year 2020 American Community Survey.
-acs_geographies &lt;- listCensusMetadata(
-  name = "acs/acs5",
-  vintage = 2020,
-  type = "geographies")
- head(acs_geographies)
-
-# List the variable groups available in the 5-year 2020 American Community Survey.
-acs_groups &lt;- listCensusMetadata(
-  name = "acs/acs5",
-  vintage = 2020,
-  type = "groups")
- head(acs_groups)
-# Create a data dictionary with all variable names and encoded values for
-# a microdata API.
-cbp_dict &lt;- listCensusMetadata(
-  name = "cbp",
+# type: variables, with value labels
+# Create a data dictionary with all variable names and encoded values
+# for a microdata API.
+variable_values &lt;- listCensusMetadata(
+  name = "cps/voting/nov",
   vintage = 2020,
   type = "variables",
   include_values = TRUE)
- head(cbp_dict)
+head(variable_values)
 
-# List the value labels of the NAICS2017 variable in the 2020 County
+# type: geographies
+# List the geographies available in the 5-year American Community Survey.
+geographies &lt;- listCensusMetadata(
+  name = "acs/acs5",
+  vintage = 2022,
+  type = "geographies")
+head(geographies)
+
+# type: groups
+# List the variable groups available in the 5-year American
+# Community Survey.
+groups &lt;- listCensusMetadata(
+  name = "acs/acs5",
+  vintage = 2022,
+  type = "groups")
+head(groups)
+
+# type: values for a single variable
+# List the value labels of the NAICS2017 variable in the County
 # Business Patterns dataset.
-cbp_naics_values &lt;- listCensusMetadata(
+naics_values &lt;- listCensusMetadata(
   name = "cbp",
-  vintage = 2020,
+  vintage = 2021,
   type = "values",
   variable = "NAICS2017")
- head(cbp_naics_values)
+head(naics_values)
 
-# List of variables that are included in the B17020 group in the
-# 5-year American Community Survey.
-group_B17020 &lt;- listCensusMetadata(
-  name = "acs/acs5",
-  vintage = 2017,
-  type = "variables",
-  group = "B17020")
- head(group_B17020)
-
-## End(Not run)
 </code></pre>
 
 <hr>
-<h2 id='makeVarlist'>Use variable metadata to find variables containing a given string.</h2><span id='topic+makeVarlist'></span>
+<h2 id='makeVarlist'>Use variable metadata to find variables containing a given string</h2><span id='topic+makeVarlist'></span>
 
 <h3>Description</h3>
 
-<p>Return a list of variable names or data frame of variable metadata containing a given string.
-This can be used create a list of variables to later pass to getCensus, or a data frame
-documenting variables used in a given project.
+<p>Return a list of variable names or data frame of variable metadata containing
+a given string. This can be used create a list of variables to later pass to
+getCensus, or a data frame documenting variables used in a given project.
 </p>
 
 
@@ -487,35 +681,51 @@ documenting variables used in a given project.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="makeVarlist_+3A_name">name</code></td>
 <td>
-<p>API name - e.g. acs5. See list at https://api.census.gov/data.html</p>
+<p>API programmatic name - e.g. acs/acs5. Use <code>listCensusApis()</code> to
+see valid dataset names.</p>
 </td></tr>
 <tr><td><code id="makeVarlist_+3A_vintage">vintage</code></td>
 <td>
-<p>Year of dataset, e.g. 2014 - not required for timeseries APIs</p>
+<p>Vintage (year) of dataset. Not required for timeseries APIs.</p>
 </td></tr>
 <tr><td><code id="makeVarlist_+3A_find">find</code></td>
 <td>
-<p>A string to find in the variable metadata</p>
+<p>A string to find in the variable metadata.</p>
 </td></tr>
 <tr><td><code id="makeVarlist_+3A_varsearch">varsearch</code></td>
 <td>
-<p>Optional argument specifying which fields to search. Default is &quot;all&quot;.
-Options are &quot;all&quot;, &quot;name&quot;, &quot;label&quot;, or &quot;concept&quot;.</p>
+<p>Optional argument specifying which fields to search. Default
+is &quot;all&quot;. Options are &quot;all&quot;, &quot;name&quot;, &quot;label&quot;, or &quot;concept&quot;.</p>
 </td></tr>
 <tr><td><code id="makeVarlist_+3A_output">output</code></td>
 <td>
-<p>Optional argument, specifying output to &quot;list&quot; or &quot;dataframe&quot;. Default is &quot;list&quot;.</p>
+<p>Optional argument, specifying output to &quot;list&quot; or &quot;dataframe&quot;.
+Default is &quot;list&quot;.</p>
 </td></tr>
 </table>
 
 
+<h3>Value</h3>
+
+<p>A data frame containing variable metadata
+</p>
+
+
+<h3>See Also</h3>
+
+<p>Other metadata: 
+<code><a href="#topic+listCensusApis">listCensusApis</a>()</code>,
+<code><a href="#topic+listCensusMetadata">listCensusMetadata</a>()</code>
+</p>
+
+
 <h3>Examples</h3>
 
-<pre><code class='language-R'># Return a list, and then use getCensus function to retrieve those variables
-## Not run: 
+<pre><code class='language-R'>
+# Return a list, and then use getCensus function to retrieve those variables
 myvars &lt;- makeVarlist(name = "timeseries/poverty/saipe",
   find = "Ages 0-4",
   varsearch = "label")
@@ -526,7 +736,6 @@ saipe_dt &lt;- getCensus(name = "timeseries/poverty/saipe",
   region = "state:*")
 head(saipe_dt)
 
-## End(Not run)
 </code></pre>
 
 </main>

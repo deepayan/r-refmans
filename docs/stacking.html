@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package stacking</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package stacking</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -28,7 +28,7 @@ function processMathHTML() {
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Type:</td>
 <td>Package</td>
@@ -39,7 +39,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.2</td>
+<td>0.2.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -55,11 +55,12 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2023-09-01 01:45:40 UTC; lbds2</td>
+<td>2025-01-16 07:55:20 UTC; lbds2</td>
 </tr>
 <tr>
 <td>Author:</td>
 <td>Taichi Nukui [aut, cph],
+  Tomohiro Ishibashi [aut, cph],
   Akio Onogi [aut, cre, cph]</td>
 </tr>
 <tr>
@@ -76,7 +77,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2023-09-01 08:20:02 UTC</td>
+<td>2025-01-16 08:10:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -96,7 +97,7 @@ function processMathHTML() {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="stacking_predict_+3A_newx">newX</code></td>
 <td>
 <p>An N x P matrix of explanatory variables of new data where N is the number of samples and P is the number of explanatory variables. Note that the order of explanatory variables should be the same as those for training. Column names of newX are ignored.</p>
@@ -110,23 +111,23 @@ function processMathHTML() {
 
 <h3>Details</h3>
 
-<p>Prediction processes of this package are as follows. First, newX is given to all base models. As a result, each base learner returns Nfold predicted values where Nfold is an argument of stacking_train. Then the predicted values are averaged for each learner. Giving these averaged values as the explanatory variables of the meta model, final predicted values are output.
+<p>Prediction processes of this package are as follows. First, newX is given to all base models. As a result, each base learner returns Nfold/num_sample predicted values where Nfold/num_sample is an argument of stacking_train. Then the predicted values are averaged for each learner. Giving these averaged values as the explanatory variables of the meta model, final predicted values are output.
 </p>
 
 
 <h3>Value</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code>result</code></td>
 <td>
-<p>Vector of predicted values. When TrainEachFold of stacking_train or train_metamodel is TRUE (i.e., stacking_train_result$meta$TrainEachFold is TRUE), the values are the averages of the values predicted from the meta models trained for each cross-validation fold. In the case of classification, the probabilities of each category are returned.</p>
+<p>Vector of predicted values. When TrainEachFold of stacking_train or train_metamodel is TRUE (i.e., stacking_train_result$meta$TrainEachFold is TRUE), the values are the averages of the values predicted from the meta models trained for each cross-validation fold, and for random sampling, the values are the averages of the values predicted from the meta models trained for each random sampling iteration. In the case of classification, the probabilities of each category are returned.</p>
 </td></tr>
 </table>
 
 
 <h3>Author(s)</h3>
 
-<p>Taichi Nukui, Akio Onogi
+<p>Taichi Nukui, Tomohiro Ishibashi, Akio Onogi
 </p>
 
 
@@ -170,20 +171,51 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0.5, 0.8), lambda = c(0.1, 1)),
 #Training
 #stacking_train_result &lt;- stacking_train(X = X1,
 #                                        Y = Y1,
-#                                        Nfold = 5,
 #                                        Method = Method,
 #                                        Metamodel = "lm",
-#                                        core = 2)
+#                                        core = 2,
+#                                        cross_validation = TRUE,
+#                                        use_X = FALSE,
+#                                        TrainEachFold = TRUE,
+#                                        Nfold = 5)
+
+#For random sampling, set cross_validation = FALSE and
+#specify the number of samples and the sampling proportion
+#using num_sample and proportion, respectively.
+#To include the original features X when training the meta-model, set use_X = TRUE.
+#When use_X is TRUE, simple linear regressions cannot be used
+#as the meta learner because of rank deficient.
+#The following code reflects the changes made to the relevant arguments.
+#stacking_train_result &lt;- stacking_train(X = X1,
+#                                        Y = Y1,
+#                                        Method = Method,
+#                                        Metamodel = "glmnet",
+#                                        core = 2,
+#                                        cross_validation = FALSE,
+#                                        use_X = TRUE,
+#                                        TrainEachFold = TRUE,
+#                                        num_sample = 5,
+#                                        proportion = 0.8)
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)
 #plot(Y2, result)
 
 #Training using train_basemodel and train_metamodel
-#base &lt;- train_basemodel(X = X1, Y = Y1, Nfold = 5, Method = Method, core = 3)
-#meta &lt;- train_metamodel(base, which_to_use = 1:5, Metamodel = "lm")
+#base &lt;- train_basemodel(X = X1,
+#                        Y = Y1,
+#                        Method = Method,
+#                        core = 2,
+#                        cross_validation = TRUE,
+#                        Nfold = 5)
+#meta &lt;- train_metamodel(X,
+#                        base,
+#                        which_to_use = 1:5,
+#                        Metamodel = "lm",
+#                        use_X = FALSE,
+#                        TrainEachFold = TRUE)
 #stacking_train_result &lt;- list(base = base, meta = meta)
-#=&gt;this list should have elements named as base and meta
+#=&gt;The list should have elements named as base and meta to be used in stacking_predict
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)
@@ -196,19 +228,21 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0.5, 0.8), lambda = c(0.1, 1)),
 
 <h3>Description</h3>
 
-<p>Training base and meta learners of stacking (an ensemble learning approach). The base and meta learners can be chosen from supervised methods implemented in caret.
+<p>Training base and meta learners of stacking (an ensemble learning approach). The base and meta learners can be chosen from supervised methods implemented in caret. This function internally calls train_basemodel and train_metamodel. Packages caret, parallel, snow, and packages for base and meta learners should be installed.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>stacking_train(X, Y, Nfold, Method, Metamodel, TrainEachFold = FALSE, core = 1)
+<pre><code class='language-R'>stacking_train(X, Y, Method, Metamodel, core = 1, cross_validation = TRUE,
+               use_X = FALSE, TrainEachFold = FALSE, Nfold = 10,
+               num_sample = 10, proportion = 0.8)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="stacking_train_+3A_x">X</code></td>
 <td>
 <p>An N x P matrix of explanatory variables where N is the number of samples and P is the number of variables. Column names are required by caret.</p>
@@ -216,10 +250,6 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0.5, 0.8), lambda = c(0.1, 1)),
 <tr><td><code id="stacking_train_+3A_y">Y</code></td>
 <td>
 <p>A length N Vector of objective variables. Use a factor for classification.</p>
-</td></tr>
-<tr><td><code id="stacking_train_+3A_nfold">Nfold</code></td>
-<td>
-<p>Number of folds for cross-validation. This cross-validation is required for training.</p>
 </td></tr>
 <tr><td><code id="stacking_train_+3A_method">Method</code></td>
 <td>
@@ -229,22 +259,51 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0.5, 0.8), lambda = c(0.1, 1)),
 <td>
 <p>A strings specifying the meta learner. This strings is passed to caret.</p>
 </td></tr>
-<tr><td><code id="stacking_train_+3A_traineachfold">TrainEachFold</code></td>
-<td>
-<p>A logical indicating whether the meta learner learns using the predicted values of the base models at each cross-validation fold or not. If TRUE, the meta learners learns Nfold times using the values predicted by the base models at each fold. If FALSE, the meta learner learns once by pooling the predicted values of the base models of all folds.</p>
-</td></tr>
 <tr><td><code id="stacking_train_+3A_core">core</code></td>
 <td>
 <p>Number of cores for parallel processing</p>
+</td></tr>
+<tr><td><code id="stacking_train_+3A_cross_validation">cross_validation</code></td>
+<td>
+<p>A parameter to specify whether to perform cross-validation. Set to TRUE to enable cross-validation or to FALSE to perform random sampling.</p>
+</td></tr>
+<tr><td><code id="stacking_train_+3A_use_x">use_X</code></td>
+<td>
+<p>A logical indicating whether the meta-learner uses the original features X along with the base model predictions. If TRUE, it uses both X and the predictions; if FALSE, it uses only the predictions.</p>
+</td></tr>
+<tr><td><code id="stacking_train_+3A_traineachfold">TrainEachFold</code></td>
+<td>
+<p>A logical indicating whether the meta learner learns using the predicted values of the base models at each cross-validation fold/random sample or not. If TRUE, the meta learners learns Nfold/num_sample times using the values predicted by the base models at each fold/sample. If FALSE, the meta learner learns once by pooling the predicted values of the base models of all folds/samples.</p>
+</td></tr>
+<tr><td><code id="stacking_train_+3A_nfold">Nfold</code></td>
+<td>
+<p>Number of folds for cross-validation. Required when cross_validation is TRUE.</p>
+</td></tr>
+<tr><td><code id="stacking_train_+3A_num_sample">num_sample</code></td>
+<td>
+<p>The number of samples of random sampling, applicable when cross_validation is set to FALSE.</p>
+</td></tr>
+<tr><td><code id="stacking_train_+3A_proportion">proportion</code></td>
+<td>
+<p>A parameter specifying the proportion of samples to be sampled when cross_validation is set to FALSE.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>Stacking by this function consists of the following 2 steps. (1) Nfold cross-validation is conducted with each base learner.(2) Using the predicted values of each learner as the explanatory variables, the meta learner is trained. This function conducts steps (1) and (2) at once by calling train_basemodel and train_metamodel, respectively. But users can conduct these steps separately by directly using these functions.<br />
+<p>Stacking by this package consists of the following 2 steps.
 </p>
-<p>In the step (2), there are two options. One is to train the meta learner Nfold times using the predicted values returned by the base models for each fold. The other is to train the meta learner once pooling the predicted values by the base models across folds. TrainEachModel swiches these options.<br />
+<p>(1) Each base learner is trained. The training method can be chosen using the cross_validation argument:
+If cross_validation is TRUE: The function performs Nfold cross-validation for each base learner.
+If cross_validation is FALSE: The function trains each base learner using random sampling. The number of samples (num_sample) or the proportion of the data (proportion) can be specified to control the sampling process.
+(2) Using the predicted values of each learner as the explanatory variables, the meta learner is trained.
+Steps (1) and (2) are conducted by train_basemodel and train_metamodel, respectively.
+Another function stacking_train conducts both steps at once by calling these functions (train_basemodel and train_metamodel).<br />
+</p>
+<p>Training of the meta learner can be modified by two arguments, TrainEachFold and use_X.
+TrainEachFold specifies whether the meta learner is trained for each fold or random sample individually, or once by pooling or combining all predicted values.
+use_X specifies whether the meta learner is trained with both the original features X and the base model predictions, or with only the base model predictions.
 </p>
 <p>Base learners are specified by Method. For example,<br />
 Method = list(glmnet = data.frame(alpha = 0, lambda = 5), pls = data.frame(ncomp = 10))<br />
@@ -275,7 +334,7 @@ lambda of glmnet and ncomp of pls are automatically tuned by caret. However, it 
 
 <p>A list containing the following elements is output.
 </p>
-<table>
+<table role = "presentation">
 <tr><td><code>base</code></td>
 <td>
 <p>A list output by train_basemodel. See value of train_basemodel for the details</p>
@@ -289,7 +348,7 @@ lambda of glmnet and ncomp of pls are automatically tuned by caret. However, it 
 
 <h3>Author(s)</h3>
 
-<p>Taichi Nukui, Akio Onogi
+<p>Taichi Nukui, Tomohiro Ishibashi, Akio Onogi
 </p>
 
 
@@ -338,20 +397,51 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0.5, 0.8), lambda = c(0.1, 1)),
 
 #stacking_train_result &lt;- stacking_train(X = X1,
 #                                        Y = Y1,
-#                                        Nfold = 5,
 #                                        Method = Method,
 #                                        Metamodel = "lm",
-#                                        core = 3)
+#                                        core = 2,
+#                                        cross_validation = TRUE,
+#                                        use_X = FALSE,
+#                                        TrainEachFold = TRUE,
+#                                        Nfold = 5)
+
+#For random sampling, set cross_validation = FALSE and
+#specify the number of samples and the sampling proportion
+#using num_sample and proportion, respectively.
+#To include the original features X when training the meta-model, set use_X = TRUE.
+#When use_X is TRUE, simple linear regressions cannot be used
+#as the meta learner because of rank deficient.
+#The following code reflects the changes made to the relevant arguments.
+#stacking_train_result &lt;- stacking_train(X = X1,
+#                                        Y = Y1,
+#                                        Method = Method,
+#                                        Metamodel = "glmnet",
+#                                        core = 2,
+#                                        cross_validation = FALSE,
+#                                        use_X = TRUE,
+#                                        TrainEachFold = TRUE,
+#                                        num_sample = 5,
+#                                        proportion = 0.8)
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)
 #plot(Y2, result)
 
 #Training using train_basemodel and train_metamodel
-#base &lt;- train_basemodel(X = X1, Y = Y1, Nfold = 5, Method = Method, core = 3)
-#meta &lt;- train_metamodel(base, which_to_use = 1:5, Metamodel = "lm")
+#base &lt;- train_basemodel(X = X1,
+#                        Y = Y1,
+#                        Method = Method,
+#                        core = 2,
+#                        cross_validation = TRUE,
+#                        Nfold = 5)
+#meta &lt;- train_metamodel(X,
+#                        base,
+#                        which_to_use = 1:5,
+#                        Metamodel = "lm",
+#                        use_X = FALSE,
+#                        TrainEachFold = TRUE)
 #stacking_train_result &lt;- list(base = base, meta = meta)
-#=&gt;this list should have elements named as base and meta
+#=&gt;The list should have elements named as base and meta to be used in stacking_predict
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)
@@ -414,19 +504,20 @@ Method &lt;- list(ranger = data.frame(mtry = c(10, 100, 500),
 
 <h3>Description</h3>
 
-<p>Training base models of stacking
+<p>Training base models of stacking. This function internally calls train_basemodel_core.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>train_basemodel(X, Y, Nfold, Method, core = 1)
+<pre><code class='language-R'>train_basemodel(X, Y, Method, core = 1, cross_validation = TRUE,
+                Nfold = 10, num_sample = 10, proportion = 0.8)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="train_basemodel_+3A_x">X</code></td>
 <td>
 <p>An N x P matrix of explanatory variables where N is the number of samples and P is the number of variables. Column names are required by caret.</p>
@@ -434,10 +525,6 @@ Method &lt;- list(ranger = data.frame(mtry = c(10, 100, 500),
 <tr><td><code id="train_basemodel_+3A_y">Y</code></td>
 <td>
 <p>A length N Vector of objective variables. Use a factor for classification.</p>
-</td></tr>
-<tr><td><code id="train_basemodel_+3A_nfold">Nfold</code></td>
-<td>
-<p>Number of folds for cross-validation. This cross-validation is required for training.</p>
 </td></tr>
 <tr><td><code id="train_basemodel_+3A_method">Method</code></td>
 <td>
@@ -447,12 +534,34 @@ Method &lt;- list(ranger = data.frame(mtry = c(10, 100, 500),
 <td>
 <p>Number of cores for parallel processing</p>
 </td></tr>
+<tr><td><code id="train_basemodel_+3A_cross_validation">cross_validation</code></td>
+<td>
+<p>A parameter to specify whether to perform cross-validation. Set to TRUE to enable cross-validation or to FALSE to perform random sampling.</p>
+</td></tr>
+<tr><td><code id="train_basemodel_+3A_nfold">Nfold</code></td>
+<td>
+<p>Number of folds for cross-validation. Required when cross_validation is TRUE.</p>
+</td></tr>
+<tr><td><code id="train_basemodel_+3A_num_sample">num_sample</code></td>
+<td>
+<p>The number of samples for random sampling, applicable when cross_validation is set to FALSE.</p>
+</td></tr>
+<tr><td><code id="train_basemodel_+3A_proportion">proportion</code></td>
+<td>
+<p>A parameter specifying the proportion of samples to be sampled when cross_validation is set to FALSE.</p>
+</td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>Stacking by this package consists of the following 2 steps. (1) Nfold cross-validation is conducted with each base learner.(2) Using the predicted values of each learner as the explanatory variables, the meta learner is trained. This function conducts step (1). Step (2) is conducted by train_metamodel. Another function stacking_train conducts both steps at once by calling these functions (train_basemodel and train_metamodel).
+<p>Stacking by this package consists of the following 2 steps.
+(1) Each base learner is trained.The training method can be chosen based on the cross_validation argument.
+If cross_validation is TRUE: The function performs Nfold cross-validation for each base learner.
+If cross_validation is FALSE: The function trains each base learner using random sampling. The number of samples (num_sample) or the proportion of the data (proportion) can be specified to control the sampling process.
+(2) Using the predicted values of each learner as the explanatory variables, the meta learner is trained.
+Steps (1) and (2) are conducted by train_basemodel and train_metamodel, respectively.
+Another function stacking_train conducts both steps at once by calling these functions (train_basemodel and train_metamodel).<br />
 </p>
 <p>Base learners are specified by Method. For example,<br />
 Method = list(glmnet = data.frame(alpha = 0, lambda = 5), pls = data.frame(ncomp = 10))<br />
@@ -483,10 +592,10 @@ lambda of glmnet and ncomp of pls are automatically tuned by caret. However, it 
 
 <p>A list containing the following elements is output.
 </p>
-<table>
+<table role = "presentation">
 <tr><td><code>train_result</code></td>
 <td>
-<p>A list containing the training results of the base models. The length of this list is the same as Nfold, and each element is a list of which length is the same as the number of base models. These elements are the lists output by train function of caret, but the element &quot;trainingData&quot; is removed to save memory.</p>
+<p>A list containing the training results of the base models. The length of this list is the same as Nfold/num_sample, and each element is a list of which length is the same as the number of base models. These elements are the lists output by train function of caret, but the element &quot;trainingData&quot; is removed to save memory.</p>
 </td></tr>
 <tr><td><code>no_base</code></td>
 <td>
@@ -494,15 +603,15 @@ lambda of glmnet and ncomp of pls are automatically tuned by caret. However, it 
 </td></tr>
 <tr><td><code>valpr</code></td>
 <td>
-<p>Predicted values of base models obtained in cross-validation. Used as explanatory variables for the meta learner.</p>
+<p>Predicted values of base models obtained in cross-validation/random sampling. Used as explanatory variables for the meta learner.</p>
 </td></tr>
 <tr><td><code>Y.randomised</code></td>
 <td>
-<p>Y ans X are randomized when cross-validation. Randomized Y is output to enable evaluation of prediction accuracy</p>
+<p>Y of the test sets of cross-validation/random sampling. Used as the response variable for the meta learner.</p>
 </td></tr>
 <tr><td><code>Order</code></td>
 <td>
-<p>Order in randomization.</p>
+<p>Indices of Y used in cross-validation/random sampling. The indices were those of Y without NA values.</p>
 </td></tr>
 <tr><td><code>Type</code></td>
 <td>
@@ -510,14 +619,26 @@ lambda of glmnet and ncomp of pls are automatically tuned by caret. However, it 
 </td></tr>
 <tr><td><code>Nfold</code></td>
 <td>
-<p>Number of cross-validation folds</p>
+<p>Number of cross-validation folds.</p>
+</td></tr>
+<tr><td><code>num_sample</code></td>
+<td>
+<p>Number of samples in random sampling.</p>
+</td></tr>
+<tr><td><code>which_valid</code></td>
+<td>
+<p>Indices of Y without NA values.</p>
+</td></tr>
+<tr><td><code>cross_validation</code></td>
+<td>
+<p>Specifies which cross-validation (TRUE) or random sampling (FALSE) was used during training.</p>
 </td></tr>
 </table>
 
 
 <h3>Author(s)</h3>
 
-<p>Taichi Nukui, Akio Onogi
+<p>Taichi Nukui, Tomohiro Ishibashi, Akio Onogi
 </p>
 
 
@@ -564,14 +685,22 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 #Please remove #s before execution
 
 #Training of base learners
-#base &lt;- train_basemodel(X = X1, Y = Y1, Nfold = 5, Method = Method, core = 2)
+#base &lt;- train_basemodel(X = X1,
+#                        Y = Y1,
+#                        Method = Method,
+#                        core = 2,
+#                        cross_validation = TRUE,
+#                        Nfold = 5)
 
 #Training of a meta learner
-#meta &lt;- train_metamodel(base, which_to_use = 1:4, Metamodel = "lm")
+#meta &lt;- train_metamodel(X,
+#                        base,
+#                        which_to_use = 1:4,
+#                        Metamodel = "lm")
 
 #Combine both results
 #stacking_train_result &lt;- list(base = base, meta = meta)
-#=&gt;this list should have elements named as base and meta
+#=&gt;The list should have elements named as base and meta to be used in stacking_predict
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)
@@ -580,10 +709,31 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 #Training using stacking_train
 #stacking_train_result &lt;- stacking_train(X = X1,
 #                                        Y = Y1,
-#                                        Nfold = 5,
 #                                        Method = Method,
 #                                        Metamodel = "lm",
-#                                        core = 2)
+#                                        core = 2,
+#                                        cross_validation = TRUE,
+#                                        use_X = FALSE,
+#                                        TrainEachFold = FALSE,
+#                                        Nfold = 5)
+
+#For random sampling, set cross_validation = FALSE and
+#specify the number of samples and the sampling proportion
+#using num_sample and proportion, respectively.
+#To include the original features X when training the meta-model, set use_X = TRUE.
+#When use_X is TRUE, simple linear regressions cannot be used
+#as the meta learner because of rank deficient.
+#The following code reflects the changes made to the relevant arguments.
+#stacking_train_result &lt;- stacking_train(X = X1,
+#                                        Y = Y1,
+#                                        Method = Method,
+#                                        Metamodel = "glmnet",
+#                                        core = 2,
+#                                        cross_validation = FALSE,
+#                                        use_X = TRUE,
+#                                        TrainEachFold = FALSE,
+#                                        num_sample = 5,
+#                                        proportion = 0.8)
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)
@@ -608,7 +758,7 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="train_basemodel_core_+3A_repeat.parlapply">repeat.parLapply</code></td>
 <td>
 <p>A scalar indicating the number of repeats of parallel computation. If the number of base models is 10 and 5 cores are used for computation, repeat.parLapply is 2.</p>
@@ -674,13 +824,18 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>train_metamodel(basemodel_train_result, which_to_use, Metamodel, TrainEachFold = FALSE)
+<pre><code class='language-R'>train_metamodel(X, basemodel_train_result, which_to_use, Metamodel,
+                use_X = FALSE, TrainEachFold = FALSE)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
+<tr><td><code id="train_metamodel_+3A_x">X</code></td>
+<td>
+<p>An N x P matrix of explanatory variables where N is the number of samples and P is the number of variables. Column names are required by caret.</p>
+</td></tr>
 <tr><td><code id="train_metamodel_+3A_basemodel_train_result">basemodel_train_result</code></td>
 <td>
 <p>The list output by train_basemodel</p>
@@ -693,18 +848,31 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 <td>
 <p>A strings specifying the meta learner</p>
 </td></tr>
+<tr><td><code id="train_metamodel_+3A_use_x">use_X</code></td>
+<td>
+<p>A logical indicating whether the meta-learner uses the original features X along with the base model predictions. If TRUE, it uses both X and the predictions; if FALSE, it uses only the predictions.</p>
+</td></tr>
 <tr><td><code id="train_metamodel_+3A_traineachfold">TrainEachFold</code></td>
 <td>
-<p>A logical indicating whether the meta learner learns using the predicted values of the base models at each cross-validation fold or not. If TRUE, the meta learners learns Nfold times using the values predicted by the base models at each fold. If FALSE, the meta learner learns once by pooling the predicted values of the base models of all folds.</p>
+<p>A logical indicating whether the meta learner learns using the predicted values of the base models at each cross-validation fold/random sample or not. If TRUE, the meta learners learns Nfold times using the values predicted by the base models at each fold/sample. If FALSE, the meta learner learns once by pooling the predicted values of the base models of all folds/samples.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>Stacking by this package consists of the following 2 steps. (1) Nfold cross-validation is conducted with each base learner.(2) Using the predicted values of each learner as the explanatory variables, the meta learner is trained. This function conducts step (2). Step (1) is conducted by train_basemodel. Another function stacking_train conducts both steps at once by calling these functions (train_basemodel and train_metamodel).<br />
+<p>Stacking by this package consists of the following 2 steps.
 </p>
-<p>In the step (2), there are two options. One is to train the meta learner Nfold times using the predicted values returned by the base models for each fold. The other is to train the meta learner once pooling the predicted values by the base models across folds. TrainEachModel swiches these options.<br />
+<p>(1) Each base learner is trained. The training method can be chosen based on the cross_validation argument:
+If cross_validation is TRUE: The function performs Nfold cross-validation for each base learner.
+If cross_validation is FALSE: The function trains each base learner using random sampling. The number of samples (num_sample) or the proportion of the data (proportion) can be specified to control the selection process.
+(2) Using the predicted values of each learner as the explanatory variables, the meta learner is trained.
+Steps (1) and (2) are conducted by train_basemodel and train_metamodel, respectively.
+Another function stacking_train conducts both steps at once by calling these functions (train_basemodel and train_metamodel).<br />
+</p>
+<p>Training of the meta learner can be modified by two arguments, TrainEachFold and use_X.
+TrainEachFold specifies whether the meta learner is trained for each fold or random sample individually, or once by pooling or combining all predicted values.
+use_X specifies whether the meta learner is trained with both the original features X and the base model predictions, or with only the base model predictions.
 </p>
 <p>Meta learners can be chosen from the methods implemented in caret. The choosable methods can be seen at https://topepo.github.io/caret/available-models.html or using names(getModelInfo()) after loading caret.
 </p>
@@ -714,14 +882,22 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 
 <p>A list containing the following elements is output.
 </p>
-<table>
+<table role = "presentation">
 <tr><td><code>train_result</code></td>
 <td>
-<p>A list containing the training results of the meta model, which is the list output by train function of caret. When TrainEachFold is TRUE, the length of list is Nfold because the meta learner is trained Nfold times.</p>
+<p>A list containing the training results of the meta model, which is the list output by train function of caret. When TrainEachFold is TRUE, the length of list is Nfold/num_sample because the meta learner is trained Nfold/num_sample times.</p>
 </td></tr>
 <tr><td><code>which_to_use</code></td>
 <td>
 <p>which_to_use given as the argument</p>
+</td></tr>
+<tr><td><code>cross_validation</code></td>
+<td>
+<p>A logical to specify whether to perform cross-validation. Set to TRUE to enable cross-validation or to FALSE to perform random sampling.</p>
+</td></tr>
+<tr><td><code>use_X</code></td>
+<td>
+<p>use_X</p>
 </td></tr>
 <tr><td><code>TrainEachFold</code></td>
 <td>
@@ -732,7 +908,7 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 
 <h3>Author(s)</h3>
 
-<p>Taichi Nukui, Akio Onogi
+<p>Taichi Nukui, Tomohiro Ishibashi, Akio Onogi
 </p>
 
 
@@ -779,14 +955,24 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 #Please remove #s before execution
 
 #Training of base learners
-#base &lt;- train_basemodel(X = X1, Y = Y1, Nfold = 5, Method = Method, core = 2)
+#base &lt;- train_basemodel(X = X1,
+#                        Y = Y1,
+#                        Method = Method,
+#                        core = 2,
+#                        cross_validation = TRUE,
+#                        Nfold = 5)
 
 #Training of a meta learner
-#meta &lt;- train_metamodel(base, which_to_use = 1:4, Metamodel = "lm")
+#meta &lt;- train_metamodel(X,
+#                        base,
+#                        which_to_use = 1:4,
+#                        Metamodel = "lm",
+#                        use_X = FALSE,
+#                        TrainEachFold = TRUE)
 
 #Combine both results
 #stacking_train_result &lt;- list(base = base, meta = meta)
-#=&gt;this list should have elements named as base and meta
+#=&gt;The list should have elements named as base and meta to be used in stacking_predict
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)
@@ -795,10 +981,31 @@ Method &lt;- list(glmnet = data.frame(alpha = c(0, 0.5, 1), lambda = rep(NA, 3))
 #Training using stacking_train
 #stacking_train_result &lt;- stacking_train(X = X1,
 #                                        Y = Y1,
-#                                        Nfold = 5,
 #                                        Method = Method,
 #                                        Metamodel = "lm",
-#                                        core = 2)
+#                                        core = 2,
+#                                        cross_validation = TRUE,
+#                                        use_X = FALSE,
+#                                        TrainEachFold = TRUE,
+#                                        Nfold = 5)
+
+#For random sampling, set cross_validation = FALSE and
+#specify the number of samples and the sampling proportion
+#using num_sample and proportion, respectively.
+#To include the original features X when training the meta-model, set use_X = TRUE.
+#When use_X is TRUE, simple linear regressions cannot be used
+#as the meta learner because of rank deficient.
+#The following code reflects the changes made to the relevant arguments.
+#stacking_train_result &lt;- stacking_train(X = X1,
+#                                        Y = Y1,
+#                                        Method = Method,
+#                                        Metamodel = "glmnet",
+#                                        core = 2,
+#                                        cross_validation = FALSE,
+#                                        use_X = TRUE,
+#                                        TrainEachFold = TRUE,
+#                                        num_sample = 5,
+#                                        proportion = 0.8)
 
 #Prediction
 #result &lt;- stacking_predict(newX = X2, stacking_train_result)

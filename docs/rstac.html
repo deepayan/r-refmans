@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package rstac</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package rstac</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -21,6 +21,7 @@ function processMathHTML() {
 <li><a href='#rstac'><p>R client library for STAC (rstac)</p></a></li>
 <li><a href='#assets_functions'><p>Assets functions</p></a></li>
 <li><a href='#collections'><p>Endpoint functions</p></a></li>
+<li><a href='#collections_functions'><p>Collections functions</p></a></li>
 <li><a href='#conformance'><p>doc_conformance endpoint</p></a></li>
 <li><a href='#cql2_helpers'><p>CQL2 helper function</p></a></li>
 <li><a href='#ext_filter'><p>Filter extension</p></a></li>
@@ -45,14 +46,14 @@ project.</a></li>
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Title:</td>
 <td>Client Library for SpatioTemporal Asset Catalog</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.0.0</td>
+<td>1.0.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -92,7 +93,8 @@ project.</a></li>
 </tr>
 <tr>
 <td>Suggests:</td>
-<td>lifecycle, testthat, knitr</td>
+<td>lifecycle, testthat, knitr, tmap, leaflet, stars, slider,
+ggplot2, purrr, dplyr</td>
 </tr>
 <tr>
 <td>Collate:</td>
@@ -100,9 +102,9 @@ project.</a></li>
 'cql2-core.R' 'cql2-json.R' 'cql2-text.R' 'cql2-adv_comp.R'
 'cql2-funs.R' 'cql2-env.R' 'cql2-utils.R' 'assets-utils.R'
 'assets-funs.R' 'check-utils.R' 'conformance-query.R'
-'collections-query.R' 'deprec-funs.R' 'doc-funs.R'
-'ext_filter.R' 'ext_query.R' 'extensions.R' 'geom-funs.R'
-'items-funs.R' 'items-utils.R' 'items-query.R'
+'collections-funs.R' 'collections-query.R' 'deprec-funs.R'
+'doc-funs.R' 'ext_filter.R' 'ext_query.R' 'extensions.R'
+'geom-funs.R' 'items-funs.R' 'items-utils.R' 'items-query.R'
 'message-utils.R' 'preview-utils.R' 'print.R' 'query-funs.R'
 'queryables-query.R' 'request.R' 'signatures.R' 'stac-query.R'
 'search-query.R' 'stac-funs.R' 'static-funs.R' 'url-utils.R'
@@ -114,7 +116,7 @@ project.</a></li>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-02-14 14:54:48 UTC; rolf</td>
+<td>2024-07-18 20:01:52 UTC; sits</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -133,7 +135,7 @@ project.</a></li>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-02-14 21:40:02 UTC</td>
+<td>2024-07-18 20:30:01 UTC</td>
 </tr>
 </table>
 <hr>
@@ -333,6 +335,7 @@ asset using a named list or a function.
   output_dir = getwd(),
   overwrite = FALSE,
   ...,
+  use_gdal = FALSE,
   download_fn = NULL
 )
 
@@ -343,6 +346,7 @@ assets_download(
   output_dir = getwd(),
   overwrite = FALSE,
   ...,
+  use_gdal = FALSE,
   create_json = FALSE,
   download_fn = NULL
 )
@@ -354,6 +358,7 @@ assets_download(
   output_dir = getwd(),
   overwrite = FALSE,
   ...,
+  use_gdal = FALSE,
   download_fn = NULL,
   create_json = TRUE,
   items_max = Inf,
@@ -367,6 +372,7 @@ assets_download(
   output_dir = getwd(),
   overwrite = FALSE,
   ...,
+  use_gdal = FALSE,
   create_json = FALSE,
   download_fn = NULL
 )
@@ -425,7 +431,7 @@ asset_raster_bands(field)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="assets_functions_+3A_items">items</code></td>
 <td>
 <p>a <code>doc_item</code> or <code>doc_items</code> object
@@ -451,6 +457,11 @@ if FALSE, a warning message is shown.</p>
 <tr><td><code id="assets_functions_+3A_...">...</code></td>
 <td>
 <p>additional arguments. See details.</p>
+</td></tr>
+<tr><td><code id="assets_functions_+3A_use_gdal">use_gdal</code></td>
+<td>
+<p>a <code>logical</code> indicating if the file should be downloaded
+by GDAL instead httr package.</p>
 </td></tr>
 <tr><td><code id="assets_functions_+3A_download_fn">download_fn</code></td>
 <td>
@@ -524,7 +535,10 @@ a logical value where <code>TRUE</code> selects the asset and <code>FALSE</code>
 Multiple expressions are combine with <code>AND</code> operator. Expressions can
 use <code>asset</code> helper functions (i.e. <code>asset_key()</code>, <code>asset_eo_bands()</code>,
 and <code>asset_raster_bands()</code>). Multiple expressions are combined with
-<code>AND</code> operator.
+<code>AND</code> operator. <code>assets_select()</code> uses non-standard evaluation to evaluate
+its expressions. That means users must escape any variable or call to
+be able to use them in the expressions. The escape is done by using
+<code>double-curly-braces</code>, i.e., <code>{{variable}}</code>.
 </p>
 <p><strong>WARNING:</strong> Errors in the evaluation of expressions are
 considered as <code>FALSE</code>.
@@ -654,13 +668,13 @@ Collection object
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>collections(q, collection_id = NULL)
+<pre><code class='language-R'>collections(q, collection_id = NULL, limit = NULL)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="collections_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query
@@ -669,6 +683,11 @@ criteria.</p>
 <tr><td><code id="collections_+3A_collection_id">collection_id</code></td>
 <td>
 <p>a <code>character</code> collection id to be retrieved.</p>
+</td></tr>
+<tr><td><code id="collections_+3A_limit">limit</code></td>
+<td>
+<p>an <code>integer</code> defining the maximum number of results
+to return. If not informed, it defaults to the service implementation.</p>
 </td></tr>
 </table>
 
@@ -704,6 +723,119 @@ parameters to be provided to STAC API web service.
 </code></pre>
 
 <hr>
+<h2 id='collections_functions'>Collections functions</h2><span id='topic+collections_functions'></span><span id='topic+collections_next'></span><span id='topic+collections_matched'></span><span id='topic+collections_length'></span><span id='topic+collections_fetch'></span>
+
+<h3>Description</h3>
+
+<p>These functions provide support to work with
+<code>doc_collections</code>objects.
+</p>
+
+<ul>
+<li> <p><code>collections_length()</code>: <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a>
+shows how many items there are in the <code>doc_items</code> object.
+</p>
+</li>
+<li> <p><code>collections_matched()</code>: <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a>
+shows how many items matched the search criteria.
+</p>
+</li>
+<li> <p><code>collections_fetch()</code>: <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a>
+request all STAC Items through pagination.
+</p>
+</li>
+<li> <p><code>collections_next()</code>: <a href="https://lifecycle.r-lib.org/articles/stages.html#experimental"><img src="../help/figures/lifecycle-experimental.svg" alt='[Experimental]' /></a>
+fetches a new page from STAC service.
+</p>
+</li></ul>
+
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>collections_next(collections, ...)
+
+collections_matched(collections, matched_field)
+
+collections_length(collections)
+
+collections_fetch(collections, ..., progress = TRUE, matched_field = NULL)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="collections_functions_+3A_collections">collections</code></td>
+<td>
+<p>a <code>doc_collections</code> object.</p>
+</td></tr>
+<tr><td><code id="collections_functions_+3A_...">...</code></td>
+<td>
+<p>additional arguments. See details.</p>
+</td></tr>
+<tr><td><code id="collections_functions_+3A_matched_field">matched_field</code></td>
+<td>
+<p>a <code>character</code> vector with the path
+where is the number of collections returned.</p>
+</td></tr>
+<tr><td><code id="collections_functions_+3A_progress">progress</code></td>
+<td>
+<p>a <code>logical</code> indicating if a progress bar must be
+shown or not. Defaults to <code>TRUE</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Ellipsis argument (<code>...</code>) appears in different items functions and
+has distinct purposes:
+</p>
+
+<ul>
+<li> <p><code>collections_fetch()</code> and <code>collections_next()</code>: ellipsis is used to
+pass additional <code>httr</code> options to <a href="httr.html#topic+GET">GET</a> method, such as
+<a href="httr.html#topic+add_headers">add_headers</a> or <a href="httr.html#topic+set_cookies">set_cookies</a>.
+</p>
+</li></ul>
+
+
+
+<h3>Value</h3>
+
+
+<ul>
+<li> <p><code>collections_length()</code>: an <code>integer</code> value.
+</p>
+</li>
+<li> <p><code>collections_matched()</code>: returns an <code>integer</code> value if the STAC web
+server does support this extension. Otherwise returns <code>NULL</code>.
+</p>
+</li>
+<li> <p><code>collections_fetch()</code>: a <code>doc_items</code> with all matched items.
+</p>
+</li>
+<li> <p><code>collections_next()</code>: fetches a new page from STAC service.
+</p>
+</li></ul>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>## Not run: 
+# doc_items object
+stac("https://cmr.earthdata.nasa.gov/stac/LPCLOUD") |&gt;
+  collections() |&gt;
+  get_request() |&gt;
+  collections_fetch()
+
+## End(Not run)
+
+</code></pre>
+
+<hr>
 <h2 id='conformance'>doc_conformance endpoint</h2><span id='topic+conformance'></span>
 
 <h3>Description</h3>
@@ -722,7 +854,7 @@ This endpoint is accessible from the provider's catalog (<code style="white-spac
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="conformance_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query criteria.</p>
@@ -778,7 +910,7 @@ cql2_interval(start = "..", end = "..")
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="cql2_helpers_+3A_bbox">bbox</code></td>
 <td>
 <p>a <code>numeric</code> containing a bbox with
@@ -877,7 +1009,7 @@ cql2_text(expr)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="ext_filter_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query
@@ -910,6 +1042,20 @@ advantage of the abstract syntax tree (AST) to translate R expressions
 to CQL2 expressions. The following topics describe the correspondences
 between <code>rstac</code> expressions and CQL2 operators.
 </p>
+
+
+<h4>Non-standard evaluation</h4>
+
+
+<ul>
+<li> <p><code>ext_filter()</code> uses non-standard evaluation to evaluate its expressions.
+That means users must escape any variable or call to be able to use them
+in the expressions. The escape is done by using <code>double-curly-braces</code>,
+i.e., <code>{{variable}}</code>.
+</p>
+</li></ul>
+
+
 
 
 <h4>Standard comparison operators</h4>
@@ -1229,7 +1375,7 @@ extensions.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="ext_query_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query
@@ -1423,7 +1569,7 @@ rstac_query(version = NULL, base_url, params = list(), subclass)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="extensions_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object.</p>
@@ -1583,7 +1729,7 @@ post_request(q, ..., encode = c("json", "multipart", "form"))
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_request_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query
@@ -1670,7 +1816,7 @@ filters parameters of <code><a href="#topic+stac_search">stac_search()</a></code
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="items_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query
@@ -1827,8 +1973,9 @@ field of a <code>doc_items</code> or a <code>doc_item</code> object.
 (see details section).
 </p>
 </li>
-<li> <p><code>items_reap()</code>: extract key values by traversing all items
-in a <code>doc_items</code> object.
+<li> <p><code>items_reap()</code>: traverses all items in a <code>doc_items</code> object and
+extracts values based on the specified field path. It is useful for
+retrieving nested elements from STAC items.
 </p>
 </li>
 <li> <p><code>items_fields()</code>: lists field names inside an item.
@@ -1993,7 +2140,7 @@ items_select(items, selection)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="items_functions_+3A_items">items</code></td>
 <td>
 <p>a <code>doc_items</code> object.</p>
@@ -2022,8 +2169,9 @@ evaluate a <code>logical</code> value.</p>
 </td></tr>
 <tr><td><code id="items_functions_+3A_field">field</code></td>
 <td>
-<p>a <code>character</code> with the names of the field to
-get the subfields values.</p>
+<p>A <code>character</code> vector specifying the path to the
+field from which to extract subfield values.
+For example, <code>c("assets", "*")</code> will traverse all assets from each item.</p>
 </td></tr>
 <tr><td><code id="items_functions_+3A_pick_fn">pick_fn</code></td>
 <td>
@@ -2067,8 +2215,14 @@ methods, such as <a href="httr.html#topic+add_headers">add_headers</a> or
 <a href="httr.html#topic+set_cookies">set_cookies</a>.
 </p>
 </li>
-<li> <p><code>items_filter()</code>: ellipsis is used to pass logical
-expressions to be evaluated against a <code>doc_item</code> field as filter criteria.
+<li> <p><code>items_filter()</code>: ellipsis is used to pass logical expressions to
+be evaluated against a <code>doc_item</code> field as filter criteria. Expressions
+must be evaluated as a logical value where <code>TRUE</code> selects the item
+and <code>FALSE</code> discards it. Multiple expressions are combine with <code>AND</code>
+operator. <code>items_filter()</code> uses non-standard evaluation to evaluate
+its expressions. That means users must escape any variable or call to
+be able to use them in the expressions. The escape is done by using
+<code>double-curly-braces</code>, i.e., <code>{{variable}}</code>.
 </p>
 <p><strong>WARNING:</strong> the evaluation of filter expressions changed in <code>rstac</code> 0.9.2.
 Older versions of <code>rstac</code> used <code>properties</code> field to evaluate filter
@@ -2212,9 +2366,13 @@ stac_item &lt;- stac("https://brazildatacube.dpi.inpe.br/stac/") %&gt;%
  stac_search(collections = "CB4-16D-2", limit = 100,
         datetime = "2017-08-01/2018-03-01",
         bbox = c(-48.206, -14.195, -45.067, -12.272)) %&gt;%
- get_request() %&gt;% items_fetch(progress = FALSE)
+ get_request() %&gt;%
+ items_fetch(progress = FALSE)
 
-stac_item %&gt;% items_reap(field = c("properties", "datetime"))
+stac_item %&gt;% items_reap(c("properties", "datetime"))
+
+# Extract all asset URLs from each item
+stac_item %&gt;% items_reap(c("assets", "*"), \(x) x$href)
 
 stac_item %&gt;% items_as_sf()
 
@@ -2262,7 +2420,7 @@ sign_bdc(access_token = NULL, ...)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="items_sign_bdc_+3A_items">items</code></td>
 <td>
 <p>a <code>doc_item</code> or <code>doc_items</code> object
@@ -2351,7 +2509,7 @@ sign_planetary_computer(..., headers = NULL, token_url = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="items_sign_planetary_computer_+3A_items">items</code></td>
 <td>
 <p>a <code>doc_item</code> or <code>doc_items</code> object
@@ -2457,7 +2615,7 @@ Currently, only png and jpeg formats are supported.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="preview_plot_+3A_url">url</code></td>
 <td>
 <p>image URL to be plotted.</p>
@@ -2548,7 +2706,7 @@ print(x, n = 10, ...)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="print_+3A_x">x</code></td>
 <td>
 <p>either a <code>rstac_query</code> object expressing a STAC query
@@ -2630,7 +2788,7 @@ or from a collection (<code style="white-space: pre;">&#8288;/collections/{colle
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="queryables_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query criteria.</p>
@@ -2703,7 +2861,7 @@ catalogs.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="stac_+3A_base_url">base_url</code></td>
 <td>
 <p>a <code>character</code> informing the base URL of a
@@ -2765,7 +2923,7 @@ stac_type(x)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="stac_functions_+3A_x">x</code></td>
 <td>
 <p>either a <code>rstac_query</code> object expressing a STAC query
@@ -2820,7 +2978,7 @@ returned by these requests is a <code>doc_items</code> object, a regular R
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="stac_search_+3A_q">q</code></td>
 <td>
 <p>a <code>rstac_query</code> object expressing a STAC query
@@ -2985,7 +3143,7 @@ link_open(link, base_url = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="static_functions_+3A_url">url</code></td>
 <td>
 <p>a <code>character</code> value with the URL to a valid STAC document.</p>

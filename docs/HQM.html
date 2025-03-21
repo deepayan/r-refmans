@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package HQM</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package HQM</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -18,17 +18,25 @@ function processMathHTML() {
 <h1>Package {HQM}</h1>
 <h2>Contents</h2>
 <ul class="menu">
+<li><a href='#auc.hqm'><p>AUC for the High Quality Marker estimator</p></a></li>
 <li><a href='#b_selection'><p>Cross validation bandwidth selection</p></a></li>
 <li><a href='#b_selection_prep_g'><p>Preparations for bandwidth selection</p></a></li>
+<li><a href='#bs.hqm'><p>Brier score for the High Quality Marker estimator</p></a></li>
 <li><a href='#Conf_bands'><p>Confidence bands</p></a></li>
 <li><a href='#dataset_split'><p>Split dataset for K-fold cross validation</p></a></li>
+<li><a href='#dij'><p>D matrix entries, used for the implementation of the local linear kernel</p></a></li>
+<li><a href='#Epan'><p>Epanechnikov kernel</p></a></li>
 <li><a href='#g_xt'><p>Computation of a key component for wild bootstrap</p></a></li>
 <li><a href='#get_alpha'><p>Marker-only hazard rate</p></a></li>
-<li><a href='#get_h_x'><p>Future conditional hazard rate for all time values</p></a></li>
-<li><a href='#h_xt'><p>Future conditional hazard rate</p></a></li>
+<li><a href='#get_h_x'><p>Local constant future conditional hazard rate estimator</p></a></li>
+<li><a href='#get_h_xll'><p>Local linear future conditional hazard rate estimator</p></a></li>
+<li><a href='#h_xt'><p>Local constant future conditional hazard rate estimation at a single time point</p></a></li>
 <li><a href='#h_xt_vec'><p>Hqm estimator on the marker grid</p></a></li>
-<li><a href='#Kernels'><p>Epanechnikov kernel and pdf kernel estimate</p></a></li>
+<li><a href='#h_xtll'><p>Local linear future conditional hazard rate estimation at a single time point</p></a></li>
+<li><a href='#Kernels'><p>Classical (unmodified) kernel and related functionals</p></a></li>
 <li><a href='#lin_interpolate'><p>Linear interpolation</p></a></li>
+<li><a href='#llK_b'><p>Local linear kernel</p></a></li>
+<li><a href='#llweights'><p>Local linear weight functions</p></a></li>
 <li><a href='#make_N+2C+20make_Ni+2C+20make_Y+2C+20make_Yi'><p>Occurance and Exposure on grids</p></a></li>
 <li><a href='#make_sf'><p>Survival function from a hazard</p></a></li>
 <li><a href='#pbc2'><p>Mayo Clinic Primary Biliary Cirrhosis Data</p></a></li>
@@ -42,7 +50,7 @@ function processMathHTML() {
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Type:</td>
 <td>Package</td>
@@ -54,15 +62,15 @@ Marker Information</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.1.0</td>
+<td>1.0</td>
 </tr>
 <tr>
 <td>Maintainer:</td>
-<td>Alex Isakson &lt;alex.isakson@bayes.city.ac.uk&gt;</td>
+<td>Dimitrios Bagkavos &lt;dimitrios.bagkavos@gmail.com&gt;</td>
 </tr>
 <tr>
 <td>Description:</td>
-<td>Provides a nonparametric smoothed kernel density estimator for the future conditional hazard when time-dependent covariates are present. It also provides pointwise and uniform confidence bands and a bandwidth selection.</td>
+<td>Provides a nonparametric smoothed kernel estimator for the future conditional hazard rate function when time-dependent covariates are present, a bandwidth selector for the estimator's implementation and pointwise and uniform confidence bands. Methods used in the package refer to Bagkavos, Isakson, Mammen, Nielsen and Proust-Lima (2025)  &lt;<a href="https://doi.org/10.1093%2Fbiomet%2Fasaf008">doi:10.1093/biomet/asaf008</a>&gt;.</td>
 </tr>
 <tr>
 <td>Encoding:</td>
@@ -78,7 +86,7 @@ Marker Information</td>
 </tr>
 <tr>
 <td>Imports:</td>
-<td>stats, utils</td>
+<td>stats, utils, survival, pec, timeROC, nlme, JM</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -94,12 +102,12 @@ Marker Information</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2022-09-09 11:43:03 UTC; Alex</td>
+<td>2025-02-01 12:45:52 UTC; bagav</td>
 </tr>
 <tr>
 <td>Author:</td>
-<td>Alex Isakson [aut, cre],
-  Dimitrios Bagkavos [ctb],
+<td>Dimitrios Bagkavos [aut, cre],
+  Alex Isakson [ctb],
   Enno Mammen [ctb],
   Jens Nielsen [ctb],
   Cecile Proust-Lima [ctb]</td>
@@ -110,9 +118,88 @@ Marker Information</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2022-09-12 07:52:55 UTC</td>
+<td>2025-02-01 14:20:02 UTC</td>
 </tr>
 </table>
+<hr>
+<h2 id='auc.hqm'>AUC for the High Quality Marker estimator</h2><span id='topic+auc.hqm'></span>
+
+<h3>Description</h3>
+
+<p>Calculates the AUC for the HQM estimator.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>auc.hqm(xin, est, landm, th, event_time_name, status_name)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="auc.hqm_+3A_xin">xin</code></td>
+<td>
+<p>A data frame containing event times and the patient status.</p>
+</td></tr>
+<tr><td><code id="auc.hqm_+3A_est">est</code></td>
+<td>
+<p>The HQM estimator values, typically the output of <code><a href="#topic+get_h_x">get_h_x</a></code>. </p>
+</td></tr>
+<tr><td><code id="auc.hqm_+3A_landm">landm</code></td>
+<td>
+<p>Landmark time.</p>
+</td></tr>
+<tr><td><code id="auc.hqm_+3A_th">th</code></td>
+<td>
+<p>Time horizon.</p>
+</td></tr>
+<tr><td><code id="auc.hqm_+3A_event_time_name">event_time_name</code></td>
+<td>
+<p>The column name of the event times in the <code>xin</code> data frame. </p>
+</td></tr>
+<tr><td><code id="auc.hqm_+3A_status_name">status_name</code></td>
+<td>
+<p>The column name of the status variable in the <code>xin</code>  frame.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function <code><a href="#topic+auc.hqm">auc.hqm</a></code> implements the AUC calculation for the HQM estimator estimator.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A vector of two values: the landmark time of the calculation and the AUC value.
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="#topic+bs.hqm">bs.hqm</a> </code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(timeROC)
+library(survival)
+ Landmark &lt;- 2
+ pbcT1 &lt;- pbc2[which(pbc2$year&lt; Landmark  &amp; pbc2$years&gt; Landmark),]
+ timesS2 &lt;- seq(Landmark,14,by=0.5)
+ b=0.9
+ arg1&lt;- get_h_x(pbcT1, 'albumin', event_time_name = 'years',  
+                time_name = 'year', event_name = 'status2', 2, 0.9) 
+ br_s2  = seq(Landmark, 14,  length=99)
+ sfalb2&lt;- make_sf(    (br_s2[2]-br_s2[1])/4 , arg1)
+ tHor &lt;- 1.5
+ auc.hq.use&lt;-auc.hqm(pbcT1, sfalb2, Landmark,tHor,  
+              event_time_name = 'years', status_name = 'status2')
+ auc.hq.use
+</code></pre>
+
 <hr>
 <h2 id='b_selection'>Cross validation bandwidth selection</h2><span id='topic+b_selection'></span>
 
@@ -131,7 +218,7 @@ Marker Information</td>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="b_selection_+3A_data">data</code></td>
 <td>
 <p>A data frame of time dependent data points.  Missing values are allowed.</p>
@@ -212,7 +299,7 @@ b_scores_alb[[2]][which.min(b_scores_alb[[1]])]
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="b_selection_prep_g_+3A_h_mat">h_mat</code></td>
 <td>
 <p>A matrix of the estimator for the future conditional hazard rate for all values <code>x</code> and <code>t</code>.</p>
@@ -294,6 +381,90 @@ b_selection_prep_g(h_xt_mat, int_X, size_X_grid, n, Yi)
 </code></pre>
 
 <hr>
+<h2 id='bs.hqm'>Brier score for the High Quality Marker estimator</h2><span id='topic+bs.hqm'></span>
+
+<h3>Description</h3>
+
+<p>Calculates the Brier score for the HQM estimator.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>bs.hqm(xin, est, landm, th, event_time_name, status_name)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="bs.hqm_+3A_xin">xin</code></td>
+<td>
+<p>A data frame containing event times and the patient status.</p>
+</td></tr>
+<tr><td><code id="bs.hqm_+3A_est">est</code></td>
+<td>
+<p>The HQM estimator values, typically the output of <code><a href="#topic+get_h_x">get_h_x</a></code>. </p>
+</td></tr>
+<tr><td><code id="bs.hqm_+3A_landm">landm</code></td>
+<td>
+<p>Landmark time.</p>
+</td></tr>
+<tr><td><code id="bs.hqm_+3A_th">th</code></td>
+<td>
+<p>Time horizon.</p>
+</td></tr>
+<tr><td><code id="bs.hqm_+3A_event_time_name">event_time_name</code></td>
+<td>
+<p>The column name of the event times in the data frame <code>xin</code>. </p>
+</td></tr>
+<tr><td><code id="bs.hqm_+3A_status_name">status_name</code></td>
+<td>
+<p>The column name of the status variable in the data frame <code>xin</code>.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function <code><a href="#topic+bs.hqm">bs.hqm</a></code> implements the Brier score calculation for the HQM estimator estimator.
+</p>
+
+
+<h3>Value</h3>
+
+<p>Scalar: the Brier score of the HQM estimator.
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="#topic+auc.hqm">auc.hqm</a> </code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(pec)
+library(survival)
+Landmark &lt;- 2
+
+pbcT1 &lt;- pbc2[which(pbc2$year&lt; Landmark  &amp; pbc2$years&gt; Landmark),]
+timesS2 &lt;- seq(Landmark,14,by=0.5)
+
+
+b=0.9
+arg1&lt;- get_h_x(pbcT1, 'albumin', event_time_name = 'years',  
+               time_name = 'year', event_name = 'status2', 2, 0.9) 
+br_s2  = seq(Landmark, 14,  length=99)
+sfalb2&lt;- make_sf(    (br_s2[2]-br_s2[1])/4 , arg1)
+
+
+tHor &lt;- 1.5
+bs.use&lt;-bs.hqm(pbcT1, sfalb2, Landmark,tHor, 
+                event_time_name = 'years', status_name = 'status2')
+bs.use
+</code></pre>
+
+<hr>
 <h2 id='Conf_bands'>Confidence bands</h2><span id='topic+Conf_bands'></span>
 
 <h3>Description</h3>
@@ -311,7 +482,7 @@ b_selection_prep_g(h_xt_mat, int_X, size_X_grid, n, Yi)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="Conf_bands_+3A_data">data</code></td>
 <td>
 <p>A data frame of time dependent data points.  Missing values are allowed.</p>
@@ -416,7 +587,7 @@ lines(br_s[1:J], c_bands$I_nd[1:J], col = "blue")
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="dataset_split_+3A_data">data</code></td>
 <td>
 <p>A data frame of time dependent data points.  Missing values are allowed.</p>
@@ -451,6 +622,96 @@ lines(br_s[1:J], c_bands$I_nd[1:J], col = "blue")
 </code></pre>
 
 <hr>
+<h2 id='dij'>D matrix entries, used for the implementation of the local linear kernel</h2><span id='topic+dij'></span>
+
+<h3>Description</h3>
+
+<p>Calculates the entries of the <code class="reqn">D</code> matrix in the definition of the local linear kernel</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>dij(b,x,y, K)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="dij_+3A_x">x</code></td>
+<td>
+<p> A vector of design points where the kernel will be evaluated.</p>
+</td></tr>
+<tr><td><code id="dij_+3A_y">y</code></td>
+<td>
+<p> A vector of sample data points.</p>
+</td></tr>
+<tr><td><code id="dij_+3A_b">b</code></td>
+<td>
+<p> The bandwidth to use (a scalar).</p>
+</td></tr>
+<tr><td><code id="dij_+3A_k">K</code></td>
+<td>
+<p> The kernel function to use.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Implements the  caclulation of all <code class="reqn">d \times d</code> entries of matrix <code class="reqn">D</code>, which is part of the definition of the local linear kernel. The actual calculation is performed by
+</p>
+<p style="text-align: center;"><code class="reqn">
+d_{jk}  =  \sum_{i=1}^n \int_0^T K_b(x-X_i(s))\{x-X_{ij}(s)\}\{x-X_{ik}(s)\} Z_i(s)ds,
+</code>
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>scalar value, the result of  <code class="reqn">d_{jk}</code>.
+</p>
+
+<hr>
+<h2 id='Epan'>Epanechnikov kernel</h2><span id='topic+Epan'></span>
+
+<h3>Description</h3>
+
+<p>Implements the Epanechnikov kernel function</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>Epan(x)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="Epan_+3A_x">x</code></td>
+<td>
+<p> A vector of design points where the kernel will be evaluated.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Implements the   Epanechnikov kernel function
+</p>
+<p style="text-align: center;"><code class="reqn"> K(x) = \frac{3}{4}(1-x^2)*(|x|&lt;1)),</code>
+</p>
+
+
+
+<h3>Value</h3>
+
+<p>Scalar, the value of the Epanechnikov kernel at <code class="reqn">x</code>.
+</p>
+
+<hr>
 <h2 id='g_xt'>Computation of a key component for wild bootstrap</h2><span id='topic+g_xt'></span>
 
 <h3>Description</h3>
@@ -467,7 +728,7 @@ lines(br_s[1:J], c_bands$I_nd[1:J], col = "blue")
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="g_xt_+3A_br_x">br_X</code></td>
 <td>
 <p>Marker value grid points that will be used in the evaluatiuon.</p>
@@ -570,7 +831,7 @@ g_xt(br_X, br_s, size_s_grid, int_X, x, t, b, Yi, Y, n)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_alpha_+3A_n">N</code></td>
 <td>
 <p>A matrix made by <code><a href="#topic+make_N">make_N</a></code> indicating the occurences of events.</p>
@@ -647,24 +908,22 @@ alpha&lt;-get_alpha(N, Y, b, br_X, K=Epan )
 </code></pre>
 
 <hr>
-<h2 id='get_h_x'>Future conditional hazard rate for all time values</h2><span id='topic+get_h_x'></span>
+<h2 id='get_h_x'>Local constant future conditional hazard rate estimator</h2><span id='topic+get_h_x'></span>
 
 <h3>Description</h3>
 
-<p>Calculates the future conditional hazard rate for a marker value <code>x</code> and all possible time values.
+<p>Calculates the local constant future hazard rate function, conditional on a marker value <code>x</code>, across across a set of time values <code>t</code>.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_h_x(data, marker_name, event_time_name = 'years',
-        time_name = 'year', event_name = 'status2', x, b)
-</code></pre>
+<pre><code class='language-R'>get_h_x(data, marker_name, event_time_name, time_name, event_name, x, b)</code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_h_x_+3A_data">data</code></td>
 <td>
 <p>A data frame of time dependent data points.  Missing values are allowed.</p>
@@ -691,19 +950,19 @@ alpha&lt;-get_alpha(N, Y, b, br_X, K=Epan )
 </td></tr>
 <tr><td><code id="get_h_x_+3A_b">b</code></td>
 <td>
-<p>Bandwidth.</p>
+<p>Bandwidth parameter.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>The function <code><a href="#topic+h_xt">h_xt</a></code> implements the future conditional hazard estimator
+<p>The function <code><a href="#topic+get_h_x">get_h_x</a></code> implements the future local constant conditional hazard estimator
 </p>
 <p style="text-align: center;"><code class="reqn">\hat{h}_x(t) = \frac{\sum_{i=1}^n \int_0^T\hat{\alpha}_i(X_i(t+s))Z_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s}{\sum_{i=1}^n\int_0^TZ_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s},</code>
 </p>
 
-<p>where <code class="reqn">X</code> is the marker, <code class="reqn">Z</code> is the exposure and <code class="reqn">\alpha(z)</code> is the marker-only hazard, see <code><a href="#topic+get_alpha">get_alpha</a></code> for more details.
+<p>across a grid of possible time values <code class="reqn">t</code>, where <code class="reqn">X</code> is the marker, <code class="reqn">Z</code> is the exposure and <code class="reqn">\alpha(z)</code> is the marker-only hazard, see <code><a href="#topic+get_alpha">get_alpha</a></code> for more details.
 </p>
 
 
@@ -720,15 +979,184 @@ alpha&lt;-get_alpha(N, Y, b, br_X, K=Epan )
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>b = 10
+<pre><code class='language-R'>library(survival)
+b = 10
 x = 3
+Landmark &lt;- 2
+pbcT1 &lt;- pbc2[which(pbc2$year&lt; Landmark  &amp; pbc2$years&gt; Landmark),]
+b=0.9
 
-get_h_x(pbc2, 'serBilir', event_time_name = 'years',
-        time_name = 'year', event_name = 'status2', x, b)
+arg1ll&lt;-get_h_xll(pbcT1,'albumin',event_time_name='years',
+                  time_name='year',event_name='status2',2,0.9) 
+arg1lc&lt;-get_h_x(pbcT1,'albumin',event_time_name='years',
+                time_name='year',event_name='status2',2,0.9) 
+
+#Caclulate the local contant and local linear survival functions
+br_s  = seq(Landmark, 14,  length=99)
+sfalb2ll&lt;- make_sf(    (br_s[2]-br_s[1])/4 , arg1ll)
+sfalb2lc&lt;- make_sf(    (br_s[2]-br_s[1])/4 , arg1lc)
+
+#For comparison, also calculate the Kaplan-Meier
+kma2&lt;- survfit(Surv(years , status2) ~ 1, data = pbcT1)
+
+#Plot the survival functions:
+plot(br_s, sfalb2ll,  type="l", col=1, lwd=2, ylab="Survival probability", xlab="Marker level")
+lines(br_s, sfalb2lc,  lty=2, lwd=2, col=2)
+lines(kma2$time, kma2$surv, type="s",  lty=2, lwd=2, col=3)
+
+legend("topright", c(  "Local linear HQM", "Local constant HQM", 
+        "Kaplan-Meier"), lty=c(1, 2, 2), col=1:3, lwd=2, cex=1.7)
 </code></pre>
 
 <hr>
-<h2 id='h_xt'>Future conditional hazard rate</h2><span id='topic+h_xt'></span>
+<h2 id='get_h_xll'>Local linear future conditional hazard rate estimator</h2><span id='topic+get_h_xll'></span>
+
+<h3>Description</h3>
+
+<p>Calculates the local linear future hazard rate function, conditional on a marker value <code>x</code>, across a set of time values <code>t</code>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'> get_h_xll(data, marker_name, event_time_name, time_name, event_name, x, b)</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="get_h_xll_+3A_data">data</code></td>
+<td>
+<p>A data frame of time dependent data points.  Missing values are allowed.</p>
+</td></tr>
+<tr><td><code id="get_h_xll_+3A_marker_name">marker_name</code></td>
+<td>
+<p>The column name of the marker values in the data frame <code><a href="utils.html#topic+data">data</a></code>. </p>
+</td></tr>
+<tr><td><code id="get_h_xll_+3A_event_time_name">event_time_name</code></td>
+<td>
+<p>The column name of the event times in the data frame <code><a href="utils.html#topic+data">data</a></code>. </p>
+</td></tr>
+<tr><td><code id="get_h_xll_+3A_time_name">time_name</code></td>
+<td>
+<p>The column name of the times the marker values were observed in the data frame <code><a href="utils.html#topic+data">data</a></code>.</p>
+</td></tr>
+<tr><td><code id="get_h_xll_+3A_event_name">event_name</code></td>
+<td>
+<p>The column name of the events in the data frame <code><a href="utils.html#topic+data">data</a></code>.</p>
+</td></tr>
+<tr><td><code id="get_h_xll_+3A_x">x</code></td>
+<td>
+<p>Numeric value of the last observed marker value.</p>
+</td></tr>
+<tr><td><code id="get_h_xll_+3A_b">b</code></td>
+<td>
+<p>Bandwidth parameter.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function <code><a href="#topic+get_h_xll">get_h_xll</a></code> implements the local linear future conditional hazard estimator
+</p>
+<p style="text-align: center;"><code class="reqn">\hat{h}_x(t) = \frac{\sum_{i=1}^n \int_0^T\hat{\alpha}_i(X_i(t+s))Z_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s}{\sum_{i=1}^n\int_0^TZ_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s},</code>
+</p>
+
+<p>across a grid of possible time values <code class="reqn">t</code>, where <code class="reqn">X</code> is the marker, <code class="reqn">Z</code> is the exposure and <code class="reqn">\alpha(z)</code> is the marker-only hazard, see <code><a href="#topic+get_alpha">get_alpha</a></code> for more details.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A vector of <code class="reqn">\hat h_x(t)</code> for a grid of possible time values <code class="reqn">t</code>.
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="#topic+get_alpha">get_alpha</a>, <a href="#topic+h_xt">h_xt</a> </code></p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>library(survival)
+library(JM)
+
+# Compare Local constant and local linear estimator, use KM for reference
+# Albumin marker, use landmarking
+Landmark &lt;- 2
+pbcT1 &lt;- pbc2[which(pbc2$year&lt; Landmark  &amp; pbc2$years&gt; Landmark),]
+b=0.9
+
+arg1ll&lt;-get_h_xll(pbcT1, 'albumin', event_time_name = 'years', time_name = 'year',
+                  event_name = 'status2', 2, 0.9) 
+arg1lc&lt;-get_h_x(pbcT1, 'albumin', event_time_name = 'years', time_name = 'year',
+                event_name = 'status2', 2, 0.9) 
+
+#Caclulate the local contant and local linear survival functions
+br_s  = seq(Landmark, 14,  length=99)
+sfalb2ll&lt;- make_sf(    (br_s[2]-br_s[1])/4 , arg1ll)
+sfalb2lc&lt;- make_sf(    (br_s[2]-br_s[1])/4 , arg1lc)
+
+#For comparison, also calculate the Kaplan-Meier
+kma2&lt;- survfit(Surv(years , status2) ~ 1, data = pbcT1)
+
+#Plot the survival functions:
+plot(br_s, sfalb2ll,  type="l", col=1, lwd=2, ylab="Survival probability", xlab="Marker level")
+lines(br_s, sfalb2lc,  lty=2, lwd=2, col=2)
+lines(kma2$time, kma2$surv, type="s",  lty=2, lwd=2, col=3)
+
+legend("topright", c(  "Local linear HQM", "Local constant HQM", "Kaplan-Meier"), 
+        lty=c(1, 2, 2), col=1:3, lwd=2, cex=1.7)
+        
+
+## Not run:        
+#Compare JM, HQM and KM for Bilirubin       
+b = 10 
+Landmark &lt;- 1
+lmeFit &lt;- lme(serBilir ~ year, random = ~ year | id, data = pbc2)
+coxFit &lt;- coxph(Surv(years, status2) ~ serBilir, data = pbc2.id, x = TRUE)
+
+ 
+jointFit0 &lt;- jointModel(lmeFit, coxFit, timeVar = "year", 
+                                method = "piecewise-PH-aGH")
+pbcT1 &lt;- pbc2[which(pbc2$year&lt; Landmark  &amp; pbc2$years&gt; Landmark),]
+ 
+
+timesS1 &lt;- seq(1,14,by=0.5)
+predT1 &lt;- survfitJM(jointFit0, newdata = pbcT1,survTimes = timesS1)
+nm&lt;-length(predT1$summaries)
+
+mat.out1&lt;-matrix(nrow=length(timesS1), ncol=nm)
+for(r in 1:nm)
+{
+  SurvLand &lt;- predT1$summaries[[r]][,"Mean"][1]
+  mat.out1[,r] &lt;- predT1$summaries[[r]][,"Mean"]/SurvLand
+}
+sfit1y&lt;-rowMeans(mat.out1, na.rm=TRUE)
+
+
+arg1&lt;- get_h_x(pbcT1, 'serBilir', event_time_name = 'years',  
+        time_name = 'year', event_name = 'status2', 1, 10) 
+br_s1  = seq(Landmark, 14,  length=99)
+sfbil1&lt;- make_sf(  (br_s1[2]-br_s1[1])/5.4 , arg1)
+kma1&lt;- survfit(Surv(years , status2) ~ 1, data = pbcT1)
+
+plot(br_s1, sfbil1, type="l", ylim=c(0,1), xlim=c(Landmark,14), 
+                    ylab="Survival probability", xlab="years",lwd=2)
+lines(timesS1, sfit1y, col=2,  lwd=2, lty=2)
+lines(kma1$time, kma1$surv, type="s", lty=2, lwd=2, col=3 )
+legend("bottomleft", c("HQM est.", "Joint Model est.", "Kaplan-Meier"), 
+                                    lty=c(1,2,2), col=1:3, lwd=2, cex=1.7)
+
+## End(Not run)
+
+
+</code></pre>
+
+<hr>
+<h2 id='h_xt'>Local constant future conditional hazard rate estimation at a single time point</h2><span id='topic+h_xt'></span>
 
 <h3>Description</h3>
 
@@ -744,7 +1172,7 @@ get_h_x(pbc2, 'serBilir', event_time_name = 'years',
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="h_xt_+3A_br_x">br_X</code></td>
 <td>
 <p>Vector of grid points for the marker values <code class="reqn">X</code>.</p>
@@ -790,7 +1218,7 @@ get_h_x(pbc2, 'serBilir', event_time_name = 'years',
 
 <h3>Details</h3>
 
-<p>The function <code><a href="#topic+h_xt">h_xt</a></code> implements the future conditional hazard estimator
+<p>Function <code><a href="#topic+h_xt">h_xt</a></code>   implements the future conditional hazard estimator
 </p>
 <p style="text-align: center;"><code class="reqn">\hat{h}_x(t) = \frac{\sum_{i=1}^n \int_0^T\hat{\alpha}_i(X_i(t+s))Z_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s}{\sum_{i=1}^n\int_0^TZ_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s},</code>
 </p>
@@ -800,13 +1228,19 @@ get_h_x(pbc2, 'serBilir', event_time_name = 'years',
 <p style="text-align: center;"><code class="reqn">h_{x,T}(t) = P\left(T_i\in (t+T, t+T+dt)| X_i(T)=x, T_i &gt; t+T\right),</code>
 </p>
 
-<p>where <code class="reqn">T_i</code> is the survival time and <code class="reqn">X_i</code> the marker of individual <code class="reqn">i</code> observed in the time frame <code class="reqn">[0,T]</code>.
+<p>where <code class="reqn">T_i</code> is the survival time and <code class="reqn">X_i</code> the marker of individual <code class="reqn">i</code> observed in the time frame <code class="reqn">[0,T]</code>. Function <code><a href="#topic+h_xt">h_xt</a></code> uses an classic (unmodified) kernel function <code class="reqn">K_b()</code>, e.g. the Epanechnikov kernel.
 </p>
 
 
 <h3>Value</h3>
 
 <p>A single numeric value of <code class="reqn">\hat h_x(t)</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://doi.org/10.1080/03461238.1998.10413997">doi:10.1080/03461238.1998.10413997</a>
 </p>
 
 
@@ -863,7 +1297,7 @@ h_hat = h_xt(br_X, br_s, int_X, size_s_grid, alpha, x, t, b, Yi, n)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="h_xt_vec_+3A_br_x">br_X</code></td>
 <td>
 <p>Marker value grid points that will be used in the evaluatiuon.</p>
@@ -922,7 +1356,10 @@ h_hat = h_xt(br_X, br_s, int_X, size_s_grid, alpha, x, t, b, Yi, n)
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>pbc2_id = to_id(pbc2)
+<pre><code class='language-R'>
+# Longitudinal data example
+
+pbc2_id = to_id(pbc2)
 size_s_grid &lt;- size_X_grid &lt;- 100
 n = max(as.numeric(pbc2$id))
 s = pbc2$year
@@ -951,28 +1388,201 @@ Yi &lt;- make_Yi(pbc2, pbc2_id, X_lin, br_X, br_s,
 t = 2
 
 h_xt_vec(br_X, br_s, size_s_grid, alpha, t, b, Yi, int_X, n)
+
+# Time-invariant data example:
+# pbc2 dataset, single event per individual version:
+# 312 observations, most recent event per individual.
+# Use landmarking to produce comparable curve with KM.
+library(survival)
+Landmark &lt;- 3 #set the landmark to 3 years
+pbc2.use&lt;- to_id(pbc2) # keep only the most recent row per patient
+pbcT1 &lt;- pbc2.use[which(pbc2.use$year&lt; Landmark  &amp; pbc2.use$years&gt; Landmark),]
+
+timesS2 &lt;- seq(Landmark,14,by=0.5)
+b=0.9
+arg1&lt;- get_h_x(pbcT1, 'albumin', event_time_name = 'years',  time_name = 'year', 
+                                                    event_name = 'status2', 2, b) 
+br_s2  = seq(Landmark, 14,  length=99)
+sfalb2&lt;- make_sf(    (br_s2[2]-br_s2[1])/1.35 , arg1)
+kma2&lt;- survfit(Surv(years , status2) ~ 1, data = pbcT1)
+
+#Plot the survival functions:
+plot(br_s2, sfalb2, type="l", ylim=c(0,1), xlim=c(Landmark,14), ylab="Survival probability", 
+            xlab="years",lwd=2, main="HQM and KM survival functions, conditional on albumin=2, 
+            for the time-invariant pbc dataset")
+lines(kma2$time, kma2$surv, type="s",lty=2, lwd=2, col=2)
+legend("bottomleft", c("HQM est.", "Kaplan-Meier"), lty=c(1,2), col=1:2, lwd=2, cex=1.7)
+
+ 
+
+
 </code></pre>
 
 <hr>
-<h2 id='Kernels'>Epanechnikov kernel and pdf kernel estimate</h2><span id='topic+Epan'></span><span id='topic+K_b'></span><span id='topic+K_b_mat'></span>
+<h2 id='h_xtll'>Local linear future conditional hazard rate estimation at a single time point</h2><span id='topic+h_xtll'></span>
 
 <h3>Description</h3>
 
-<p>Implements the Epanechnikov kernel function and the standard kernel function estimate.
+<p>Calculates the local linear future conditional hazard rate for a marker value <code>x</code> and a time value <code>t</code>.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>Epan(x)
-K_b(b,x,y, K)
+<pre><code class='language-R'>h_xtll(br_X, br_s, int_X, size_s_grid, alpha, x,t, b, Yi,n, Y)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="h_xtll_+3A_br_x">br_X</code></td>
+<td>
+<p>Vector of grid points for the marker values <code class="reqn">X</code>.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_br_s">br_s</code></td>
+<td>
+<p>Vector of grid points for the time values <code class="reqn">s</code>.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_int_x">int_X</code></td>
+<td>
+<p>Position of the linear interpolated marker values on the marker grid.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_size_s_grid">size_s_grid</code></td>
+<td>
+<p>Size of the time grid.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_alpha">alpha</code></td>
+<td>
+<p>Marker-hazard obtained from <code><a href="#topic+get_alpha">get_alpha</a></code>.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_x">x</code></td>
+<td>
+<p>Numeric value of the last observed marker value.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_t">t</code></td>
+<td>
+<p>Numeric time value.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_b">b</code></td>
+<td>
+<p>Bandwidth.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_yi">Yi</code></td>
+<td>
+<p>A matrix made by <code><a href="#topic+make_Yi">make_Yi</a></code> indicating the exposure. </p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_n">n</code></td>
+<td>
+<p>Number of individuals.</p>
+</td></tr>
+<tr><td><code id="h_xtll_+3A_y">Y</code></td>
+<td>
+<p>A matrix made by <code><a href="#topic+make_Y">make_Y</a></code> indicating the exposure. </p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Function <code><a href="#topic+h_xtll">h_xtll</a></code> implements the future conditional hazard estimator
+</p>
+<p style="text-align: center;"><code class="reqn">\hat{h}_x(t) = \frac{\sum_{i=1}^n \int_0^T\hat{\alpha}_i(X_i(t+s))Z_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s}{\sum_{i=1}^n\int_0^TZ_i(t+s)Z_i(s)K_{b}(x-X_i(s))\mathrm {d}s},</code>
+</p>
+
+<p>where <code class="reqn">X</code> is the marker, <code class="reqn">Z</code> is the exposure and <code class="reqn">\alpha(z)</code> is the marker-only hazard, see <code><a href="#topic+get_alpha">get_alpha</a></code> for more details. The future conditional hazard is defined as
+</p>
+<p style="text-align: center;"><code class="reqn">h_{x,T}(t) = P\left(T_i\in (t+T, t+T+dt)| X_i(T)=x, T_i &gt; t+T\right),</code>
+</p>
+
+<p>where <code class="reqn">T_i</code> is the survival time and <code class="reqn">X_i</code> the marker of individual <code class="reqn">i</code> observed in the time frame <code class="reqn">[0,T]</code>.
+</p>
+<p>The function <code><a href="#topic+h_xtll">h_xtll</a></code>, in the place of <code class="reqn">K_b()</code> uses the kernel    
+</p>
+<p style="text-align: center;"><code class="reqn">K_{x,b}(u)= \frac{K_b(u)-K_b(u)u^T D^{-1}c_1}{c_0 - c_1^T D^{-1} c_1}, </code>
+</p>
+
+<p>where <code class="reqn">c_1 = (c_{11}, \dots, c_{1d})^T, D = (d_{ij})_{(d+1) \times (d+1)}</code> with
+</p>
+<p style="text-align: center;"><code class="reqn">
+c_0  = \sum_{i=1}^n \int_0^T K_b(x-X_i(s)) Z_i(s)ds, \\
+c_{ij}  = \sum_{i=1}^n \int_0^T K_b(x-X_i(s))\{x-X_{ij}(s)\} Z_i(s)ds, \\
+d_{jk}  =  \sum_{i=1}^n \int_0^T K_b(x-X_i(s))\{x-X_{ij}(s)\}\{x-X_{ik}(s)\} Z_i(s)ds,
+</code>
+</p>
+
+<p>see also Nielsen (1998).
+</p>
+
+
+<h3>Value</h3>
+
+<p>A single numeric value of <code class="reqn">\hat h_x(t)</code>.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://doi.org/10.1080/03461238.1998.10413997">doi:10.1080/03461238.1998.10413997</a>
+</p>
+
+
+<h3>See Also</h3>
+
+ <p><code><a href="#topic+get_alpha">get_alpha</a></code>, <code><a href="#topic+dij">dij</a></code> </p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>pbc2_id = to_id(pbc2)
+size_s_grid &lt;- size_X_grid &lt;- 100
+n = max(as.numeric(pbc2$id))
+s = pbc2$year
+X = pbc2$serBilir
+XX = pbc2_id$serBilir
+ss &lt;- pbc2_id$years
+delta &lt;- pbc2_id$status2
+br_s = seq(0, max(s), max(s)/( size_s_grid-1))
+br_X = seq(min(X), max(X), (max(X)-min(X))/( size_X_grid-1))
+
+X_lin = lin_interpolate(br_s, pbc2_id$id, pbc2$id, X, s)
+
+int_X &lt;- findInterval(X_lin, br_X)
+int_s = rep(1:length(br_s), n)
+
+N &lt;- make_N(pbc2, pbc2_id, breaks_X=br_X, breaks_s=br_s, ss, XX, delta)
+Y &lt;- make_Y(pbc2, pbc2_id, X_lin, br_X, br_s, size_s_grid, size_X_grid, int_s, int_X, 'years', n)
+
+b = 1.7
+alpha&lt;-get_alpha(N, Y, b, br_X, K=Epan )
+
+Yi &lt;- make_Yi(pbc2, pbc2_id, X_lin, br_X, br_s, size_s_grid, size_X_grid, int_s, int_X,'years', n)
+
+x = 2
+t = 2
+h_hat = h_xtll(br_X, br_s, int_X, size_s_grid, alpha, x, t, b, Yi, n, Y)
+</code></pre>
+
+<hr>
+<h2 id='Kernels'>Classical (unmodified) kernel and related functionals</h2><span id='topic+K_b'></span><span id='topic+xK_b'></span><span id='topic+K_b_mat'></span>
+
+<h3>Description</h3>
+
+<p>Implements the classical kernel function and related functionals
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>K_b(b,x,y, K)
+xK_b(b,x,y, K)
 K_b_mat(b,x,y, K)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="Kernels_+3A_x">x</code></td>
 <td>
 <p> A vector of design points where the kernel will be evaluated.</p>
@@ -994,21 +1604,26 @@ K_b_mat(b,x,y, K)
 
 <h3>Details</h3>
 
-<p>Implements the   Epanechnikov kernel function
+<p>The function <code>K_b</code> implements the classical kernel function calculation
 </p>
-<p style="text-align: center;"><code class="reqn"> K(x) = \frac{3}{4}(1-x^2)*(|x|&lt;1)),</code>
+<p style="text-align: center;"><code class="reqn"> h^{-1} K \left ( \frac{x-y}{h} \right )</code>
 </p>
 
-<p>and the classical kernel density estimate
+<p>for scalars <code class="reqn">x</code> and <code class="reqn">y</code> while <code>xK_b</code> implements the functional 
 </p>
-<p style="text-align: center;"><code class="reqn"> \hat{f}(x) = n^{-1}\sum_{i=1}^n K_h(x-X_i).</code>
+<p style="text-align: center;"><code class="reqn"> h^{-1} K \left ( \frac{x-y}{h} \right )(x-y)</code>
+</p>
+
+<p>again for for scalars <code class="reqn">x</code> and <code class="reqn">y</code>. The function <code>K_b_mat</code> is the vectorized version of <code>K_b</code>. It uses as inputs the vectors <code class="reqn">(X_1, \dots, X_n)</code> and <code class="reqn">(Y_1, \dots, Y_n)</code> and returns a <code class="reqn">n \times n</code> matrix with entries 
+</p>
+<p style="text-align: center;"><code class="reqn"> h^{-1} K \left ( \frac{X_i-Y_j}{h} \right )</code>
 </p>
 
 
 
 <h3>Value</h3>
 
-<p>In all three cases the functions return the value calculated at <code class="reqn">x</code>.
+<p>Scalar values for <code>K_b</code> and <code>xK_b</code> and matrix outputs for <code>K_b_mat</code>.
 </p>
 
 <hr>
@@ -1028,7 +1643,7 @@ K_b_mat(b,x,y, K)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="lin_interpolate_+3A_t">t</code></td>
 <td>
 <p>A vector of time values where the function should be evaluated.</p>
@@ -1076,6 +1691,121 @@ X_lin = lin_interpolate(br_s, pbc2_id$id, pbc2$id, X, s)
 </code></pre>
 
 <hr>
+<h2 id='llK_b'>Local linear kernel</h2><span id='topic+llK_b'></span>
+
+<h3>Description</h3>
+
+<p>Implements the local linear kernel function.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>llK_b(b,x,y, K)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="llK_b_+3A_x">x</code></td>
+<td>
+<p> A vector of design points where the kernel will be evaluated.</p>
+</td></tr>
+<tr><td><code id="llK_b_+3A_y">y</code></td>
+<td>
+<p> A vector of sample data points.</p>
+</td></tr>
+<tr><td><code id="llK_b_+3A_b">b</code></td>
+<td>
+<p> The bandwidth to use (a scalar).</p>
+</td></tr>
+<tr><td><code id="llK_b_+3A_k">K</code></td>
+<td>
+<p> The kernel function to use.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>Implements the local linear kernel
+</p>
+<p style="text-align: center;"><code class="reqn">K_{x,b}(u)= \frac{K_b(u)-K_b(u)u^T D^{-1}c_1}{c_0 - c_1^T D^{-1} c_1}, </code>
+</p>
+
+<p>where <code class="reqn">c_1 = (c_{11}, \dots, c_{1d})^T, D = (d_{ij})_{(d+1) \times (d+1)}</code> with
+</p>
+<p style="text-align: center;"><code class="reqn">
+c_0  = \sum_{i=1}^n \int_0^T K_b(x-X_i(s)) Z_i(s)ds, \\
+c_{ij}  = \sum_{i=1}^n \int_0^T K_b(x-X_i(s))\{x-X_{ij}(s)\} Z_i(s)ds, \\
+d_{jk}  =  \sum_{i=1}^n \int_0^T K_b(x-X_i(s))\{x-X_{ij}(s)\}\{x-X_{ik}(s)\} Z_i(s)ds,
+</code>
+</p>
+
+<p>see also Nielsen (1998).
+</p>
+
+
+<h3>Value</h3>
+
+<p>Matrix output with entries the values of the kernel function at each point.
+</p>
+
+
+<h3>References</h3>
+
+<p><a href="https://doi.org/10.1080/03461238.1998.10413997">doi:10.1080/03461238.1998.10413997</a>
+</p>
+
+<hr>
+<h2 id='llweights'>Local linear weight functions</h2><span id='topic+sn.0'></span><span id='topic+sn.1'></span><span id='topic+sn.2'></span>
+
+<h3>Description</h3>
+
+<p>Implements the weights to be used in the local linear HQM estimator.</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>sn.0(xin, xout, h, kfun)
+sn.1(xin, xout, h, kfun)
+sn.2(xin, xout, h, kfun)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="llweights_+3A_xin">xin</code></td>
+<td>
+<p>Sample values.</p>
+</td></tr>
+<tr><td><code id="llweights_+3A_xout">xout</code></td>
+<td>
+<p>Grid points where the estimator will be evaluated.</p>
+</td></tr>
+<tr><td><code id="llweights_+3A_h">h</code></td>
+<td>
+<p>Bandwidth parameter.</p>
+</td></tr>
+<tr><td><code id="llweights_+3A_kfun">kfun</code></td>
+<td>
+<p>Kernel function.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The function implements the local linear weights in the definition of the estimator <code class="reqn">\hat{h}_x(t)</code>, see also <code><a href="#topic+h_xt">h_xt</a></code> 
+</p>
+
+
+<h3>Value</h3>
+
+<p> A vector of <code class="reqn">s_n(x)</code> for all values <code class="reqn">x</code> on the marker grid. </p>
+
+<hr>
 <h2 id='make_N+2C+20make_Ni+2C+20make_Y+2C+20make_Yi'>Occurance and Exposure on grids</h2><span id='topic+make_N'></span><span id='topic+make_Ni'></span><span id='topic+make_Y'></span><span id='topic+make_Yi'></span>
 
 <h3>Description</h3>
@@ -1097,7 +1827,7 @@ make_Yi(data, data.id, X_lin, breaks_X, breaks_s,
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="make_N+2B2C+2B20make_Ni+2B2C+2B20make_Y+2B2C+2B20make_Yi_+3A_data">data</code></td>
 <td>
 <p>A data frame of time dependent data points.  Missing values are allowed.</p>
@@ -1223,7 +1953,7 @@ Ni  &lt;- make_Ni(br_s, size_s_grid, ss, delta, n)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="make_sf_+3A_step_size_s_grid">step_size_s_grid</code></td>
 <td>
 <p>Numeric value indicating the distance between two grid continuous grid points.</p>
@@ -1355,7 +2085,7 @@ and 0 if the patient was alive or transplanted.</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="prep_boot_+3A_g_xt">g_xt</code></td>
 <td>
 <p>A vector obtained by <code><a href="#topic+g_xt">g_xt</a></code>.</p>
@@ -1501,7 +2231,7 @@ Boot_all
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="prep_cv_+3A_data">data</code></td>
 <td>
 <p>A data frame of time dependent data points.  Missing values are allowed.</p>
@@ -1590,7 +2320,7 @@ h_xt_mat_list = prep_cv(pbc2, pbc2_id, 'serBilir', 'years', 'year', 'status2', n
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="Q1_+3A_h_xt_mat">h_xt_mat</code></td>
 <td>
 <p>A matrix of the estimator for the future conditional hazard rate for all values <code>x</code> and <code>t</code>.</p>
@@ -1690,7 +2420,7 @@ Q = Q1(h_xt_mat, int_X, size_X_grid, n, Yi)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="R_K_+3A_h_xt_mat_list">h_xt_mat_list</code></td>
 <td>
 <p>A list of matrices for all cross validation data sets. Each matrix contains the estimator with the future conditional hazard rate for all values <code>x</code> and <code>t</code> and the respected data set.</p>
@@ -1793,7 +2523,7 @@ R
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="to_id_+3A_data_set">data_set</code></td>
 <td>
 <p>A data frame of time dependent data points.  Missing values are allowed.</p>
