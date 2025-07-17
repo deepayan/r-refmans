@@ -8,5 +8,9 @@ Trying now:
 
 * Generate HTML refmans: `generate-html.R` has many non-default
   options, so use `generate-html-vanilla.R` instead.
+  
+  ```sh
+  R CMD BATCH generate-html-vanilla.R
+  ```
 
-* 
+
