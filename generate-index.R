@@ -17,7 +17,7 @@ makeTableRow <- function(x, cran_link = TRUE)
     version_column <- with(x, sprintf("<td>%s</td>", Version))
     
     if (cran_link) {
-      title_column <- with(x, sprintf("<td>CRAN: <a href='https://cran.r-project.org/package=%s'>%s</a></td>", Package, Title))
+      title_column <- with(x, sprintf("<td>[CRAN] <a href='https://cran.r-project.org/package=%s'>%s</a></td>", Package, Title))
     } else {
       title_column <- with(x, sprintf("<td>%s</td>", Title))
     }
