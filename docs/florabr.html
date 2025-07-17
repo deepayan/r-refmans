@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package florabr</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package florabr</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -26,7 +26,8 @@ function processMathHTML() {
 available</a></li>
 <li><a href='#filter_florabr'><p>Identify records outside natural ranges according to Flora e Funga do Brasil</p></a></li>
 <li><a href='#get_attributes'><p>Get available attributes to filter species</p></a></li>
-<li><a href='#get_binomial'><p>Extract the binomial name (Genus + specific epithet) from a Scientific Name</p></a></li>
+<li><a href='#get_binomial'><p>Extract the binomial name (Genus + specific epithet + infraspecific epithet</p>
+(optional)) from a full Scientific Name</a></li>
 <li><a href='#get_florabr'><p>Download the latest version of Flora e Funga do Brasil database</p></a></li>
 <li><a href='#get_pam'><p>Get a presence-absence matrix</p></a></li>
 <li><a href='#get_spat_occ'><p>Get Spatial polygons (SpatVectors) of species based on its distribution</p>
@@ -44,14 +45,14 @@ available</a></li>
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Title:</td>
 <td>Explore Flora e Funga do Brasil Database</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>1.2.0</td>
+<td>1.3.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -61,7 +62,8 @@ available</a></li>
 <td>Imports:</td>
 <td>XML (&ge; 3.99.0.14), data.table (&ge; 1.14.8), httr (&ge; 1.4.6),
 terra (&ge; 1.7.39), stats (&ge; 4.2.3), utils(&ge; 4.2.3), grDevices
-(&ge; 4.2.3)</td>
+(&ge; 4.2.3), doSNOW (&ge; 1.0.20), parallel (&ge; 4.3.1), foreach
+(&ge; 1.5.2)</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -109,11 +111,11 @@ terra (&ge; 1.7.39), stats (&ge; 4.2.3), utils(&ge; 4.2.3), grDevices
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-05-15 16:00:05 UTC; wever</td>
+<td>2024-09-09 16:47:41 UTC; wever</td>
 </tr>
 <tr>
 <td>Author:</td>
-<td>Weverton Trindade <a href="https://orcid.org/0000-0003-2045-4555"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a>
+<td>Weverton Trindade <a href="https://orcid.org/0000-0003-2045-4555"><img alt="ORCID iD"  src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a>
     [aut, cre]</td>
 </tr>
 <tr>
@@ -126,7 +128,7 @@ terra (&ge; 1.7.39), stats (&ge; 4.2.3), utils(&ge; 4.2.3), grDevices
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-05-16 07:40:02 UTC</td>
+<td>2024-09-09 17:00:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -279,25 +281,41 @@ brazil &lt;- terra::unwrap(brazil)
 </p>
 
 <hr>
-<h2 id='check_names'>Check species names</h2><span id='topic+check_names'></span>
+<h2 id='check_names'>Check species names</h2><span id='topic+check_names'></span><span id='topic+match_names'></span>
 
 <h3>Description</h3>
 
-<p>check_names checks if the species names are correct and searches
+<p><code>check_names</code> checks if the species names are correct and searches
 for suggestions if the name is misspelled or not found in the Flora e Funga
 do Brasil database
+</p>
+<p><code>match_names</code> finds approximate matches to the specified pattern (species)
+within each element of the string <code>x</code> (species_to_match). It is used internally
+by <code>check_names</code>.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>check_names(data, species, max_distance = 0.1, kingdom = "Plantae")
+<pre><code class='language-R'>check_names(data, species, max_distance = 0.1,
+                   include_subspecies= FALSE, include_variety = FALSE,
+                   kingdom = "Plantae", parallel = FALSE, ncores = 1,
+                   progress_bar = FALSE)
+
+match_names(
+  species,
+  species_to_match,
+  max_distance = 0.1,
+  parallel = FALSE,
+  ncores = 1,
+  progress_bar = FALSE
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="check_names_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the
@@ -314,10 +332,38 @@ searching suggestions when the name is misspelled. It can be any value
 between 0 and 1. The higher the value, the more suggestions are returned.
 For more details, see <code><a href="base.html#topic+agrep">agrep</a></code>. Default = 0.1.</p>
 </td></tr>
+<tr><td><code id="check_names_+3A_include_subspecies">include_subspecies</code></td>
+<td>
+<p>(logical) whether to include subspecies. Default = FALSE</p>
+</td></tr>
+<tr><td><code id="check_names_+3A_include_variety">include_variety</code></td>
+<td>
+<p>(logical) whether to include varieties. Default = FALSE</p>
+</td></tr>
 <tr><td><code id="check_names_+3A_kingdom">kingdom</code></td>
 <td>
 <p>(character) the kingdom to which the species belong. It can
 be &quot;Plantae&quot; or &quot;Fungi&quot;. Default = &quot;Plantae&quot;.</p>
+</td></tr>
+<tr><td><code id="check_names_+3A_parallel">parallel</code></td>
+<td>
+<p>(logical) whether to run in parallel. Setting this to <code>TRUE</code>
+is recommended for improved performance when working with 100 or more species.</p>
+</td></tr>
+<tr><td><code id="check_names_+3A_ncores">ncores</code></td>
+<td>
+<p>(numeric) number of cores to use for parallel processing.
+Default is 1. This is only applicable if <code>parallel = TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="check_names_+3A_progress_bar">progress_bar</code></td>
+<td>
+<p>(logical) whether to display a progress bar during processing.
+Default is FALSE</p>
+</td></tr>
+<tr><td><code id="check_names_+3A_species_to_match">species_to_match</code></td>
+<td>
+<p>(character) a vector of species names to match against
+the <code>species</code> parameter.</p>
 </td></tr>
 </table>
 
@@ -399,7 +445,7 @@ Brasil data available in a specified directory.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="check_version_+3A_data_dir">data_dir</code></td>
 <td>
 <p>the directory where the data should be located.</p>
@@ -447,7 +493,7 @@ Brasil database.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="filter_florabr_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the
@@ -613,7 +659,7 @@ characteristics
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_attributes_+3A_data">data</code></td>
 <td>
 <p>(data.frame) a data.frame imported with the
@@ -661,27 +707,41 @@ d &lt;- get_attributes(data = bf_data,
 </code></pre>
 
 <hr>
-<h2 id='get_binomial'>Extract the binomial name (Genus + specific epithet) from a Scientific Name</h2><span id='topic+get_binomial'></span>
+<h2 id='get_binomial'>Extract the binomial name (Genus + specific epithet + infraspecific epithet
+(optional)) from a full Scientific Name</h2><span id='topic+get_binomial'></span>
 
 <h3>Description</h3>
 
-<p>Extract the binomial name (Genus + specific epithet) from a Scientific Name
+<p>Extract the binomial name (Genus + specific epithet + infraspecific epithet
+(optional)) from a full Scientific Name
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_binomial(species_names)
+<pre><code class='language-R'>get_binomial(species_names,
+                   include_subspecies = TRUE,
+                   include_variety = TRUE)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_binomial_+3A_species_names">species_names</code></td>
 <td>
 <p>(character) Scientific names to be converted to
 binomial names</p>
+</td></tr>
+<tr><td><code id="get_binomial_+3A_include_subspecies">include_subspecies</code></td>
+<td>
+<p>(logical) include subspecies? If TRUE (default),
+the function extracts any infraspecific epithet after the pattern &quot;subsp.&quot;</p>
+</td></tr>
+<tr><td><code id="get_binomial_+3A_include_variety">include_variety</code></td>
+<td>
+<p>(logical) include subspecies? If TRUE (default),
+the function extracts any infraspecific epithet after the pattern &quot;var.&quot;</p>
 </td></tr>
 </table>
 
@@ -695,9 +755,13 @@ binomial names</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>spp &lt;- c("Araucaria angustifolia (Bertol.) Kuntze",
-"Butia catarinensis Noblick &amp; Lorenzi",
-"Adesmia paranensis Burkart")
-spp_new &lt;- get_binomial(species_names = spp)
+         "Araucaria angustifolia var. alba Reitz",
+         "Butia catarinensis Noblick &amp; Lorenzi",
+         "Butia eriospatha subsp. punctata",
+         "Adesmia paranensis Burkart")
+spp_new &lt;- get_binomial(species_names = spp,
+                       include_subspecies = TRUE,
+                       include_variety = TRUE)
 spp_new
 
 </code></pre>
@@ -717,13 +781,13 @@ this data.frame in the specified directory.
 
 <pre><code class='language-R'>get_florabr(output_dir, data_version = "latest",
                  solve_discrepancy = FALSE, overwrite = TRUE,
-                 verbose = TRUE)
+                 verbose = TRUE, remove_files = TRUE)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_florabr_+3A_output_dir">output_dir</code></td>
 <td>
 <p>(character) a directory to save the data downloaded from
@@ -753,6 +817,11 @@ species also occurs in that biome. Default = FALSE.</p>
 <p>(logical) Whether to display messages during function
 execution. Set to TRUE to enable display, or FALSE to run silently.
 Default = TRUE.</p>
+</td></tr>
+<tr><td><code id="get_florabr_+3A_remove_files">remove_files</code></td>
+<td>
+<p>(logical) Whether to remove the downloaded files used in
+building the final dataset. Default is TRUE.</p>
 </td></tr>
 </table>
 
@@ -813,7 +882,7 @@ get_florabr(output_dir = my_dir, data_version = "latest",
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_pam_+3A_data">data</code></td>
 <td>
 <p>(data.frame) a data.frame imported with the
@@ -946,7 +1015,7 @@ pam_am &lt;- get_pam(data = am_trees, by_biome = TRUE, by_state = TRUE,
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_spat_occ_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the
@@ -1055,13 +1124,14 @@ plot(spp_spt[[1]]$states_biomes)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_synonym(data, species)
+<pre><code class='language-R'>get_synonym(data, species,
+                   include_subspecies = TRUE, include_variety = TRUE)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_synonym_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the
@@ -1070,6 +1140,16 @@ plot(spp_spt[[1]]$states_biomes)
 <tr><td><code id="get_synonym_+3A_species">species</code></td>
 <td>
 <p>(character) names of the species</p>
+</td></tr>
+<tr><td><code id="get_synonym_+3A_include_subspecies">include_subspecies</code></td>
+<td>
+<p>(logical) include subspecies that are synonyms of
+the species? Default = TRUE</p>
+</td></tr>
+<tr><td><code id="get_synonym_+3A_include_variety">include_variety</code></td>
+<td>
+<p>(logical) include varieties that are synonyms of the
+species? Default = TRUE</p>
 </td></tr>
 </table>
 
@@ -1093,7 +1173,9 @@ http://floradobrasil.jbrj.gov.br/
 <pre><code class='language-R'>data("bf_data") #Load Flora e Funga do Brasil data
 #Species to extract synonyms
 spp &lt;- c("Araucaria angustifolia", "Adesmia paranensis")
-spp_synonyms &lt;- get_synonym(data = bf_data, species = spp)
+spp_synonyms &lt;- get_synonym(data = bf_data, species = spp,
+                            include_subspecies = TRUE,
+                            include_variety = TRUE)
 spp_synonyms
 
 </code></pre>
@@ -1116,7 +1198,7 @@ spp_synonyms
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="load_florabr_+3A_data_dir">data_dir</code></td>
 <td>
 <p>(character) the same directory used to save the data
@@ -1245,7 +1327,7 @@ virescens, and Solanum restingae)</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="select_by_vernacular_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the
@@ -1332,7 +1414,7 @@ characteristics and distribution available in Flora e Funga do Brasil
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="select_species_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the
@@ -1561,7 +1643,7 @@ am_af_only &lt;- select_species(data = bf_data,
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="solve_discrepancies_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the
@@ -1658,7 +1740,7 @@ database
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="subset_species_+3A_data">data</code></td>
 <td>
 <p>(data.frame) the data.frame imported with the

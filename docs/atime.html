@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package atime</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package atime</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -36,7 +36,7 @@ function processMathHTML() {
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Type:</td>
 <td>Package</td>
@@ -47,7 +47,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2024.4.23</td>
+<td>2025.1.21</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -79,7 +79,8 @@ function processMathHTML() {
 <td>Suggests:</td>
 <td>directlabels, ggplot2, testthat, knitr, markdown, stringi,
 re2, binsegRcpp, wbs, fpop, changepoint, LOPART, cumstats,
-PeakSegDisk, callr, readr, dplyr, tidyr, nc, RColorBrewer</td>
+PeakSegDisk, callr, readr, dplyr, tidyr, nc, RColorBrewer,
+tibble, Matrix</td>
 </tr>
 <tr>
 <td>VignetteBuilder:</td>
@@ -91,7 +92,7 @@ PeakSegDisk, callr, readr, dplyr, tidyr, nc, RColorBrewer</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-04-29 18:02:53 UTC; th798</td>
+<td>2025-01-21 15:47:30 UTC; tdhock</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -107,7 +108,7 @@ PeakSegDisk, callr, readr, dplyr, tidyr, nc, RColorBrewer</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-04-29 18:40:02 UTC</td>
+<td>2025-01-21 16:10:01 UTC</td>
 </tr>
 </table>
 <hr>
@@ -123,15 +124,15 @@ several different data sizes.</p>
 
 <pre><code class='language-R'>atime(
 N, setup, expr.list=NULL, times=10, seconds.limit=0.01, verbose=FALSE,
-result=FALSE, ...)</code></pre>
+result=FALSE, N.env.parent=NULL, ...)</code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="atime_+3A_n">N</code></td>
 <td>
-<p>numeric vector of at least two data sizes, default is <code>2^seq(2,20)</code>.</p>
+<p>numeric vector of at least two unique data sizes, default is <code>2^seq(2,20)</code>.</p>
 </td></tr>
 <tr><td><code id="atime_+3A_setup">setup</code></td>
 <td>
@@ -156,9 +157,19 @@ this many seconds, then no timings for larger N are computed.</p>
 </td></tr>
 <tr><td><code id="atime_+3A_result">result</code></td>
 <td>
-<p>logical, save each result? If <code>TRUE</code>, and result is
-a data frame with one row, then the numeric column names will be
-saved as more units to analyze (in addition to kilobytes and seconds).</p>
+
+<p>logical: save the result of evaluating each expression?
+Or a function to compute a result, given the value obtained after
+evaluating each expression.
+If each result is a data frame with one row, then the numeric column
+names will be saved as more units to analyze (in addition to kilobytes
+and seconds).
+</p>
+</td></tr>
+<tr><td><code id="atime_+3A_n.env.parent">N.env.parent</code></td>
+<td>
+<p>environment to use as parent of environment
+created for each data size N, or NULL to use default parent env.</p>
 </td></tr>
 <tr><td><code id="atime_+3A_...">...</code></td>
 <td>
@@ -187,41 +198,31 @@ input param), <code>measurements</code> (data table of results).</p>
 <p>Toby Dylan Hocking</p>
 
 
+<h3>See Also</h3>
+
+<p><code><a href="#topic+atime_grid">atime_grid</a></code> for avoiding repetition when measuring
+asymptotic properties of several similar expressions.</p>
+
+
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-## Example 1: polynomial and exponential time string functions.
-string.result &lt;- atime::atime(
-  N=unique(as.integer(10^seq(0,3.5,l=100))),
+data.table::setDTthreads(1) # for CRAN.
+
+## Polynomial and exponential time string functions.
+atime_result_string &lt;- atime::atime(
+  seconds.limit=0.001,
+  N=unique(as.integer(10^seq(0,3,l=100))),
   setup={
     subject &lt;- paste(rep("a", N), collapse="")
     pattern &lt;- paste(rep(c("a?", "a"), each=N), collapse="")
+    linear_size_replacement &lt;- paste(rep("REPLACEMENT", N), collapse="")
   },
-  seconds.limit=0.001,
   PCRE.match=regexpr(pattern, subject, perl=TRUE),
   TRE.match=regexpr(pattern, subject, perl=FALSE),
   constant.replacement=gsub("a","constant size replacement",subject),
-  linear.replacement=gsub("a",subject,subject))
-plot(string.result)
-
-## Example 2: split data table vs frame, constant factor difference.
-library(data.table)
-split.result &lt;- atime::atime(
-  setup={
-    set.seed(1)
-    DT &lt;- data.table(
-      x1 = rep(c("c","d"), l=N),
-      x2 = rep(c("x","y"), l=N),
-      x3 = rep(c("a","b"), l=N),
-      y = rnorm(N)
-    )[sample(.N)]
-    DF &lt;- as.data.frame(DT)
-  },
-  seconds.limit=0.001,
-  frame=split(DF[names(DF) != "x1"], DF["x1"], drop = TRUE),
-  table=split(DT, by = "x1", keep.by = FALSE, drop = TRUE)
-)
-plot(split.result)
+  linear.replacement=gsub("a",linear_size_replacement,subject))
+plot(atime_result_string)
 
 </code></pre>
 
@@ -251,7 +252,7 @@ expressions.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="atime_grid_+3A_param.list">param.list</code></td>
 <td>
 
@@ -311,6 +312,8 @@ argument of <code><a href="#topic+atime">atime</a></code>.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
+data.table::setDTthreads(1) # for CRAN.
+
 ## Example 0: with no param.list, same as quote inside named list.
 atime::atime_grid(m=mean(data), s=sum(data))
 list(m=quote(mean(data)), s=quote(sum(data)))
@@ -321,7 +324,8 @@ list(m=quote(mean(data)), s=quote(sum(data)))
   expr.param.sep="\n",
   regexpr=regexpr(pattern, subject, perl=PERL)))
 atime.list &lt;- atime::atime(
-  N=unique(as.integer(10^seq(0,3.5,l=20))),
+  seconds.limit=0.001,
+  N=unique(as.integer(10^seq(0,2,l=30))),
   setup={
     subject &lt;- paste(rep("a", N), collapse="")
     pattern &lt;- paste(rep(c("a?", "a"), each=N), collapse="")
@@ -339,40 +343,60 @@ sapply(sub.param.list$FUN,function(name)substitute(fun("a","",subject), list(fun
   replace=FUN("a","",subject,perl=PERL),
   symbol.params="FUN"))
 sub.atime.list &lt;- atime::atime(
+  seconds.limit=0.001,
   setup={
     subject &lt;- paste(rep("a",N),collapse="")
   }, 
   expr.list=sub.expr.list)
 plot(sub.atime.list)
 
+## Customize ggplot, which shows expr.name column as direct labels.
+sub.atime.edited &lt;- sub.atime.list
+library(data.table)
+sub.atime.edited$measurements &lt;- data.table(sub.atime.list$measurements)[
+, expr.name := paste0("PERL=",PERL)]
+if(require(ggplot2)){
+  plot(sub.atime.edited)+
+    facet_grid(unit ~ FUN, labeller=label_both)
+}
+
 </code></pre>
 
 <hr>
-<h2 id='atime_pkg'>Asymptotic timing package tests</h2><span id='topic+atime_pkg'></span>
+<h2 id='atime_pkg'>Asymptotic timing package tests</h2><span id='topic+atime_pkg'></span><span id='topic+atime_pkg_test_info'></span>
 
 <h3>Description</h3>
 
-<p>Computation time and memory for several R expressions of
+<p>R package performance testing, by computing time/memory
+usage of several R expressions of
 several different data sizes, for several package
-versions (base, HEAD, CRAN, merge-base, others specified by user).</p>
+versions (base, HEAD, CRAN, merge-base, other historical references
+specified by user).
+<code>atime_pkg_test_info</code> returns an environment containing test
+code/calls (useful for running a single test), whereas
+<code>atime_pkg</code> runs all tests and saves results/plots to disk.
+</p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>atime_pkg(pkg.path=".", tests.dir="inst")</code></pre>
+<pre><code class='language-R'>atime_pkg(pkg.path=".", tests.dir=NULL)
+atime_pkg_test_info(pkg.path=".", tests.dir=NULL)
+</code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="atime_pkg_+3A_pkg.path">pkg.path</code></td>
 <td>
 <p>path to git repository containing R package.</p>
 </td></tr>
 <tr><td><code id="atime_pkg_+3A_tests.dir">tests.dir</code></td>
 <td>
-<p>path to directory which contains atime/tests.R,
-relative to <code>pkg.path</code> (default <code>"inst"</code>).</p>
+<p>path to directory which contains <code>atime/tests.R</code>,
+relative to <code>pkg.path</code> (default <code>NULL</code> means first
+existing directory of <code>"inst"</code> or <code>".ci"</code>).</p>
 </td></tr>
 </table>
 
@@ -387,26 +411,38 @@ Each element should be a list with at least three named elements: <code>N</code>
 <code>pkg.edit.fun</code> and <code>version_name="1234567890abcdef"</code>)
 to be passed as named arguments to <code>atime_versions</code>, along with
 the following versions which are passed using the <code>sha.vec</code> argument:
-base ref comes from GITHUB_BASE_REF environment variable (default master),
-HEAD ref is the branch that you want to merge into base,
-CRAN is current published version (sha value <code>""</code>),
-merge-base is most recent common ancestor commit between base and
-HEAD.
-The <code>tests.R</code> code file can define <code>version.colors</code> which should be
-a character vector (names for versions, values for colors; names/versions are
-HEAD, base, CRAN, merge-base, and any others you may define such as
-Before, Regression, Slow, Fixed, Fast).
+<code>base</code> ref comes from <code>GITHUB_BASE_REF</code> environment variable (default <code>master</code>),
+<code>HEAD</code> ref is the branch that you want to merge into base,
+<code>CRAN</code> is current published version (sha value <code>""</code>),
+<code>merge-base</code> is most recent common ancestor commit between <code>base</code> and
+<code>HEAD</code>.
+For visualization, default colors are provided for versions with names:
+<code>HEAD</code>, <code>base</code>, <code>CRAN</code>, <code>merge-base</code>,
+<code>Before</code>, <code>Regression</code>, <code>Slow</code>, <code>Fixed</code>,
+<code>Fast</code>; other version names will be gray using
+the default colors.
+If <code>tests.R</code> defines a variable named <code>version.colors</code>, then
+it should be a character vector of colors to be used instead of the
+default (names for versions, values for colors). 
 </p>
 
 
 <h3>Value</h3>
 
-<p>Named list, names come from names of <code>test.list</code>, and values
+<p><code>atime_pkg_test_info</code> returns an environment in which the code of
+<code>tests.R</code> was evaluated, including a variable <code>test.call</code>
+which is a list of un-evaluated <code>atime_versions</code> calls,
+one for each test
+(use with <code>eval</code> to run a single test).
+<code>atime_pkg</code> returns a named list of test results,
+names come from names of <code>test.list</code>, and values
 come from results of <code>atime_versions</code>. Side effect is that
 data/plot files are saved in <code>atime</code> directory, including
 tests.RData (test results which can be read into R if you want to make
-your own alternative plots/analyses), and tests_all_facet.png (plot
-summarizing all test results).
+your own alternative plots/analyses), tests_all_facet.png (plot
+summarizing all test results), tests_preview_facet.png (plot
+summarizing only most significant results), and install_seconds.txt
+(total number of seconds used to install different package versions).
 </p>
 
 
@@ -462,18 +498,67 @@ atime/tests.R, prior to running <code><a href="#topic+atime_pkg">atime_pkg</a></
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>atime_test(...)
+<pre><code class='language-R'>atime_test(
+  N, setup, expr, times, seconds.limit, verbose,
+  pkg.edit.fun, result, ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
-<tr><td><code id="atime_test_+3A_...">...</code></td>
+<table role = "presentation">
+<tr><td><code id="atime_test_+3A_n">N</code></td>
+<td>
+<p>numeric vector of data sizes to vary.</p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_setup">setup</code></td>
 <td>
 
-<p>Any arguments for <code><a href="#topic+atime_versions">atime_versions</a></code>, will be quoted (not evaluated).
+<p>expression to evaluate for every data size, before timings.
+In contrast to <code>expr</code>,
+no replacement of <code>Package:</code> is performed.
 </p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_expr">expr</code></td>
+<td>
+
+<p>code with package double-colon prefix, for example
+<code>PKG::fun(argA, argB)</code>, where PKG is the name of the
+package specified by <code>pkg.path</code>. This code will be
+evaluated for each different package version, by replacing
+<code>PKG:</code> by <code>PKG.SHA:</code>.
+To run different versions of implicitly-called functions
+like <code>DT[i,j]</code>, you need
+to call them explicitly, as in 
+<code>data.table:::`[.data.table`(DT,i,j)</code>.
+</p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_times">times</code></td>
+<td>
+<p>number of times to evaluate each timed expression.</p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_seconds.limit">seconds.limit</code></td>
+<td>
+<p>if the median timing of any expression exceeds
+this many seconds, then no timings for larger N are computed.</p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_verbose">verbose</code></td>
+<td>
+<p>logical, print messages after every data size?</p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_pkg.edit.fun">pkg.edit.fun</code></td>
+<td>
+<p>function called to edit package before
+installation, should typically replace instances of PKG with
+PKG.SHA, default works with Rcpp packages.</p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_result">result</code></td>
+<td>
+<p>logical, save results? (default FALSE)</p>
+</td></tr>
+<tr><td><code id="atime_test_+3A_...">...</code></td>
+<td>
+<p>named versions.</p>
 </td></tr>
 </table>
 
@@ -502,6 +587,7 @@ element of the test list,
 
 <pre><code class='language-R'>
 atime::atime_test(
+  N=c(1,10),
   setup=data.vec &lt;- rnorm(N),
   expr=binsegRcpp::binseg("mean_norm",data.vec))
 
@@ -519,24 +605,24 @@ Define an atime performance test list.
 
 <p>Use this to define <code>test.list</code> in your atime/tests.R
 file, prior to running <code><a href="#topic+atime_pkg">atime_pkg</a></code>.
-Arguments in ... and <code>tests</code> are combined to form the test
-list, and other arguments are copied to each element of the test list.
+Arguments in ... should all be named; if name is an argument of
+atime_versions, it will be copied to each test; otherwise it should be
+the name of a test. 
 </p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>atime_test_list(
-  ...,
   N, setup, expr, times, seconds.limit,
   verbose, pkg.edit.fun, result,
-  tests = NULL)
+  tests = NULL, ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="atime_test_list_+3A_...">...</code></td>
 <td>
 
@@ -561,12 +647,14 @@ list, and other arguments are copied to each element of the test list.
 <td>
 
 <p>expression that depends on <code>N</code>, to run before timings.
+Not evaluated before copying to each test.
 </p>
 </td></tr>
 <tr><td><code id="atime_test_list_+3A_expr">expr</code></td>
 <td>
 
 <p>expression to time.
+Not evaluated before copying to each test.
 </p>
 </td></tr>
 <tr><td><code id="atime_test_list_+3A_times">times</code></td>
@@ -604,7 +692,8 @@ list, and other arguments are copied to each element of the test list.
 
 <h3>Value</h3>
 
-<p>List representing performance tests, each element is a list of
+<p>List representing performance tests,
+from ... and <code>tests</code>; each element is a list of
 arguments to pass to <code><a href="#topic+atime_versions">atime_versions</a></code>.
 </p>
 
@@ -625,7 +714,7 @@ arguments to pass to <code><a href="#topic+atime_versions">atime_versions</a></c
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-(test.list &lt;- atime::atime_test_list(
+(test.list.named &lt;- atime::atime_test_list(
   N=as.integer(10^seq(1,3,by=0.5)),
   setup={
     set.seed(1)
@@ -655,13 +744,14 @@ evaluated using several different git versions.</p>
  pkg.path, N, setup, expr, sha.vec=NULL,
  times=10, seconds.limit=0.01, verbose=FALSE,
  pkg.edit.fun=pkg.edit.default, result=FALSE,
+ N.env.parent=NULL,
  ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="atime_versions_+3A_pkg.path">pkg.path</code></td>
 <td>
 <p>Path to git repo containing R package.</p>
@@ -718,6 +808,11 @@ PKG.SHA, default works with Rcpp packages.</p>
 <tr><td><code id="atime_versions_+3A_result">result</code></td>
 <td>
 <p>logical, save results? (default FALSE)</p>
+</td></tr>
+<tr><td><code id="atime_versions_+3A_n.env.parent">N.env.parent</code></td>
+<td>
+<p>environment to use as parent of environment
+created for each data size N, or NULL to use default parent env.</p>
 </td></tr>
 <tr><td><code id="atime_versions_+3A_...">...</code></td>
 <td>
@@ -806,7 +901,7 @@ pkg.edit.fun=pkg.edit.default, ...)</code></pre>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="atime_versions_exprs_+3A_pkg.path">pkg.path</code></td>
 <td>
 <p>Path to git repo containing R package.</p>
@@ -927,7 +1022,7 @@ of a package, and this function removes them.</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="atime_versions_remove_+3A_package">Package</code></td>
 <td>
 <p>Name of package without SHA.</p>
@@ -964,7 +1059,7 @@ of a package, and this function removes them.</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="glob_find_replace_+3A_glob">glob</code></td>
 <td>
 <p>character string: glob defining files.</p>
@@ -1016,7 +1111,7 @@ present (not missing) and increasing with data size.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="references_best_+3A_l">L</code></td>
 <td>
 <p>List output from atime.</p>
@@ -1032,8 +1127,11 @@ default NULL means to use package default.</p>
 <h3>Value</h3>
 
 <p>list of class <code>"references_best"</code> with elements
-<code>references</code> (data table of references),
-<code>measurements</code> (data table of measurements).</p>
+<code>references</code> (data table of all references),
+<code>plot.references</code> (data table of references to show using <code>plot</code>
+method, default is to show closest larger and smaller references),
+<code>measurements</code> (data table of measurements).
+</p>
 
 
 <h3>Author(s)</h3>
@@ -1044,24 +1142,29 @@ default NULL means to use package default.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-## Example 1: polynomial and exponential time string functions.
-string.result &lt;- atime::atime(
-  N=unique(as.integer(10^seq(0,3.5,l=100))),
+## Polynomial and exponential time string functions.
+atime_result_string &lt;- atime::atime(
+  seconds.limit=0.001,
+  N=unique(as.integer(10^seq(0,4,l=100))),
   setup={
     subject &lt;- paste(rep("a", N), collapse="")
     pattern &lt;- paste(rep(c("a?", "a"), each=N), collapse="")
+    linear_size_replacement &lt;- paste(rep("REPLACEMENT", N), collapse="")
   },
-  seconds.limit=0.001,
   PCRE.match=regexpr(pattern, subject, perl=TRUE),
   TRE.match=regexpr(pattern, subject, perl=FALSE),
   constant.replacement=gsub("a","constant size replacement",subject),
-  linear.replacement=gsub("a",subject,subject))
-(string.best &lt;- atime::references_best(string.result))
-## plot method shows each expr in a separate panel.
-plot(string.best)
+  linear.replacement=gsub("a",linear_size_replacement,subject))
+(refs_best_string &lt;- atime::references_best(atime_result_string))
+## plot method shows each expr and unit in a separate panel.
+## default is to show closest larger and smaller references.
+plot(refs_best_string)
+## modifying plot.references changes violet references shown by plot.
+refs_best_string$plot.references &lt;- refs_best_string$ref[c("N","N^2","N^3","2^N"),on="fun.name"]
+plot(refs_best_string)
 ## predict method computes N for given units (default seconds limit).
-string.pred = predict(string.best)
-plot(string.pred)
+(pred_string &lt;- predict(refs_best_string))
+plot(pred_string)
 
 </code></pre>
 

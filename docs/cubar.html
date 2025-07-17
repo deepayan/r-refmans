@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package cubar</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package cubar</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -31,6 +31,7 @@ function processMathHTML() {
 <li><a href='#get_cai'><p>Calculate CAI</p></a></li>
 <li><a href='#get_codon_table'><p>get codon table by NCBI gene code ID</p></a></li>
 <li><a href='#get_cscg'><p>Mean Codon Stabilization Coefficients</p></a></li>
+<li><a href='#get_dp'><p>Deviation from Proportionality</p></a></li>
 <li><a href='#get_enc'><p>Calculate ENC</p></a></li>
 <li><a href='#get_fop'><p>Fraction of optimal codons (Fop)</p></a></li>
 <li><a href='#get_gc'><p>GC contents</p></a></li>
@@ -42,6 +43,10 @@ function processMathHTML() {
 <li><a href='#rev_comp'><p>Reverse complement</p></a></li>
 <li><a href='#seq_to_codons'><p>Convert CDS to codons</p></a></li>
 <li><a href='#show_codon_tables'><p>show available codon tables</p></a></li>
+<li><a href='#slide'><p>slide window interval generator</p></a></li>
+<li><a href='#slide_apply'><p>apply a cub index to a sliding window</p></a></li>
+<li><a href='#slide_codon'><p>sliding window of codons</p></a></li>
+<li><a href='#slide_plot'><p>plot sliding window codon usage</p></a></li>
 <li><a href='#yeast_cds'><p>yeast CDS sequences</p></a></li>
 <li><a href='#yeast_exp'><p>yeast mRNA expression levels</p></a></li>
 <li><a href='#yeast_half_life'><p>Half life of yeast mRNAs</p></a></li>
@@ -52,14 +57,14 @@ function processMathHTML() {
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Title:</td>
 <td>Codon Usage Bias Analysis</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>0.6.0</td>
+<td>1.1.0</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -117,7 +122,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.3.1</td>
+<td>7.3.2</td>
 </tr>
 <tr>
 <td>Config/testthat/edition:</td>
@@ -129,12 +134,13 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-07-04 11:13:49 UTC; mt1022</td>
+<td>2024-12-07 07:31:04 UTC; mt1022</td>
 </tr>
 <tr>
 <td>Author:</td>
-<td>Hong Zhang <a href="https://orcid.org/0000-0002-4064-9432"><img alt="ORCID iD"src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut,
+<td>Hong Zhang <a href="https://orcid.org/0000-0002-4064-9432"><img alt="ORCID iD"  src="https://cloud.R-project.org/web/orcid.svg" style="width:16px; height:16px; margin-left:4px; margin-right:4px; vertical-align:middle" /></a> [aut,
     cre],
+  Mengyue Liu [aut],
   Bu Zi [aut]</td>
 </tr>
 <tr>
@@ -147,7 +153,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-07-04 12:50:06 UTC</td>
+<td>2024-12-07 07:50:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -220,7 +226,7 @@ peculiar sequences and optionally remove start or stop codons.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="check_cds_+3A_seqs">seqs</code></td>
 <td>
 <p>input CDS sequences</p>
@@ -297,7 +303,7 @@ perform differential codon usage analysis.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="codon_diff_+3A_seqs1">seqs1</code></td>
 <td>
 <p>DNAStringSet, or an object that can be coerced to a DNAStringSet</p>
@@ -308,7 +314,8 @@ perform differential codon usage analysis.
 </td></tr>
 <tr><td><code id="codon_diff_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
 </td></tr>
 </table>
 
@@ -319,6 +326,7 @@ perform differential codon usage analysis.
 is used differently relative to all the other codons. Family tests examine whether a codon is used
 differently relative to other codons that encode the same amino acid. Subfamily tests examine whether
 a codon is used differently relative to other synonymous codons that share the same first two nucleotides.
+Odds ratio &gt; 1 suggests a codon is used at higher frequency in <code>seqs1</code> than in <code>seqs2</code>.
 </p>
 
 
@@ -343,37 +351,48 @@ each codon to the corresponding synonymous optimal codon.
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>codon_optimize(seq, optimal_codons, gcid = "1")
+<pre><code class='language-R'>codon_optimize(
+  seq,
+  optimal_codons,
+  codon_table = get_codon_table(),
+  level = "subfam"
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="codon_optimize_+3A_seq">seq</code></td>
 <td>
-<p>DNAString, or an object that can be coerced to a DNAString</p>
+<p>DNAString, or an object that can be coerced to a DNAString.</p>
 </td></tr>
 <tr><td><code id="codon_optimize_+3A_optimal_codons">optimal_codons</code></td>
 <td>
-<p>table optimze codons as generated by <code>est_optimal_codons</code></p>
+<p>table optimze codons as generated by <code>est_optimal_codons</code>.</p>
 </td></tr>
-<tr><td><code id="codon_optimize_+3A_gcid">gcid</code></td>
+<tr><td><code id="codon_optimize_+3A_codon_table">codon_table</code></td>
 <td>
-<p>genetic code id, default is '1' (standard genetic code)</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="codon_optimize_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. Optimize codon usage at which level.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>a DNAString of the optimized coding sequence
+<p>a DNAString of the optimized coding sequence.
 </p>
 
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>optimal_codons &lt;- est_optimal_codons(yeast_cds)
+<pre><code class='language-R'>cf_all &lt;- count_codons(yeast_cds)
+optimal_codons &lt;- est_optimal_codons(cf_all)
 seq &lt;- 'ATGCTACGA'
 codon_optimize(seq, optimal_codons)
 
@@ -396,14 +415,14 @@ codon_optimize(seq, optimal_codons)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="count_codons_+3A_seqs">seqs</code></td>
 <td>
 <p>CDS sequences, DNAStringSet.</p>
 </td></tr>
 <tr><td><code id="count_codons_+3A_...">...</code></td>
 <td>
-<p>additional arguments passed to 'Biostrings::trinucleotideFrequency'.</p>
+<p>additional arguments passed to <code>Biostrings::trinucleotideFrequency</code>.</p>
 </td></tr>
 </table>
 
@@ -441,7 +460,7 @@ count_codons(yeast_cds[1])
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="create_codon_table_+3A_aa2codon">aa2codon</code></td>
 <td>
 <p>a data frame with two columns: amino_acid (Ala, Arg, etc.) and codon.</p>
@@ -451,7 +470,7 @@ count_codons(yeast_cds[1])
 
 <h3>Value</h3>
 
-<p>a 'data.table' with four columns: aa_code, amino_acid, codon, and subfam.
+<p>a <code>data.table</code> with four columns: aa_code, amino_acid, codon, and subfam.
 </p>
 
 
@@ -483,7 +502,7 @@ create_codon_table(aa2codon = aa2codon)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="est_csc_+3A_seqs">seqs</code></td>
 <td>
 <p>CDS sequences of all protein-coding genes. One for each gene.</p>
@@ -494,7 +513,7 @@ create_codon_table(aa2codon = aa2codon)
 </td></tr>
 <tr><td><code id="est_csc_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or <code>create_codon_table</code>.</p>
 </td></tr>
 <tr><td><code id="est_csc_+3A_cor_method">cor_method</code></td>
 <td>
@@ -527,43 +546,65 @@ est_csc(yeast_cds, yeast_half_life)
 
 <h3>Description</h3>
 
-<p><code>est_toptimal_codons</code> determine optimal codon of each codon family with binomial regression.
+<p><code>est_optimal_codons</code> determine optimal codon of each codon family with binomial regression.
 Usage of optimal codons should correlate negatively with enc.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>est_optimal_codons(seqs, codon_table = get_codon_table())
+<pre><code class='language-R'>est_optimal_codons(
+  cf,
+  codon_table = get_codon_table(),
+  level = "subfam",
+  gene_score = NULL,
+  fdr = 0.001
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
-<tr><td><code id="est_optimal_codons_+3A_seqs">seqs</code></td>
+<table role = "presentation">
+<tr><td><code id="est_optimal_codons_+3A_cf">cf</code></td>
 <td>
-<p>CDS sequences of all protein-coding genes. One for each gene.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="est_optimal_codons_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or <code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="est_optimal_codons_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. For which level to determine optimal codons.</p>
+</td></tr>
+<tr><td><code id="est_optimal_codons_+3A_gene_score">gene_score</code></td>
+<td>
+<p>a numeric vector of scores for genes. The order of values should match with
+gene orders in the codon frequency matrix. The length of the vector should be equal to the
+number of rows in the matrix. The scores could be gene expression levels (RPKM or TPM) that are
+optionally log-transformed (for example, with <code>log1p</code>). The opposite of ENC will be used by
+default if <code>gene_score</code> is not provided.</p>
+</td></tr>
+<tr><td><code id="est_optimal_codons_+3A_fdr">fdr</code></td>
+<td>
+<p>false discovery rate used to determine optimal codons.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>data.table of optimal codons
+<p>data.table of optimal codons.
 </p>
 
 
 <h3>Examples</h3>
 
 <pre><code class='language-R'># perform binomial regression for optimal codon estimation
-codons_opt &lt;- est_optimal_codons(yeast_cds)
-# select optimal codons with a fdr of 0.001
-codons_opt &lt;- codons_opt[qvalue &lt; 0.001 &amp; coef &lt; 0]
+cf_all &lt;- count_codons(yeast_cds)
+codons_opt &lt;- est_optimal_codons(cf_all)
+codons_opt &lt;- codons_opt[optimal == TRUE]
 codons_opt
 
 </code></pre>
@@ -579,20 +620,26 @@ codons_opt
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>est_rscu(cf, weight = 1, pseudo_cnt = 1, codon_table = get_codon_table())
+<pre><code class='language-R'>est_rscu(
+  cf,
+  weight = 1,
+  pseudo_cnt = 1,
+  codon_table = get_codon_table(),
+  level = "subfam"
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="est_rscu_+3A_cf">cf</code></td>
 <td>
-<p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="est_rscu_+3A_weight">weight</code></td>
 <td>
-<p>a vector of the same length as 'seqs' that gives different weights
+<p>a vector of the same length as <code>seqs</code> that gives different weights
 to CDSs when count codons. for example, it could be gene expression levels.</p>
 </td></tr>
 <tr><td><code id="est_rscu_+3A_pseudo_cnt">pseudo_cnt</code></td>
@@ -602,8 +649,12 @@ only a few sequences are available for RSCU calculation.</p>
 </td></tr>
 <tr><td><code id="est_rscu_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or
-'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="est_rscu_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. For which level to determine RSCU.</p>
 </td></tr>
 </table>
 
@@ -655,7 +706,7 @@ This weight reflects relative tRNA availability for each codon.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="est_trna_weight_+3A_trna_level">trna_level</code></td>
 <td>
 <p>named vector of tRNA level (or gene copy numbers), one value for each anticodon.
@@ -663,7 +714,7 @@ vector names are anticodons.</p>
 </td></tr>
 <tr><td><code id="est_trna_weight_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or <code>create_codon_table</code>.</p>
 </td></tr>
 <tr><td><code id="est_trna_weight_+3A_s">s</code></td>
 <td>
@@ -702,21 +753,25 @@ est_trna_weight(yeast_trna_gcn)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_cai(cf, rscu)
+<pre><code class='language-R'>get_cai(cf, rscu, level = "subfam")
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_cai_+3A_cf">cf</code></td>
 <td>
-<p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="get_cai_+3A_rscu">rscu</code></td>
 <td>
 <p>rscu table containing CAI weight for each codon. This table could be
-generated with 'est_rscu' or prepared manually.</p>
+generated with <code>est_rscu</code> or prepared manually.</p>
+</td></tr>
+<tr><td><code id="get_cai_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. For which level to determine CAI.</p>
 </td></tr>
 </table>
 
@@ -729,7 +784,8 @@ generated with 'est_rscu' or prepared manually.</p>
 
 <h3>References</h3>
 
-<p>Sharp PM, Li WH. 1987. The codon Adaptation Index&ndash;a measure of directional synonymous codon usage bias, and its potential applications. Nucleic Acids Res 15:1281-1295.
+<p>Sharp PM, Li WH. 1987. The codon Adaptation Index&ndash;a measure of directional
+synonymous codon usage bias, and its potential applications. Nucleic Acids Res 15:1281-1295.
 </p>
 
 
@@ -763,17 +819,17 @@ hist(cai)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_codon_table_+3A_gcid">gcid</code></td>
 <td>
-<p>a string of genetic code id. run 'show_codon_tables()' to see available codon tables.</p>
+<p>a string of genetic code id. run <code>show_codon_tables()</code> to see available codon tables.</p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>a 'data.table' with four columns: aa_code, amino_acid, codon, and subfam.
+<p>a <code>data.table</code> with four columns: aa_code, amino_acid, codon, and subfam.
 </p>
 
 
@@ -803,14 +859,14 @@ get_codon_table(gcid = '2')
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_cscg_+3A_cf">cf</code></td>
 <td>
-<p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="get_cscg_+3A_csc">csc</code></td>
 <td>
-<p>table of Codon Stabilization Coefficients as calculated by 'est_csc()'.</p>
+<p>table of Codon Stabilization Coefficients as calculated by <code>est_csc()</code>.</p>
 </td></tr>
 </table>
 
@@ -823,7 +879,9 @@ get_codon_table(gcid = '2')
 
 <h3>References</h3>
 
-<p>Presnyak V, Alhusaini N, Chen YH, Martin S, Morris N, Kline N, Olson S, Weinberg D, Baker KE, Graveley BR, et al. 2015. Codon optimality is a major determinant of mRNA stability. Cell 160:1111-1124.
+<p>Presnyak V, Alhusaini N, Chen YH, Martin S, Morris N, Kline N, Olson S, Weinberg D,
+Baker KE, Graveley BR, et al. 2015. Codon optimality is a major determinant of mRNA stability.
+Cell 160:1111-1124.
 </p>
 
 
@@ -839,6 +897,83 @@ hist(cscg)
 </code></pre>
 
 <hr>
+<h2 id='get_dp'>Deviation from Proportionality</h2><span id='topic+get_dp'></span>
+
+<h3>Description</h3>
+
+<p><code>get_dp</code> calculates Deviation from Proportionality of each CDS.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>get_dp(
+  cf,
+  host_weights,
+  codon_table = get_codon_table(),
+  level = "subfam",
+  missing_action = "ignore"
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="get_dp_+3A_cf">cf</code></td>
+<td>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
+</td></tr>
+<tr><td><code id="get_dp_+3A_host_weights">host_weights</code></td>
+<td>
+<p>a named vector of tRNA weights for each codon that reflects the relative
+availability of tRNAs in the host organism.</p>
+</td></tr>
+<tr><td><code id="get_dp_+3A_codon_table">codon_table</code></td>
+<td>
+<p>a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="get_dp_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. If &quot;subfam&quot;, the deviation is calculated at
+the codon subfamily level. Otherwise, the deviation is calculated at the amino acid level.</p>
+</td></tr>
+<tr><td><code id="get_dp_+3A_missing_action">missing_action</code></td>
+<td>
+<p>Actions to take when no codon of a group were found in a CDS. Options are
+&quot;ignore&quot; (default), or &quot;zero&quot; (set codon proportions to 0).</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>a named vector of dp values.
+</p>
+
+
+<h3>References</h3>
+
+<p>Chen F, Wu P, Deng S, Zhang H, Hou Y, Hu Z, Zhang J, Chen X, Yang JR. 2020.
+Dissimilation of synonymous codon usage bias in virus-host coevolution due to translational
+selection. Nat Ecol Evol 4:589-600.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'># estimate DP of yeast genes
+cf_all &lt;- count_codons(yeast_cds)
+trna_weight &lt;- est_trna_weight(yeast_trna_gcn)
+trna_weight &lt;- setNames(trna_weight$w, trna_weight$codon)
+dp &lt;- get_dp(cf_all, host_weights = trna_weight)
+head(dp)
+hist(dp)
+
+</code></pre>
+
+<hr>
 <h2 id='get_enc'>Calculate ENC</h2><span id='topic+get_enc'></span>
 
 <h3>Description</h3>
@@ -849,20 +984,25 @@ hist(cscg)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_enc(cf, codon_table = get_codon_table())
+<pre><code class='language-R'>get_enc(cf, codon_table = get_codon_table(), level = "subfam")
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_enc_+3A_cf">cf</code></td>
 <td>
-<p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="get_enc_+3A_codon_table">codon_table</code></td>
 <td>
-<p>codon_table a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>codon_table a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="get_enc_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. For which level to determine ENC.</p>
 </td></tr>
 </table>
 
@@ -875,8 +1015,9 @@ hist(cscg)
 
 <h3>References</h3>
 
-<p>* Wright F. 1990. The 'effective number of codons' used in a gene. Gene 87:23-29.
-* Sun X, Yang Q, Xia X. 2013. An improved implementation of effective number of codons (nc). Mol Biol Evol 30:191-196.
+<p>- Wright F. 1990. The 'effective number of codons' used in a gene. Gene 87:23-29.
+- Sun X, Yang Q, Xia X. 2013. An improved implementation of effective number of codons (NC).
+Mol Biol Evol 30:191-196.
 </p>
 
 
@@ -900,20 +1041,30 @@ hist(enc)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_fop(seqs, codon_table = get_codon_table())
+<pre><code class='language-R'>get_fop(cf, op = NULL, codon_table = get_codon_table(), ...)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
-<tr><td><code id="get_fop_+3A_seqs">seqs</code></td>
+<table role = "presentation">
+<tr><td><code id="get_fop_+3A_cf">cf</code></td>
 <td>
-<p>CDS sequences of all protein-coding genes. One for each gene.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
+</td></tr>
+<tr><td><code id="get_fop_+3A_op">op</code></td>
+<td>
+<p>a character vector of optimal codons. Can be determined automatically by running
+<code>est_optimal_codons</code>.</p>
 </td></tr>
 <tr><td><code id="get_fop_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="get_fop_+3A_...">...</code></td>
+<td>
+<p>other arguments passed to <code>est_optimal_codons</code>.</p>
 </td></tr>
 </table>
 
@@ -926,14 +1077,17 @@ hist(enc)
 
 <h3>References</h3>
 
-<p>Ikemura T. 1981. Correlation between the abundance of Escherichia coli transfer RNAs and the occurrence of the respective codons in its protein genes: a proposal for a synonymous codon choice that is optimal for the E. coli translational system. J Mol Biol 151:389-409.
+<p>Ikemura T. 1981. Correlation between the abundance of Escherichia coli transfer RNAs
+and the occurrence of the respective codons in its protein genes: a proposal for a synonymous
+codon choice that is optimal for the E. coli translational system. J Mol Biol 151:389-409.
 </p>
 
 
 <h3>Examples</h3>
 
 <pre><code class='language-R'># estimate Fop of yeast genes
-fop &lt;- get_fop(yeast_cds)
+cf_all &lt;- count_codons(yeast_cds)
+fop &lt;- get_fop(cf_all)
 head(fop)
 hist(fop)
 
@@ -956,7 +1110,7 @@ hist(fop)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_gc_+3A_cf">cf</code></td>
 <td>
 <p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
@@ -991,20 +1145,25 @@ hist(gc)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_gc3s(cf, codon_table = get_codon_table())
+<pre><code class='language-R'>get_gc3s(cf, codon_table = get_codon_table(), level = "subfam")
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_gc3s_+3A_cf">cf</code></td>
 <td>
-<p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="get_gc3s_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or <code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="get_gc3s_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. For which level to determine 
+GC content at synonymous 3rd codon positions.</p>
 </td></tr>
 </table>
 
@@ -1042,20 +1201,26 @@ hist(gc3s)
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_gc4d(cf, codon_table = get_codon_table())
+<pre><code class='language-R'>get_gc4d(cf, codon_table = get_codon_table(), level = "subfam")
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_gc4d_+3A_cf">cf</code></td>
 <td>
-<p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="get_gc4d_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
+</td></tr>
+<tr><td><code id="get_gc4d_+3A_level">level</code></td>
+<td>
+<p>&quot;subfam&quot; (default) or &quot;amino_acid&quot;. For which level to determine 
+GC contents at 4-fold degenerate sites.</p>
 </td></tr>
 </table>
 
@@ -1093,14 +1258,14 @@ hist(gc4d)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_tai_+3A_cf">cf</code></td>
 <td>
-<p>matrix of codon frequencies as calculated by 'count_codons()'.</p>
+<p>matrix of codon frequencies as calculated by <code>count_codons()</code>.</p>
 </td></tr>
 <tr><td><code id="get_tai_+3A_trna_w">trna_w</code></td>
 <td>
-<p>tRNA weight for each codon, can be generated with 'est_trna_weight()'.</p>
+<p>tRNA weight for each codon, can be generated with <code>est_trna_weight()</code>.</p>
 </td></tr>
 </table>
 
@@ -1113,7 +1278,8 @@ hist(gc4d)
 
 <h3>References</h3>
 
-<p>dos Reis M, Savva R, Wernisch L. 2004. Solving the riddle of codon usage preferences: a test for translational selection. Nucleic Acids Res 32:5036-5044.
+<p>dos Reis M, Savva R, Wernisch L. 2004. Solving the riddle of codon usage
+preferences: a test for translational selection. Nucleic Acids Res 32:5036-5044.
 </p>
 
 
@@ -1165,7 +1331,7 @@ hist(tai)
 
 <h3>Description</h3>
 
-<p><code>plot_ca_pairing</code> returns the RSCU value of codons
+<p><code>plot_ca_pairing</code> show possible codon-anticodons pairings
 </p>
 
 
@@ -1177,10 +1343,11 @@ hist(tai)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="plot_ca_pairing_+3A_codon_table">codon_table</code></td>
 <td>
-<p>a table of genetic code derived from 'get_codon_table' or 'create_codon_table'.</p>
+<p>a table of genetic code derived from <code>get_codon_table</code> or
+<code>create_codon_table</code>.</p>
 </td></tr>
 <tr><td><code id="plot_ca_pairing_+3A_plot">plot</code></td>
 <td>
@@ -1220,7 +1387,7 @@ head(pairing)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="rev_comp_+3A_seqs">seqs</code></td>
 <td>
 <p>input sequences, DNAStringSet or named vector of sequences</p>
@@ -1258,7 +1425,7 @@ rev_comp(Biostrings::DNAStringSet(c('TAA', 'TAG')))
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="seq_to_codons_+3A_seq">seq</code></td>
 <td>
 <p>DNAString, or an object that can be coerced to a DNAString</p>
@@ -1286,7 +1453,7 @@ seq_to_codons(yeast_cds[[1]])
 <h3>Description</h3>
 
 <p><code>show_codon_tables</code> print a table of available genetic code from NCBI through
-'Biostrings::GENETIC_CODE_TABLE'.
+<code>Biostrings::GENETIC_CODE_TABLE</code>.
 </p>
 
 
@@ -1306,6 +1473,211 @@ seq_to_codons(yeast_cds[[1]])
 
 <pre><code class='language-R'># print available NCBI codon table IDs and descriptions.
 show_codon_tables()
+</code></pre>
+
+<hr>
+<h2 id='slide'>slide window interval generator</h2><span id='topic+slide'></span>
+
+<h3>Description</h3>
+
+<p><code>slide</code> generates a data.table with start, center, and end columns
+for a sliding window analysis.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>slide(from, to, step = 1, before = 0, after = 0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="slide_+3A_from">from</code></td>
+<td>
+<p>integer, the start of the sequence</p>
+</td></tr>
+<tr><td><code id="slide_+3A_to">to</code></td>
+<td>
+<p>integer, the end of the sequence</p>
+</td></tr>
+<tr><td><code id="slide_+3A_step">step</code></td>
+<td>
+<p>integer, the step size</p>
+</td></tr>
+<tr><td><code id="slide_+3A_before">before</code></td>
+<td>
+<p>integer, the number of values before the center of a window</p>
+</td></tr>
+<tr><td><code id="slide_+3A_after">after</code></td>
+<td>
+<p>integer, the number of values after the center of a window</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>data.table with start, center, and end columns
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>slide(1, 10, step = 2, before = 1, after = 1)
+
+</code></pre>
+
+<hr>
+<h2 id='slide_apply'>apply a cub index to a sliding window</h2><span id='topic+slide_apply'></span>
+
+<h3>Description</h3>
+
+<p><code>slide_apply</code> applies a function to a sliding window of codons.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>slide_apply(seq, .f, step = 1, before = 0, after = 0, ...)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="slide_apply_+3A_seq">seq</code></td>
+<td>
+<p>DNAString, the sequence</p>
+</td></tr>
+<tr><td><code id="slide_apply_+3A_.f">.f</code></td>
+<td>
+<p>function, the codon index calculation function to apply, for
+example, <code>get_enc</code>.</p>
+</td></tr>
+<tr><td><code id="slide_apply_+3A_step">step</code></td>
+<td>
+<p>integer, the step size in number of codons</p>
+</td></tr>
+<tr><td><code id="slide_apply_+3A_before">before</code></td>
+<td>
+<p>integer, the number of codons before the center of a window</p>
+</td></tr>
+<tr><td><code id="slide_apply_+3A_after">after</code></td>
+<td>
+<p>integer, the number of codons after the center of a window</p>
+</td></tr>
+<tr><td><code id="slide_apply_+3A_...">...</code></td>
+<td>
+<p>additional arguments to pass to the function <code>.f</code></p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>data.table with start, center, end, and codon usage index columns
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>slide_apply(yeast_cds[[1]], get_enc, step = 1, before = 10, after = 10)
+
+</code></pre>
+
+<hr>
+<h2 id='slide_codon'>sliding window of codons</h2><span id='topic+slide_codon'></span>
+
+<h3>Description</h3>
+
+<p><code>slide_codon</code> generates a data.table with start, center, and end columns
+for a sliding window analysis of codons.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>slide_codon(seq, step = 1, before = 0, after = 0)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="slide_codon_+3A_seq">seq</code></td>
+<td>
+<p>DNAString, the sequence</p>
+</td></tr>
+<tr><td><code id="slide_codon_+3A_step">step</code></td>
+<td>
+<p>integer, the step size</p>
+</td></tr>
+<tr><td><code id="slide_codon_+3A_before">before</code></td>
+<td>
+<p>integer, the number of codons before the center of a window</p>
+</td></tr>
+<tr><td><code id="slide_codon_+3A_after">after</code></td>
+<td>
+<p>integer, the number of codons after the center of a window</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>data.table with start, center, and end columns
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>x &lt;- Biostrings::DNAString('ATCTACATAGCTACGTAGCTCGATGCTAGCATGCATCGTACGATCGTCGATCGTAG')
+slide_codon(x, step = 3, before = 1, after = 1)
+
+</code></pre>
+
+<hr>
+<h2 id='slide_plot'>plot sliding window codon usage</h2><span id='topic+slide_plot'></span>
+
+<h3>Description</h3>
+
+<p><code>slide_plot</code> visualizes codon usage in sliding window.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>slide_plot(windt, index_name = "Index")
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="slide_plot_+3A_windt">windt</code></td>
+<td>
+<p>data.table, the sliding window codon usage
+generated by <code>slide_apply</code>.</p>
+</td></tr>
+<tr><td><code id="slide_plot_+3A_index_name">index_name</code></td>
+<td>
+<p>character, the name of the index to display.</p>
+</td></tr>
+</table>
+
+
+<h3>Value</h3>
+
+<p>ggplot2 plot.
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>sw &lt;- slide_apply(yeast_cds[[1]], get_enc, step = 1, before = 10, after = 10)
+slide_plot(sw)
 </code></pre>
 
 <hr>

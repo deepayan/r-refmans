@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package missRanger</title>
+<!DOCTYPE html><html lang="en"><head><title>Help for package missRanger</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -22,6 +22,7 @@ function processMathHTML() {
 <li><a href='#imputeUnivariate'><p>Univariate Imputation</p></a></li>
 <li><a href='#missRanger'><p>Fast Imputation of Missing Values by Chained Random Forests</p></a></li>
 <li><a href='#pmm'><p>Predictive Mean Matching</p></a></li>
+<li><a href='#predict.missRanger'><p>Predict Method</p></a></li>
 <li><a href='#print.missRanger'><p>Print Method</p></a></li>
 <li><a href='#summary.missRanger'><p>Summary Method</p></a></li>
 </ul>
@@ -29,14 +30,14 @@ function processMathHTML() {
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Title:</td>
 <td>Fast Imputation of Missing Values</td>
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.5.0</td>
+<td>2.6.1</td>
 </tr>
 <tr>
 <td>Description:</td>
@@ -51,8 +52,7 @@ function processMathHTML() {
     predictive mean matching tries to raise the variance in the resulting
     conditional distributions to a realistic level. This would allow,
     e.g., to do multiple imputation when repeating the call to
-    missRanger().  A formula interface allows to control which variables
-    should be imputed by which.</td>
+    missRanger(). Out-of-sample application is supported as well.</td>
 </tr>
 <tr>
 <td>License:</td>
@@ -72,7 +72,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Imports:</td>
-<td>FNN, ranger, stats, utils</td>
+<td>FNN, ranger (&ge; 0.16.0), stats, utils</td>
 </tr>
 <tr>
 <td>URL:</td>
@@ -101,7 +101,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-07-12 15:19:53 UTC; Michael</td>
+<td>2024-12-07 08:49:20 UTC; mayer</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -117,7 +117,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-07-12 19:40:02 UTC</td>
+<td>2024-12-07 09:20:02 UTC</td>
 </tr>
 </table>
 <hr>
@@ -137,7 +137,7 @@ function processMathHTML() {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="generateNA_+3A_x">x</code></td>
 <td>
 <p>A vector, matrix or <code>data.frame</code>.</p>
@@ -145,8 +145,7 @@ function processMathHTML() {
 <tr><td><code id="generateNA_+3A_p">p</code></td>
 <td>
 <p>Proportion of missing values to add to <code>x</code>. In case <code>x</code> is a <code>data.frame</code>,
-<code>p</code> can also be a vector of probabilities per column or a named vector
-(see examples).</p>
+<code>p</code> can also be a vector of probabilities per column or a named vector.</p>
 </td></tr>
 <tr><td><code id="generateNA_+3A_seed">seed</code></td>
 <td>
@@ -163,14 +162,8 @@ function processMathHTML() {
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>generateNA(1:10, p = 0.5, seed = 3345)
-generateNA(rep(Sys.Date(), 10))
-generateNA(cbind(1:10, 10:1), p = 0.2)
-head(generateNA(iris))
+<pre><code class='language-R'>generateNA(1:10, p = 0.5)
 head(generateNA(iris, p = 0.2))
-head(generateNA(iris, p = c(0, 1, 0.5, 0.5, 0.5)))
-head(generateNA(iris, p = c(Sepal.Length = 1)))
-head(generateNA(iris, p = c(Species = 0.2, Sepal.Length = 0.5)))
 </code></pre>
 
 <hr>
@@ -191,7 +184,7 @@ from the non-missing values. For data frames, this sampling is done within colum
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="imputeUnivariate_+3A_x">x</code></td>
 <td>
 <p>A vector, matrix or data frame.</p>
@@ -217,11 +210,7 @@ is a data frame). The default <code>NULL</code> imputes all columns.</p>
 <h3>Examples</h3>
 
 <pre><code class='language-R'>imputeUnivariate(c(NA, 0, 1, 0, 1))
-imputeUnivariate(c("A", "A", NA))
-imputeUnivariate(as.factor(c("A", "A", NA)))
 head(imputeUnivariate(generateNA(iris)))
-head(imputeUnivariate(generateNA(iris), v = "Species"))
-head(imputeUnivariate(generateNA(iris), v = c("Species", "Petal.Length")))
 </code></pre>
 
 <hr>
@@ -246,12 +235,21 @@ when repeating the call to <code><a href="#topic+missRanger">missRanger()</a></c
   data,
   formula = . ~ .,
   pmm.k = 0L,
+  num.trees = 500,
+  mtry = NULL,
+  min.node.size = NULL,
+  min.bucket = NULL,
+  max.depth = NULL,
+  replace = TRUE,
+  sample.fraction = if (replace) 1 else 0.632,
+  case.weights = NULL,
+  num.threads = NULL,
+  save.memory = FALSE,
   maxiter = 10L,
   seed = NULL,
   verbose = 1,
   returnOOB = FALSE,
-  case.weights = NULL,
-  data_only = TRUE,
+  data_only = !keep_forests,
   keep_forests = FALSE,
   ...
 )
@@ -260,7 +258,7 @@ when repeating the call to <code><a href="#topic+missRanger">missRanger()</a></c
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="missRanger_+3A_data">data</code></td>
 <td>
 <p>A <code>data.frame</code> with missing values to impute.</p>
@@ -280,33 +278,71 @@ must appear in the left hand side if they should be used on the right hand side.
 <p>Number of candidate non-missing values to sample from in the
 predictive mean matching steps. 0 to avoid this step.</p>
 </td></tr>
-<tr><td><code id="missRanger_+3A_maxiter">maxiter</code></td>
+<tr><td><code id="missRanger_+3A_num.trees">num.trees</code></td>
 <td>
-<p>Maximum number of chaining iterations.</p>
+<p>Number of trees passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.</p>
 </td></tr>
-<tr><td><code id="missRanger_+3A_seed">seed</code></td>
+<tr><td><code id="missRanger_+3A_mtry">mtry</code></td>
 <td>
-<p>Integer seed to initialize the random generator.</p>
+<p>Number of covariates considered per split. The default <code>NULL</code> equals
+the rounded down root of the number of features. Can be a function, e.g.,
+<code>function(p) trunc(p/3)</code>. Passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>. Note that during the
+first iteration, the number of features is growing. Thus, a fixed value can lead to
+an error. Using a function like <code>function(p) min(p, 2)</code> will fix such problem.</p>
 </td></tr>
-<tr><td><code id="missRanger_+3A_verbose">verbose</code></td>
+<tr><td><code id="missRanger_+3A_min.node.size">min.node.size</code></td>
 <td>
-<p>Controls how much info is printed to screen.
-0 to print nothing. 1 (default) to print a progress bar per iteration,
-2 to print the OOB prediction error per iteration and variable
-(1 minus R-squared for regression).
-Furthermore, if <code>verbose</code> is positive, the variables used for imputation are
-listed as well as the variables to be imputed (in the imputation order).
-This will be useful to detect if some variables are unexpectedly skipped.</p>
+<p>Minimal node size passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.
+By default 1 for classification and 5 for regression.</p>
 </td></tr>
-<tr><td><code id="missRanger_+3A_returnoob">returnOOB</code></td>
+<tr><td><code id="missRanger_+3A_min.bucket">min.bucket</code></td>
 <td>
-<p>Logical flag. If TRUE, the final average out-of-bag prediction
-errors per variable is added to the resulting data as attribute &quot;oob&quot;.
-Only relevant when <code>data_only = TRUE</code> (and when forests are grown).</p>
+<p>Minimal terminal node size passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.
+The default <code>NULL</code> means 1.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_max.depth">max.depth</code></td>
+<td>
+<p>Maximal tree depth passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.
+<code>NULL</code> means unlimited depth. 1 means single split trees.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_replace">replace</code></td>
+<td>
+<p>Sample with replacement passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_sample.fraction">sample.fraction</code></td>
+<td>
+<p>Fraction of rows per tree passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.
+The default: use all rows when <code>replace = TRUE</code> and 0.632 otherwise.</p>
 </td></tr>
 <tr><td><code id="missRanger_+3A_case.weights">case.weights</code></td>
 <td>
-<p>Vector with non-negative case weights.</p>
+<p>Optional case weights passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_num.threads">num.threads</code></td>
+<td>
+<p>Number of threads passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.
+The default <code>NULL</code> uses all threads.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_save.memory">save.memory</code></td>
+<td>
+<p>Slow but memory saving mode of <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_maxiter">maxiter</code></td>
+<td>
+<p>Maximum number of iterations.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_seed">seed</code></td>
+<td>
+<p>Integer seed.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_verbose">verbose</code></td>
+<td>
+<p>A value in 0, 1, 2 controlling the verbosity.</p>
+</td></tr>
+<tr><td><code id="missRanger_+3A_returnoob">returnOOB</code></td>
+<td>
+<p>Should the final average OOB prediction errors be added
+as data attribute &quot;oob&quot;? Only relevant when <code>data_only = TRUE</code>.</p>
 </td></tr>
 <tr><td><code id="missRanger_+3A_data_only">data_only</code></td>
 <td>
@@ -315,17 +351,13 @@ Otherwise, a &quot;missRanger&quot; object with additional information is return
 </td></tr>
 <tr><td><code id="missRanger_+3A_keep_forests">keep_forests</code></td>
 <td>
-<p>Should the random forests of the final imputations
+<p>Should the random forests of the last relevant iteration
 be returned? The default is <code>FALSE</code>. Setting this option will use a lot of memory.
-Only relevant when <code>data_only = TRUE</code> (and when forests are grown).</p>
+Only relevant when <code>data_only = TRUE</code>.</p>
 </td></tr>
 <tr><td><code id="missRanger_+3A_...">...</code></td>
 <td>
-<p>Arguments passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>. If the data set is large,
-better use less trees (e.g. <code>num.trees = 20</code>) and/or a low value of
-<code>sample.fraction</code>. The following arguments are incompatible, amongst others:
-<code>write.forest</code>, <code>probability</code>, <code>split.select.weights</code>,
-<code>dependent.variable.name</code>, and <code>classification</code>.</p>
+<p>Additional arguments passed to <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code>. Not all make sense.</p>
 </td></tr>
 </table>
 
@@ -341,31 +373,26 @@ imputed data is returned.
 classification error otherwise. If a variable has been imputed only univariately,
 the value is 1.
 </p>
-<p>A note on <code>mtry</code>: Be careful when passing a non-default <code>mtry</code> to
-<code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code> because the number of available covariates might be growing during
-the first iteration, depending on the missing pattern.
-Values <code>NULL</code> (default) and 1 are safe choices.
-Additionally, recent versions of <code><a href="ranger.html#topic+ranger">ranger::ranger()</a></code> allow <code>mtry</code> to be a
-single-argument function of the number of available covariables,
-e.g., <code>mtry = function(m) max(1, m %/% 3)</code>.
-</p>
 
 
 <h3>Value</h3>
 
-<p>If <code>data_only</code> an imputed <code>data.frame</code>. Otherwise, a &quot;missRanger&quot; object with
-the following elements that can be extracted via <code>$</code>:
+<p>If <code>data_only = TRUE</code> an imputed <code>data.frame</code>. Otherwise, a &quot;missRanger&quot; object
+with the following elements:
 </p>
 
 <ul>
 <li> <p><code>data</code>: The imputed data.
 </p>
 </li>
+<li> <p><code>data_raw</code>: The original data provided.
+</p>
+</li>
 <li> <p><code>forests</code>: When <code>keep_forests = TRUE</code>, a list of &quot;ranger&quot; models used to
 generate the imputed data. <code>NULL</code> otherwise.
 </p>
 </li>
-<li> <p><code>visit_seq</code>: Variables to be imputed (in this order).
+<li> <p><code>to_impute</code>: Variables to be imputed (in this order).
 </p>
 </li>
 <li> <p><code>impute_by</code>: Variables used for imputation.
@@ -379,6 +406,9 @@ classification error otherwise).
 </p>
 </li>
 <li> <p><code>mean_pred_errors</code>: Per-iteration averages of OOB prediction errors.
+</p>
+</li>
+<li> <p><code>pmm.k</code>: Same as input <code>pmm.k</code>.
 </p>
 </li></ul>
 
@@ -408,25 +438,19 @@ http://www.jstatsoft.org/v45/i03/
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>irisWithNA &lt;- generateNA(iris, seed = 34)
-irisImputed &lt;- missRanger(irisWithNA, pmm.k = 3, num.trees = 100)
-head(irisImputed)
-head(irisWithNA)
+<pre><code class='language-R'>iris2 &lt;- generateNA(iris, seed = 1)
 
-## Not run: 
+imp1 &lt;- missRanger(iris2, pmm.k = 5, num.trees = 50, seed = 1)
+head(imp1)
+
 # Extended output
-imp &lt;- missRanger(irisWithNA, pmm.k = 3, num.trees = 100, data_only = FALSE)
-head(imp$data)
-imp$pred_errors
+imp2 &lt;- missRanger(iris2, pmm.k = 5, num.trees = 50, data_only = FALSE, seed = 1)
+summary(imp2)
 
-# If you even want to keep the random forests of the best iteration
-imp &lt;- missRanger(
-  irisWithNA, pmm.k = 3, num.trees = 100, data_only = FALSE, keep_forests = TRUE
-)
-imp$forests$Sepal.Width
-imp$pred_errors[imp$best_iter, "Sepal.Width"]  # 1 - R-squared
+all.equal(imp1, imp2$data)
 
-## End(Not run)
+# Formula interface: Univariate imputation of Species and Sepal.Width
+imp3 &lt;- missRanger(iris2, Species + Sepal.Width ~ 1)
 </code></pre>
 
 <hr>
@@ -436,7 +460,8 @@ imp$pred_errors[imp$best_iter, "Sepal.Width"]  # 1 - R-squared
 
 <p>For each value in the prediction vector <code>xtest</code>, one of the closest <code>k</code>
 values in the prediction vector <code>xtrain</code> is randomly chosen and its observed
-value in <code>ytrain</code> is returned.
+value in <code>ytrain</code> is returned. Note that <code>xtrain</code> and <code>xtest</code> must be both either
+numeric, logical, or factor-valued. <code>ytest</code> can be of any type.
 </p>
 
 
@@ -448,11 +473,11 @@ value in <code>ytrain</code> is returned.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="pmm_+3A_xtrain">xtrain</code></td>
 <td>
 <p>Vector with predicted values in the training data.
-Can be of type logical, numeric, character, or factor.</p>
+Must be numeric, logical, or factor-valued.</p>
 </td></tr>
 <tr><td><code id="pmm_+3A_xtest">xtest</code></td>
 <td>
@@ -462,12 +487,11 @@ Missing values are not allowed.</p>
 <tr><td><code id="pmm_+3A_ytrain">ytrain</code></td>
 <td>
 <p>Vector of the observed values in the training data. Must be of same
-length as <code>xtrain</code>. Missing values in either of <code>xtrain</code> or <code>ytrain</code> will
-be dropped in a pairwise manner.</p>
+length as <code>xtrain</code>.</p>
 </td></tr>
 <tr><td><code id="pmm_+3A_k">k</code></td>
 <td>
-<p>Number of nearest neighbours to sample from.</p>
+<p>Number of nearest neighbours (donors) to sample from.</p>
 </td></tr>
 <tr><td><code id="pmm_+3A_seed">seed</code></td>
 <td>
@@ -484,11 +508,109 @@ be dropped in a pairwise manner.</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>pmm(xtrain = c(0.2, 0.2, 0.8), xtest = 0.3, ytrain = c(0, 0, 1)) # 0
-pmm(xtrain = c(TRUE, FALSE, TRUE), xtest = FALSE, ytrain = c(2, 0, 1)) # 0
-pmm(xtrain = c(0.2, 0.8), xtest = 0.3, ytrain = c("A", "B"), k = 2) # "A" or "B"
-pmm(xtrain = c("A", "A", "B"), xtest = "A", ytrain = c(2, 2, 4), k = 2) # 2
-pmm(xtrain = factor(c("A", "B")), xtest = factor("C"), ytrain = 1:2) # 2
+<pre><code class='language-R'>pmm(xtrain = c(0.2, 0.3, 0.8), xtest = c(0.7, 0.2), ytrain = 1:3, k = 1)  # c(3, 1)
+</code></pre>
+
+<hr>
+<h2 id='predict.missRanger'>Predict Method</h2><span id='topic+predict.missRanger'></span>
+
+<h3>Description</h3>
+
+<p>Impute missing values on <code>newdata</code> based on an object of class &quot;missRanger&quot;.
+</p>
+<p>For multivariate imputation, use <code>missRanger(..., keep_forests = TRUE)</code>.
+For univariate imputation, no forests are required.
+This can be enforced by <code>predict(..., iter = 0)</code> or via <code>missRanger(. ~ 1, ...)</code>.
+</p>
+<p>Note that out-of-sample imputation works best for rows in <code>newdata</code> with only one
+missing value (counting only missings in variables used as covariates
+in random forests). We call this the &quot;easy case&quot;. In the &quot;hard case&quot;,
+even multiple iterations (set by <code>iter</code>) can lead to unsatisfactory results.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>## S3 method for class 'missRanger'
+predict(
+  object,
+  newdata,
+  pmm.k = object$pmm.k,
+  iter = 4L,
+  num.threads = NULL,
+  seed = NULL,
+  verbose = 1L,
+  ...
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="predict.missRanger_+3A_object">object</code></td>
+<td>
+<p>'missRanger' object.</p>
+</td></tr>
+<tr><td><code id="predict.missRanger_+3A_newdata">newdata</code></td>
+<td>
+<p>A <code>data.frame</code> with missing values to impute.</p>
+</td></tr>
+<tr><td><code id="predict.missRanger_+3A_pmm.k">pmm.k</code></td>
+<td>
+<p>Number of candidate predictions of the original dataset
+for predictive mean matching (PMM). By default the same value as during fitting.</p>
+</td></tr>
+<tr><td><code id="predict.missRanger_+3A_iter">iter</code></td>
+<td>
+<p>Number of iterations for &quot;hard case&quot; rows. 0 for univariate imputation.</p>
+</td></tr>
+<tr><td><code id="predict.missRanger_+3A_num.threads">num.threads</code></td>
+<td>
+<p>Number of threads used by ranger's predict function.
+The default <code>NULL</code> uses all threads.</p>
+</td></tr>
+<tr><td><code id="predict.missRanger_+3A_seed">seed</code></td>
+<td>
+<p>Integer seed used for initial univariate imputation and PMM.</p>
+</td></tr>
+<tr><td><code id="predict.missRanger_+3A_verbose">verbose</code></td>
+<td>
+<p>Should info be printed? (1 = yes/default, 0 for no).</p>
+</td></tr>
+<tr><td><code id="predict.missRanger_+3A_...">...</code></td>
+<td>
+<p>Passed to the predict function of ranger.</p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>The out-of-sample algorithm works as follows:
+</p>
+
+<ol>
+<li><p> Impute univariately all relevant columns by randomly drawing values
+from the original unimputed data. This step will only impact &quot;hard case&quot; rows.
+</p>
+</li>
+<li><p> Replace univariate imputations by predictions of random forests. This is done
+sequentially over variables, where the variables are sorted to minimize the impact
+of univariate imputations. Optionally, this is followed by predictive mean matching (PMM).
+</p>
+</li>
+<li><p> Repeat Step 2 for &quot;hard case&quot; rows multiple times.
+</p>
+</li></ol>
+
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>iris2 &lt;- generateNA(iris, seed = 20, p = c(Sepal.Length = 0.2, Species = 0.1))
+imp &lt;- missRanger(iris2, pmm.k = 5, num.trees = 100, keep_forests = TRUE, seed = 2)
+predict(imp, head(iris2), seed = 3)
 </code></pre>
 
 <hr>
@@ -509,7 +631,7 @@ print(x, ...)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="print.missRanger_+3A_x">x</code></td>
 <td>
 <p>An object of class &quot;missRanger&quot;.</p>
@@ -552,7 +674,7 @@ summary(object, ...)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="summary.missRanger_+3A_object">object</code></td>
 <td>
 <p>An object of class &quot;missRanger&quot;.</p>

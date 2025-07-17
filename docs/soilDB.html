@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><title>Help for package soilDB</title>
+<!DOCTYPE html><html lang="en-US"><head><title>Help for package soilDB</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -37,6 +37,7 @@ function processMathHTML() {
 <li><a href='#fetchSCAN'><p>Get Daily Climate Data from USDA-NRCS SCAN (Soil Climate Analysis Network) Stations</p></a></li>
 <li><a href='#fetchSDA_spatial'><p>Get Spatial Data from Soil Data Access by <code>mukey</code>, <code>nationalmusym</code> or <code>areasymbol</code></p></a></li>
 <li><a href='#fetchSoilGrids'><p>Get SoilGrids 2.0 Property Estimates for Points or Spatial Extent</p></a></li>
+<li><a href='#fetchSOLUS'><p>Fetch Soil Landscapes of the United States (SOLUS) Grids</p></a></li>
 <li><a href='#fetchSRI'><p>Fetch Soil Inventory Resource (SRI) for USFS Region 6</p></a></li>
 <li><a href='#fetchVegdata'><p>Get vegetation plot data from local NASIS database</p></a></li>
 <li><a href='#filter_geochem'><p>Filter KSSL Geochemical Table</p></a></li>
@@ -98,11 +99,12 @@ function processMathHTML() {
 <li><a href='#NASIS_table_column_keys'><p>NASIS 7 Tables, Columns and Foreign Keys</p></a></li>
 <li><a href='#NASISChoiceList'><p>Work with NASIS Choice Lists</p></a></li>
 <li><a href='#NASISDomainsAsFactor'><p>Get/Set Options for Encoding NASIS Domains as Factors</p></a></li>
+<li><a href='#NASISLocalDatabase'><p>NASIS Local Database</p></a></li>
 <li><a href='#OSDquery'><p>Search full text of Official Series Description on SoilWeb</p></a></li>
 <li><a href='#parseWebReport'><p>Parse contents of a web report, based on supplied arguments.</p></a></li>
 <li><a href='#processSDA_WKT'><p>Post-process Well-Known Text from Soil Data Access</p></a></li>
 <li><a href='#ROSETTA'><p>Query USDA-ARS ROSETTA Model API</p></a></li>
-<li><a href='#SCAN_SNOTEL_metadata'><p>Get SCAN and SNOTEL Station Metadata</p></a></li>
+<li><a href='#SCAN_SNOTEL_metadata'><p>USDA-NRCS Station Metadata for SCAN, CSCAN, SNOTEL, SNOWLITE Networks</p></a></li>
 <li><a href='#SDA_query'><p>Query Soil Data Access</p></a></li>
 <li><a href='#SDA_spatialQuery'><p>Query Soil Data Access by spatial intersection with supplied geometry</p></a></li>
 <li><a href='#seriesExtent'><p>Retrieve Soil Series Extent Maps from SoilWeb</p></a></li>
@@ -124,7 +126,7 @@ function processMathHTML() {
 <hr>
 </nav>
 <main>
-<table>
+<table role='presentation'>
 <tr>
 <td>Type:</td>
 <td>Package</td>
@@ -135,7 +137,7 @@ function processMathHTML() {
 </tr>
 <tr>
 <td>Version:</td>
-<td>2.8.3</td>
+<td>2.8.8</td>
 </tr>
 <tr>
 <td>Author:</td>
@@ -190,7 +192,7 @@ raster, knitr, rmarkdown, testthat</td>
 </tr>
 <tr>
 <td>RoxygenNote:</td>
-<td>7.3.1</td>
+<td>7.3.2</td>
 </tr>
 <tr>
 <td>Encoding:</td>
@@ -214,11 +216,11 @@ raster, knitr, rmarkdown, testthat</td>
 </tr>
 <tr>
 <td>Packaged:</td>
-<td>2024-06-11 20:27:17 UTC; Andrew.G.Brown</td>
+<td>2025-02-10 18:56:28 UTC; Andrew.G.Brown</td>
 </tr>
 <tr>
 <td>Date/Publication:</td>
-<td>2024-06-11 22:00:06 UTC</td>
+<td>2025-02-10 19:20:01 UTC</td>
 </tr>
 </table>
 <hr>
@@ -268,18 +270,19 @@ other soil-related web services.
 </p>
 </li></ul>
 
-<p>In theory any other DBI-compatible data source can be used for output. See <code>conn</code> argument. If you encounter issues using specific DBI connection types, please report in the soilDB issue tracker.
-</p>
 
 
 <h3>Usage</h3>
 
 <pre><code class='language-R'>createSSURGO(
-  filename,
+  filename = NULL,
   exdir,
-  conn = DBI::dbConnect(DBI::dbDriver("SQLite"), filename, loadable.extensions = TRUE),
+  conn = NULL,
   pattern = NULL,
   include_spatial = TRUE,
+  include_tabular = TRUE,
+  dissolve_field = NULL,
+  maxruledepth = 0,
   overwrite = FALSE,
   header = FALSE,
   quiet = TRUE,
@@ -290,44 +293,82 @@ other soil-related web services.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="createSSURGO_+3A_filename">filename</code></td>
 <td>
-<p>Output file name (e.g. <code>'db.sqlite'</code> or <code>'db.gpkg'</code>). Only used when <code>con</code> is not specified by the user.</p>
+<p><em>character</em>. Output file name (e.g. <code>'db.sqlite'</code> or <code>'db.gpkg'</code>). Only used when <code>con</code> is not
+specified by the user.</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_exdir">exdir</code></td>
 <td>
-<p>Path containing containing input SSURGO spatial (.shp) and tabular (.txt) files, downloaded and extracted by <code>downloadSSURGO()</code> or similar.</p>
+<p><em>character</em>. Path containing containing input SSURGO spatial (.shp) and tabular (.txt) files,
+downloaded and extracted by <code>downloadSSURGO()</code> or similar.</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_conn">conn</code></td>
 <td>
-<p>A <em>DBIConnection</em> object. Default is a <code>SQLiteConnection</code> used for writing .sqlite or .gpkg files. Alternate options are any DBI connection types. When <code>include_spatial=TRUE</code>, the sf package is used to write spatial data to the database.</p>
+<p>A <em>DBIConnection</em> object. Default is a <code>SQLiteConnection</code> used for writing .sqlite or
+.gpkg files. Alternate options are any DBI connection types. When <code>include_spatial=TRUE</code>, the
+sf package is used to write spatial data to the database.</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_pattern">pattern</code></td>
 <td>
-<p>Character. Optional regular expression to use to filter subdirectories of <code>exdir</code>. Default: <code>NULL</code> will search all subdirectories for SSURGO export files.</p>
+<p><em>character</em>. Optional regular expression to use to filter subdirectories of <code>exdir</code>.
+Default: <code>NULL</code> will search all subdirectories for SSURGO export files.</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_include_spatial">include_spatial</code></td>
 <td>
-<p>Logical. Include spatial data layers in database? Default: <code>TRUE</code>.</p>
+<p><em>logical</em> or <em>character</em>. Include spatial data layers in database?
+Default: <code>TRUE</code> inserts all spatial tables. If <code>include_spatial</code> is a <em>character</em> vector
+containing table names, only that set are written to file. e.g. <code>include_spatial=c("mupolygon", "featpoint")</code> writes only the mapunit polygons and special feature points.</p>
+</td></tr>
+<tr><td><code id="createSSURGO_+3A_include_tabular">include_tabular</code></td>
+<td>
+<p><em>logical</em> or <em>character</em>. Include tabular data layers in database?
+Default: <code>TRUE</code> inserts all tabular tables. If <code>include_tabular</code> is a <em>character</em> vector
+containing table names, only that set are written to file. e.g. <code>include_tabular=c("mapunit", "muaggatt")</code> writes only the <code>mapunit</code> and <code>muaggatt</code> tables. Note that special feature
+descriptions are stored in table <code>"featdesc"</code> and metadata for each soil survey area are stored
+in <code>"soil_metadata"</code> tables.</p>
+</td></tr>
+<tr><td><code id="createSSURGO_+3A_dissolve_field">dissolve_field</code></td>
+<td>
+<p><em>character</em>. Dissolve geometries to create MULTIPOLYGON features? Column
+name
+specified is the grouping variable. Default: <code>NULL</code> does no aggregation, giving 1 <code>POLYGON</code>
+feature per delineation. <code>"mukey"</code> aggregates all related delineations within a soil survey
+area.</p>
+</td></tr>
+<tr><td><code id="createSSURGO_+3A_maxruledepth">maxruledepth</code></td>
+<td>
+<p><em>integer</em>. Maximum rule depth for <code>"cointerp"</code> table. Default <code>0</code> includes only
+shallowest ratings for smaller database size.</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_overwrite">overwrite</code></td>
 <td>
-<p>Logical. Overwrite existing layers? Default <code>FALSE</code> will append to existing tables/layers.</p>
+<p><em>logical</em>. Overwrite existing layers? Default <code>FALSE</code> will append to existing
+tables/layers.</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_header">header</code></td>
 <td>
-<p>Logical. Passed to <code>read.delim()</code> for reading pipe-delimited (<code>|</code>) text files containing tabular data.</p>
+<p><em>logical</em>. Passed to <code>read.delim()</code> for reading pipe-delimited (<code>|</code>) text files
+containing tabular data.</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_quiet">quiet</code></td>
 <td>
-<p>Logical. Suppress messages and other output from database read/write operations?</p>
+<p><em>logical</em>. Suppress messages and other output from database read/write operations?</p>
 </td></tr>
 <tr><td><code id="createSSURGO_+3A_...">...</code></td>
 <td>
 <p>Additional arguments passed to <code>write_sf()</code> for writing spatial layers.</p>
 </td></tr>
 </table>
+
+
+<h3>Details</h3>
+
+<p>In theory any other DBI-compatible data source can be used for output. See <code>conn</code> argument. If
+you encounter issues using specific DBI connection types, please report in the soilDB issue
+tracker.
+</p>
 
 
 <h3>Value</h3>
@@ -376,7 +417,7 @@ tables.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="createStaticNASIS_+3A_tables">tables</code></td>
 <td>
 <p>Character vector of target tables. Default: <code>NULL</code> is whatever tables are listed by <code>DBI::dbListTables</code> for the connection typ being used.</p>
@@ -429,7 +470,7 @@ NASIS(dsn = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="dbConnectNASIS_+3A_dsn">dsn</code></td>
 <td>
 <p>Optional: path to SQLite database containing NASIS table
@@ -461,7 +502,7 @@ structure; Default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="dbQueryNASIS_+3A_conn">conn</code></td>
 <td>
 <p>A <code>DBIConnection</code> object, as returned by <code>DBI::dbConnect()</code>.</p>
@@ -491,7 +532,9 @@ structure; Default: <code>NULL</code></p>
 
 <h3>Description</h3>
 
-<p>Download ZIP files containing spatial (ESRI shapefile) and tabular (TXT) files with standard SSURGO format; optionally including the corresponding SSURGO Template Database with <code>include_template=TRUE</code>.
+<p>Download ZIP files containing spatial (ESRI shapefile) and tabular (TXT) files with standard
+SSURGO format; optionally including the corresponding SSURGO Template Database with
+<code>include_template=TRUE</code>.
 </p>
 
 
@@ -514,65 +557,83 @@ structure; Default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="downloadSSURGO_+3A_where">WHERE</code></td>
 <td>
-<p>A SQL <code>WHERE</code> clause expression used to filter records in <code>sacatalog</code> table. Alternately <code>WHERE</code> can be any spatial object supported by <code>SDA_spatialQuery()</code> for defining the target extent.</p>
+<p><em>character</em>. A SQL <code>WHERE</code> clause expression used to filter records in <code>sacatalog</code> table.
+Alternately <code>WHERE</code> can be any spatial object supported by <code>SDA_spatialQuery()</code> for defining
+the target extent.</p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_areasymbols">areasymbols</code></td>
 <td>
-<p>Character vector of soil survey area symbols e.g. <code>c("CA067", "CA077")</code>. Used in lieu of <code>WHERE</code> argument.</p>
+<p><em>character</em>. Character vector of soil survey area symbols e.g. <code>c("CA067", "CA077")</code>. Used
+in lieu of <code>WHERE</code> argument.</p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_destdir">destdir</code></td>
 <td>
-<p>Directory to download ZIP files into. Default <code>tempdir()</code>.</p>
+<p><em>character</em>. Directory to download ZIP files into. Default <code>tempdir()</code>.</p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_exdir">exdir</code></td>
 <td>
-<p>Directory to extract ZIP archives into. May be a directory that does not yet exist. Each ZIP file will extract to a folder labeled with <code>areasymbol</code> in this directory. Default: <code>destdir</code></p>
+<p><em>character</em>. Directory to extract ZIP archives into. May be a directory that does not yet exist.
+Each ZIP file will extract to a folder labeled with <code>areasymbol</code> in this directory. Default:
+<code>destdir</code></p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_include_template">include_template</code></td>
 <td>
-<p>Include the (possibly state-specific) MS Access template database? Default: <code>FALSE</code></p>
+<p><em>logical</em>. Include the (possibly state-specific) MS Access template database?
+Default: <code>FALSE</code></p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_db">db</code></td>
 <td>
-<p>Either <code>"SSURGO"</code> (default; detailed soil map) or <code>"STATSGO"</code> (general soil map).</p>
+<p><em>character</em>. Either <code>"SSURGO"</code> (default; detailed soil map) or <code>"STATSGO"</code> (general soil map).</p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_extract">extract</code></td>
 <td>
-<p>Logical. Extract ZIP files to <code>exdir</code>? Default: <code>TRUE</code></p>
+<p><em>logical</em>. Extract ZIP files to <code>exdir</code>? Default: <code>TRUE</code></p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_remove_zip">remove_zip</code></td>
 <td>
-<p>Logical. Remove ZIP files after extracting? Default: <code>FALSE</code></p>
+<p><em>logical</em>. Remove ZIP files after extracting? Default: <code>FALSE</code></p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_overwrite">overwrite</code></td>
 <td>
-<p>Logical. Overwrite by re-extracting if directory already exists? Default: <code>FALSE</code></p>
+<p><em>logical</em>. Overwrite by re-extracting if directory already exists? Default:
+<code>FALSE</code></p>
 </td></tr>
 <tr><td><code id="downloadSSURGO_+3A_quiet">quiet</code></td>
 <td>
-<p>Logical. Passed to <code>curl::curl_download()</code>.</p>
+<p><em>logical</em>. Passed to <code>curl::curl_download()</code>.</p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>To specify the Soil Survey Areas you would like to obtain data you use a <code>WHERE</code> clause for query of <code>sacatalog</code> table such as <code>areasymbol = 'CA067'</code>, <code>"areasymbol IN ('CA628', 'CA067')"</code> or  <code style="white-space: pre;">&#8288;areasymbol LIKE 'CT%'&#8288;</code>.
+<p>To specify the Soil Survey Areas you would like to obtain data you use a <code>WHERE</code> clause for query
+of <code>sacatalog</code> table such as <code>areasymbol = 'CA067'</code>, <code>"areasymbol IN ('CA628', 'CA067')"</code> or
+<code style="white-space: pre;">&#8288;areasymbol LIKE 'CT%'&#8288;</code>.
 </p>
-<p>When <code>db="STATSGO"</code> the <code>WHERE</code> argument is not supported. Allowed <code>areasymbols</code> include <code>"US"</code> and two-letter state codes e.g. <code>"WY"</code> for the Wyoming general soils map.
+<p>When <code>db="STATSGO"</code> the <code>WHERE</code> argument is not supported. Allowed <code>areasymbols</code> include
+<code>"US"</code> and two-letter state codes e.g. <code>"WY"</code> for the Wyoming general soils map.
 </p>
-<p>Pipe-delimited TXT files are found in <em>/tabular/</em> folder extracted from a SSURGO ZIP. The files are named for tables in the SSURGO schema. There is no header / the files do not have column names. See the <em>Soil Data Access Tables and Columns Report</em>: <a href="https://sdmdataaccess.nrcs.usda.gov/documents/TablesAndColumnsReport.pdf">https://sdmdataaccess.nrcs.usda.gov/documents/TablesAndColumnsReport.pdf</a> for details on tables, column names and metadata including the default sequence of columns used in TXT files. The function returns a <code>try-error</code> if the <code>WHERE</code>/<code>areasymbols</code> arguments result in
+<p>Pipe-delimited TXT files are found in <em>/tabular/</em> folder extracted from a SSURGO ZIP.
+The files are named for tables in the SSURGO schema. There is no header / the files do not have
+column names. See the <em>Soil Data Access Tables and Columns Report</em>:
+<a href="https://sdmdataaccess.nrcs.usda.gov/documents/TablesAndColumnsReport.pdf">https://sdmdataaccess.nrcs.usda.gov/documents/TablesAndColumnsReport.pdf</a> for details on
+tables, column names and metadata including the default sequence of columns used in TXT files.
+The function returns a <code>try-error</code> if the <code>WHERE</code>/<code>areasymbols</code> arguments result in
 </p>
-<p>Several ESRI shapefiles are found in the <em>/spatial/</em> folder extracted from a SSURGO ZIP. These have prefix <code>soilmu_</code> (mapunit), <code>soilsa_</code> (survey area), <code>soilsf_</code> (special features). There will also be a TXT file with prefix <code>soilsf_</code> describing any special features. Shapefile names then have an <code>a_</code> (polygon), <code>l_</code> (line), <code>p_</code> (point) followed by the soil survey area symbol.
+<p>Several ESRI shapefiles are found in the <em>/spatial/</em> folder extracted from a SSURGO ZIP. These
+have prefix <code>soilmu_</code> (mapunit), <code>soilsa_</code> (survey area), <code>soilsf_</code> (special features). There
+will also be a TXT file with prefix <code>soilsf_</code> describing any special features. Shapefile names
+then have an <code>a_</code> (polygon), <code>l_</code> (line), <code>p_</code> (point) followed by the soil survey area symbol.
 </p>
 
 
 <h3>Value</h3>
 
-<p>Character. Paths to downloaded ZIP files (invisibly). May not exist if <code>remove_zip = TRUE</code>.
+<p><em>character</em>. Paths to downloaded ZIP files (invisibly). May not exist if <code>remove_zip = TRUE</code>.
 </p>
 
 
@@ -598,7 +659,7 @@ structure; Default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="estimateColorMixture_+3A_x">x</code></td>
 <td>
 <p>data.frame, typically from NASIS containing at least CIE LAB ('L', 'A', 'B') and some kind of weight</p>
@@ -658,7 +719,7 @@ Several assumptions are made when O horizon or saturation are undefined.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="estimateSTR_+3A_mast">mast</code></td>
 <td>
 <p>vector of mean annual soil temperature (deg C)</p>
@@ -756,7 +817,7 @@ series name query, from the KSSL database.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchKSSL_+3A_series">series</code></td>
 <td>
 <p>vector of soil series names, case insensitive</p>
@@ -807,9 +868,8 @@ multiple requests</p>
 
 <h3>Details</h3>
 
-<p>This is an experimental interface to a subset for the most commonly used
-data from a snapshot of KSSL (lab characterization) and NASIS (morphologic)
-data.
+<p>This interface has largely been superseded by the Soil Data Access
+snapshot of the Laboratory Data Mart, available via <code>fetchLDM()</code>.
 </p>
 <p>Series-queries are case insensitive. Series name is based on the &quot;correlated
 as&quot; field (from KSSL snapshot) when present.  The &quot;sampled as&quot;
@@ -879,7 +939,6 @@ the link below for the live data.
 
 <pre><code class='language-R'>
 
-
     library(aqp)
 
     # search by series name
@@ -920,7 +979,7 @@ the link below for the live data.
 
 <h3>Description</h3>
 
-<p>LDM model diagram: <a href="https://jneme910.github.io/Lab_Data_Mart_Documentation/Documents/SDA_KSSL_Data_model.html">https://jneme910.github.io/Lab_Data_Mart_Documentation/Documents/SDA_KSSL_Data_model.html</a>
+<p>This function provides access to the Kellogg Soil Survey Laboratory Data Mart via Soil Data Access or a local SQLite snapshot. See details and examples for additional usage instructions.
 </p>
 
 
@@ -946,14 +1005,14 @@ the link below for the live data.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchLDM_+3A_x">x</code></td>
 <td>
 <p>A vector of values to find in column specified by <code>what</code>, default <code>NULL</code> uses no constraints on <code>what</code></p>
 </td></tr>
 <tr><td><code id="fetchLDM_+3A_what">what</code></td>
 <td>
-<p>A single column name from tables: <code>lab_combine_nasis_ncss</code>, <code>lab_webmap</code>, <code>lab_site</code>, <code>lab_pedon</code> or <code>lab_area</code></p>
+<p>A single column name from tables: <code>lab_combine_nasis_ncss</code>, <code>lab_webmap</code>, <code>lab_site</code>, <code>lab_pedon</code> or <code>lab_area</code>. Common choices include <code>pedlabsampnum</code> (Laboratory Pedon ID), <code>upedonid</code> (User Pedon ID), <code>corr_name</code> ('Correlated' Taxon Name), <code>samp_name</code> ('Sampled As' Taxon Name), or <code>area_code</code> (area symbol for specified <code>lab_area</code> records, see <code>area_type</code>).</p>
 </td></tr>
 <tr><td><code id="fetchLDM_+3A_bycol">bycol</code></td>
 <td>
@@ -1000,9 +1059,12 @@ the link below for the live data.
 
 <h3>Details</h3>
 
-<p>If the <code>chunk.size</code> parameter is set too large and the Soil Data Access request fails, the algorithm will re-try the query with a smaller (halved) <code>chunk.size</code> argument. This will be attempted up to 3 times before returning <code>NULL</code>
+<p>You can download SQLite or GeoPackage snapshots here: <a href="https://ncsslabdatamart.sc.egov.usda.gov/database_download.aspx">https://ncsslabdatamart.sc.egov.usda.gov/database_download.aspx</a>. Specify the <code>dsn</code> argument to use a local copy of the lab data rather than Soil Data Access web service.
 </p>
-<p>Currently the <code>lab_area</code> tables are joined only for the &quot;Soil Survey Area&quot; related records.
+<p>Lab Data Mart model diagram: <a href="https://jneme910.github.io/Lab_Data_Mart_Documentation/Documents/SDA_KSSL_Data_model.html">https://jneme910.github.io/Lab_Data_Mart_Documentation/Documents/SDA_KSSL_Data_model.html</a>
+If the <code>chunk.size</code> parameter is set too large and the Soil Data Access request fails, the algorithm will re-try the query with a smaller (halved) <code>chunk.size</code> argument. This will be attempted up to 3 times before returning <code>NULL</code>
+</p>
+<p>The default behavior joins the <code>lab_area</code> tables only for the &quot;Soil Survey Area&quot; related records. You can specify alternative area records for use in <code>x</code>, <code>what</code> or <code>WHERE</code> arguments by setting <code>area_type</code> to a different value.
 </p>
 <p>When requesting data from <code>"lab_major_and_trace_elements_and_oxides"</code>, <code>"lab_mineralogy_glass_count"</code>, or <code>"lab_xray_and_thermal"</code> multiple preparation codes (<code>prep_code</code>) or size fractions (<code>analyzed_size_frac</code>) are possible. The default behavior of <code>fetchLDM()</code> is to attempt to return a topologically valid (minimal overlaps) <em>SoilProfileCollection</em>. This is achieved by setting <code>prep_code="S"</code> (&quot;sieved&quot;) and <code>analyzed_size_frac="&lt;2 mm"</code>. You may specify alternate or additional preparation codes or fractions as needed, but note that this may cause &quot;duplication&quot; of some layers where measurements were made with different preparation or on fractionated samples
 </p>
@@ -1018,16 +1080,25 @@ the link below for the live data.
 
 <pre><code class='language-R'>
 ## Not run: 
-  # fetch by ssa_key
-  res &lt;- fetchLDM(8297, what = "ssa_key")
+  
+  # fetch by Soil Survey Area area symbol (area_code using default "ssa" area_type)
+  res &lt;- fetchLDM("CA630", what = "area_code")
+  
+  # fetch by Major Land Resource area symbol (area_code using "mlra" area_type)
+  res &lt;- fetchLDM("22A", what = "area_code", area_type = "mlra")
+  
+  # fetch by multiple case-insensitive taxon name
+  # (correlated or sampled as Musick or Holland series)
+  res &lt;- fetchLDM(WHERE = "(CASE WHEN corr_name IS NOT NULL 
+                                THEN LOWER(corr_name) 
+                                ELSE LOWER(samp_name) 
+                            END) IN ('musick', 'holland')")
 
-  # physical properties correlated as taxonomic subgroup "Typic Argialbolls"
+  # physical properties of soils correlated as taxonomic subgroup "Typic Argialbolls"
   res &lt;- fetchLDM(x = "Typic Argialbolls", 
                   what = "corr_taxsubgrp", 
                   tables = "lab_physical_properties")
 
-  # fetch by area_code (SSA only)  
-  res &lt;- fetchLDM("CA630", what = "area_code")
 
 ## End(Not run)
 
@@ -1088,7 +1159,7 @@ overlapping horizon records.
   rmHzErrors = FALSE,
   nullFragsAreZero = TRUE,
   soilColorState = "moist",
-  mixColors = TRUE,
+  mixColors = FALSE,
   lab = FALSE,
   fill = FALSE,
   dropAdditional = TRUE,
@@ -1110,29 +1181,29 @@ get_phfmp_from_NASIS_db(SS = TRUE, stringsAsFactors = NULL, dsn = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchNASIS_+3A_from">from</code></td>
 <td>
-<p>determines what objects should fetched? Default: <code>'pedons'</code>. Alternately, <code>'components'</code>, or <code>'pedon_report'</code>.</p>
+<p>Determines what objects should fetched? Default: <code>'pedons'</code>. Alternately, <code>'components'</code>, or <code>'pedon_report'</code>.</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_url">url</code></td>
 <td>
-<p>string specifying the url for the NASIS pedon_report (default:
+<p>String specifying the url for the NASIS pedon_report (default:
 <code>NULL</code>)</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_ss">SS</code></td>
 <td>
-<p>fetch data from the currently loaded selected set in NASIS or from
-the entire local database (default: <code>TRUE</code>)</p>
+<p>Fetch data from the currently loaded selected set in NASIS or from
+the entire Local database (default: <code>TRUE</code>)</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_rmhzerrors">rmHzErrors</code></td>
 <td>
-<p>should pedons with horizon depth errors be removed from
+<p>Should pedons with horizon depth errors be removed from
 the results? (default: <code>FALSE</code>)</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_nullfragsarezero">nullFragsAreZero</code></td>
 <td>
-<p>should fragment volumes of <code>NULL</code> be interpreted as <code>0</code>?
+<p>Should fragment volumes of <code>NULL</code> be interpreted as <code>0</code>?
 (default: <code>TRUE</code>), see details</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_soilcolorstate">soilColorState</code></td>
@@ -1141,15 +1212,15 @@ the results? (default: <code>FALSE</code>)</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_mixcolors">mixColors</code></td>
 <td>
-<p>should mixed colors be calculated (Default: <code>TRUE</code>) where multiple colors are populated for the same moisture state in a horizon? <code>FALSE</code> takes the dominant color for each horizon moist/dry state.</p>
+<p>Should mixed colors be calculated where multiple colors are populated for the same moisture state in a horizon? Default <code>FALSE</code> takes the dominant color for each horizon moist/dry state.</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_lab">lab</code></td>
 <td>
-<p>should the <code>phlabresults</code> child table be fetched with site/pedon/horizon data (default: <code>FALSE</code>)</p>
+<p>Should the <code>phlabresults</code> child table be fetched with site/pedon/horizon data (default: <code>FALSE</code>)</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_fill">fill</code></td>
 <td>
-<p>include pedon or component records without horizon data in result? (default: <code>FALSE</code>)</p>
+<p>Include pedon or component records without horizon data in result? (default: <code>FALSE</code>)</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_dropadditional">dropAdditional</code></td>
 <td>
@@ -1169,14 +1240,14 @@ the results? (default: <code>FALSE</code>)</p>
 </td></tr>
 <tr><td><code id="fetchNASIS_+3A_dsn">dsn</code></td>
 <td>
-<p>Optional: path to local SQLite database containing NASIS table structure; default: <code>NULL</code></p>
+<p>Optional: path or <em>DBIConnection</em> to <a href="#topic+NASISLocalDatabase">local database containing NASIS table structure</a>; default: <code>NULL</code></p>
 </td></tr>
 </table>
 
 
 <h3>Value</h3>
 
-<p>a <code>SoilProfileCollection</code> object
+<p>A <code>SoilProfileCollection</code> object
 </p>
 
 
@@ -1209,7 +1280,7 @@ return as a SoilProfileCollection object.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchNASISLabData_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from the currently loaded selected set in NASIS or from
@@ -1323,7 +1394,7 @@ get_sitesoilmoist_from_NASISWebReport(usiteid)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchNASISWebReport_+3A_projectname">projectname</code></td>
 <td>
 <p>text string vector of project names to be inserted into a
@@ -1415,7 +1486,7 @@ categorical data, or the &quot;RV&quot; for numeric data or <code>201</code> cm 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchOSD_+3A_soils">soils</code></td>
 <td>
 <p>a character vector of named soil series; case-insensitive</p>
@@ -1478,7 +1549,7 @@ categorical data, or the &quot;RV&quot; for numeric data or <code>201</code> cm 
 </dd>
 <dt>ecoclassid</dt><dd><p>area cross-tabulation of ecoclassid by soil series name, derived from the current SSURGO snapshot, major components only</p>
 </dd>
-<dt>climate</dt><dd><p>experimental climate summaries from PRISM stack (CONUS only)</p>
+<dt>climate</dt><dd><p>climate summaries from PRISM stack (CONUS only)</p>
 </dd>
 <dt>NCCPI</dt><dd><p>select quantiles of NCCPI and Irrigated NCCPI, derived from the current SSURGO snapshot</p>
 </dd>
@@ -1535,7 +1606,6 @@ categorical data, or the &quot;RV&quot; for numeric data or <code>201</code> cm 
 
 <pre><code class='language-R'>
 
-
   library(aqp)
   # soils of interest
   s.list &lt;- c('musick', 'cecil', 'drummer', 'amador', 'pentz',
@@ -1549,9 +1619,9 @@ categorical data, or the &quot;RV&quot; for numeric data or <code>201</code> cm 
   # moist soil colors
   par(mar=c(0,0,0,0), mfrow=c(2,1))
   plot(s.moist, name='hzname',
-       cex.names=0.85, axis.line.offset=-4)
+       cex.names=0.85, depth.axis = list(line = -4))
   plot(s.dry, name='hzname',
-       cex.names=0.85, axis.line.offset=-4)
+       cex.names=0.85, depth.axis = list(line = -4))
 
   # extended mode: return a list with SPC + summary tables
   x &lt;- fetchOSD(s.list, extended = TRUE, colorState = 'dry')
@@ -1559,6 +1629,7 @@ categorical data, or the &quot;RV&quot; for numeric data or <code>201</code> cm 
   par(mar=c(0,0,1,1))
   plot(x$SPC)
   str(x, 1)
+
 
 
 </code></pre>
@@ -1582,7 +1653,7 @@ getHzErrorsPedonPC(dsn, strict = TRUE)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchPedonPC_+3A_dsn">dsn</code></td>
 <td>
 <p>The path to a PedonPC version 6.x database</p>
@@ -1653,7 +1724,7 @@ of missing data.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchRaCA_+3A_series">series</code></td>
 <td>
 <p>a soil series name; case-insensitive</p>
@@ -1740,6 +1811,7 @@ of missing data.
   year = NULL,
   report = "SCAN",
   timeseries = c("Daily", "Hourly"),
+  tz = "US/Central",
   ...
 )
 
@@ -1751,10 +1823,10 @@ SCAN_site_metadata(site.code = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchSCAN_+3A_site.code">site.code</code></td>
 <td>
-<p>a vector of site codes. If <code>NULL</code> <code>SCAN_site_metadata()</code> returns metadata for all SCAN sites.</p>
+<p>a vector of site codes. If <code>NULL</code> <code>SCAN_site_metadata()</code> returns metadata for all SCAN sites and no sensor data.</p>
 </td></tr>
 <tr><td><code id="fetchSCAN_+3A_year">year</code></td>
 <td>
@@ -1768,6 +1840,10 @@ SCAN_site_metadata(site.code = NULL)
 <td>
 <p>either <code>'Daily'</code> or <code>'Hourly'</code></p>
 </td></tr>
+<tr><td><code id="fetchSCAN_+3A_tz">tz</code></td>
+<td>
+<p>Target timezone to convert <code>datetime</code> columns of results. Default: <code>"US/Central"</code>.</p>
+</td></tr>
 <tr><td><code id="fetchSCAN_+3A_...">...</code></td>
 <td>
 <p>additional arguments. May include <code>intervalType</code>, <code>format</code>, <code>sitenum</code>, <code>interval</code>, <code>year</code>, <code>month</code>. Presence of additional arguments bypasses default batching functionality provided in the function and submits a 'raw' request to the API form.</p>
@@ -1780,6 +1856,8 @@ SCAN_site_metadata(site.code = NULL)
 <p>Possible above and below ground sensor types include: 'SMS' (soil moisture), 'STO' (soil temperature), 'SAL' (salinity), 'TAVG' (daily average air temperature), 'TMIN' (daily minimum air temperature), 'TMAX' (daily maximum air temperature), 'PRCP' (daily precipitation), 'PREC' (daily precipitation), 'SNWD' (snow depth), 'WTEQ' (snow water equivalent),'WDIRV' (wind direction), 'WSPDV' (wind speed), 'LRADT' (solar radiation/langley total).
 </p>
 <p>This function converts below-ground sensor depth from inches to cm. All temperature values are reported as degrees C. Precipitation, snow depth, and snow water content are reported as <em>inches</em>.
+</p>
+<p>The <code>datetime</code> column in sensor data results is converted to the target time zone specified in <code>tz</code> argument, the default is <code>"US/Central"</code>. Use <code>tz = "UTC"</code> (or other <code>OlsonNames()</code> that do not use daylight savings, e.g. <code>"US/Arizona"</code>) to avoid having a mix of time offsets due to daylight savings time.
 </p>
 
 
@@ -1911,7 +1989,7 @@ SCAN_site_metadata(site.code = NULL)
 
 <h3>Author(s)</h3>
 
-<p>D.E. Beaudette, A.G. Brown
+<p>D.E. Beaudette, A.G. Brown, J.M. Skovlin
 </p>
 
 
@@ -1925,17 +2003,35 @@ SCAN_site_metadata(site.code = NULL)
 
 <pre><code class='language-R'>## Not run: 
     # get data
-    x &lt;- try(fetchSCAN(site.code=c(356, 2072), year=c(2015, 2016)))
-    str(x)
+    x &lt;- try(fetchSCAN(site.code = c(356, 2072), year = c(2015, 2016)))
+    str(x, 1)
 
     # get sensor metadata
-    m &lt;- SCAN_sensor_metadata(site.code=c(356, 2072))
-
+    m &lt;- SCAN_sensor_metadata(site.code = c(356, 2072))
+    m
+    
     # get site metadata
-    m &lt;- SCAN_site_metadata(site.code=c(356, 2072))
-
-    # get hourly data (396315 records)
-    # x &lt;- try(fetchSCAN(site.code=c(356, 2072), year=c(2015, 2016), timeseries = "Hourly"))
+    m &lt;- SCAN_site_metadata(site.code = c(356, 2072))
+    m
+    
+    # # get hourly data (warning, result is large ~11MB) 
+    # x &lt;- try(fetchSCAN(site.code = c(356, 2072), 
+    #                    year = 2015, 
+    #                    timeseries = "Hourly"))
+    #
+    # # data are in US/Central time, standard or daylight savings time based on day of year
+    # unique(format(x$SMS$datetime, '%Z'))
+    #
+    # # the site metadata indicate timeseries data time zone (dataTimeZone)
+    # # for site 356 the timezone is offset of 8 hours behind UTC
+    #
+    # # to obtain all datetime data with a consistent offset use ETC GMT offset
+    # # e.g. "Etc/GMT+8". note the sign is inverted ("GMT+8" vs. `dataTimeZone=-8`)
+    # x &lt;- try(fetchSCAN(site.code = c(356, 2072), 
+    #          year = 2015, 
+    #          timeseries = "Hourly", 
+    #          tz = "Etc/GMT+8"))
+    
 
 ## End(Not run)
 </code></pre>
@@ -1969,7 +2065,7 @@ SCAN_site_metadata(site.code = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchSDA_spatial_+3A_x">x</code></td>
 <td>
 <p>A vector of map unit keys (<code>mukey</code>) or national map unit symbols (<code>nationalmusym</code>) for <code>mupolygon</code>, <code>muline</code> or <code>mupoint</code>; feature keys (<code>featkey</code>) for <code>featpoint</code> and <code>featline</code>; legend keys (<code>lkey</code>) or soil survey area symbols (<code>areasymbol</code>) for <code>sapolygon</code> geometry. If <code>geom.src="mlrapolygon"</code> then <code>x</code> refers to <code>MLRARSYM</code> (major land resource area symbols).</p>
@@ -2102,7 +2198,7 @@ and the function will be updated accordingly at that time.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchSoilGrids_+3A_x">x</code></td>
 <td>
 <p>A <code>data.frame</code> containing 3 columns referring to site ID, latitude and longitude. Or a spatial (sf, terra) object for which a bounding box can be calculated when <code>grid=TRUE</code>.</p>
@@ -2327,6 +2423,189 @@ Turek, M.E.,  Poggio, L., Batjes, N. H., Armindo, R. A.,  de Jong van Lier, Q., 
 </code></pre>
 
 <hr>
+<h2 id='fetchSOLUS'>Fetch Soil Landscapes of the United States (SOLUS) Grids</h2><span id='topic+fetchSOLUS'></span>
+
+<h3>Description</h3>
+
+<p>This tool creates a virtual raster or downloads data for an extent from Cloud Optimized GeoTIFFs
+(COGs) from the <a href="https://agdatacommons.nal.usda.gov/articles/dataset/Data_from_Soil_Landscapes_of_the_United_States_100-meter_SOLUS100_soil_property_maps_project_repository/25033856">Soil Landscapes of the United States 100-meter (SOLUS100) soil property maps project repository</a>.
+</p>
+
+
+<h3>Usage</h3>
+
+<pre><code class='language-R'>fetchSOLUS(
+  x = NULL,
+  depth_slices = c(0, 5, 15, 30, 60, 100, 150),
+  variables = c("anylithicdpt", "caco3", "cec7", "claytotal", "dbovendry", "ec", "ecec",
+    "fragvol", "gypsum", "ph1to1h2o", "resdept", "sandco", "sandfine", "sandmed",
+    "sandtotal", "sandvc", "sandvf", "sar", "silttotal", "soc"),
+  output_type = c("prediction", "relative prediction interval",
+    "95% low prediction interval", "95% high prediction interval"),
+  grid = TRUE,
+  samples = NULL,
+  method = c("linear", "constant", "fmm", "natural", "monoH.FC", "step", "slice"),
+  max_depth = 151,
+  filename = NULL,
+  overwrite = FALSE
+)
+</code></pre>
+
+
+<h3>Arguments</h3>
+
+<table role = "presentation">
+<tr><td><code id="fetchSOLUS_+3A_x">x</code></td>
+<td>
+<p>An R spatial object (such as a <em>SpatVector</em>, <em>SpatRaster</em>, or <em>sf</em> object) or a
+<em>SoilProfileCollection</em> with coordinates initialized via <code style="white-space: pre;">&#8288;aqp::initSpatial&lt;-&#8288;</code>. Default: <code>NULL</code>
+returns the CONUS extent as virtual raster. If <code>x</code> is a <em>SpatRaster</em> the coordinate reference
+system, extent, and resolution are used as a template for the output raster.</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_depth_slices">depth_slices</code></td>
+<td>
+<p>character. One or more of: <code>"0"</code>, <code>"5"</code>, <code>"15"</code>, <code>"30"</code>, <code>"60"</code>, <code>"100"</code>,
+<code>"150"</code>. The &quot;depth slice&quot; <code>"all"</code> (used for variables such as <code>"anylithicdpt"</code>, and
+<code>"resdept"</code>) is always included if any site-level variables are selected.</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_variables">variables</code></td>
+<td>
+<p>character. One or more of: <code>"anylithicdpt"</code>, <code>"caco3"</code>, <code>"cec7"</code>, <code>"claytotal"</code>,
+<code>"dbovendry"</code>, <code>"ec"</code>, <code>"ecec"</code>, <code>"fragvol"</code>, <code>"gypsum"</code>, <code>"ph1to1h2o"</code>, <code>"resdept"</code>,
+<code>"sandco"</code>, <code>"sandfine"</code>, <code>"sandmed"</code>, <code>"sandtotal"</code>, <code>"sandvc"</code>, <code>"sandvf"</code>, <code>"sar"</code>,
+<code>"silttotal"</code>, <code>"soc"</code>.</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_output_type">output_type</code></td>
+<td>
+<p>character. One or more of: <code>"prediction"</code>, <code>"relative prediction interval"</code>,
+<code>"95% low prediction interval"</code>, <code>"95% high prediction interval"</code></p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_grid">grid</code></td>
+<td>
+<p>logical. Default <code>TRUE</code> returns a <em>SpatRaster</em> object for an extent. <code>FALSE</code> returns
+a <em>SoilProfileCollection</em>. Any other value returns a <em>list</em> object with names <code>"grid"</code> and
+<code>"spc"</code> containing both result objects.</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_samples">samples</code></td>
+<td>
+<p>integer. Number of regular samples to return for <em>SoilProfileCollection</em> output.
+Default <code>NULL</code> will convert all grid cells to a unique profile. Note that for a large extent,
+this can produce large objects with a very large number of layers (especially with <code>method</code>
+other than <code>"step"</code>).</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_method">method</code></td>
+<td>
+<p>character. Used to determine depth interpolation method for <em>SoilProfileCollection</em>
+output. Default: <code>"linear"</code>. Options include any <code>method</code> allowed for <code>approxfun()</code> or
+<code>splinefun()</code> plus <code>"step"</code> and <code>"slice"</code>. <code>"step"</code> uses the prediction depths as the top and
+bottom of each interval to create a piecewise continuous profile to maximum of 200 cm depth
+(for 150 cm upper prediction depth). <code>"slice"</code> returns a discontinuous profile with 1 cm thick
+slices at the predicted depths. Both <code>"step"</code> and <code>"slice"</code> return a number of layers equal to
+length of <code>depth_slices</code>, and all other methods return data in interpolated 1cm slices.</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_max_depth">max_depth</code></td>
+<td>
+<p>integer. Maximum depth to interpolate 150 cm slice data to. Default: <code>151</code>.
+Interpolation deeper than 151 cm is not possible for methods other than <code>"step"</code> and will
+result in missing values.</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_filename">filename</code></td>
+<td>
+<p>character. Path to write output raster file. Default: <code>NULL</code> will keep result in
+memory (or store in temporary file if memory threshold is exceeded)</p>
+</td></tr>
+<tr><td><code id="fetchSOLUS_+3A_overwrite">overwrite</code></td>
+<td>
+<p>Overwrite <code>filename</code> if it exists? Default: <code>FALSE</code></p>
+</td></tr>
+</table>
+
+
+<h3>Details</h3>
+
+<p>If the input object <code>x</code> is not specified (<code>NULL</code> or missing), a <em>SpatRaster</em> object using the
+virtual URLs is returned. The full extent and resolution data set can be then downloaded and
+written to file using <code>terra::writeRaster()</code> (or any other processing step specifying an output
+file name). When input object <code>x</code> is specified, a <em>SpatRaster</em> object using in memory or local
+(temporary file or <code>filename</code>) resources is returned after downloading the data only for the
+target extent. In the case where <code>x</code> is a <em>SoilProfileCollection</em> or an <em>sf</em> or <em>SpatVector</em>
+object containing point geometries, the result will be a <em>SoilProfileCollection</em> for values
+extracted at the point locations. To return both the <em>SpatRaster</em> and <em>SoilProfileCollection</em>
+object output in a <em>list</em>, use <code>grid = NULL</code>.
+</p>
+
+
+<h3>Value</h3>
+
+<p>A <em>SpatRaster</em> object containing SOLUS grids for specified extent, depths, variables, and
+product types.
+</p>
+
+
+<h3>Author(s)</h3>
+
+<p>Andrew G. Brown
+</p>
+
+
+<h3>References</h3>
+
+<p>Nauman, T. W., Kienast-Brown, S., Roecker, S. M., Brungard, C., White, D., Philippe,
+J., &amp; Thompson, J. A. (2024). Soil landscapes of the United States (SOLUS): developing
+predictive soil property maps of the conterminous United States using hybrid training sets.
+Soil Science Society of America Journal, 88, 2046–2065. <a href="https://doi.org/10.1002/saj2.20769">doi:10.1002/saj2.20769</a>
+</p>
+
+
+<h3>Examples</h3>
+
+<pre><code class='language-R'>
+
+## Not run: 
+b &lt;- c(-119.747629, -119.67935, 36.912019, 36.944987)
+
+bbox.sp &lt;- sf::st_as_sf(wk::rct(
+  xmin = b[1], xmax = b[2], ymin = b[3], ymax = b[4],
+  crs = sf::st_crs(4326)
+))
+
+ssurgo.geom &lt;- soilDB::SDA_spatialQuery(
+  bbox.sp,
+  what = 'mupolygon',
+  db = 'SSURGO',
+  geomIntersection = TRUE
+)
+
+# grid output
+res &lt;- fetchSOLUS(
+  ssurgo.geom,
+  depth_slices = "0",
+  variables = c("sandtotal", "silttotal", "claytotal", "cec7"),
+  output_type = "prediction"
+)
+
+terra::plot(res)
+
+# SoilProfileCollection output, using linear interpolation for 1cm slices
+# site-level variables (e.g. resdept) added to site data.frame of SPC
+res &lt;- fetchSOLUS(
+  ssurgo.geom,
+  depth_slices = c("0", "5", "15", "30", "60", "100", "150"),
+  variables = c("sandtotal", "silttotal", "claytotal", "cec7", "resdept"),
+  output_type = "prediction",
+  method = "linear",
+  grid = FALSE,
+  samples = 10
+)
+
+# plot, truncating each profile to the predicted restriction depth
+aqp::plotSPC(trunc(res, 0, res$resdept_p), color = "claytotal_p", divide.hz = FALSE)
+
+## End(Not run)
+
+</code></pre>
+
+<hr>
 <h2 id='fetchSRI'>Fetch Soil Inventory Resource (SRI) for USFS Region 6</h2><span id='topic+fetchSRI'></span>
 
 <h3>Description</h3>
@@ -2344,7 +2623,7 @@ functions. This function can fetch multiple File Geodatabases (GDB) and returns 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchSRI_+3A_gdb">gdb</code></td>
 <td>
 <p>A <code>character</code> vector of the GDB(s), e.g. <code>'Deschutes'</code>.</p>
@@ -2391,13 +2670,19 @@ sri &lt;- fetchSRI(gdb = c('will', 'win'), quiet = TRUE)
 
 <h3>Description</h3>
 
-<p>Get vegetation plot data from local NASIS database
+<p>Convenience function for loading most commonly used Vegetation Plot information from local NASIS
+database.
 </p>
 
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>fetchVegdata(SS = TRUE, stringsAsFactors = NULL, dsn = NULL)
+<pre><code class='language-R'>fetchVegdata(
+  SS = TRUE,
+  include_pedon = TRUE,
+  stringsAsFactors = NULL,
+  dsn = NULL
+)
 
 get_vegplot_from_NASIS_db(SS = TRUE, stringsAsFactors = NULL, dsn = NULL)
 
@@ -2456,10 +2741,17 @@ get_vegplot_textnote_from_NASIS_db(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="fetchVegdata_+3A_ss">SS</code></td>
 <td>
-<p>fetch data from the currently loaded selected set in NASIS or from the entire local database (default: <code>TRUE</code>)</p>
+<p>fetch data from the currently loaded selected set in NASIS or from the entire local
+database (default: <code>TRUE</code>)</p>
+</td></tr>
+<tr><td><code id="fetchVegdata_+3A_include_pedon">include_pedon</code></td>
+<td>
+<p>Include pedon and transect data joined to site? (default: <code>TRUE</code>). If
+<code>include_pedon</code> is set to <code>"assocuserpedonid"</code> only pedon records that are linked through the
+Associated User Pedon ID column will have their peiid reported in the <code>vegplot</code> table.</p>
 </td></tr>
 <tr><td><code id="fetchVegdata_+3A_stringsasfactors">stringsAsFactors</code></td>
 <td>
@@ -2467,8 +2759,8 @@ get_vegplot_textnote_from_NASIS_db(
 </td></tr>
 <tr><td><code id="fetchVegdata_+3A_dsn">dsn</code></td>
 <td>
-<p>Optional: path to local SQLite database containing NASIS
-table structure; default: <code>NULL</code></p>
+<p>Optional: path to local SQLite database containing NASIS table structure; default:
+<code>NULL</code></p>
 </td></tr>
 <tr><td><code id="fetchVegdata_+3A_fixlineendings">fixLineEndings</code></td>
 <td>
@@ -2479,7 +2771,9 @@ table structure; default: <code>NULL</code></p>
 
 <h3>Value</h3>
 
-<p>A named list containing: &quot;vegplot&quot;, &quot;vegplotlocation&quot;, &quot;vegplotrhi&quot;, &quot;vegplotspecies&quot;, &quot;vegtransect&quot;, &quot;vegtransplantsum&quot;, 'vegsiteindexsum', &quot;vegsiteindexdet&quot;, and  &quot;vegplottext&quot; tables
+<p>A named list containing: &quot;vegplot&quot;, &quot;vegplotlocation&quot;, &quot;vegplotrhi&quot;, &quot;vegplotspecies&quot;,
+&quot;vegtransect&quot;, &quot;vegtransplantsum&quot;, 'vegsiteindexsum', &quot;vegsiteindexdet&quot;, &quot;vegbasalarea&quot;, and
+&quot;vegplottext&quot; tables
 </p>
 
 <hr>
@@ -2505,7 +2799,7 @@ table structure; default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="filter_geochem_+3A_geochem">geochem</code></td>
 <td>
 <p>geochemical data, as returned by fetchKSSL</p>
@@ -2557,7 +2851,7 @@ table structure; default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="format_SQL_in_statement_+3A_x">x</code></td>
 <td>
 <p>A character vector.</p>
@@ -2593,21 +2887,30 @@ table structure; default: <code>NULL</code></p>
 
 <h3>Usage</h3>
 
-<pre><code class='language-R'>get_colors_from_NASIS_db(SS = TRUE, mixColors = TRUE, dsn = NULL)
+<pre><code class='language-R'>get_colors_from_NASIS_db(
+  SS = TRUE,
+  method = "dominant",
+  mixColors = FALSE,
+  dsn = NULL
+)
 </code></pre>
 
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_colors_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from Selected Set in NASIS or from the entire local
 database (default: <code>TRUE</code>)</p>
 </td></tr>
+<tr><td><code id="get_colors_from_NASIS_db_+3A_method">method</code></td>
+<td>
+<p>Aggregation method to handle multiple colors per horizon and moisture state. Default <code>"dominant"</code> for dominant condition (or first record) within moisture state. Other options include <code>"mixed"</code> to calculate mixture using <code>simplifyColorData()</code> and <code>"none"</code> to do no aggregation (returns a long format representation that may have multiple values per horizon and moisture state)</p>
+</td></tr>
 <tr><td><code id="get_colors_from_NASIS_db_+3A_mixcolors">mixColors</code></td>
 <td>
-<p>should mixed colors be calculated (Default: <code>TRUE</code>) where multiple colors are populated for the same moisture state in a horizon? <code>FALSE</code> takes the dominant color based on <code>colorpct</code> or first record based on horizon ID (<code>phiid</code>) sorting for &quot;moist&quot; and &quot;dry&quot; state. Pedon Horizon Color records without a moisture state populated are ignored.</p>
+<p>Deprecated. See <code>method</code>. Should mixed colors be calculated where multiple colors are populated for the same moisture state in a horizon? Default <code>FALSE</code> takes the dominant color based on <code>colorpct</code> or first record based on horizon ID (<code>phiid</code>) sorting for &quot;moist&quot; and &quot;dry&quot; state. Pedon Horizon Color records without a moisture state populated are ignored.</p>
 </td></tr>
 <tr><td><code id="get_colors_from_NASIS_db_+3A_dsn">dsn</code></td>
 <td>
@@ -2653,7 +2956,7 @@ table structure; default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_colors_from_pedon_db_+3A_dsn">dsn</code></td>
 <td>
 <p>The path to a 'pedon.mdb' database.</p>
@@ -2701,7 +3004,7 @@ table structure; default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_comonth_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>get data from the currently loaded Selected Set in NASIS or from
@@ -2818,7 +3121,7 @@ get_component_horizon_data_from_NASIS_db(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_component_data_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from the currently loaded selected set in NASIS or from
@@ -2933,7 +3236,7 @@ fetchGDB(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_component_from_GDB_+3A_dsn">dsn</code></td>
 <td>
 <p>data source name (interpretation varies by driver - for some
@@ -3085,7 +3388,7 @@ get_cosoilmoist_from_SDA(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_component_from_SDA_+3A_where">WHERE</code></td>
 <td>
 <p>text string formatted as an SQL WHERE clause (default: FALSE)</p>
@@ -3198,7 +3501,7 @@ Database.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_cosoilmoist_from_NASIS_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from the currently loaded selected set in NASIS or from
@@ -3288,7 +3591,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_ecosite_history_from_NASIS_db_+3A_best">best</code></td>
 <td>
 <p>Should the &quot;best&quot; ecological site correlation be chosen? Creates field called <code>es_selection_method</code> with <code>"most recent"</code> or <code>"least missing data"</code> for resolving many:1 relationships in site history.</p>
@@ -3336,7 +3639,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_EDIT_ecoclass_by_geoUnit_+3A_geounit">geoUnit</code></td>
 <td>
 <p>A character vector of <code>geoUnit</code> codes e.g. <code>c("018X","022A")</code> for MLRAs 18 and 22A.</p>
@@ -3357,11 +3660,11 @@ if(local_NASIS_defined()) {
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-
 ## Not run: 
    get_EDIT_ecoclass_by_geoUnit(c("018X","022A"))
 
 ## End(Not run)
+
 </code></pre>
 
 <hr>
@@ -3386,7 +3689,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_extended_data_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>get data from the currently loaded Selected Set in NASIS or from
@@ -3462,7 +3765,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_extended_data_from_pedon_db_+3A_dsn">dsn</code></td>
 <td>
 <p>The path to a 'pedon.mdb' database.</p>
@@ -3510,7 +3813,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_hz_data_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from Selected Set in NASIS or from the entire local database (default: <code>TRUE</code>)</p>
@@ -3571,7 +3874,7 @@ table structure; default: <code>NULL</code></p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_hz_data_from_pedon_db_+3A_dsn">dsn</code></td>
 <td>
 <p>The path to a 'pedon.mdb' database.</p>
@@ -3621,7 +3924,7 @@ of rock fragments, and set to 0.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_lablayer_data_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from the currently loaded selected set in NASIS or from
@@ -3676,7 +3979,7 @@ NASIS database from the lab layer data table.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_labpedon_data_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from the currently loaded selected set in NASIS or from
@@ -3763,7 +4066,7 @@ get_projectmapunit_from_NASIS(SS = TRUE, stringsAsFactors = NULL, dsn = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_mapunit_from_NASIS_+3A_ss">SS</code></td>
 <td>
 <p>Fetch data from the currently loaded selected set in NASIS or from the entire local database (default: <code>TRUE</code>)</p>
@@ -3815,10 +4118,10 @@ get_NASIS_column_metadata(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_NASIS_metadata_+3A_dsn">dsn</code></td>
 <td>
-<p>Optional: path to local SQLite database containing NASIS table structure; default: <code>NULL</code></p>
+<p>Optional: path or <em>DBIConnection</em> to <a href="#topic+NASISLocalDatabase">local database containing NASIS table structure</a>; default: <code>NULL</code></p>
 </td></tr>
 <tr><td><code id="get_NASIS_metadata_+3A_include_description">include_description</code></td>
 <td>
@@ -3881,7 +4184,7 @@ get_NASIS_column_metadata("texcl")
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_NASIS_table_key_by_name_+3A_tables">tables</code></td>
 <td>
 <p>character vector of table names</p>
@@ -3931,7 +4234,7 @@ get_NASIS_table_key_by_name(c("site","phorizon_View_1","not_a_table"))
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_NASIS_table_metadata_+3A_table">table</code></td>
 <td>
 <p>Character vector of table identifiers to match. Default <code>NULL</code> for &quot;all tables&quot; (no constraint)</p>
@@ -3954,7 +4257,7 @@ get_NASIS_table_key_by_name(c("site","phorizon_View_1","not_a_table"))
 </td></tr>
 <tr><td><code id="get_NASIS_table_metadata_+3A_dsn">dsn</code></td>
 <td>
-<p>Optional: path to local SQLite database containing NASIS table structure; default: <code>NULL</code></p>
+<p>Optional: path or <em>DBIConnection</em> to <a href="#topic+NASISLocalDatabase">local database containing NASIS table structure</a>; default: <code>NULL</code></p>
 </td></tr>
 </table>
 
@@ -4007,7 +4310,7 @@ get_NASIS_table_key_by_name(c("site","phorizon_View_1","not_a_table"))
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_NASIS_table_name_by_purpose_+3A_purpose">purpose</code></td>
 <td>
 <p>character. One or more of: &quot;metadata&quot;, &quot;lookup&quot;, &quot;nasis&quot;, &quot;site&quot;, &quot;pedon&quot;, &quot;transect&quot;, &quot;component&quot;, &quot;vegetation&quot;, &quot;project&quot;, &quot;techsoilservice&quot;, &quot;area&quot;, &quot;soilseries&quot;, &quot;legend&quot;, &quot;mapunit&quot;, &quot;datamapunit&quot;</p>
@@ -4069,7 +4372,7 @@ get_NASIS_table_name_by_purpose(c("metadata", "lookup",
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_NOAA_GHCND_+3A_stations">stations</code></td>
 <td>
 <p>Station ID (e.g. <code>GHCND:USC00388786</code>)</p>
@@ -4127,7 +4430,7 @@ get_NASIS_table_name_by_purpose(c("metadata", "lookup",
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_NOAA_stations_nearXY_+3A_lat">lat</code></td>
 <td>
 <p>Latitude or Y coordinate in <code>crs</code></p>
@@ -4193,7 +4496,7 @@ get_OSD_JSON(series, base_url = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_OSD_+3A_series">series</code></td>
 <td>
 <p>A character vector of Official Series names e.g. <code>"Chewacla"</code></p>
@@ -4258,14 +4561,14 @@ get_OSD_JSON(series, base_url = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_RMF_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>logical, limit query to the selected set</p>
 </td></tr>
 <tr><td><code id="get_RMF_from_NASIS_db_+3A_dsn">dsn</code></td>
 <td>
-<p>optional path to local SQLite database containing NASIS table structure; default: <code>NULL</code></p>
+<p>optional path or <em>DBIConnection</em> to <a href="#topic+NASISLocalDatabase">local database containing NASIS table structure</a>; default: <code>NULL</code></p>
 </td></tr>
 </table>
 
@@ -4314,7 +4617,7 @@ get_OSD_JSON(series, base_url = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_coecoclass_+3A_method">method</code></td>
 <td>
 <p>aggregation method. One of: <code>"Dominant Component"</code>, <code>"Dominant Condition"</code>, <code>"All"</code> or <code>"None"</code> (default). If <code>method="all"</code> multiple numbered columns represent site composition within each map unit e.g. <code>site1...</code>, <code>site2...</code>. If <code>method="none"</code> is selected one row will be returned per <em>component</em>; in all other cases one row will be returned per <em>map unit</em>.</p>
@@ -4388,11 +4691,14 @@ with the sum of <code>comppct_r</code> that have the dominant condition <code>ec
 
 <pre><code class='language-R'>get_SDA_cosurfmorph(
   table = c("cosurfmorphgc", "cosurfmorphhpp", "cosurfmorphss", "cosurfmorphmr"),
-  by = "compname",
+  by = "mapunit.mukey",
   areasymbols = NULL,
   mukeys = NULL,
   WHERE = NULL,
+  method = c("bygroup", "none"),
+  include_minors = TRUE,
   miscellaneous_areas = FALSE,
+  representative_only = TRUE,
   db = c("SSURGO", "STATSGO"),
   dsn = NULL,
   query_string = FALSE
@@ -4402,14 +4708,14 @@ with the sum of <code>comppct_r</code> that have the dominant condition <code>ec
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_cosurfmorph_+3A_table">table</code></td>
 <td>
 <p>Target table to summarize. Default: <code>"cosurfmorphgc"</code> (3D Geomorphic Component). Alternate choices include <code>cosurfmorphhpp</code> (2D Hillslope Position), <code>cosurfmorphss</code> (Surface Shape), and  <code>cosurfmorphmr</code> (Microrelief).</p>
 </td></tr>
 <tr><td><code id="get_SDA_cosurfmorph_+3A_by">by</code></td>
 <td>
-<p>Grouping variable. Default: <code>"compname"</code></p>
+<p>Grouping variable. Default: <code>"mapunit.mukey"</code></p>
 </td></tr>
 <tr><td><code id="get_SDA_cosurfmorph_+3A_areasymbols">areasymbols</code></td>
 <td>
@@ -4423,9 +4729,21 @@ with the sum of <code>comppct_r</code> that have the dominant condition <code>ec
 <td>
 <p>WHERE clause added to SQL query. For example: <code>areasymbol = 'CA067'</code></p>
 </td></tr>
+<tr><td><code id="get_SDA_cosurfmorph_+3A_method">method</code></td>
+<td>
+<p><em>character</em>. One of: <code>"ByGroup"</code>, <code>"None"</code></p>
+</td></tr>
+<tr><td><code id="get_SDA_cosurfmorph_+3A_include_minors">include_minors</code></td>
+<td>
+<p>logical. Include minor components? Default: <code>TRUE</code>.</p>
+</td></tr>
 <tr><td><code id="get_SDA_cosurfmorph_+3A_miscellaneous_areas">miscellaneous_areas</code></td>
 <td>
-<p>Include miscellaneous areas  (non-soil components) in results? Default: <code>FALSE</code>.</p>
+<p>logical. Include miscellaneous areas (non-soil components) in results? Default: <code>FALSE</code>.</p>
+</td></tr>
+<tr><td><code id="get_SDA_cosurfmorph_+3A_representative_only">representative_only</code></td>
+<td>
+<p>logical. Include only representative Component Parent Material Groups? Default: <code>TRUE</code>.</p>
 </td></tr>
 <tr><td><code id="get_SDA_cosurfmorph_+3A_db">db</code></td>
 <td>
@@ -4509,6 +4827,8 @@ Full component data including surface morphometry summaries at the &quot;site&qu
   mukeys = NULL,
   WHERE = NULL,
   method = "MAPUNIT",
+  include_minors = TRUE,
+  miscellaneous_areas = TRUE,
   query_string = FALSE,
   dsn = NULL
 )
@@ -4517,7 +4837,7 @@ Full component data including surface morphometry summaries at the &quot;site&qu
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_hydric_+3A_areasymbols">areasymbols</code></td>
 <td>
 <p>vector of soil survey area symbols</p>
@@ -4534,9 +4854,17 @@ Full component data including surface morphometry summaries at the &quot;site&qu
 <td>
 <p>One of: <code>"Mapunit"</code>, <code>"Dominant Component"</code>, <code>"Dominant Condition"</code>, <code>"None"</code></p>
 </td></tr>
+<tr><td><code id="get_SDA_hydric_+3A_include_minors">include_minors</code></td>
+<td>
+<p>logical. Include minor components? Default: <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="get_SDA_hydric_+3A_miscellaneous_areas">miscellaneous_areas</code></td>
+<td>
+<p><em>logical</em>. Include miscellaneous areas (non-soil components) in results? Default: <code>TRUE</code>.</p>
+</td></tr>
 <tr><td><code id="get_SDA_hydric_+3A_query_string">query_string</code></td>
 <td>
-<p>Default: <code>FALSE</code>; if <code>TRUE</code> return a character string containing query that would be sent to SDA via <code>SDA_query</code></p>
+<p>Default: <code>FALSE</code>; if <code>TRUE</code> return a character string containing query that would be sent to SDA via <code>SDA_query()</code></p>
 </td></tr>
 <tr><td><code id="get_SDA_hydric_+3A_dsn">dsn</code></td>
 <td>
@@ -4601,6 +4929,8 @@ Full component data including surface morphometry summaries at the &quot;site&qu
   areasymbols = NULL,
   mukeys = NULL,
   WHERE = NULL,
+  include_minors = TRUE,
+  miscellaneous_areas = TRUE,
   query_string = FALSE,
   not_rated_value = NA_real_,
   wide_reason = FALSE,
@@ -4611,7 +4941,7 @@ Full component data including surface morphometry summaries at the &quot;site&qu
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_interpretation_+3A_rulename">rulename</code></td>
 <td>
 <p>character vector of interpretation rule names (matching <code>mrulename</code> in <code>cointerp</code> table)</p>
@@ -4631,6 +4961,14 @@ Full component data including surface morphometry summaries at the &quot;site&qu
 <tr><td><code id="get_SDA_interpretation_+3A_where">WHERE</code></td>
 <td>
 <p>character containing SQL WHERE clause specified in terms of fields in <code>legend</code>, <code>mapunit</code>, or <code>component</code> tables, used in lieu of <code>mukeys</code> or <code>areasymbols</code></p>
+</td></tr>
+<tr><td><code id="get_SDA_interpretation_+3A_include_minors">include_minors</code></td>
+<td>
+<p>logical. Include minor components? Default: <code>TRUE</code>.</p>
+</td></tr>
+<tr><td><code id="get_SDA_interpretation_+3A_miscellaneous_areas">miscellaneous_areas</code></td>
+<td>
+<p><em>logical</em>. Include miscellaneous areas (non-soil components) in results? Default: <code>TRUE</code>.</p>
 </td></tr>
 <tr><td><code id="get_SDA_interpretation_+3A_query_string">query_string</code></td>
 <td>
@@ -6614,12 +6952,12 @@ Full component data including surface morphometry summaries at the &quot;site&qu
 
 <pre><code class='language-R'>
 
-
   # get two forestry interpretations for CA630
   get_SDA_interpretation(c("FOR - Potential Seedling Mortality",
                            "FOR - Road Suitability (Natural Surface)"),
                          method = "Dominant Condition",
                          areasymbols = "CA630")
+
 
 </code></pre>
 
@@ -6640,7 +6978,7 @@ Full component data including surface morphometry summaries at the &quot;site&qu
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_metrics_+3A_query_name">query_name</code></td>
 <td>
 <p>One or more of: <code>'LDM_Usage'</code>, <code>'SDA_Usage'</code>, <code>'wss_ActivityCounts'</code>, <code>'wss_AOIDefinition'</code>, <code>'wss_AOISizeRange'</code>, <code>'wss_ExportCounts'</code>, <code>'wss_PrintableOutput'</code>, <code>'wss_top100AOIs'</code>, <code>'wss_top100Ecologicalsites'</code>, <code>'wss_top100ratings'</code>, <code>'wss_top100reports'</code></p>
@@ -6703,7 +7041,7 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_muaggatt_+3A_areasymbols">areasymbols</code></td>
 <td>
 <p>vector of soil survey area symbols</p>
@@ -6755,6 +7093,7 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
   WHERE = NULL,
   method = "DOMINANT COMPONENT",
   simplify = TRUE,
+  include_minors = TRUE,
   miscellaneous_areas = FALSE,
   query_string = FALSE,
   dsn = NULL
@@ -6764,30 +7103,34 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_pmgroupname_+3A_areasymbols">areasymbols</code></td>
 <td>
-<p>vector of soil survey area symbols</p>
+<p><em>character</em>. Vector of soil survey area symbols</p>
 </td></tr>
 <tr><td><code id="get_SDA_pmgroupname_+3A_mukeys">mukeys</code></td>
 <td>
-<p>vector of map unit keys</p>
+<p><em>integer</em>. Vector of map unit keys</p>
 </td></tr>
 <tr><td><code id="get_SDA_pmgroupname_+3A_where">WHERE</code></td>
 <td>
-<p>character containing SQL WHERE clause specified in terms of fields in <code>legend</code>, <code>mapunit</code>, <code>component</code>, or <code>copmgrp</code> tables, used in lieu of <code>mukeys</code> or <code>areasymbols</code></p>
+<p><em>character</em>. SQL WHERE clause specified in terms of fields in <code>legend</code>, <code>mapunit</code>, <code>component</code>, or <code>copmgrp</code> tables, used in lieu of <code>mukeys</code> or <code>areasymbols</code></p>
 </td></tr>
 <tr><td><code id="get_SDA_pmgroupname_+3A_method">method</code></td>
 <td>
-<p>One of: <code>"Dominant Component"</code>, <code>"Dominant Condition"</code>, <code>"None"</code></p>
+<p><em>character</em>. One of: <code>"Dominant Component"</code>, <code>"Dominant Condition"</code>, <code>"None"</code></p>
 </td></tr>
 <tr><td><code id="get_SDA_pmgroupname_+3A_simplify">simplify</code></td>
 <td>
-<p>logical; group into generalized parent material groups? Default <code>TRUE</code></p>
+<p><em>logical</em>. Group into generalized parent material groups? Default <code>TRUE</code></p>
+</td></tr>
+<tr><td><code id="get_SDA_pmgroupname_+3A_include_minors">include_minors</code></td>
+<td>
+<p>logical. Include minor components? Default: <code>TRUE</code>.</p>
 </td></tr>
 <tr><td><code id="get_SDA_pmgroupname_+3A_miscellaneous_areas">miscellaneous_areas</code></td>
 <td>
-<p>Include miscellaneous areas  (non-soil components) in results? Default: <code>FALSE</code>.</p>
+<p><em>logical</em>. Include miscellaneous areas (non-soil components) in results? Default: <code>FALSE</code>.</p>
 </td></tr>
 <tr><td><code id="get_SDA_pmgroupname_+3A_query_string">query_string</code></td>
 <td>
@@ -6848,7 +7191,7 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDA_property_+3A_property">property</code></td>
 <td>
 <p>character vector of labels from property dictionary tables (see details) OR physical column names from <code>component</code> or <code>chorizon</code> table.</p>
@@ -7247,7 +7590,6 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
 <pre><code class='language-R'>
 
 
-
  # get 1/3 bar bulk density [0,25] centimeter depth weighted average from dominant component
  get_SDA_property(property = c("dbthirdbar_l","dbthirdbar_r","dbthirdbar_h"),
                   method = "Dominant Component (Numeric)",
@@ -7280,7 +7622,7 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SDV_legend_elements_+3A_where">WHERE</code></td>
 <td>
 <p>WHERE clause for query of Soil Data Access <code>sdvattribute</code> table</p>
@@ -7318,6 +7660,7 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
 
 <pre><code class='language-R'>get_site_data_from_NASIS_db(
   SS = TRUE,
+  include_pedon = TRUE,
   nullFragsAreZero = TRUE,
   stringsAsFactors = NULL,
   dsn = NULL
@@ -7327,15 +7670,19 @@ get_SDA_metrics('SDA_Usage', 'CY', 2019:2021)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_site_data_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>fetch data from Selected Set in NASIS or from the entire local
 database (default: <code>TRUE</code>)</p>
 </td></tr>
+<tr><td><code id="get_site_data_from_NASIS_db_+3A_include_pedon">include_pedon</code></td>
+<td>
+<p>Include pedon and transect data joined to site? (default: <code>TRUE</code>)</p>
+</td></tr>
 <tr><td><code id="get_site_data_from_NASIS_db_+3A_nullfragsarezero">nullFragsAreZero</code></td>
 <td>
-<p>should surface fragment cover percentages of NULL be interpreted as 0? (default: TRUE)</p>
+<p>should surface fragment cover percentages of <code>NULL</code> be interpreted as <code>0</code>? (default: <code>TRUE</code>)</p>
 </td></tr>
 <tr><td><code id="get_site_data_from_NASIS_db_+3A_stringsasfactors">stringsAsFactors</code></td>
 <td>
@@ -7343,17 +7690,39 @@ database (default: <code>TRUE</code>)</p>
 </td></tr>
 <tr><td><code id="get_site_data_from_NASIS_db_+3A_dsn">dsn</code></td>
 <td>
-<p>Optional: path to local SQLite database containing NASIS
-table structure; default: <code>NULL</code></p>
+<p>Optional: path to local SQLite database containing NASIS table structure; default: <code>NULL</code></p>
 </td></tr>
 </table>
 
 
 <h3>Details</h3>
 
-<p>When multiple &quot;site bedrock&quot; entries are present, only the shallowest is
-returned by this function.
+<p>It is possible to have multiple pedon records per site observation and multiple site observations
+per site, which will result in multiple records per site. See argument <code>include_pedon=FALSE</code> to
+omit joins to pedon and transect tables.
 </p>
+<p>The following aggregations of child table information are performed by this function:
+</p>
+
+<ul>
+<li><p> Site Area Overlap for State, County and MLRA are returned for related area records, as specified in the site table, as the following column names: <code>site_state</code>, <code>site_county</code>, and <code>site_mlra</code>.
+</p>
+</li>
+<li><p> Site Observation Surface Fragment data are simplified (converted to wide format) using <code>simplifyFragmentData()</code>.
+</p>
+</li>
+<li><p> The best Ecological Site History record is selected using <code>get_ecosite_history_from_NASIS_db(best = TRUE)</code>.
+</p>
+</li>
+<li><p> Site Other Vegetation Class information is aggregated by class name, using <code>" &amp; "</code> as the
+separator when multiple classes are assigned.
+</p>
+</li>
+<li><p> When multiple Site Bedrock entries are present, only the shallowest is returned by this
+function. In lieu of bedrock depth the first record in the table is returned.
+</p>
+</li></ul>
+
 
 
 <h3>Value</h3>
@@ -7370,7 +7739,7 @@ returned by this function.
 
 <h3>See Also</h3>
 
-<p><code><a href="#topic+get_hz_data_from_NASIS_db">get_hz_data_from_NASIS_db</a></code>
+<p><code><a href="#topic+get_hz_data_from_NASIS_db">get_hz_data_from_NASIS_db()</a></code>, <code><a href="#topic+fetchNASIS">fetchNASIS()</a></code>, <code><a href="#topic+fetchVegdata">fetchVegdata()</a></code>
 </p>
 
 <hr>
@@ -7390,7 +7759,7 @@ returned by this function.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_site_data_from_pedon_db_+3A_dsn">dsn</code></td>
 <td>
 <p>The path to a 'pedon.mdb' database.</p>
@@ -7451,14 +7820,14 @@ get_competing_soilseries_from_NASIS(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_soilseries_from_NASIS_+3A_stringsasfactors">stringsAsFactors</code></td>
 <td>
 <p>deprecated</p>
 </td></tr>
 <tr><td><code id="get_soilseries_from_NASIS_+3A_dsn">dsn</code></td>
 <td>
-<p>Optional: path to local SQLite database containing NASIS table structure; default: <code>NULL</code></p>
+<p>Optional: path or <em>DBIConnection</em> to <a href="#topic+NASISLocalDatabase">local database containing NASIS table structure</a>; default: <code>NULL</code></p>
 </td></tr>
 <tr><td><code id="get_soilseries_from_NASIS_+3A_delimiter">delimiter</code></td>
 <td>
@@ -7512,7 +7881,7 @@ datasets contain both spatial and non-spatial data in the form of a File Geodata
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SRI_+3A_gdb">gdb</code></td>
 <td>
 <p>A <code>character</code> of the GDB, e.g. <code>'Deschutes'</code>.</p>
@@ -7664,7 +8033,7 @@ layers = c('MapUnits', 'ErosionAndHydro', 'SampleSites_MaterialsTesting'))
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_SRI_layers_+3A_gdb">gdb</code></td>
 <td>
 <p>A <code>character</code> of the GDB, e.g. <code>'Deschutes'</code>.</p>
@@ -7720,7 +8089,7 @@ get_cotext_from_NASIS_db(SS = TRUE, fixLineEndings = TRUE, dsn = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_text_notes_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>get data from the currently loaded Selected Set in NASIS or from
@@ -7794,7 +8163,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_veg_data_from_NASIS_db_+3A_ss">SS</code></td>
 <td>
 <p>get data from the currently loaded Selected Set in NASIS or from
@@ -7852,7 +8221,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_veg_from_AK_Site_+3A_dsn">dsn</code></td>
 <td>
 <p>file path the the AK Site access database</p>
@@ -7895,7 +8264,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_veg_from_MT_veg_db_+3A_dsn">dsn</code></td>
 <td>
 <p>The name of the Montana RangeDB front-end database connection
@@ -7941,7 +8310,7 @@ an .mdb file format.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_veg_from_NPS_PLOTS_db_+3A_dsn">dsn</code></td>
 <td>
 <p>file path to the NPS PLOTS access database on your system.</p>
@@ -7984,7 +8353,7 @@ NRCS soil pedon data via the site_id key field.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_veg_other_from_MT_veg_db_+3A_dsn">dsn</code></td>
 <td>
 <p>The name of the Montana RangeDB front-end database connection
@@ -8028,7 +8397,7 @@ NRCS soil pedon data via the site_id key field.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="get_veg_species_from_MT_veg_db_+3A_dsn">dsn</code></td>
 <td>
 <p>The name of the Montana RangeDB front-end database connection
@@ -8072,7 +8441,7 @@ NRCS soil pedon data via the site_id key field.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="getHzErrorsNASIS_+3A_strict">strict</code></td>
 <td>
 <p>how strict should horizon boundaries be checked for
@@ -8094,7 +8463,7 @@ table structure; default: NULL</p>
 <h3>Value</h3>
 
 <p>A data.frame containing problematic records with columns:
-'peiid','pedon_id','hzdept','hzdepb','hzname'
+'peiid','upedonid','hzdept','hzdepb','hzname'
 </p>
 
 <hr>
@@ -8114,7 +8483,7 @@ table structure; default: NULL</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="ISSR800.wcs_+3A_aoi">aoi</code></td>
 <td>
 <p>area of interest (AOI) defined using a <code>Spatial*</code>, <code>RasterLayer</code>, <code>sf</code>, <code>sfc</code> or <code>bbox</code> object, OR a <code>list</code>, see details</p>
@@ -8203,7 +8572,7 @@ plot(res)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="KSSL_VG_model_+3A_vg_params">VG_params</code></td>
 <td>
 <p><code>data.frame</code> or <code>list</code> object with the parameters of the van Genuchten model, see details</p>
@@ -8336,7 +8705,7 @@ str(vg)
   plot(gopheridge, name='', print.id=FALSE, plot.order=order(gopheridge$bedrckdepth))
 
   # plot first 10 profiles
-  plot(gopheridge[1:10, ], name='hzname', color='soil_color', label='pedon_id', id.style='side')
+  plot(gopheridge[1:10, ], name='hzname', color='soil_color', label='upedonid', id.style='side')
 
   # add rock fragment data to plot:
   addVolumeFraction(gopheridge[1:10, ], colname='total_frags_pct')
@@ -8347,7 +8716,7 @@ str(vg)
   ## loafercreek
   data("loafercreek")
   # plot first 10 profiles
-  plot(loafercreek[1:10, ], name='hzname', color='soil_color', label='pedon_id', id.style='side')
+  plot(loafercreek[1:10, ], name='hzname', color='soil_color', label='upedonid', id.style='side')
 
   # add rock fragment data to plot:
   addVolumeFraction(loafercreek[1:10, ], colname='total_frags_pct')
@@ -8375,7 +8744,7 @@ str(vg)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="local_NASIS_defined_+3A_dsn">dsn</code></td>
 <td>
 <p>Optional: path to local SQLite database, or a DBIConnection, containing NASIS table structure; default: NULL</p>
@@ -8437,7 +8806,7 @@ if(local_NASIS_defined()) {
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="make_EDIT_service_URL_+3A_src">src</code></td>
 <td>
 <p>One of: <code>descriptions</code>, <code>downloads</code>, <code>plant-community-tables</code>, <code>models</code>, <code>keys</code></p>
@@ -8567,7 +8936,7 @@ desc_wf &lt;- make_EDIT_service_URL(src = "descriptions",
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="makeChunks_+3A_ids">ids</code></td>
 <td>
 <p>vector of IDs</p>
@@ -8668,7 +9037,7 @@ aggregate(letters,
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="mukey.wcs_+3A_aoi">aoi</code></td>
 <td>
 <p>area of interest (AOI) defined using either a <code>Spatial*</code>, <code>RasterLayer</code>, <code>sf</code>, <code>sfc</code> or <code>bbox</code> object, or a <code>list</code>, see details</p>
@@ -8792,7 +9161,7 @@ plot(res2[['pH1to1_0to25']])
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="NASISChoiceList_+3A_x">x</code></td>
 <td>
 <p>A named list of vectors to use as input for NASIS Choice List lookup</p>
@@ -8831,7 +9200,7 @@ plot(res2[['pH1to1_0to25']])
 </td></tr>
 <tr><td><code id="NASISChoiceList_+3A_dsn">dsn</code></td>
 <td>
-<p>Optional: path to local SQLite database containing NASIS table structure; default: NULL</p>
+<p>Optional: path or <em>DBIConnection</em> to <a href="#topic+NASISLocalDatabase">local database containing NASIS table structure</a>; default: NULL</p>
 </td></tr>
 </table>
 
@@ -8875,7 +9244,7 @@ NASISChoiceList("Silty clay loam", "texcl", choice = "ChoiceName")
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="NASISDomainsAsFactor_+3A_x">x</code></td>
 <td>
 <p>logical; default <code>FALSE</code></p>
@@ -8896,6 +9265,26 @@ NASISDomansAsFactor(TRUE)
 
 ## End(Not run)
 </code></pre>
+
+<hr>
+<h2 id='NASISLocalDatabase'>NASIS Local Database</h2><span id='topic+NASISLocalDatabase'></span>
+
+<h3>Description</h3>
+
+<p>This is a guide on using databases that follow the NASIS schema. Most of the time users are querying an instance of the Microsoft SQL Server NASIS local transactional database running on their computer. It is possible to create file-based &quot;snapshots&quot; of a local instance of the NASIS database using SQLite. See <code style="white-space: pre;">&#8288;[createStaticNASIS()]&#8288;</code> for details. These file-based snapshots, or other custom connections, can generally be specified to NASIS-related functions via the <code>dsn</code> argument.
+</p>
+
+
+<h3>Working With Coded Values and Decoding</h3>
+
+<p>Some values (choice lists) in NASIS are conventionally stored using numeric codes. The codes are defined by &quot;domain&quot; and allow for both &quot;names&quot; and &quot;labels&quot; as well as other descriptive information to be provided for each choice list element. See <code>get_NASIS_column_metadata()</code> for details.
+</p>
+<p>Many soilDB functions call the function <code>uncode()</code> internally to handle conversion to human-readable values using official NASIS domains. If writing queries directly against the database source, such as a connection created with <code>NASIS()</code> or query run with <code>dbQueryNASIS()</code>, you call <code>uncode()</code> on the <em>data.frame</em> result of your query. Conversion of internal values to choice list names is based on domains associated with result column names.
+</p>
+<p>When using a custom SQLite database, sometimes values in the database are delivered pre-decoded to make the database more directly usable. An example of this would be the Kellogg Soil Survey Laboratory morphologic database, the NASIS data corresponding to the laboratory analyses available through the <a href="#topic+fetchLDM">Lab Data Mart (LDM)</a>.
+</p>
+<p>To avoid issues with offsets between internal storage value and external readable value (for data such as farmland classification or Munsell color value and chroma), you should not call <code>uncode()</code> multiple times. Also, you can disable the &quot;decoding&quot; behavior made internally in soilDB functions by setting <code>options(soilDB.NASIS.skip_uncode = TRUE)</code>.
+</p>
 
 <hr>
 <h2 id='OSDquery'>Search full text of Official Series Description on SoilWeb</h2><span id='topic+OSDquery'></span>
@@ -8927,7 +9316,7 @@ NASISDomansAsFactor(TRUE)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="OSDquery_+3A_everything">everything</code></td>
 <td>
 <p>search entire OSD text (default is NULL), <code>mlra</code> may also be specified, all other arguments are ignored</p>
@@ -9053,7 +9442,6 @@ NASISDomansAsFactor(TRUE)
 <pre><code class='language-R'>
 
 
-
   # find all series that list Pardee as a geographically associated soil.
   s &lt;- OSDquery(geog_assoc_soils = 'pardee')
 
@@ -9084,7 +9472,7 @@ NASISDomansAsFactor(TRUE)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="parseWebReport_+3A_url">url</code></td>
 <td>
 <p>Base URL to a LIMS/NASIS web report.</p>
@@ -9143,7 +9531,7 @@ WKT (well-known text) representation of geometry to an <code>sf</code> or <code>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="processSDA_WKT_+3A_d">d</code></td>
 <td>
 <p><code>data.frame</code> returned by <code>SDA_query</code>, containing WKT representation of geometry</p>
@@ -9217,7 +9605,7 @@ See the <a href="http://ncss-tech.github.io/AQP/soilDB/SDA-tutorial.html">SDA Tu
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="ROSETTA_+3A_x">x</code></td>
 <td>
 <p>a <code>data.frame</code> of required soil properties, may contain other columns, see details</p>
@@ -9344,42 +9732,18 @@ See the <a href="http://ncss-tech.github.io/AQP/soilDB/SDA-tutorial.html">SDA Tu
 </p>
 
 <hr>
-<h2 id='SCAN_SNOTEL_metadata'>Get SCAN and SNOTEL Station Metadata</h2><span id='topic+SCAN_SNOTEL_metadata'></span><span id='topic+state_FIPS_codes'></span>
+<h2 id='SCAN_SNOTEL_metadata'>USDA-NRCS Station Metadata for SCAN, CSCAN, SNOTEL, SNOWLITE Networks</h2><span id='topic+SCAN_SNOTEL_metadata'></span><span id='topic+state_FIPS_codes'></span>
 
 <h3>Description</h3>
 
-<p>These data have been compiled from several sources and represent a
-progressive effort to organize SCAN/SNOTEL station metadata. Therefore, some
-records may be missing or incorrect.
+<p>These metadata are a work in progress.
 </p>
 
 
 <h3>Format</h3>
 
-<p>A data frame with 1092 observations on the following 12 variables.
+<p>A <code>data.frame</code> with 1186 SCAN, CSCAN, SNOTEL, and SNOWLITE station metadata records
 </p>
- <dl>
-<dt>list(&quot;Name&quot;)</dt><dd><p>station name</p>
-</dd> <dt>list(&quot;Site&quot;)</dt><dd><p>station ID</p>
-</dd>
-<dt>list(&quot;State&quot;)</dt><dd><p>state</p>
-</dd> <dt>list(&quot;Network&quot;)</dt><dd><p>sensor network: SCAN /
-SNOTEL</p>
-</dd> <dt>list(&quot;County&quot;)</dt><dd><p>county</p>
-</dd> <dt>list(&quot;Elevation_ft&quot;)</dt><dd><p>station
-elevation in feet</p>
-</dd> <dt>list(&quot;Latitude&quot;)</dt><dd><p>latitude of station</p>
-</dd>
-<dt>list(&quot;Longitude&quot;)</dt><dd><p>longitude of station</p>
-</dd> <dt>list(&quot;HUC&quot;)</dt><dd><p>associated
-watershed</p>
-</dd> <dt>list(&quot;climstanm&quot;)</dt><dd><p>climate station name (TODO: remove this
-column)</p>
-</dd> <dt>list(&quot;upedonid&quot;)</dt><dd><p>associated user pedon ID</p>
-</dd>
-<dt>list(&quot;pedlabsampnum&quot;)</dt><dd><p>associated lab sample ID</p>
-</dd> </dl>
-
 
 <hr>
 <h2 id='SDA_query'>Query Soil Data Access</h2><span id='topic+SDA_query'></span>
@@ -9398,7 +9762,7 @@ column)</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="SDA_query_+3A_q">q</code></td>
 <td>
 <p>character. A valid T-SQL query surrounded by double quotes.</p>
@@ -9446,7 +9810,6 @@ column)</p>
 
 <pre><code class='language-R'>
 
-
   ## get SSURGO export date for all soil survey areas in California
   # there is no need to filter STATSGO
   # because we are filtering on SSURGO area symbols
@@ -9492,6 +9855,7 @@ column)</p>
    x &lt;- SDA_query(q)
    str(x)
 
+
 </code></pre>
 
 <hr>
@@ -9521,7 +9885,7 @@ column)</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="SDA_spatialQuery_+3A_geom">geom</code></td>
 <td>
 <p>an <code>sf</code> or <code style="white-space: pre;">&#8288;Spatial*&#8288;</code> object, with valid CRS. May contain multiple features.</p>
@@ -9595,138 +9959,143 @@ column)</p>
 
 <h3>Examples</h3>
 
-<pre><code class='language-R'>## Not run: 
-  if (requireNamespace("aqp") &amp;&amp; requireNamespace("sf")) {
+<pre><code class='language-R'>
+## Not run: 
+library(aqp)
+library(sf)
 
-    library(aqp)
-    library(sf)
+## query at a point
 
-    ## query at a point
+# example point
+p &lt;- sf::st_as_sf(data.frame(x = -119.72330, y = 36.92204),
+                  coords = c('x', 'y'),
+                  crs = 4326)
 
-    # example point
-    p &lt;- sf::st_as_sf(data.frame(x = -119.72330,
-                                 y = 36.92204),
-                      coords = c('x', 'y'),
-                      crs = 4326)
+# query map unit records at this point
+res &lt;- SDA_spatialQuery(p, what = 'mukey')
 
-    # query map unit records at this point
-    res &lt;- SDA_spatialQuery(p, what = 'mukey')
+# convert results into an SQL "IN" statement
+# useful when there are multiple intersecting records
+mu.is &lt;- format_SQL_in_statement(res$mukey)
 
-    # convert results into an SQL "IN" statement
-    # useful when there are multiple intersecting records
-    mu.is &lt;- format_SQL_in_statement(res$mukey)
+# composite SQL WHERE clause
+sql &lt;- sprintf("mukey IN %s", mu.is)
 
-    # composite SQL WHERE clause
-    sql &lt;- sprintf("mukey IN %s", mu.is)
+# get commonly used map unit / component / chorizon records
+# as a SoilProfileCollection object
+# request that results contain `mukey` with `duplicates = TRUE`
+x &lt;- fetchSDA(sql, duplicates = TRUE)
 
-    # get commonly used map unit / component / chorizon records
-    # as a SoilProfileCollection object
-    # request that results contain `mukey` with `duplicates = TRUE`
-    x &lt;- fetchSDA(sql, duplicates = TRUE)
+# safely set texture class factor levels
+# by making a copy of this column
+# this will save in lieu of textures in the original
+# `texture` column
+horizons(x)$texture.class &lt;- factor(x$texture, levels = SoilTextureLevels())
 
-    # safely set texture class factor levels
-    # by making a copy of this column
-    # this will save in lieu of textures in the original
-    # `texture` column
-    horizons(x)$texture.class &lt;- factor(x$texture, levels = SoilTextureLevels())
+# graphical depiction of the result
+plotSPC(
+  x,
+  color = 'texture.class',
+  label = 'compname',
+  name = 'hzname',
+  cex.names = 1,
+  width = 0.25,
+  plot.depth.axis = FALSE,
+  hz.depths = TRUE,
+  name.style = 'center-center'
+)
 
-    # graphical depiction of the result
-    plotSPC(x,
-            color = 'texture.class',
-            label = 'compname',
-            name = 'hzname',
-            cex.names = 1,
-            width = 0.25,
-            plot.depth.axis = FALSE,
-            hz.depths = TRUE,
-            name.style = 'center-center')
+## query mukey + geometry that intersect with a bounding box
 
-    ## query mukey + geometry that intersect with a bounding box
+# define a bounding box: xmin, xmax, ymin, ymax
+#
+#         +-------------------(ymax, xmax)
+#         |                        |
+#         |                        |
+#     (ymin, xmin) ----------------+
+b &lt;- c(-119.747629, -119.67935, 36.912019, 36.944987)
 
-    # define a bounding box: xmin, xmax, ymin, ymax
-    #
-    #         +-------------------(ymax, xmax)
-    #         |                        |
-    #         |                        |
-    #     (ymin, xmin) ----------------+
-    b &lt;- c(-119.747629, -119.67935, 36.912019, 36.944987)
+# convert bounding box to WKT
+bbox.sp &lt;- sf::st_as_sf(wk::rct(
+  xmin = b[1],
+  xmax = b[2],
+  ymin = b[3],
+  ymax = b[4],
+  crs = sf::st_crs(4326)
+))
 
-    # convert bounding box to WKT
-    bbox.sp &lt;- sf::st_as_sf(wk::rct(
-      xmin = b[1], xmax = b[2], ymin = b[3], ymax = b[4],
-      crs = sf::st_crs(4326)
-    ))
+# results contain associated map unit keys (mukey)
+# return SSURGO polygons, after intersection with provided BBOX
+ssurgo.geom &lt;- SDA_spatialQuery(bbox.sp,
+                                what = 'mupolygon',
+                                db = 'SSURGO',
+                                geomIntersection = TRUE)
 
-    # results contain associated map unit keys (mukey)
-    # return SSURGO polygons, after intersection with provided BBOX
-    ssurgo.geom &lt;- SDA_spatialQuery(
-      bbox.sp,
-      what = 'mupolygon',
-      db = 'SSURGO',
-      geomIntersection = TRUE
-    )
+# return STATSGO polygons, after intersection with provided BBOX
+statsgo.geom &lt;- SDA_spatialQuery(bbox.sp,
+                                 what = 'mupolygon',
+                                 db = 'STATSGO',
+                                 geomIntersection = TRUE)
 
-    # return STATSGO polygons, after intersection with provided BBOX
-    statsgo.geom &lt;- SDA_spatialQuery(
-      bbox.sp,
-      what = 'mupolygon',
-      db = 'STATSGO',
-      geomIntersection = TRUE
-    )
+# inspect results
+par(mar = c(0, 0, 3, 1))
+plot(sf::st_geometry(ssurgo.geom), border = 'royalblue')
+plot(
+  sf::st_geometry(statsgo.geom),
+  lwd = 2,
+  border = 'firebrick',
+  add = TRUE
+)
+plot(sf::st_geometry(bbox.sp), lwd = 3, add = TRUE)
+legend(
+  x = 'topright',
+  legend = c('BBOX', 'STATSGO', 'SSURGO'),
+  lwd = c(3, 2, 1),
+  col = c('black', 'firebrick', 'royalblue'),
+)
 
-    # inspect results
-    par(mar = c(0,0,3,1))
-    plot(sf::st_geometry(ssurgo.geom), border = 'royalblue')
-    plot(sf::st_geometry(statsgo.geom), lwd = 2, border = 'firebrick', add = TRUE)
-    plot(sf::st_geometry(bbox.sp), lwd = 3, add = TRUE)
-    legend(
-      x = 'topright',
-      legend = c('BBOX', 'STATSGO', 'SSURGO'),
-      lwd = c(3, 2, 1),
-      col = c('black', 'firebrick', 'royalblue'),
-    )
+# quick reminder that STATSGO map units often contain many components
+# format an SQL IN statement using the first STATSGO mukey
+mu.is &lt;- format_SQL_in_statement(statsgo.geom$mukey[1])
 
-    # quick reminder that STATSGO map units often contain many components
-    # format an SQL IN statement using the first STATSGO mukey
-    mu.is &lt;- format_SQL_in_statement(statsgo.geom$mukey[1])
+# composite SQL WHERE clause
+sql &lt;- sprintf("mukey IN %s", mu.is)
 
-    # composite SQL WHERE clause
-    sql &lt;- sprintf("mukey IN %s", mu.is)
+# get commonly used map unit / component / chorizon records
+# as a SoilProfileCollection object
+x &lt;- fetchSDA(sql)
 
-    # get commonly used map unit / component / chorizon records
-    # as a SoilProfileCollection object
-    x &lt;- fetchSDA(sql)
+# tighter figure margins
+par(mar = c(0, 0, 3, 1))
 
-    # tighter figure margins
-    par(mar = c(0,0,3,1))
+# organize component sketches by national map unit symbol
+# color horizons via awc
+# adjust legend title
+# add alternate label (vertical text) containing component percent
+# move horizon names into the profile sketches
+# make profiles wider
+aqp::groupedProfilePlot(
+  x,
+  groups = 'nationalmusym',
+  label = 'compname',
+  color = 'awc_r',
+  col.label = 'Available Water Holding Capacity (cm / cm)',
+  alt.label = 'comppct_r',
+  name.style = 'center-center',
+  width = 0.3
+)
 
-    # organize component sketches by national map unit symbol
-    # color horizons via awc
-    # adjust legend title
-    # add alternate label (vertical text) containing component percent
-    # move horizon names into the profile sketches
-    # make profiles wider
-    aqp::groupedProfilePlot(x,
-                            groups = 'nationalmusym',
-                            label = 'compname',
-                            color = 'awc_r',
-                            col.label = 'Available Water Holding Capacity (cm / cm)',
-                            alt.label = 'comppct_r',
-                            name.style = 'center-center',
-                            width = 0.3
-    )
-
-    mtext(
-      'STATSGO (1:250,000) map units contain a lot of components!',
-      side = 1,
-      adj = 0,
-      line = -1.5,
-      at = 0.25,
-      font = 4
-    )
-  }
+mtext(
+  'STATSGO (1:250,000) map units contain a lot of components!',
+  side = 1,
+  adj = 0,
+  line = -1.5,
+  at = 0.25,
+  font = 4
+)
 
 ## End(Not run)
+
 </code></pre>
 
 <hr>
@@ -9751,7 +10120,7 @@ column)</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="seriesExtent_+3A_s">s</code></td>
 <td>
 <p>a soil series name, case-insensitive</p>
@@ -9856,7 +10225,7 @@ column)</p>
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="siblings_+3A_s">s</code></td>
 <td>
 <p>character vector, the name of a single soil series, case-insensitive.</p>
@@ -9919,7 +10288,6 @@ column)</p>
 
 <pre><code class='language-R'>
 
-
     # basic usage
     x &lt;- siblings('zook')
     x$sib
@@ -9928,6 +10296,7 @@ column)</p>
     # e.g. the most likely siblings
     x &lt;- siblings('zook', only.major = TRUE)
     x$sib
+
 
 </code></pre>
 
@@ -9964,7 +10333,7 @@ simplifyFragmentData(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="simplifyArtifactData_+3A_art">art</code></td>
 <td>
 <p>a <code>data.frame</code> object, typically returned from NASIS, see details</p>
@@ -10085,7 +10454,7 @@ color mixtures make sense.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="simplifyColorData_+3A_d">d</code></td>
 <td>
 <p>a <code>data.frame</code> object, typically returned from NASIS, see
@@ -10131,7 +10500,7 @@ transformed to closest Munsell chips? This is performed by <code><a href="aqp.ht
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="soilColor.wcs_+3A_aoi">aoi</code></td>
 <td>
 <p>area of interest (AOI) defined using a <code>Spatial*</code>, <code>RasterLayer</code>, <code>sf</code>, <code>sfc</code> or <code>bbox</code> object, OR a <code>list</code>, see details</p>
@@ -10263,7 +10632,7 @@ servers, or a &quot;snapshot&quot; via SoilWeb.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="SoilWeb_spatial_query_+3A_bbox">bbox</code></td>
 <td>
 <p>a bounding box in WGS84 geographic coordinates, see examples</p>
@@ -10308,7 +10677,6 @@ See examples below.
 <pre><code class='language-R'>
 
 
-
     # query by bbox
     SoilWeb_spatial_query(bbox=c(-122.05, 37, -122, 37.05))
     
@@ -10335,7 +10703,7 @@ See examples below.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="STRplot_+3A_mast">mast</code></td>
 <td>
 <p>single value or vector of mean annual soil temperature (deg C)</p>
@@ -10429,7 +10797,7 @@ fetchHenry(
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="summarizeSoilTemperature_+3A_soiltemp.data">soiltemp.data</code></td>
 <td>
 <p>A <code>data.frame</code> containing soil temperature data</p>
@@ -10517,7 +10885,7 @@ data).
 <h3>Value</h3>
 
 <p>a list containing: </p>
-<table>
+<table role = "presentation">
 <tr><td><code>sensors</code></td>
 <td>
 <p>a <code>sf</code> <code>data.frame</code>
@@ -10584,7 +10952,7 @@ progress.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="taxaExtent_+3A_x">x</code></td>
 <td>
 <p>single taxon label (e.g. <code>haploxeralfs</code>) or formative element (e.g. <code>pale</code>), case-insensitive</p>
@@ -11036,7 +11404,6 @@ progress.
 <h3>Examples</h3>
 
 <pre><code class='language-R'>
-
 ## Not run: 
   library(terra)
   
@@ -11071,6 +11438,7 @@ progress.
   terra::plot(a, axes = FALSE)
 
 ## End(Not run)
+
 </code></pre>
 
 <hr>
@@ -11102,7 +11470,7 @@ code(df, db = NULL, droplevels = FALSE, stringsAsFactors = NULL, dsn = NULL)
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="uncode_+3A_df">df</code></td>
 <td>
 <p>data.frame</p>
@@ -11241,7 +11609,7 @@ season. This is September 30 in California.
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="waterDayYear_+3A_d">d</code></td>
 <td>
 <p>anything the can be safely converted to <code>POSIXlt</code></p>
@@ -11270,7 +11638,7 @@ season. This is September 30 in California.
 <h3>Value</h3>
 
 <p>A <code>data.frame</code> object with the following </p>
-<table>
+<table role = "presentation">
 <tr><td><code>wy</code></td>
 <td>
 <p>the &quot;water
@@ -11313,7 +11681,7 @@ waterDayYear('2019-01-01')
 
 <h3>Arguments</h3>
 
-<table>
+<table role = "presentation">
 <tr><td><code id="WCS_details_+3A_wcs">wcs</code></td>
 <td>
 <p>a WCS label ('mukey', 'ISSR800', or 'soilColor')</p>
