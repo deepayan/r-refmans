@@ -12,11 +12,12 @@ sanitize_maintainer <- function(x) gsub("@", " at ", x, fixed = TRUE)
 
 makeTableRow <- function(x, cran_link = TRUE)
 {
-    package_column <- with(x, sprintf("\n<tr><td><a href='%s.html'>%s</a></td>", Package, Package))
+    package_column <- with(x, sprintf("\n<tr><td><a href='%s/refman/%s.html'>%s</a></td>",
+                                      Package, Package, Package))
     version_column <- with(x, sprintf("<td>%s</td>", Version))
     
     if (cran_link) {
-      title_column <- with(x, sprintf("<td><a href='https://cran.r-project.org/package=%s'>%s</a></td>", Package, Title))
+      title_column <- with(x, sprintf("<td>CRAN: <a href='https://cran.r-project.org/package=%s'>%s</a></td>", Package, Title))
     } else {
       title_column <- with(x, sprintf("<td>%s</td>", Title))
     }
@@ -59,7 +60,7 @@ for (pkg in ip[wbase, "Package"]) {
 pkgs <- list.dirs("CRAN", full.names = FALSE, recursive = FALSE)
 
 for (pkg in pkgs) {
-    if (file.exists(sprintf("docs/%s.html", pkg))) {
+    if (TRUE) { ## (file.exists(sprintf("docs/%s/refman/%s.html", pkg, pkg))) {
         cat(pkg, fill = TRUE)
         desc <- read.dcf(file.path("CRAN", pkg, "DESCRIPTION")) |> as.data.frame()
         makeTableRow(desc) |> cat(file = INDEX_FILE, append = TRUE)
